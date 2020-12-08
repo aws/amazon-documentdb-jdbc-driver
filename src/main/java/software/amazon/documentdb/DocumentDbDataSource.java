@@ -1,0 +1,44 @@
+package software.amazon.documentdb;
+
+import javax.sql.PooledConnection;
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.util.Properties;
+
+
+/**
+ * DocumentDb implementation of DataSource.
+ */
+public class DocumentDbDataSource extends software.amazon.jdbc.DataSource implements javax.sql.DataSource, javax.sql.ConnectionPoolDataSource {
+    private final Properties properties;
+
+    /**
+     * DocumentDbDataSource constructor, initializes super class.
+     * @param properties Properties Object.
+     */
+    DocumentDbDataSource(final Properties properties) {
+        super();
+        this.properties = (Properties) properties.clone();
+    }
+
+    @Override
+    public java.sql.Connection getConnection() throws SQLException {
+        return new DocumentDbConnection(properties);
+    }
+
+    @Override
+    public Connection getConnection(final String username, final String password) throws SQLException {
+        // TODO: Add some auth logic.
+        return null;
+    }
+
+    @Override
+    public PooledConnection getPooledConnection() throws SQLException {
+        return new DocumentDbPooledConnection(getConnection());
+    }
+
+    @Override
+    public PooledConnection getPooledConnection(final String user, final String password) throws SQLException {
+        return new DocumentDbPooledConnection(getConnection(user, password));
+    }
+}
