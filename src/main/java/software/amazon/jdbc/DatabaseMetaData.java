@@ -44,21 +44,21 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     // TODO: This unwrap and isWrapperFor is everywhere, try to make a generic static function to handle them.
     @Override
-    public <T> T unwrap(final Class<T> iFace) throws SQLException {
-        if (iFace.isAssignableFrom(this.getClass())) {
-            return iFace.cast(this);
+    public <T> T unwrap(final Class<T> iface) throws SQLException {
+        if (iface.isAssignableFrom(this.getClass())) {
+            return iface.cast(this);
         }
 
         throw SqlError.createSQLException(
                 LOGGER,
                 SqlState.DATA_EXCEPTION,
                 SqlError.CANNOT_UNWRAP,
-                iFace.toString());
+                iface.toString());
     }
 
     @Override
-    public boolean isWrapperFor(final Class<?> iFace) {
-        return (null != iFace) && iFace.isAssignableFrom(this.getClass());
+    public boolean isWrapperFor(final Class<?> iface) {
+        return (null != iface) && iface.isAssignableFrom(this.getClass());
     }
 
     @Override
@@ -296,7 +296,7 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public boolean nullsAreSortedAtEnd() {
-        return true;
+        return false;
     }
 
     @Override

@@ -1,10 +1,11 @@
 package software.amazon.documentdb;
 
 import javax.sql.PooledConnection;
+
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.util.Properties;
-
 
 /**
  * DocumentDb implementation of DataSource.
@@ -40,5 +41,15 @@ public class DocumentDbDataSource extends software.amazon.jdbc.DataSource implem
     @Override
     public PooledConnection getPooledConnection(final String user, final String password) throws SQLException {
         return new DocumentDbPooledConnection(getConnection(user, password));
+    }
+
+    @Override
+    public void setLoginTimeout(final int seconds) throws SQLException {
+        throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public int getLoginTimeout() throws SQLException {
+        return 0;
     }
 }

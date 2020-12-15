@@ -42,7 +42,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection implem
     }
 
     @Override
-    public void close() {
+    public void doClose() {
         // TODO.
     }
 

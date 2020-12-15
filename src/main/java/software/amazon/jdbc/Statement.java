@@ -430,7 +430,16 @@ public abstract class Statement implements java.sql.Statement {
         }
     }
 
+    /**
+     * Cancels the current query.
+     * @throws SQLException - if a database exception occurs
+     */
     protected abstract void cancelQuery() throws SQLException;
 
+    /**
+     * Gets the maximum number of rows to fetch.
+     * @return A value representing the maximum number of rows to fetch.
+     * @throws SQLException - if a database exception occurs
+     */
     protected abstract int getMaxFetchSize() throws SQLException;
 }

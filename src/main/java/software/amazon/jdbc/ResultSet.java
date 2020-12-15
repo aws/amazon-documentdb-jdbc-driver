@@ -54,10 +54,35 @@ public abstract class ResultSet implements java.sql.ResultSet {
         this.statement = statement;
     }
 
+    /**
+     * Closes ResultSet and releases resources.
+     * @throws SQLException - if a database exception occurs
+     */
     protected abstract void doClose() throws SQLException;
+
+    /**
+     * Get the driver fetch size in rows.
+     * @return A value representing the number of rows the driver should fetch.
+     * @throws SQLException - if a database exception occurs
+     */
     protected abstract int getDriverFetchSize() throws SQLException;
+
+    /**
+     * Set the driver fetch size by the number of rows.
+     * @param rows The number of rows for the driver to fetch.
+     */
     protected abstract void setDriverFetchSize(int rows);
+
+    /**
+     * Gets the current row (zero-based) index.
+     * @return A value representing the current row (zero-based) index.
+     */
     protected abstract int getRowIndex();
+
+    /**
+     * Gets the number of rows in the result set.
+     * @return A value representing the number of rows in the result set.
+     */
     protected abstract int getRowCount();
 
     /**
@@ -86,7 +111,6 @@ public abstract class ResultSet implements java.sql.ResultSet {
         }
         doClose();
     }
-
 
     // Warning implementation.
     @Override
