@@ -35,7 +35,7 @@ public class MockConnection extends Connection implements java.sql.Connection {
      */
     public MockConnection(
             final @NonNull Properties connectionProperties) {
-        super(connectionProperties);
+        super(connectionProperties, MockConnectionProperty::isSupportedProperty);
     }
 
     @Override

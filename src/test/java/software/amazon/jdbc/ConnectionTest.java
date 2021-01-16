@@ -40,7 +40,7 @@ public class ConnectionTest {
     private static final String TEST_NATIVE_SQL = "native sql";
     private static final String TEST_PROP_KEY_UNSUPPORTED = "unsupported";
     private static final String TEST_PROP_VAL_UNSUPPORTED = "unsupported";
-    private static final String TEST_PROP_KEY = ConnectionProperty.APPLICATION_NAME.getConnectionProperty();
+    private static final String TEST_PROP_KEY = ConnectionProperty.APPLICATION_NAME;
     private static final String TEST_PROP_VAL = Driver.APPLICATION_NAME;
     private static final Properties TEST_PROP = new Properties();
     private static final Properties TEST_PROP_EMPTY = new Properties();
@@ -51,8 +51,8 @@ public class ConnectionTest {
     void initialize() {
         connection = new MockConnection(new Properties());
         TEST_PROP.setProperty(TEST_PROP_KEY, TEST_PROP_VAL);
-        TEST_PROP.setProperty(ConnectionProperty.APPLICATION_NAME.getConnectionProperty(), Driver.APPLICATION_NAME);
-        TEST_PROP_EMPTY.setProperty(ConnectionProperty.APPLICATION_NAME.getConnectionProperty(), Driver.APPLICATION_NAME);
+        TEST_PROP.setProperty(ConnectionProperty.APPLICATION_NAME, Driver.APPLICATION_NAME);
+        TEST_PROP_EMPTY.setProperty(ConnectionProperty.APPLICATION_NAME, Driver.APPLICATION_NAME);
     }
 
     @Test

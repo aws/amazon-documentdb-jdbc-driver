@@ -41,6 +41,7 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 /**
  * Abstract implementation of Connection for JDBC Driver.
@@ -51,9 +52,13 @@ public abstract class Connection implements java.sql.Connection {
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
     private Map<String, Class<?>> typeMap = new HashMap<>();
     private SQLWarning warnings = null;
+    private final Function<String, Boolean> isSupportedPropertyFunction;
 
-    protected Connection(@NonNull final Properties connectionProperties) {
+    protected Connection(
+            @NonNull final Properties connectionProperties,
+            @NonNull final Function<String, Boolean> isSupportedPropertyFunction) {
         this.connectionProperties = connectionProperties;
+        this.isSupportedPropertyFunction = isSupportedPropertyFunction;
     }
 
     /*
@@ -65,7 +70,7 @@ public abstract class Connection implements java.sql.Connection {
         final Properties clientInfo = new Properties();
         clientInfo.putAll(connectionProperties);
         clientInfo.putIfAbsent(
-                ConnectionProperty.APPLICATION_NAME.getConnectionProperty(),
+                ConnectionProperty.APPLICATION_NAME,
                 Driver.APPLICATION_NAME);
         return clientInfo;
     }
@@ -92,7 +97,7 @@ public abstract class Connection implements java.sql.Connection {
             return null;
         }
         connectionProperties.putIfAbsent(
-                ConnectionProperty.APPLICATION_NAME.getConnectionProperty(),
+                ConnectionProperty.APPLICATION_NAME,
                 Driver.APPLICATION_NAME);
         return connectionProperties.getProperty(name);
     }
@@ -135,7 +140,7 @@ public abstract class Connection implements java.sql.Connection {
         Objects.requireNonNull(name);
         throwIfIsClosed(null);
 
-        if (ConnectionProperty.isSupportedProperty(name)) {
+        if (isSupportedPropertyFunction.apply(name)) {
             if (value != null) {
                 connectionProperties.put(name, value);
                 LOGGER.debug("Successfully set client info with name {{}} and value {{}}", name, value);

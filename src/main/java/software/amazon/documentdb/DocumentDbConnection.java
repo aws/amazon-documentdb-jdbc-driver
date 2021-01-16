@@ -32,7 +32,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection implem
      * @param connectionProperties Properties Object.
      */
     public DocumentDbConnection(@NonNull final Properties connectionProperties) {
-        super(connectionProperties);
+        super(connectionProperties, DocumentDbConnectionProperty::isSupportedProperty);
     }
 
     @Override
