@@ -21,6 +21,7 @@ import software.amazon.jdbc.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.Arrays;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 
@@ -35,7 +36,7 @@ public class MockConnection extends Connection implements java.sql.Connection {
      */
     public MockConnection(
             final @NonNull Properties connectionProperties) {
-        super(connectionProperties, MockConnectionProperty::isSupportedProperty);
+        super(connectionProperties);
     }
 
     @Override
@@ -66,5 +67,12 @@ public class MockConnection extends Connection implements java.sql.Connection {
     @Override
     public int getNetworkTimeout() throws SQLException {
         return 0;
+    }
+
+    @Override
+    public boolean isSupportedProperty(final String name) {
+        return Arrays
+                .stream(MockConnectionProperty.values())
+                .anyMatch(value -> value.getName().equals(name));
     }
 }

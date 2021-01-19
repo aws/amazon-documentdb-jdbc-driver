@@ -74,7 +74,7 @@ public class DocumentDbDriver extends Driver {
             throw new SQLException(exception.getMessage(), exception);
         }
 
-        return new DocumentDbConnection(info);
+        return new DocumentDbConnection(new DocumentDBConnectionProperties(info));
     }
 
     @Override
@@ -94,48 +94,48 @@ public class DocumentDbDriver extends Driver {
 
         validateDocumentDbProperties(connectionString);
 
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.USER.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.USER.getName(),
                 connectionString.getUsername());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.PASSWORD.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.PASSWORD.getName(),
                 connectionString.getPassword());
         // Ignore multiple hosts, if provided. Note: this may include optional port number.
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.HOSTNAME.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.HOSTNAME.getName(),
                 connectionString.getHosts().get(0));
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.DATABASE.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.DATABASE.getName(),
                 connectionString.getDatabase());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.READ_PREFERENCE.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.READ_PREFERENCE.getName(),
                 connectionString.getReadPreference());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.APPLICATION_NAME.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.APPLICATION_NAME.getName(),
                 connectionString.getApplicationName());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.REPLICA_SET.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.REPLICA_SET.getName(),
                 connectionString.getRequiredReplicaSetName());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.SERVER_SELECTION_TIMEOUT_MS.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.SERVER_SELECTION_TIMEOUT_MS.getName(),
                 connectionString.getServerSelectionTimeout());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.LOCAL_THRESHOLD_MS.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.LOCAL_THRESHOLD_MS.getName(),
                 connectionString.getLocalThreshold());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.HEARTBEAT_FREQUENCY_MS.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.HEARTBEAT_FREQUENCY_MS.getName(),
                 connectionString.getHeartbeatFrequency());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.TLS_ENABLED.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.TLS_ENABLED.getName(),
                 connectionString.getSslEnabled());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName(),
                 connectionString.getSslInvalidHostnameAllowed());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.CONNECT_TIMEOUT_MS.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.CONNECT_TIMEOUT_MS.getName(),
                 connectionString.getConnectTimeout());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.SOCKET_TIMEOUT_MS.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.SOCKET_TIMEOUT_MS.getName(),
                 connectionString.getSocketTimeout());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_POOL_SIZE.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_POOL_SIZE.getName(),
                 connectionString.getMaxConnectionPoolSize());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MIN_POOL_SIZE.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MIN_POOL_SIZE.getName(),
                 connectionString.getMinConnectionPoolSize());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.WAIT_QUEUE_TIMEOUT_MS.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.WAIT_QUEUE_TIMEOUT_MS.getName(),
                 connectionString.getMaxWaitTime());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_IDLE_TIME_MS.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_IDLE_TIME_MS.getName(),
                 connectionString.getMaxConnectionIdleTime());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_LIFE_TIME_MS.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_LIFE_TIME_MS.getName(),
                 connectionString.getMaxConnectionLifeTime());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.RETRY_READS_ENABLED.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName(),
                 connectionString.getRetryReads());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.UUID_REPRESENTATION.getConnectionProperty(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.UUID_REPRESENTATION.getName(),
                 connectionString.getUuidRepresentation());
     }
 

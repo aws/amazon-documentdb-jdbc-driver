@@ -22,11 +22,11 @@ public interface ConnectionProperty {
     public static final String APPLICATION_NAME = "appName";
 
     /**
-     * Gets connection property.
+     * Gets the connection property name.
      *
      * @return the connection property.
      */
-    String getConnectionProperty();
+    String getName();
 
     /**
      * Gets the default value of the connection property.

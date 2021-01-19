@@ -17,7 +17,6 @@
 package software.amazon.jdbc.mock;
 
 import software.amazon.jdbc.utilities.ConnectionProperty;
-import java.util.Arrays;
 
 /**
  * Mocks a ConnectionProperty implementation.
@@ -37,7 +36,7 @@ public enum MockConnectionProperty implements ConnectionProperty {
     }
 
     @Override
-    public String getConnectionProperty() {
+    public String getName() {
         return connectionProperty;
     }
 
@@ -49,16 +48,5 @@ public enum MockConnectionProperty implements ConnectionProperty {
     @Override
     public String getDescription() {
         return description;
-    }
-
-    /**
-     * Checks if the provided property name is supported.
-     * @param name the name of the property to test.
-     * @return Returns true if the property is supported, false otherwise.
-     */
-    static boolean isSupportedProperty(final String name) {
-        return Arrays
-                .stream(MockConnectionProperty.values())
-                .anyMatch(value -> value.getConnectionProperty().equals(name));
     }
 }

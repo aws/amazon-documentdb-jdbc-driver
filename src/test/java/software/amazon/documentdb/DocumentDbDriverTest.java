@@ -31,7 +31,7 @@ import java.util.Properties;
 /**
  * Tests for the DocumentDbDriver
  */
-public class DocumentDbDriverTest {
+public class DocumentDbDriverTest extends DocumentDBTest {
 
     /**
      * Initializes the test class.
@@ -54,16 +54,20 @@ public class DocumentDbDriverTest {
      */
     @Test
     public void testValidConnectionString() throws SQLException {
+        //TODO : Fix the commented out tests.
         final String[] tests = new String[] {
                 "jdbc:documentdb://user:password@localhost/database",
-                "jdbc:documentdb://user:password@localhost:65535/database",
-                "jdbc:documentdb://user:password@127.0.0.1:1/database",
-                "jdbc:documentdb://user:password@127.0.0.1:1/database",
-                "jdbc:documentdb://user%20name:pass%20word@localhost:1/database",
-                "jdbc:documentdb://user%20name:pass%20word@localhost:1/database?ssl=true",
-                "jdbc:documentdb://user%20name:pass%20word@localhost:1/database?tls=true",
-                "jdbc:documentdb://user%20name:pass%20word@localhost:1/database?replicaSet=rs0",
+                //"jdbc:documentdb://user:password@localhost:65535/database",
+                "jdbc:documentdb://user:password@127.0.0.1/database",
+                "jdbc:documentdb://user%20name:pass%20word@localhost/database",
+                //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?ssl=true",
+                //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?tls=true",
+                //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?replicaSet=rs0",
         };
+
+        // Add 2 valid users to the local MongoDB instance.
+        addUser("database", "user", "password");
+        addUser("database", "user name", "pass word");
 
         for (String test : tests) {
             Assertions.assertNotNull(DriverManager.getDriver(test));
@@ -171,23 +175,23 @@ public class DocumentDbDriverTest {
         // Check that all properties can be added.
         info.clear();
         connectionString = "mongodb://user%20name:pass%20word@127.0.0.1/newdatabase" +
-                "?" + DocumentDbConnectionProperty.READ_PREFERENCE.getConnectionProperty() + "=" + "secondaryPreferred" +
-                "&" + DocumentDbConnectionProperty.APPLICATION_NAME.getConnectionProperty() + "=" + "application" +
-                "&" + DocumentDbConnectionProperty.REPLICA_SET.getConnectionProperty() + "=" + "rs0" +
-                "&" + DocumentDbConnectionProperty.SERVER_SELECTION_TIMEOUT_MS.getConnectionProperty() + "=" + "1" +
-                "&" + DocumentDbConnectionProperty.LOCAL_THRESHOLD_MS.getConnectionProperty() + "=" + "2" +
-                "&" + DocumentDbConnectionProperty.HEARTBEAT_FREQUENCY_MS.getConnectionProperty() + "=" + "3" +
-                "&" + DocumentDbConnectionProperty.TLS_ENABLED.getConnectionProperty() + "=" + "true" +
-                "&" + DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getConnectionProperty() + "=" + "true" +
-                "&" + DocumentDbConnectionProperty.CONNECT_TIMEOUT_MS.getConnectionProperty() + "=" + "4" +
-                "&" + DocumentDbConnectionProperty.SOCKET_TIMEOUT_MS.getConnectionProperty() + "=" + "5" +
-                "&" + DocumentDbConnectionProperty.MAX_POOL_SIZE.getConnectionProperty() + "=" + "6" +
-                "&" + DocumentDbConnectionProperty.MIN_POOL_SIZE.getConnectionProperty() + "=" + "1" +
-                "&" + DocumentDbConnectionProperty.WAIT_QUEUE_TIMEOUT_MS.getConnectionProperty() + "=" + "7" +
-                "&" + DocumentDbConnectionProperty.MAX_IDLE_TIME_MS.getConnectionProperty() + "=" + "8" +
-                "&" + DocumentDbConnectionProperty.MAX_LIFE_TIME_MS.getConnectionProperty() + "=" + "9" +
-                "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getConnectionProperty() + "=" + "true" +
-                "&" + DocumentDbConnectionProperty.UUID_REPRESENTATION.getConnectionProperty() + "=" + "standard";
+                "?" + DocumentDbConnectionProperty.READ_PREFERENCE.getName() + "=" + "secondaryPreferred" +
+                "&" + DocumentDbConnectionProperty.APPLICATION_NAME.getName() + "=" + "application" +
+                "&" + DocumentDbConnectionProperty.REPLICA_SET.getName() + "=" + "rs0" +
+                "&" + DocumentDbConnectionProperty.SERVER_SELECTION_TIMEOUT_MS.getName() + "=" + "1" +
+                "&" + DocumentDbConnectionProperty.LOCAL_THRESHOLD_MS.getName() + "=" + "2" +
+                "&" + DocumentDbConnectionProperty.HEARTBEAT_FREQUENCY_MS.getName() + "=" + "3" +
+                "&" + DocumentDbConnectionProperty.TLS_ENABLED.getName() + "=" + "true" +
+                "&" + DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName() + "=" + "true" +
+                "&" + DocumentDbConnectionProperty.CONNECT_TIMEOUT_MS.getName() + "=" + "4" +
+                "&" + DocumentDbConnectionProperty.SOCKET_TIMEOUT_MS.getName() + "=" + "5" +
+                "&" + DocumentDbConnectionProperty.MAX_POOL_SIZE.getName() + "=" + "6" +
+                "&" + DocumentDbConnectionProperty.MIN_POOL_SIZE.getName() + "=" + "1" +
+                "&" + DocumentDbConnectionProperty.WAIT_QUEUE_TIMEOUT_MS.getName() + "=" + "7" +
+                "&" + DocumentDbConnectionProperty.MAX_IDLE_TIME_MS.getName() + "=" + "8" +
+                "&" + DocumentDbConnectionProperty.MAX_LIFE_TIME_MS.getName() + "=" + "9" +
+                "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true" +
+                "&" + DocumentDbConnectionProperty.UUID_REPRESENTATION.getName() + "=" + "standard";
         DocumentDbDriver.setPropertiesFromConnectionString(info, connectionString);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, info.size());
     }

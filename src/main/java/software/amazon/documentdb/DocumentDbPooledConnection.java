@@ -35,6 +35,6 @@ public class DocumentDbPooledConnection extends PooledConnection implements java
 
     @Override
     public java.sql.Connection getConnection() throws SQLException {
-        return new DocumentDbConnection(new Properties());
+        return new DocumentDbConnection(new DocumentDBConnectionProperties(new Properties()));
     }
 }

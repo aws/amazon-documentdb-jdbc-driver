@@ -17,7 +17,6 @@
 package software.amazon.documentdb;
 
 import software.amazon.jdbc.utilities.ConnectionProperty;
-import java.util.Arrays;
 
 /**
  * The enumeration of connection properties.
@@ -91,7 +90,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
      *
      * @return the connection property.
      */
-    public String getConnectionProperty() {
+    public String getName() {
         return connectionProperty;
     }
 
@@ -111,17 +110,5 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
      */
     public String getDescription() {
         return description;
-    }
-
-    /**
-     * Check if the property is supported by the driver.
-     *
-     * @param name The name of the property.
-     * @return {@code true} if property is supported; {@code false} otherwise.
-     */
-    public static boolean isSupportedProperty(final String name) {
-        return Arrays
-                .stream(DocumentDbConnectionProperty.values())
-                .anyMatch(value -> value.getConnectionProperty().equals(name));
     }
 }

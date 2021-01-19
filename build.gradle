@@ -3,6 +3,7 @@ plugins {
     id "com.github.spotbugs" version "4.5.1"
     id 'checkstyle'
     id 'jacoco'
+    id 'com.sourcemuse.mongo' version '1.0.7'
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -33,6 +34,7 @@ jar {
 }
 
 test {
+    runWithMongoDb = true
     useJUnitPlatform {
         if (project.hasProperty('runRemoteIntegrationTests') && project.property('runRemoteIntegrationTests') == true) {
             environment "connectionString", project.CONNECTION_STRING_REMOTE
@@ -42,6 +44,10 @@ test {
             excludeTags 'remote-integration'
         }
     }
+}
+
+mongo {
+    logging 'none'
 }
 
 /**

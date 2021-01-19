@@ -41,7 +41,6 @@ import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Function;
 
 /**
  * Abstract implementation of Connection for JDBC Driver.
@@ -52,13 +51,9 @@ public abstract class Connection implements java.sql.Connection {
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
     private Map<String, Class<?>> typeMap = new HashMap<>();
     private SQLWarning warnings = null;
-    private final Function<String, Boolean> isSupportedPropertyFunction;
 
-    protected Connection(
-            @NonNull final Properties connectionProperties,
-            @NonNull final Function<String, Boolean> isSupportedPropertyFunction) {
+    protected Connection(@NonNull final Properties connectionProperties) {
         this.connectionProperties = connectionProperties;
-        this.isSupportedPropertyFunction = isSupportedPropertyFunction;
     }
 
     /*
@@ -140,7 +135,7 @@ public abstract class Connection implements java.sql.Connection {
         Objects.requireNonNull(name);
         throwIfIsClosed(null);
 
-        if (isSupportedPropertyFunction.apply(name)) {
+        if (isSupportedProperty(name)) {
             if (value != null) {
                 connectionProperties.put(name, value);
                 LOGGER.debug("Successfully set client info with name {{}} and value {{}}", name, value);
@@ -458,6 +453,13 @@ public abstract class Connection implements java.sql.Connection {
         verifyOpen();
         throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.TRANSACTIONS_NOT_SUPPORTED);
     }
+
+    /**
+     * Checks if the property is supported by the driver.
+     * @param name The name of the property.
+     * @return {@code true} if property is supported; {@code false} otherwise.
+     */
+    public abstract boolean isSupportedProperty(final String name);
 
     private void throwIfIsClosed(final Properties properties) throws SQLClientInfoException {
         if (isClosed.get()) {
