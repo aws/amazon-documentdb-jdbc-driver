@@ -58,6 +58,7 @@ public class PreparedStatementTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     void testSet() {
         HelperFunctions.expectFunctionThrows(() -> preparedStatement.setArray(0, null));
         HelperFunctions.expectFunctionThrows(() -> preparedStatement.setAsciiStream(0, null, 0));

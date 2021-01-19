@@ -45,6 +45,7 @@ public class ResultSetTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     void testGetType() {
         HelperFunctions.expectFunctionThrows(() -> resultSet.getArray(0));
         HelperFunctions.expectFunctionThrows(() -> resultSet.getArray(""));

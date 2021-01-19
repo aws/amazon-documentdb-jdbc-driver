@@ -33,7 +33,15 @@ jar {
 }
 
 test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        if (project.hasProperty('runRemoteIntegrationTests') && project.property('runRemoteIntegrationTests') == true) {
+            environment "connectionString", project.CONNECTION_STRING_REMOTE
+            excludeTags 'local-integration'
+        } else {
+            environment "connectionString", project.CONNECTION_STRING_LOCAL
+            excludeTags 'remote-integration'
+        }
+    }
 }
 
 /**

@@ -16,10 +16,6 @@ name: Amazon DocumentDB JDBC Driver
 on:
   # Trigger the workflow on push or pull request,
   # but only for the master branch
-  push:
-    branches:
-      - master
-      - develop
   pull_request:
     branches:
       - master
@@ -38,8 +34,8 @@ jobs:
         java-version: 1.8
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
-    - name: Build with Gradle
-      run: ./gradlew build
+    - name: Build with Gradle Local Tests
+      run: ./gradlew build -PrunRemoteIntegrationTests=false
     - name: Copy Build
       run: |
         mkdir output
