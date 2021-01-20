@@ -7,24 +7,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.Properties;
 
-public class DocumentDBConnectionProperties extends Properties {
+public class DocumentDbConnectionProperties extends Properties {
 
     private static final Logger LOGGER =
-            LoggerFactory.getLogger(DocumentDBConnectionProperties.class.getName());
+            LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
 
     /**
-     * Constructor for DocumentDBConnectionProperties, initializes with given properties.
+     * Constructor for DocumentDbConnectionProperties, initializes with given properties.
      *
      * @param properties Properties to initialize with.
      */
-    public DocumentDBConnectionProperties(final Properties properties) {
+    public DocumentDbConnectionProperties(final Properties properties) {
         super(properties);
     }
 
     /**
-     * Constructor for DocumentDBConnectionProperties. Initialized with empty properties.
+     * Constructor for DocumentDbConnectionProperties. Initialized with empty properties.
      */
-    public DocumentDBConnectionProperties() {
+    public DocumentDbConnectionProperties() {
         super();
     }
 

@@ -65,7 +65,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
      *
      * @param connectionProperties Properties Object.
      */
-    public DocumentDbConnection(@NonNull final DocumentDBConnectionProperties connectionProperties) throws SQLException {
+    public DocumentDbConnection(@NonNull final DocumentDbConnectionProperties connectionProperties) throws SQLException {
         super(connectionProperties);
         initializeClients(connectionProperties);
     }
@@ -158,7 +158,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
      * @param connectionProperties The connection properties.
      * @throws SQLException if connecting to the given database fails or the database is invalid.
      */
-    private void initializeClients(final DocumentDBConnectionProperties connectionProperties) throws SQLException {
+    private void initializeClients(final DocumentDbConnectionProperties connectionProperties) throws SQLException {
         // Create a server monitor listener for the mongo client.
         serverMonitorListener = new DocumentDbServerMonitorListener();
 
@@ -207,7 +207,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
      * @param serverMonitorListener The listener for server heartbeat events
      */
     private void buildMongoClient(
-            final DocumentDBConnectionProperties connectionProperties,
+            final DocumentDbConnectionProperties connectionProperties,
             final ServerMonitorListener serverMonitorListener) {
         final MongoClientSettings.Builder clientSettingsBuilder = MongoClientSettings.builder();
 
@@ -267,7 +267,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
      * @param serverMonitorListener The server monitor listener to add as an event listener.
      */
     private static void applyServerSettings(
-            final DocumentDBConnectionProperties connectionProperties,
+            final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder,
             final ServerMonitorListener serverMonitorListener) {
         final Long heartbeatFrequency = connectionProperties.getHeartbeatFrequency();
@@ -287,7 +287,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
      * @param clientSettingsBuilder The client settings builder to apply the properties to.
      */
     private static void applyClusterSettings(
-            final DocumentDBConnectionProperties connectionProperties,
+            final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder) {
         final String host = connectionProperties.getHostname();
         final Long serverSelectionTimeout = connectionProperties.getServerSelectionTimeout();
@@ -320,7 +320,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
      * @param clientSettingsBuilder The client settings builder to apply the properties to.
      */
     private static void applySocketSettings(
-            final DocumentDBConnectionProperties connectionProperties,
+            final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder) {
         final Integer socketTimeout = connectionProperties.getSocketTimeout();
         final Integer connectTimeout = connectionProperties.getConnectTimeout();
@@ -344,7 +344,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
      * @param clientSettingsBuilder The client settings builder to apply the properties to.
      */
     private static void applyConnectionPoolSettings(
-            final DocumentDBConnectionProperties connectionProperties,
+            final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder) {
         final Integer maxPoolSize = connectionProperties.getMaxPoolSize();
         final Integer minPoolSize = connectionProperties.getMinPoolSize();
@@ -382,7 +382,7 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
      * @param clientSettingsBuilder The client settings builder to apply the properties to.
      */
     private static void applyTlsSettings(
-            final DocumentDBConnectionProperties connectionProperties,
+            final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder) {
         final boolean tlsEnabled = connectionProperties.getTlsEnabled();
         final boolean tlsAllowInvalidHostnames = connectionProperties.getTlsAllowInvalidHostnames();

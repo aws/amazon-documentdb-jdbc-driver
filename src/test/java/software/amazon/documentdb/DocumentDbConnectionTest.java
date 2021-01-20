@@ -9,13 +9,13 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.sql.SQLException;
 
-public class DocumentDBConnectionTest extends DocumentDbTest {
+public class DocumentDbConnectionTest extends DocumentDbTest {
 
     private static final String HOSTNAME = "localhost";
     private static final String USERNAME = "username";
     private static final String PASSWORD = "password";
     private static final String DATABASE = "database";
-    private static final DocumentDBConnectionProperties VALID_CONNECTION_PROPERTIES = new DocumentDBConnectionProperties();
+    private static final DocumentDbConnectionProperties VALID_CONNECTION_PROPERTIES = new DocumentDbConnectionProperties();
 
     /** Initializes the test class. */
     @BeforeAll
@@ -84,7 +84,7 @@ public class DocumentDBConnectionTest extends DocumentDbTest {
      */
     @Test
     void testConnectionWithValidOptions() throws SQLException {
-        final DocumentDBConnectionProperties properties = new DocumentDBConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setApplicationName("test");
         properties.setServerSelectionTimeout("10");
         properties.setLocalThreshold("10");
@@ -112,7 +112,7 @@ public class DocumentDBConnectionTest extends DocumentDbTest {
      */
     @Test
     void testConnectionWithInvalidOptions() throws SQLException {
-        final DocumentDBConnectionProperties properties = new DocumentDBConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setReadPreference("invalidReadPreference");
         properties.setTlsEnabled("invalidBoolean");
         properties.setServerSelectionTimeout("invalidNumber");
@@ -126,7 +126,7 @@ public class DocumentDBConnectionTest extends DocumentDbTest {
     /** Tests constructor when passed an invalid database name. */
     @Test
     void testConnectionWithInvalidDatabase() {
-        final DocumentDBConnectionProperties properties = new DocumentDBConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setDatabase(" ");
 
         Assertions.assertThrows(SQLException.class, () -> new DocumentDbConnection(properties));
@@ -135,7 +135,7 @@ public class DocumentDBConnectionTest extends DocumentDbTest {
     /** Tests constructor when passed invalid credentials. */
     @Test
     void testConnectionWithInvalidCredentials() {
-        final DocumentDBConnectionProperties properties = new DocumentDBConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setUser("invalidUser");
 
         Assertions.assertThrows(SQLException.class, () -> new DocumentDbConnection(properties));

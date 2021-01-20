@@ -74,7 +74,7 @@ public class DocumentDbDriver extends Driver {
             throw new SQLException(exception.getMessage(), exception);
         }
 
-        return new DocumentDbConnection(new DocumentDBConnectionProperties(info));
+        return new DocumentDbConnection(new DocumentDbConnectionProperties(info));
     }
 
     @Override

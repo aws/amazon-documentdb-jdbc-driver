@@ -10,15 +10,15 @@ import java.sql.SQLFeatureNotSupportedException;
  * DocumentDb implementation of DataSource.
  */
 public class DocumentDbDataSource extends software.amazon.jdbc.DataSource implements javax.sql.DataSource, javax.sql.ConnectionPoolDataSource {
-    private final DocumentDBConnectionProperties properties;
+    private final DocumentDbConnectionProperties properties;
 
     /**
      * DocumentDbDataSource constructor, initializes super class.
      * @param properties Properties Object.
      */
-    DocumentDbDataSource(final DocumentDBConnectionProperties properties) {
+    DocumentDbDataSource(final DocumentDbConnectionProperties properties) {
         super();
-        this.properties = (DocumentDBConnectionProperties) properties.clone();
+        this.properties = (DocumentDbConnectionProperties) properties.clone();
     }
 
     @Override
