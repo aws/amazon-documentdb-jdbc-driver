@@ -16,9 +16,11 @@
 
 package software.amazon.documentdb;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import java.io.IOException;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -31,14 +33,14 @@ import java.util.Properties;
 /**
  * Tests for the DocumentDbDriver
  */
-public class DocumentDbDriverTest extends DocumentDBTest {
+public class DocumentDbDriverTest extends DocumentDbTest {
 
     /**
      * Initializes the test class.
      * @throws SQLException if a driver manager error occurs.
      */
     @BeforeAll
-    public static void initialize() throws SQLException {
+    public static void initialize() throws SQLException, IOException {
         // Clear out any other registered drivers.
         final Enumeration<Driver> drivers = DriverManager.getDrivers();
         while (drivers.hasMoreElements()) {
@@ -47,27 +49,36 @@ public class DocumentDbDriverTest extends DocumentDBTest {
         }
         // Ensure our driver is registered.
         DriverManager.registerDriver(new DocumentDbDriver());
+        startMongoDbInstance(true);
+    }
+
+    /**
+     * Cleans-up any start up tasks.
+     */
+    @AfterAll
+    public static void cleanup() {
+        stopMongoDbInstance();
     }
 
     /**
      * Test for valid supported connection strings.
      */
     @Test
-    public void testValidConnectionString() throws SQLException {
+    public void testValidConnectionString() throws SQLException, IOException {
         //TODO : Fix the commented out tests.
         final String[] tests = new String[] {
-                "jdbc:documentdb://user:password@localhost/database",
-                //"jdbc:documentdb://user:password@localhost:65535/database",
-                "jdbc:documentdb://user:password@127.0.0.1/database",
-                "jdbc:documentdb://user%20name:pass%20word@localhost/database",
+                "jdbc:documentdb://user:password@localhost:" + getMongoPort() + "/database",
+                "jdbc:documentdb://user:password@localhost:" + getMongoPort() + "/database",
+                "jdbc:documentdb://user:password@127.0.0.1:" + getMongoPort() + "/database",
+                "jdbc:documentdb://user%20name:pass%20word@localhost:" + getMongoPort() + "/database",
                 //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?ssl=true",
                 //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?tls=true",
                 //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?replicaSet=rs0",
         };
 
         // Add 2 valid users to the local MongoDB instance.
-        addUser("database", "user", "password");
-        addUser("database", "user name", "pass word");
+        createUser("database", "user", "password");
+        createUser("database", "user name", "pass word");
 
         for (String test : tests) {
             Assertions.assertNotNull(DriverManager.getDriver(test));

@@ -3,7 +3,6 @@ plugins {
     id "com.github.spotbugs" version "4.5.1"
     id 'checkstyle'
     id 'jacoco'
-    id 'com.sourcemuse.mongo' version '1.0.7'
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -34,7 +33,6 @@ jar {
 }
 
 test {
-    runWithMongoDb = true
     useJUnitPlatform {
         if (project.hasProperty('runRemoteIntegrationTests') && project.property('runRemoteIntegrationTests') == true) {
             environment "connectionString", project.CONNECTION_STRING_REMOTE
@@ -44,10 +42,6 @@ test {
             excludeTags 'remote-integration'
         }
     }
-}
-
-mongo {
-    logging 'none'
 }
 
 /**
@@ -183,7 +177,6 @@ dependencies {
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     implementation group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.29'
-    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.26.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
@@ -191,6 +184,7 @@ dependencies {
     compileOnly         'org.projectlombok:lombok:1.18.16'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
+    testImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
     testImplementation group: 'junit', name: 'junit', version: '4.12'
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.4.0'
     testImplementation group: 'org.mockito', name: 'mockito-core', version: '2.1.0'

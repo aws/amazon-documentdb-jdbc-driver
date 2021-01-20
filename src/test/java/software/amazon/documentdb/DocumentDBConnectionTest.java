@@ -2,12 +2,14 @@ package software.amazon.documentdb;
 
 import com.mongodb.ReadPreference;
 import org.bson.UuidRepresentation;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import java.io.IOException;
 import java.sql.SQLException;
 
-public class DocumentDBConnectionTest extends DocumentDBTest {
+public class DocumentDBConnectionTest extends DocumentDbTest {
 
     private static final String HOSTNAME = "localhost";
     private static final String USERNAME = "username";
@@ -17,14 +19,25 @@ public class DocumentDBConnectionTest extends DocumentDBTest {
 
     /** Initializes the test class. */
     @BeforeAll
-    public static void initialize() {
+    public static void initialize() throws IOException {
         VALID_CONNECTION_PROPERTIES.setUser(USERNAME);
         VALID_CONNECTION_PROPERTIES.setPassword(PASSWORD);
-        VALID_CONNECTION_PROPERTIES.setHostname(HOSTNAME);
         VALID_CONNECTION_PROPERTIES.setDatabase(DATABASE);
 
+        // Start mongod instance and get the port number for the connection.
+        startMongoDbInstance(true);
+        VALID_CONNECTION_PROPERTIES.setHostname(HOSTNAME + ":" + getMongoPort());
+
         // Add 1 valid user so we can successfully authenticate.
-        addUser(DATABASE, USERNAME, PASSWORD);
+        createUser(DATABASE, USERNAME, PASSWORD);
+    }
+
+    /**
+     * Clean-up
+     */
+    @AfterAll
+    public static void cleanup() {
+        stopMongoDbInstance();
     }
 
     /**
