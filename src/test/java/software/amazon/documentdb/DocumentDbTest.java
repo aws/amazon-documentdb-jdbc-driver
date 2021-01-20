@@ -18,6 +18,9 @@ package software.amazon.documentdb;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.result.InsertOneResult;
 import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongoShellStarter;
 import de.flapdoodle.embed.mongo.MongodExecutable;
@@ -39,10 +42,24 @@ import de.flapdoodle.embed.process.io.Processors;
 import de.flapdoodle.embed.process.io.StreamProcessor;
 import de.flapdoodle.embed.process.runtime.Network;
 import org.apache.commons.lang3.StringUtils;
+import org.bson.BsonBoolean;
+import org.bson.BsonDateTime;
+import org.bson.BsonDocument;
+import org.bson.BsonDouble;
+import org.bson.BsonInt32;
+import org.bson.BsonInt64;
+import org.bson.BsonMaxKey;
+import org.bson.BsonMinKey;
+import org.bson.BsonNull;
+import org.bson.BsonObjectId;
+import org.bson.BsonString;
+import org.bson.BsonTimestamp;
+import org.junit.jupiter.api.Assertions;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -213,6 +230,50 @@ public class DocumentDbTest {
                 USER_ADDED_TOKEN,
                 new String[]{"already exists", "failed to load", "login failed"},
                 ADMIN_DATABASE, ADMIN_USERNAME, ADMIN_PASSWORD);
+    }
+
+    /**
+     * Prepares data for a given database and collection.
+     * @param databaseName - the name of the database to insert data into.
+     * @param collectionName - the name of the collection to insert data into.
+     * @param recordCount - the number of records to insert data into.
+     */
+    protected static void prepareSimpleConsistentData(
+            final String databaseName,
+            final String collectionName,
+            final int recordCount) {
+
+        try (MongoClient client = createMongoClient()) {
+            final MongoDatabase database = client.getDatabase(databaseName);
+            final MongoCollection<BsonDocument> collection = database
+                    .getCollection(collectionName, BsonDocument.class);
+
+            for (int count = 0; count < recordCount; count++) {
+                // Types not supported in DocumentDB
+                //BsonRegularExpression
+                //BsonJavaScript
+                //BsonJavaScriptWithScope
+                //BsonDecimal128
+                final BsonDocument document = new BsonDocument()
+                        .append("_id", new BsonObjectId())
+                        .append("fieldDouble", new BsonDouble(Double.MAX_VALUE))
+                        .append("fieldString", new BsonString("String value"))
+                        .append("fieldObjectId", new BsonObjectId())
+                        .append("fieldBoolean", new BsonBoolean(true))
+                        .append("fieldDate", new BsonDateTime(
+                                Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()))
+                        .append("fieldInt", new BsonInt32(Integer.MAX_VALUE))
+                        .append("fieldTimeStamp", new BsonTimestamp(1, 2))
+                        .append("fieldLong", new BsonInt64(Long.MAX_VALUE))
+                        .append("fieldMaxKey", new BsonMaxKey())
+                        .append("fieldMinKey", new BsonMinKey())
+                        .append("fieldNull", new BsonNull());
+
+                final InsertOneResult result = collection.insertOne(document);
+                Assertions.assertEquals(count + 1, collection.countDocuments());
+                Assertions.assertEquals(document.getObjectId("_id"), result.getInsertedId());
+            }
+        }
     }
 
     private static void addAdmin() throws IOException {

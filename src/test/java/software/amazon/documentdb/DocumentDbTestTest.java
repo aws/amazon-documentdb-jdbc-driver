@@ -18,7 +18,10 @@ package software.amazon.documentdb;
 
 import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -149,6 +152,37 @@ public class DocumentDbTestTest extends DocumentDbTest {
                 Assertions.assertThrows(
                         MongoSecurityException.class,
                         () -> database.runCommand(new Document("ping", 1)));
+            }
+        } finally {
+            Assertions.assertTrue(stopMongoDbInstance());
+        }
+    }
+
+    /**
+     * Tests that we can prepare data and retrieve it back again.
+     * @throws IOException if unable to start a process.
+     */
+    @Test
+    protected void testPrepareData() throws IOException {
+        final String database = "testPrepareDataDatabase";
+        final String collection = "testPrepareDataCollection";
+        final int expectedRecordCount = 10;
+        try {
+            Assertions.assertTrue(startMongoDbInstance());
+            prepareSimpleConsistentData(database, collection, expectedRecordCount);
+            try (MongoClient client = createMongoClient()) {
+                final MongoDatabase mongoDatabase = client.getDatabase(database);
+                final MongoCollection<BsonDocument> mongoCollection = mongoDatabase
+                        .getCollection(collection, BsonDocument.class);
+                final MongoCursor<BsonDocument> cursor = mongoCollection.find().cursor();
+                int actualRecordCount = 0;
+                while (cursor.hasNext()) {
+                    final BsonDocument document = cursor.next();
+                    actualRecordCount++;
+                    Assertions.assertEquals(Integer.MAX_VALUE,
+                            document.getInt32("fieldInt").getValue());
+                }
+                Assertions.assertEquals(expectedRecordCount, actualRecordCount);
             }
         } finally {
             Assertions.assertTrue(stopMongoDbInstance());
