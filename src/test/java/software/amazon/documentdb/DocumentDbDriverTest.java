@@ -67,10 +67,10 @@ public class DocumentDbDriverTest extends DocumentDbTest {
     public void testValidConnectionString() throws SQLException, IOException {
         //TODO : Fix the commented out tests.
         final String[] tests = new String[] {
-                "jdbc:documentdb://user:password@localhost:" + getMongoPort() + "/database",
-                "jdbc:documentdb://user:password@localhost:" + getMongoPort() + "/database",
-                "jdbc:documentdb://user:password@127.0.0.1:" + getMongoPort() + "/database",
-                "jdbc:documentdb://user%20name:pass%20word@localhost:" + getMongoPort() + "/database",
+                "jdbc:documentdb://user:password@localhost:" + getMongoPort() + "/database?tls=false",
+                "jdbc:documentdb://user:password@localhost:" + getMongoPort() + "/database?tls=false",
+                "jdbc:documentdb://user:password@127.0.0.1:" + getMongoPort() + "/database?tls=false",
+                "jdbc:documentdb://user%20name:pass%20word@localhost:" + getMongoPort() + "/database?tls=false",
                 //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?ssl=true",
                 //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?tls=true",
                 //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?replicaSet=rs0",
@@ -189,20 +189,10 @@ public class DocumentDbDriverTest extends DocumentDbTest {
                 "?" + DocumentDbConnectionProperty.READ_PREFERENCE.getName() + "=" + "secondaryPreferred" +
                 "&" + DocumentDbConnectionProperty.APPLICATION_NAME.getName() + "=" + "application" +
                 "&" + DocumentDbConnectionProperty.REPLICA_SET.getName() + "=" + "rs0" +
-                "&" + DocumentDbConnectionProperty.SERVER_SELECTION_TIMEOUT_MS.getName() + "=" + "1" +
-                "&" + DocumentDbConnectionProperty.LOCAL_THRESHOLD_MS.getName() + "=" + "2" +
-                "&" + DocumentDbConnectionProperty.HEARTBEAT_FREQUENCY_MS.getName() + "=" + "3" +
                 "&" + DocumentDbConnectionProperty.TLS_ENABLED.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName() + "=" + "true" +
-                "&" + DocumentDbConnectionProperty.CONNECT_TIMEOUT_MS.getName() + "=" + "4" +
-                "&" + DocumentDbConnectionProperty.SOCKET_TIMEOUT_MS.getName() + "=" + "5" +
-                "&" + DocumentDbConnectionProperty.MAX_POOL_SIZE.getName() + "=" + "6" +
-                "&" + DocumentDbConnectionProperty.MIN_POOL_SIZE.getName() + "=" + "1" +
-                "&" + DocumentDbConnectionProperty.WAIT_QUEUE_TIMEOUT_MS.getName() + "=" + "7" +
-                "&" + DocumentDbConnectionProperty.MAX_IDLE_TIME_MS.getName() + "=" + "8" +
-                "&" + DocumentDbConnectionProperty.MAX_LIFE_TIME_MS.getName() + "=" + "9" +
-                "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true" +
-                "&" + DocumentDbConnectionProperty.UUID_REPRESENTATION.getName() + "=" + "standard";
+                "&" + DocumentDbConnectionProperty.CONNECT_TIMEOUT_SEC.getName() + "=" + "4" +
+                "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true";
         DocumentDbDriver.setPropertiesFromConnectionString(info, connectionString);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, info.size());
     }

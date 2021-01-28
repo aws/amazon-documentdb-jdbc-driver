@@ -29,7 +29,6 @@ import com.mongodb.event.ServerHeartbeatStartedEvent;
 import com.mongodb.event.ServerHeartbeatSucceededEvent;
 import com.mongodb.event.ServerMonitorListener;
 import org.bson.Document;
-import org.bson.UuidRepresentation;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -229,22 +228,14 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
         // Set the socket configuration.
         applySocketSettings(connectionProperties, clientSettingsBuilder);
 
-        // Set the connection pool configuration.
-        applyConnectionPoolSettings(connectionProperties, clientSettingsBuilder);
-
         // Set the SSL/TLS configuration.
         applyTlsSettings(connectionProperties, clientSettingsBuilder);
 
-        // Set the UUID representation.
-        final UuidRepresentation uuidRepresentation = connectionProperties.getUUIDRepresentation();
-        if (uuidRepresentation != null) {
-            clientSettingsBuilder.uuidRepresentation(uuidRepresentation);
-        }
-
         // Set the read preference.
-        final ReadPreference readPreference = connectionProperties.getReadPreference();
+        final DocumentDbReadPreference readPreference = connectionProperties.getReadPreference();
         if (readPreference != null) {
-            clientSettingsBuilder.readPreference(readPreference);
+            clientSettingsBuilder.readPreference(ReadPreference.valueOf(
+                    readPreference.getName()));
         }
 
         // Get retry reads.
@@ -270,13 +261,8 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
             final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder,
             final ServerMonitorListener serverMonitorListener) {
-        final Long heartbeatFrequency = connectionProperties.getHeartbeatFrequency();
         clientSettingsBuilder.applyToServerSettings(
                 b -> {
-                    if (heartbeatFrequency != null) {
-                        b.heartbeatFrequency(heartbeatFrequency, TimeUnit.MILLISECONDS);
-                    }
-
                     b.addServerMonitorListener(serverMonitorListener);
                 });
     }
@@ -290,22 +276,12 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
             final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder) {
         final String host = connectionProperties.getHostname();
-        final Long serverSelectionTimeout = connectionProperties.getServerSelectionTimeout();
-        final Long localThreshold = connectionProperties.getLocalThreshold();
         final String replicaSetName = connectionProperties.getReplicaSet();
 
         clientSettingsBuilder.applyToClusterSettings(
                 b -> {
                     if (host != null) {
                         b.hosts(Collections.singletonList(new ServerAddress(host)));
-                    }
-
-                    if (serverSelectionTimeout != null) {
-                        b.localThreshold(serverSelectionTimeout, TimeUnit.MILLISECONDS);
-                    }
-
-                    if (localThreshold != null) {
-                        b.localThreshold(localThreshold, TimeUnit.MILLISECONDS);
                     }
 
                     if (replicaSetName != null) {
@@ -322,56 +298,12 @@ public class DocumentDbConnection extends software.amazon.jdbc.Connection
     private static void applySocketSettings(
             final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder) {
-        final Integer socketTimeout = connectionProperties.getSocketTimeout();
         final Integer connectTimeout = connectionProperties.getConnectTimeout();
 
         clientSettingsBuilder.applyToSocketSettings(
                 b -> {
                     if (connectTimeout != null) {
-                        b.connectTimeout(connectTimeout, TimeUnit.MILLISECONDS);
-                    }
-
-                    if (socketTimeout != null) {
-                        b.readTimeout(socketTimeout, TimeUnit.MILLISECONDS);
-                    }
-                });
-    }
-
-    /**
-     * Applies the connection-pool-related connection properties to the given client
-     * settings builder.
-     * @param connectionProperties The connection properties to use.
-     * @param clientSettingsBuilder The client settings builder to apply the properties to.
-     */
-    private static void applyConnectionPoolSettings(
-            final DocumentDbConnectionProperties connectionProperties,
-            final MongoClientSettings.Builder clientSettingsBuilder) {
-        final Integer maxPoolSize = connectionProperties.getMaxPoolSize();
-        final Integer minPoolSize = connectionProperties.getMinPoolSize();
-        final Integer maxConnectionLifeTime = connectionProperties.getMaxLifeTime();
-        final Integer maxConnectionIdleTime = connectionProperties.getMaxIdleTime();
-        final Long maxWaitTime = connectionProperties.getWaitQueueTimeout();
-
-        clientSettingsBuilder.applyToConnectionPoolSettings(
-                b -> {
-                    if (maxPoolSize != null) {
-                        b.maxSize(maxPoolSize);
-                    }
-
-                    if (minPoolSize != null) {
-                        b.minSize(minPoolSize);
-                    }
-
-                    if (maxConnectionLifeTime != null) {
-                        b.maxConnectionLifeTime(maxConnectionLifeTime, TimeUnit.MILLISECONDS);
-                    }
-
-                    if (maxConnectionLifeTime != null) {
-                        b.maxConnectionIdleTime(maxConnectionIdleTime, TimeUnit.MILLISECONDS);
-                    }
-
-                    if (maxWaitTime != null) {
-                        b.maxWaitTime(maxWaitTime, TimeUnit.MILLISECONDS);
+                        b.connectTimeout(connectTimeout, TimeUnit.SECONDS);
                     }
                 });
     }

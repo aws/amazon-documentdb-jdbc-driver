@@ -19,7 +19,6 @@ package software.amazon.documentdb;
 import com.google.common.annotations.VisibleForTesting;
 import com.mongodb.ConnectionString;
 import com.mongodb.ReadPreference;
-import org.bson.UuidRepresentation;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -109,34 +108,14 @@ public class DocumentDbDriver extends Driver {
                 connectionString.getApplicationName());
         addPropertyIfNotSet(info, DocumentDbConnectionProperty.REPLICA_SET.getName(),
                 connectionString.getRequiredReplicaSetName());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.SERVER_SELECTION_TIMEOUT_MS.getName(),
-                connectionString.getServerSelectionTimeout());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.LOCAL_THRESHOLD_MS.getName(),
-                connectionString.getLocalThreshold());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.HEARTBEAT_FREQUENCY_MS.getName(),
-                connectionString.getHeartbeatFrequency());
         addPropertyIfNotSet(info, DocumentDbConnectionProperty.TLS_ENABLED.getName(),
                 connectionString.getSslEnabled());
         addPropertyIfNotSet(info, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName(),
                 connectionString.getSslInvalidHostnameAllowed());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.CONNECT_TIMEOUT_MS.getName(),
+        addPropertyIfNotSet(info, DocumentDbConnectionProperty.CONNECT_TIMEOUT_SEC.getName(),
                 connectionString.getConnectTimeout());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.SOCKET_TIMEOUT_MS.getName(),
-                connectionString.getSocketTimeout());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_POOL_SIZE.getName(),
-                connectionString.getMaxConnectionPoolSize());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MIN_POOL_SIZE.getName(),
-                connectionString.getMinConnectionPoolSize());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.WAIT_QUEUE_TIMEOUT_MS.getName(),
-                connectionString.getMaxWaitTime());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_IDLE_TIME_MS.getName(),
-                connectionString.getMaxConnectionIdleTime());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.MAX_LIFE_TIME_MS.getName(),
-                connectionString.getMaxConnectionLifeTime());
         addPropertyIfNotSet(info, DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName(),
                 connectionString.getRetryReads());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.UUID_REPRESENTATION.getName(),
-                connectionString.getUuidRepresentation());
     }
 
     static void validateDocumentDbProperties(final ConnectionString connectionString)
@@ -196,15 +175,6 @@ public class DocumentDbDriver extends Driver {
     private static void addPropertyIfNotSet(
             @NonNull final Properties info,
             @NonNull final String key,
-            @Nullable final UuidRepresentation value) {
-        if (value != null) {
-            info.putIfAbsent(key, value.toString().toLowerCase());
-        }
-    }
-
-    private static void addPropertyIfNotSet(
-            @NonNull final Properties info,
-            @NonNull final String key,
             @Nullable final char[] value) {
         if (value != null) {
             info.putIfAbsent(key, new String(value));
@@ -229,7 +199,7 @@ public class DocumentDbDriver extends Driver {
         return url.substring(5).replaceFirst("^documentdb:", "mongodb:");
     }
 
-    private static boolean isNullOrWhitespace(@Nullable final String value) {
+    protected static boolean isNullOrWhitespace(@Nullable final String value) {
         return value == null || Pattern.matches("^\\s*$", value);
     }
 }

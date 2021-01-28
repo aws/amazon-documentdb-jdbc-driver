@@ -1,7 +1,5 @@
 package software.amazon.documentdb;
 
-import com.mongodb.ReadPreference;
-import org.bson.UuidRepresentation;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -207,184 +205,21 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
-     * Sets server selection timeout.
-     *
-     * @return The server selection timeout in milliseconds.
-     */
-    public Long getServerSelectionTimeout() {
-        return getPropertyAsLong(
-                DocumentDbConnectionProperty.SERVER_SELECTION_TIMEOUT_MS.getName());
-    }
-
-    /**
-     * Gets server selection timeout.
-     *
-     * @param timeout The server selection timeout in milliseconds.
-     */
-    public void setServerSelectionTimeout(final String timeout) {
-        setProperty(DocumentDbConnectionProperty.SERVER_SELECTION_TIMEOUT_MS.getName(), timeout);
-    }
-
-    /**
-     * Gets local threshold for server selection.
-     *
-     * @return The local threshold in milliseconds.
-     */
-    public Long getLocalThreshold() {
-        return getPropertyAsLong(DocumentDbConnectionProperty.LOCAL_THRESHOLD_MS.getName());
-    }
-
-    /**
-     * Sets local threshold for server selection.
-     *
-     * @param threshold The local threshold in milliseconds.
-     */
-    public void setLocalThreshold(final String threshold) {
-        setProperty(DocumentDbConnectionProperty.LOCAL_THRESHOLD_MS.getName(), threshold);
-    }
-
-    /**
-     * Gets the server heartbeat frequency in milliseconds.
-     *
-     * @return The heartbeat frequency in milliseconds.
-     */
-    public Long getHeartbeatFrequency() {
-        return getPropertyAsLong(DocumentDbConnectionProperty.HEARTBEAT_FREQUENCY_MS.getName());
-    }
-
-    /**
-     * Sets server the heartbeat frequency in milliseconds.
-     *
-     * @param frequency The heartbeat frequency in milliseconds.
-     */
-    public void setHeartbeatFrequency(final String frequency) {
-        setProperty(DocumentDbConnectionProperty.HEARTBEAT_FREQUENCY_MS.getName(), frequency);
-    }
-
-    /**
      * Get the timeout for opening a connection.
      *
-     * @return The connect timeout in milliseconds.
+     * @return The connect timeout in seconds.
      */
     public Integer getConnectTimeout() {
-        return getPropertyAsInteger(DocumentDbConnectionProperty.CONNECT_TIMEOUT_MS.getName());
+        return getPropertyAsInteger(DocumentDbConnectionProperty.CONNECT_TIMEOUT_SEC.getName());
     }
 
     /**
      * Sets the timeout for opening a connection.
      *
-     * @param timeout The connect timeout in milliseconds.
+     * @param timeout The connect timeout in seconds.
      */
     public void setConnectTimeout(final String timeout) {
-        setProperty(DocumentDbConnectionProperty.CONNECT_TIMEOUT_MS.getName(), timeout);
-    }
-
-    /**
-     * Gets the timeout for sending or receiving on s socket.
-     *
-     * @return The socket timeout in milliseconds.
-     */
-    public Integer getSocketTimeout() {
-        return getPropertyAsInteger(DocumentDbConnectionProperty.SOCKET_TIMEOUT_MS.getName());
-    }
-
-    /**
-     * Sets the timeout for sending or receiving on s socket.
-     *
-     * @param timeout The socket timeout in milliseconds.
-     */
-    public void setSocketTimeout(final String timeout) {
-        setProperty(DocumentDbConnectionProperty.SOCKET_TIMEOUT_MS.getName(), timeout);
-    }
-
-    /**
-     * Gets the maximum pool size for pooled connections.
-     *
-     * @return The maximum pool size for pooled connections.
-     */
-    public Integer getMaxPoolSize() {
-        return getPropertyAsInteger(DocumentDbConnectionProperty.MAX_POOL_SIZE.getName());
-    }
-
-    /**
-     * Sets the maximum pool size for pooled connections.
-     *
-     * @param poolSize The maximum pool size for pooled connections.
-     */
-    public void setMaxPoolSize(final String poolSize) {
-        setProperty(DocumentDbConnectionProperty.MAX_POOL_SIZE.getName(), poolSize);
-    }
-
-    /**
-     * Gets the minimum pool size for pooled connections.
-     *
-     * @return The minimum pool size for pooled connections.
-     */
-    public Integer getMinPoolSize() {
-        return getPropertyAsInteger(DocumentDbConnectionProperty.MIN_POOL_SIZE.getName());
-    }
-
-    /**
-     * Sets the minimum pool size for pooled connections.
-     *
-     * @param poolSize The minimum pool size for pooled connections.
-     */
-    public void setMinPoolSize(final String poolSize) {
-        setProperty(DocumentDbConnectionProperty.MIN_POOL_SIZE.getName(), poolSize);
-    }
-
-    /**
-     * Gets the maximum wait time a thread may wait for a connection to become available.
-     *
-     * @return The wait queue timeout in milliseconds.
-     */
-    public Long getWaitQueueTimeout() {
-        return getPropertyAsLong(DocumentDbConnectionProperty.WAIT_QUEUE_TIMEOUT_MS.getName());
-    }
-
-    /**
-     * Sets the maximum wait time a thread may wait for a connection to become available.
-     *
-     * @param timeout The wait queue timeout in milliseconds.
-     */
-    public void setWaitQueueTimeout(final String timeout) {
-        setProperty(DocumentDbConnectionProperty.WAIT_QUEUE_TIMEOUT_MS.getName(), timeout);
-    }
-
-    /**
-     * Gets the maximum idle time for a pooled connection.
-     *
-     * @return The maximum idle time in milliseconds.
-     */
-    public Integer getMaxIdleTime() {
-        return getPropertyAsInteger(DocumentDbConnectionProperty.MAX_IDLE_TIME_MS.getName());
-    }
-
-    /**
-     * Sets the maximum idle time for a pooled connection.
-     *
-     * @param idleTime The maximum idle time in milliseconds.
-     */
-    public void setMaxIdleTime(final String idleTime) {
-        setProperty(DocumentDbConnectionProperty.MAX_IDLE_TIME_MS.getName(), idleTime);
-    }
-
-    /**
-     * Gets the maximum life time for a pooled connection
-     *
-     * @return The maximum life time for a pooled connection in milliseconds.
-     */
-    public Integer getMaxLifeTime() {
-        return getPropertyAsInteger(DocumentDbConnectionProperty.MAX_LIFE_TIME_MS.getName());
-    }
-
-    /**
-     * Sets the maximum life time for a pooled connection
-     *
-     * @param lifeTime The maximum life time for a pooled connection in milliseconds.
-     */
-    public void setMaxLifeTime(final String lifeTime) {
-        setProperty(DocumentDbConnectionProperty.MAX_LIFE_TIME_MS.getName(), lifeTime);
+        setProperty(DocumentDbConnectionProperty.CONNECT_TIMEOUT_SEC.getName(), timeout);
     }
 
     /**
@@ -392,7 +227,7 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @return The read preference as a ReadPreference object.
      */
-    public ReadPreference getReadPreference() {
+    public DocumentDbReadPreference getReadPreference() {
         return getPropertyAsReadPreference(DocumentDbConnectionProperty.READ_PREFERENCE.getName());
     }
 
@@ -406,58 +241,17 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
-     * Gets the UUID representation to use when encoding instances of UUID and when decoding BSON
-     * binary values with subtype of 3.
-     *
-     * @return The UUID representation to use as a UUIDRepresentation object.
-     */
-    public UuidRepresentation getUUIDRepresentation() {
-        return getPropertyAsUuidRepresentation(
-                DocumentDbConnectionProperty.UUID_REPRESENTATION.getName());
-    }
-
-    /**
-     * Sets the UUID representation to use when encoding instances of UUID and when decoding BSON
-     * binary values with subtype of 3.
-     *
-     * @param uuidRepresentation The name of the UUID representation.
-     */
-    public void setUUIDRepresentation(final String uuidRepresentation) {
-        setProperty(DocumentDbConnectionProperty.UUID_REPRESENTATION.getName(), uuidRepresentation);
-    }
-
-
-    /**
-     * Attempts to retrieve a property as a UUIDRepresentation.
-     *
-     * @param key The property to retrieve.
-     * @return The retrieved property as a UUIDRepresentation or null if it did not exists or was
-     * not a valid UUIDRepresentation.
-     */
-    private UuidRepresentation getPropertyAsUuidRepresentation(@NonNull final String key) {
-        UuidRepresentation property = null;
-        try {
-            if (getProperty(key) != null) {
-                property = UuidRepresentation.valueOf(getProperty(key));
-            }
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Property {{}} was ignored as it was not a valid UUID representation", key, e);
-        }
-        return property;
-    }
-
-    /**
      * Attempts to retrieve a property as a ReadPreference.
      *
      * @param key The property to retrieve.
      * @return The retrieved property as a ReadPreference or null if it did not exist or was not a
      * valid ReadPreference.
      */
-    private ReadPreference getPropertyAsReadPreference(@NonNull final String key) {
-        ReadPreference property = null;
+    private DocumentDbReadPreference getPropertyAsReadPreference(@NonNull final String key) {
+        DocumentDbReadPreference property = null;
         try {
             if (getProperty(key) != null) {
-                property = ReadPreference.valueOf(getProperty(key));
+                property = DocumentDbReadPreference.fromString(getProperty(key));
             }
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Property {{}} was ignored as it was not a valid read preference.", key, e);

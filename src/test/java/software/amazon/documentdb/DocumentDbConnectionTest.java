@@ -1,7 +1,5 @@
 package software.amazon.documentdb;
 
-import com.mongodb.ReadPreference;
-import org.bson.UuidRepresentation;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,6 +21,7 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
         VALID_CONNECTION_PROPERTIES.setUser(USERNAME);
         VALID_CONNECTION_PROPERTIES.setPassword(PASSWORD);
         VALID_CONNECTION_PROPERTIES.setDatabase(DATABASE);
+        VALID_CONNECTION_PROPERTIES.setTlsEnabled("false");
 
         // Start mongod instance and get the port number for the connection.
         startMongoDbInstance(true);
@@ -86,19 +85,9 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
     void testConnectionWithValidOptions() throws SQLException {
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setApplicationName("test");
-        properties.setServerSelectionTimeout("10");
-        properties.setLocalThreshold("10");
-        properties.setHeartbeatFrequency("10");
         properties.setConnectTimeout("10");
-        properties.setSocketTimeout("10");
-        properties.setMaxPoolSize("10");
-        properties.setMinPoolSize("10");
-        properties.setWaitQueueTimeout("10");
-        properties.setMaxIdleTime("10");
-        properties.setMaxLifeTime("10");
         properties.setRetryReadsEnabled("false");
-        properties.setReadPreference(ReadPreference.primary().getName());
-        properties.setUUIDRepresentation(UuidRepresentation.JAVA_LEGACY.toString());
+        properties.setReadPreference(DocumentDbReadPreference.PRIMARY.getName());
 
         final DocumentDbConnection connection = new DocumentDbConnection(properties);
         Assertions.assertNotNull(connection);
@@ -115,8 +104,6 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setReadPreference("invalidReadPreference");
         properties.setTlsEnabled("invalidBoolean");
-        properties.setServerSelectionTimeout("invalidNumber");
-        properties.setUUIDRepresentation("invalidUUIDRepresentation");
 
         final DocumentDbConnection connection = new DocumentDbConnection(properties);
         Assertions.assertNotNull(connection);
