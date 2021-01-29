@@ -16,7 +16,8 @@ public class DocumentDbConnectionProperties extends Properties {
      * @param properties Properties to initialize with.
      */
     public DocumentDbConnectionProperties(final Properties properties) {
-        super(properties);
+        // Copy properties.
+        this.putAll(properties);
     }
 
     /**

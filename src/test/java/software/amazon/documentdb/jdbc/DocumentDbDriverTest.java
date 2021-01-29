@@ -22,6 +22,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -66,6 +67,8 @@ public class DocumentDbDriverTest extends DocumentDbTest {
      */
     @Test
     public void testValidConnectionString() throws SQLException, IOException {
+        final int timeout = 15;
+
         //TODO : Fix the commented out tests.
         final String[] tests = new String[] {
                 "jdbc:documentdb://user:password@localhost:" + getMongoPort() + "/database?tls=false",
@@ -83,7 +86,9 @@ public class DocumentDbDriverTest extends DocumentDbTest {
 
         for (String test : tests) {
             Assertions.assertNotNull(DriverManager.getDriver(test));
-            Assertions.assertNotNull(DriverManager.getConnection(test));
+            final Connection connection = DriverManager.getConnection(test);
+            Assertions.assertNotNull(connection);
+            Assertions.assertTrue(connection.isValid(timeout));
         }
     }
 
