@@ -42,6 +42,7 @@ import de.flapdoodle.embed.process.io.Processors;
 import de.flapdoodle.embed.process.io.StreamProcessor;
 import de.flapdoodle.embed.process.runtime.Network;
 import org.apache.commons.lang3.StringUtils;
+import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
@@ -53,7 +54,6 @@ import org.bson.BsonMinKey;
 import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
-import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -242,8 +242,23 @@ public class DocumentDbTest {
             final String databaseName,
             final String collectionName,
             final int recordCount) {
+        prepareSimpleConsistentData(databaseName, collectionName, recordCount, null, null);
+    }
 
-        try (MongoClient client = createMongoClient()) {
+    /**
+     * Prepares data for a given database and collection.
+     * @param databaseName - the name of the database to insert data into.
+     * @param collectionName - the name of the collection to insert data into.
+     * @param recordCount - the number of records to insert data into.
+     */
+    protected static void prepareSimpleConsistentData(
+            final String databaseName,
+            final String collectionName,
+            final int recordCount,
+            final String username,
+            final String password) {
+
+        try (MongoClient client = createMongoClient(ADMIN_DATABASE, username, password)) {
             final MongoDatabase database = client.getDatabase(databaseName);
             final MongoCollection<BsonDocument> collection = database
                     .getCollection(collectionName, BsonDocument.class);
@@ -254,20 +269,20 @@ public class DocumentDbTest {
                 //BsonJavaScript
                 //BsonJavaScriptWithScope
                 //BsonDecimal128
+                final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
                 final BsonDocument document = new BsonDocument()
                         .append("_id", new BsonObjectId())
                         .append("fieldDouble", new BsonDouble(Double.MAX_VALUE))
-                        .append("fieldString", new BsonString("String value"))
+                        .append("fieldString", new BsonString("新年快乐"))
                         .append("fieldObjectId", new BsonObjectId())
                         .append("fieldBoolean", new BsonBoolean(true))
-                        .append("fieldDate", new BsonDateTime(
-                                Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()))
+                        .append("fieldDate", new BsonDateTime(dateTime))
                         .append("fieldInt", new BsonInt32(Integer.MAX_VALUE))
-                        .append("fieldTimeStamp", new BsonTimestamp(1, 2))
                         .append("fieldLong", new BsonInt64(Long.MAX_VALUE))
                         .append("fieldMaxKey", new BsonMaxKey())
                         .append("fieldMinKey", new BsonMinKey())
-                        .append("fieldNull", new BsonNull());
+                        .append("fieldNull", new BsonNull())
+                        .append("fieldBinary", new BsonBinary(new byte[] { 0, 1, 2 }));
 
                 final InsertOneResult result = collection.insertOne(document);
                 Assertions.assertEquals(count + 1, collection.countDocuments());
@@ -290,7 +305,7 @@ public class DocumentDbTest {
                                 "{\"role\":\"dbOwner\",\"db\":\"admin\"}," +
                                 "]});\n",
                         ADMIN_USERNAME, ADMIN_PASSWORD));
-        runScriptAndWait(scriptText, USER_ADDED_TOKEN, new String[]{"couldn't add user", "failed to load", "login failed"}, "admin", null, null);
+        runScriptAndWait(scriptText, USER_ADDED_TOKEN, new String[]{"couldn't add user", "failed to load", "login failed"}, ADMIN_DATABASE, null, null);
     }
 
     private static void runScriptAndWait(

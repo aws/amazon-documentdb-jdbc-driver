@@ -24,109 +24,115 @@ import java.sql.SQLException;
  */
 public class DocumentDbResultSetMetadata extends ResultSetMetaData implements java.sql.ResultSetMetaData {
 
+    private final java.sql.ResultSetMetaData resultSetMetaData;
+
+    protected DocumentDbResultSetMetadata(final java.sql.ResultSetMetaData resultSetMetaData) {
+        this.resultSetMetaData = resultSetMetaData;
+    }
+
     // TODO: All below are just default stub implementations.
     @Override
     public int getColumnCount() throws SQLException {
-        return 0;
+        return resultSetMetaData.getColumnCount();
     }
 
     @Override
     public boolean isAutoIncrement(final int column) throws SQLException {
-        return false;
+        return resultSetMetaData.isAutoIncrement(column);
     }
 
     @Override
     public boolean isCaseSensitive(final int column) throws SQLException {
-        return false;
+        return resultSetMetaData.isCaseSensitive(column);
     }
 
     @Override
     public boolean isSearchable(final int column) throws SQLException {
-        return false;
+        return resultSetMetaData.isSearchable(column);
     }
 
     @Override
     public boolean isCurrency(final int column) throws SQLException {
-        return false;
+        return resultSetMetaData.isCurrency(column);
     }
 
     @Override
     public int isNullable(final int column) throws SQLException {
-        return 0;
+        return resultSetMetaData.isNullable(column);
     }
 
     @Override
     public boolean isSigned(final int column) throws SQLException {
-        return false;
+        return resultSetMetaData.isSigned(column);
     }
 
     @Override
     public int getColumnDisplaySize(final int column) throws SQLException {
-        return 0;
+        return resultSetMetaData.getColumnDisplaySize(column);
     }
 
     @Override
     public String getColumnLabel(final int column) throws SQLException {
-        return null;
+        return resultSetMetaData.getColumnLabel(column);
     }
 
     @Override
     public String getColumnName(final int column) throws SQLException {
-        return null;
+        return resultSetMetaData.getColumnName(column);
     }
 
     @Override
     public String getSchemaName(final int column) throws SQLException {
-        return null;
+        return resultSetMetaData.getSchemaName(column);
     }
 
     @Override
     public int getPrecision(final int column) throws SQLException {
-        return 0;
+        return resultSetMetaData.getPrecision(column);
     }
 
     @Override
     public int getScale(final int column) throws SQLException {
-        return 0;
+        return resultSetMetaData.getScale(column);
     }
 
     @Override
     public String getTableName(final int column) throws SQLException {
-        return null;
+        return resultSetMetaData.getTableName(column);
     }
 
     @Override
     public String getCatalogName(final int column) throws SQLException {
-        return null;
+        return resultSetMetaData.getCatalogName(column);
     }
 
     @Override
     public int getColumnType(final int column) throws SQLException {
-        return 0;
+        return resultSetMetaData.getColumnType(column);
     }
 
     @Override
     public String getColumnTypeName(final int column) throws SQLException {
-        return null;
+        return resultSetMetaData.getColumnTypeName(column);
     }
 
     @Override
     public boolean isReadOnly(final int column) throws SQLException {
-        return false;
+        return resultSetMetaData.isReadOnly(column);
     }
 
     @Override
     public boolean isWritable(final int column) throws SQLException {
-        return false;
+        return resultSetMetaData.isWritable(column);
     }
 
     @Override
     public boolean isDefinitelyWritable(final int column) throws SQLException {
-        return false;
+        return resultSetMetaData.isDefinitelyWritable(column);
     }
 
     @Override
     public String getColumnClassName(final int column) throws SQLException {
-        return null;
+        return resultSetMetaData.getColumnClassName(column);
     }
 }

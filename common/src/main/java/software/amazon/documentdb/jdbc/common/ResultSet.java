@@ -32,6 +32,7 @@ import java.sql.NClob;
 import java.sql.Ref;
 import java.sql.RowId;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
@@ -47,10 +48,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public abstract class ResultSet implements java.sql.ResultSet {
     private static final Logger LOGGER = LoggerFactory.getLogger(ResultSet.class);
     private final AtomicBoolean isClosed = new AtomicBoolean(false);
-    private final java.sql.Statement statement;
+    private final Statement statement;
     private SQLWarning warnings = null;
 
-    protected ResultSet(final java.sql.Statement statement) {
+    protected ResultSet(final Statement statement) {
         this.statement = statement;
     }
 
@@ -71,19 +72,19 @@ public abstract class ResultSet implements java.sql.ResultSet {
      * Set the driver fetch size by the number of rows.
      * @param rows The number of rows for the driver to fetch.
      */
-    protected abstract void setDriverFetchSize(int rows);
+    protected abstract void setDriverFetchSize(int rows) throws SQLException;
 
     /**
      * Gets the current row (zero-based) index.
      * @return A value representing the current row (zero-based) index.
      */
-    protected abstract int getRowIndex();
+    protected abstract int getRowIndex() throws SQLFeatureNotSupportedException;
 
     /**
      * Gets the number of rows in the result set.
      * @return A value representing the number of rows in the result set.
      */
-    protected abstract int getRowCount();
+    protected abstract int getRowCount() throws SQLFeatureNotSupportedException;
 
     /**
      * Verify the result set is open.

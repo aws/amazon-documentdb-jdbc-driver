@@ -65,7 +65,7 @@ public abstract class PreparedStatement extends Statement implements java.sql.Pr
 
     @Override
     public boolean execute() throws SQLException {
-        this.resultSet = executeQuery();
+        resultSet = executeQuery();
         return true;
     }
 
@@ -417,5 +417,13 @@ public abstract class PreparedStatement extends Statement implements java.sql.Pr
             throws SQLException {
         verifyOpen();
         throw new SQLFeatureNotSupportedException(SqlError.lookup(SqlError.PARAMETERS_NOT_SUPPORTED));
+    }
+
+    /**
+     * Gets the sql query string.
+     * @return the sql query string.
+     */
+    protected String getSql() {
+        return sql;
     }
 }

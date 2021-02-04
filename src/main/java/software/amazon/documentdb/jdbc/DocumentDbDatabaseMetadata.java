@@ -9,195 +9,199 @@ import java.sql.SQLException;
  */
 public class DocumentDbDatabaseMetadata extends DatabaseMetaData implements java.sql.DatabaseMetaData {
 
+    private final java.sql.DatabaseMetaData databaseMetaData;
     /**
      * DocumentDbDatabaseMetadata constructor, initializes super class.
-     * @param connection Connection Object.
+     * @param databaseMetaData the embedded DatabaseMetaData.
      */
-    DocumentDbDatabaseMetadata(final java.sql.Connection connection) {
-        super(connection);
+    DocumentDbDatabaseMetadata(final java.sql.DatabaseMetaData databaseMetaData)
+            throws SQLException {
+        super(databaseMetaData.getConnection());
+        this.databaseMetaData = databaseMetaData;
     }
 
     // TODO: Go through and implement these functions
     @Override
     public String getURL() throws SQLException {
-        return null;
+        return databaseMetaData.getURL();
     }
 
     @Override
     public String getUserName() throws SQLException {
-        return null;
+        return databaseMetaData.getUserName();
     }
 
     @Override
     public String getDatabaseProductName() throws SQLException {
-        return null;
+        return databaseMetaData.getDatabaseProductName();
     }
 
     @Override
     public String getDatabaseProductVersion() throws SQLException {
-        return null;
+        return databaseMetaData.getDatabaseProductVersion();
     }
 
     @Override
     public String getDriverName() throws SQLException {
-        return null;
+        return databaseMetaData.getDriverName();
     }
 
     @Override
     public String getSQLKeywords() throws SQLException {
-        return null;
+        return databaseMetaData.getSQLKeywords();
     }
 
     @Override
     public String getNumericFunctions() throws SQLException {
-        return null;
+        return databaseMetaData.getNumericFunctions();
     }
 
     @Override
     public String getStringFunctions() throws SQLException {
-        return null;
+        return databaseMetaData.getStringFunctions();
     }
 
     @Override
     public String getSystemFunctions() throws SQLException {
-        return null;
+        return databaseMetaData.getSystemFunctions();
     }
 
     @Override
     public String getTimeDateFunctions() throws SQLException {
-        return null;
+        return databaseMetaData.getTimeDateFunctions();
     }
 
     @Override
     public String getSearchStringEscape() throws SQLException {
-        return null;
+        return databaseMetaData.getSearchStringEscape();
     }
 
     @Override
     public String getExtraNameCharacters() throws SQLException {
-        return null;
+        return databaseMetaData.getExtraNameCharacters();
     }
 
     @Override
     public String getCatalogTerm() throws SQLException {
-        return null;
+        return databaseMetaData.getCatalogTerm();
     }
 
     @Override
     public String getCatalogSeparator() throws SQLException {
-        return null;
+        return databaseMetaData.getCatalogSeparator();
     }
 
     @Override
     public int getMaxRowSize() throws SQLException {
-        return 0;
+        return databaseMetaData.getMaxRowSize();
     }
 
     @Override
-    public ResultSet getProcedures(final String catalog, final String schemaPattern, final String procedureNamePattern)
-            throws SQLException {
-        return null;
+    public ResultSet getProcedures(final String catalog, final String schemaPattern,
+            final String procedureNamePattern) throws SQLException {
+        return databaseMetaData.getProcedures(catalog, schemaPattern, procedureNamePattern);
     }
 
     @Override
-    public ResultSet getTables(final String catalog, final String schemaPattern, final String tableNamePattern,
-                               final String[] types)
-            throws SQLException {
-        return null;
+    public ResultSet getTables(final String catalog, final String schemaPattern,
+            final String tableNamePattern, final String[] types) throws SQLException {
+        return databaseMetaData.getTables(catalog, schemaPattern, tableNamePattern, types);
     }
 
     @Override
     public ResultSet getSchemas() throws SQLException {
-        return null;
+        return databaseMetaData.getSchemas();
     }
 
     @Override
     public ResultSet getCatalogs() throws SQLException {
-        return null;
+        return databaseMetaData.getCatalogs();
     }
 
     @Override
     public ResultSet getTableTypes() throws SQLException {
-        return null;
+        return databaseMetaData.getTableTypes();
     }
 
     @Override
-    public ResultSet getColumns(final String catalog, final String schemaPattern, final String tableNamePattern,
-                                final String columnNamePattern)
+    public ResultSet getColumns(final String catalog, final String schemaPattern,
+            final String tableNamePattern, final String columnNamePattern) throws SQLException {
+        return databaseMetaData.getColumns(catalog, schemaPattern, tableNamePattern,
+                columnNamePattern);
+    }
+
+    @Override
+    public ResultSet getColumnPrivileges(final String catalog, final String schema,
+            final String table, final String columnNamePattern)
             throws SQLException {
-        return null;
+        return databaseMetaData.getColumnPrivileges(catalog, schema, table, columnNamePattern);
     }
 
     @Override
-    public ResultSet getColumnPrivileges(final String catalog, final String schema, final String table,
-                                         final String columnNamePattern)
+    public ResultSet getBestRowIdentifier(final String catalog, final String schema,
+            final String table, final int scope, final boolean nullable)
             throws SQLException {
-        return null;
+        return databaseMetaData.getBestRowIdentifier(catalog, schema, table, scope, nullable);
     }
 
     @Override
-    public ResultSet getBestRowIdentifier(final String catalog, final String schema, final String table,
-                                          final int scope, final boolean nullable)
+    public ResultSet getPrimaryKeys(final String catalog, final String schema, final String table)
             throws SQLException {
-        return null;
-    }
-
-    @Override
-    public ResultSet getPrimaryKeys(final String catalog, final String schema, final String table) throws SQLException {
-        return null;
+        return databaseMetaData.getPrimaryKeys(catalog, schema, table);
     }
 
     @Override
     public ResultSet getImportedKeys(final String catalog, final String schema, final String table)
             throws SQLException {
-        return null;
+        return databaseMetaData.getImportedKeys(catalog, schema, table);
     }
 
     @Override
     public ResultSet getTypeInfo() throws SQLException {
-        return null;
+        return databaseMetaData.getTypeInfo();
     }
 
     @Override
-    public ResultSet getIndexInfo(final String catalog, final String schema, final String table, final boolean unique,
-                                  final boolean approximate)
-            throws SQLException {
-        return null;
+    public ResultSet getIndexInfo(final String catalog, final String schema, final String table,
+            final boolean unique, final boolean approximate) throws SQLException {
+        return databaseMetaData.getIndexInfo(catalog, schema, table, unique, approximate);
     }
 
     @Override
-    public ResultSet getAttributes(final String catalog, final String schemaPattern, final String typeNamePattern,
-                                   final String attributeNamePattern) throws SQLException {
-        return null;
+    public ResultSet getAttributes(final String catalog, final String schemaPattern,
+            final String typeNamePattern, final String attributeNamePattern) throws SQLException {
+        return databaseMetaData.getAttributes(catalog, schemaPattern, typeNamePattern,
+                attributeNamePattern);
     }
 
     @Override
     public int getDatabaseMajorVersion() throws SQLException {
-        return 0;
+        return databaseMetaData.getDatabaseMajorVersion();
     }
 
     @Override
     public int getDatabaseMinorVersion() throws SQLException {
-        return 0;
+        return databaseMetaData.getDatabaseMinorVersion();
     }
 
     @Override
     public int getJDBCMajorVersion() throws SQLException {
-        return 0;
+        return databaseMetaData.getJDBCMajorVersion();
     }
 
     @Override
     public int getJDBCMinorVersion() throws SQLException {
-        return 0;
+        return databaseMetaData.getJDBCMinorVersion();
     }
 
     @Override
-    public ResultSet getSchemas(final String catalog, final String schemaPattern) throws SQLException {
-        return null;
+    public ResultSet getSchemas(final String catalog, final String schemaPattern)
+            throws SQLException {
+        return databaseMetaData.getSchemas(catalog, schemaPattern);
     }
 
     @Override
     public ResultSet getClientInfoProperties() throws SQLException {
-        return null;
+        return databaseMetaData.getClientInfoProperties();
     }
 }

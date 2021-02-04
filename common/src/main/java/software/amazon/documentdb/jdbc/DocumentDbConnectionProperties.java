@@ -1,18 +1,25 @@
 package software.amazon.documentdb.jdbc;
 
+import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoCredential;
+import com.mongodb.ReadPreference;
+import com.mongodb.ServerAddress;
+import com.mongodb.event.ServerMonitorListener;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
-
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class DocumentDbConnectionProperties extends Properties {
 
+    private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Logger LOGGER =
             LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
 
@@ -248,6 +255,157 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Builds the MongoClientSettings from properties
+     * @return a MongoClientSettings object.
+     */
+    public MongoClientSettings buildMongoClientSettings() {
+        return buildMongoClientSettings(null);
+    }
+
+    /**
+     * Builds the MongoClientSettings from properties
+     * @param serverMonitorListener the server monitor listener
+     * @return a MongoClientSettings object.
+     */
+    public MongoClientSettings buildMongoClientSettings(
+            final ServerMonitorListener serverMonitorListener) {
+
+        final MongoClientSettings.Builder clientSettingsBuilder = MongoClientSettings.builder();
+
+        // Create credential for admin database (only authentication database in DocumentDB).
+        final String user = getUser();
+        final String password = getPassword();
+        if (user != null && password != null) {
+            final MongoCredential credential =
+                    MongoCredential.createCredential(user, AUTHENTICATION_DATABASE, password.toCharArray());
+            clientSettingsBuilder.credential(credential);
+        }
+
+        // Set the server configuration.
+        applyServerSettings(clientSettingsBuilder, serverMonitorListener);
+
+        // Set the cluster configuration.
+        applyClusterSettings(clientSettingsBuilder);
+
+        // Set the socket configuration.
+        applySocketSettings(clientSettingsBuilder);
+
+        // Set the SSL/TLS configuration.
+        applyTlsSettings(clientSettingsBuilder);
+
+        // Set the read preference.
+        final DocumentDbReadPreference readPreference = getReadPreference();
+        if (readPreference != null) {
+            clientSettingsBuilder.readPreference(ReadPreference.valueOf(
+                    readPreference.getName()));
+        }
+
+        // Get retry reads.
+        final boolean retryReads = getRetryReadsEnabled();
+        clientSettingsBuilder
+                .applicationName(getApplicationName())
+                .retryReads(retryReads)
+                .build();
+
+        return clientSettingsBuilder.build();
+    }
+
+    /**
+     * Validates the existing properties.
+     * @throws SQLException if the required properties are not correctly set.
+     */
+    public void validateRequiredProperties() throws SQLException {
+        if (isNullOrWhitespace(getUser())
+                || isNullOrWhitespace(getPassword())) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_FAILURE,
+                    SqlError.MISSING_USER_PASSWORD
+            );
+        }
+        if (isNullOrWhitespace(getDatabase())) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_FAILURE,
+                    SqlError.MISSING_DATABASE
+            );
+        }
+        if (isNullOrWhitespace(getHostname())) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_FAILURE,
+                    SqlError.MISSING_HOSTNAME
+            );
+        }
+    }
+
+    /**
+     * Applies the server-related connection properties to the given client settings builder.
+     *
+     * @param clientSettingsBuilder The client settings builder to apply the properties to.
+     * @param serverMonitorListener The server monitor listener to add as an event listener.
+     */
+    private void applyServerSettings(
+            final MongoClientSettings.Builder clientSettingsBuilder,
+            final ServerMonitorListener serverMonitorListener) {
+        clientSettingsBuilder.applyToServerSettings(
+                b -> {
+                    if (serverMonitorListener != null) {
+                        b.addServerMonitorListener(serverMonitorListener);
+                    }
+                });
+    }
+
+    /**
+     * Applies the cluster-related connection properties to the given client settings builder.
+     * @param clientSettingsBuilder The client settings builder to apply the properties to.
+     */
+    private void applyClusterSettings(
+            final MongoClientSettings.Builder clientSettingsBuilder) {
+        final String host = getHostname();
+        final String replicaSetName = getReplicaSet();
+
+        clientSettingsBuilder.applyToClusterSettings(
+                b -> {
+                    if (host != null) {
+                        b.hosts(Collections.singletonList(new ServerAddress(host)));
+                    }
+
+                    if (replicaSetName != null) {
+                        b.requiredReplicaSetName(replicaSetName);
+                    }
+                });
+    }
+
+    /**
+     * Applies the socket-related connection properties to the given client settings builder.
+     * @param clientSettingsBuilder The client settings builder to apply the properties to.
+     */
+    private void applySocketSettings(
+            final MongoClientSettings.Builder clientSettingsBuilder) {
+        final Integer connectTimeout = getLoginTimeout();
+
+        clientSettingsBuilder.applyToSocketSettings(
+                b -> {
+                    if (connectTimeout != null) {
+                        b.connectTimeout(connectTimeout, TimeUnit.SECONDS);
+                    }
+                });
+    }
+
+    /**
+     * Applies the TLS/SSL-related connection properties to the given client settings builder.
+     * @param clientSettingsBuilder The client settings builder to apply the properties to.
+     */
+    private void applyTlsSettings(
+            final MongoClientSettings.Builder clientSettingsBuilder) {
+        final boolean tlsEnabled = getTlsEnabled();
+        final boolean tlsAllowInvalidHostnames = getTlsAllowInvalidHostnames();
+        clientSettingsBuilder.applyToSslSettings(
+                b -> b.enabled(tlsEnabled).invalidHostNameAllowed(tlsAllowInvalidHostnames));
+    }
+
+    /**
      * Attempts to retrieve a property as a ReadPreference.
      *
      * @param key The property to retrieve.
@@ -304,36 +462,12 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
-     * Validates the existing properties.
-     * @throws SQLException if the required properties are not correctly set.
+     * Checks whether the value is null or contains white space.
+     * @param value the value to test.
+     * @return returns {@code true} if the value is null or contains white space, or {@code false},
+     * otherwise.
      */
-    public void validateRequiredProperties() throws SQLException {
-        if (isNullOrWhitespace(getUser())
-                || isNullOrWhitespace(getPassword())) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_USER_PASSWORD
-            );
-        }
-        if (isNullOrWhitespace(getDatabase())) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_DATABASE
-            );
-        }
-        if (isNullOrWhitespace(getHostname())) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_HOSTNAME
-            );
-        }
-    }
-
-    protected static boolean isNullOrWhitespace(@Nullable final String value) {
+    public static boolean isNullOrWhitespace(@Nullable final String value) {
         return value == null || Pattern.matches("^\\s*$", value);
     }
-
 }

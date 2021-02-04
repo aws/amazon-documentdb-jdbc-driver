@@ -188,10 +188,10 @@ public abstract class Connection implements java.sql.Connection {
     /**
      * Closes the connection and releases resources.
      */
-    protected abstract void doClose();
+    protected abstract void doClose() throws SQLException;
 
     @Override
-    public void close() {
+    public void close() throws SQLException {
         if (!isClosed.getAndSet(true)) {
             doClose();
         }
@@ -218,7 +218,7 @@ public abstract class Connection implements java.sql.Connection {
     }
 
     @Override
-    public java.sql.Blob createBlob() throws SQLException {
+    public Blob createBlob() throws SQLException {
         throw SqlError.createSQLFeatureNotSupportedException(
                 LOGGER,
                 SqlError.UNSUPPORTED_TYPE,
@@ -226,7 +226,7 @@ public abstract class Connection implements java.sql.Connection {
     }
 
     @Override
-    public java.sql.Clob createClob() throws SQLException {
+    public Clob createClob() throws SQLException {
         throw SqlError.createSQLFeatureNotSupportedException(
                 LOGGER,
                 SqlError.UNSUPPORTED_TYPE,
@@ -234,7 +234,7 @@ public abstract class Connection implements java.sql.Connection {
     }
 
     @Override
-    public java.sql.NClob createNClob() throws SQLException {
+    public NClob createNClob() throws SQLException {
         throw SqlError.createSQLFeatureNotSupportedException(
                 LOGGER,
                 SqlError.UNSUPPORTED_TYPE,
@@ -309,7 +309,7 @@ public abstract class Connection implements java.sql.Connection {
     @Override
     public java.sql.Statement createStatement() throws SQLException {
         verifyOpen();
-        return createStatement(java.sql.ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
+        return createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
     }
 
     // Add default no transaction support statement.
@@ -445,7 +445,7 @@ public abstract class Connection implements java.sql.Connection {
 
     @Override
     public int getHoldability() throws SQLException {
-        return java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT;
+        return ResultSet.CLOSE_CURSORS_AT_COMMIT;
     }
 
     @Override

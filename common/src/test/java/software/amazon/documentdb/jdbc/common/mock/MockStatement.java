@@ -25,7 +25,7 @@ import java.sql.SQLException;
  * Mock implementation for Statement object so it can be instantiated and tested.
  */
 public class MockStatement extends Statement implements java.sql.Statement {
-    private java.sql.ResultSet resultSet = null;
+    private ResultSet resultSet = null;
 
     /**
      * Constructor for MockStatement.
@@ -35,7 +35,7 @@ public class MockStatement extends Statement implements java.sql.Statement {
         super(connection);
     }
 
-    public void setResultSet(final java.sql.ResultSet resultSet) {
+    public void setResultSet(final ResultSet resultSet) {
         this.resultSet = resultSet;
     }
 

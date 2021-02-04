@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DocumentDbConnectionTest extends DocumentDbTest {
@@ -47,7 +48,9 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
      */
     @Test
     void testIsValidWhenConnectionIsValid() throws SQLException {
-        final DocumentDbConnection connection = new DocumentDbConnection(VALID_CONNECTION_PROPERTIES);
+
+        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbDriver.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
         // NOTE: Observed approximate 10 .. 11 seconds delay before first heartbeat is returned.
         final int timeoutSeconds = 15;
         Assertions.assertTrue(connection.isValid(timeoutSeconds));
@@ -60,7 +63,8 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
      */
     @Test
     void testIsValidWhenTimeoutIsNegative() throws SQLException {
-        final DocumentDbConnection connection = new DocumentDbConnection((VALID_CONNECTION_PROPERTIES));
+        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbDriver.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
         Assertions.assertThrows(SQLException.class, () -> connection.isValid(-1));
     }
 
@@ -71,7 +75,8 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
      */
     @Test
     void testClose() throws SQLException {
-        final DocumentDbConnection connection = new DocumentDbConnection(VALID_CONNECTION_PROPERTIES);
+        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbDriver.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
         Assertions.assertFalse(connection.isClosed());
         connection.close();
         Assertions.assertTrue(connection.isClosed());
@@ -90,9 +95,9 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
         properties.setRetryReadsEnabled("false");
         properties.setReadPreference(DocumentDbReadPreference.PRIMARY.getName());
 
-        final DocumentDbConnection connection = new DocumentDbConnection(properties);
+        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbDriver.DOCUMENT_DB_SCHEME, properties);
         Assertions.assertNotNull(connection);
-        Assertions.assertEquals(DATABASE, connection.getMongoDatabase().getName());
     }
 
     /**
@@ -106,9 +111,9 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
         properties.setReadPreference("invalidReadPreference");
         properties.setTlsEnabled("invalidBoolean");
 
-        final DocumentDbConnection connection = new DocumentDbConnection(properties);
+        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbDriver.DOCUMENT_DB_SCHEME, properties);
         Assertions.assertNotNull(connection);
-        Assertions.assertEquals(DATABASE, connection.getMongoDatabase().getName());
     }
 
     /** Tests constructor when passed an invalid database name. */
@@ -117,7 +122,8 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setDatabase(" ");
 
-        Assertions.assertThrows(SQLException.class, () -> new DocumentDbConnection(properties));
+        Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
+                DocumentDbDriver.DOCUMENT_DB_SCHEME, properties));
     }
 
     /** Tests constructor when passed invalid credentials. */
@@ -126,6 +132,7 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setUser("invalidUser");
 
-        Assertions.assertThrows(SQLException.class, () -> new DocumentDbConnection(properties));
+        Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
+                DocumentDbDriver.DOCUMENT_DB_SCHEME, properties));
     }
 }

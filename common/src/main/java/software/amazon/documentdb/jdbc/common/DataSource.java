@@ -27,7 +27,7 @@ import java.util.logging.Logger;
  * Abstract implementation of DataSource for JDBC Driver.
  */
 public abstract class DataSource implements javax.sql.DataSource, javax.sql.ConnectionPoolDataSource {
-    private static final java.util.logging.Logger LOGGER = Logger.getLogger(DataSource.class.toString());
+    private static final Logger LOGGER = Logger.getLogger(DataSource.class.toString());
 
     @Override
     public <T> T unwrap(final Class<T> iface) throws SQLException {

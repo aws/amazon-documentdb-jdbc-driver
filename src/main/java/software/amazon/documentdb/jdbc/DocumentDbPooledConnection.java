@@ -17,8 +17,6 @@
 package software.amazon.documentdb.jdbc;
 
 import software.amazon.documentdb.jdbc.common.PooledConnection;
-import java.sql.SQLException;
-import java.util.Properties;
 
 /**
  * DocumentDb implementation of PooledConnection.
@@ -31,10 +29,5 @@ public class DocumentDbPooledConnection extends PooledConnection implements java
      */
     public DocumentDbPooledConnection(final java.sql.Connection connection) {
         super(connection);
-    }
-
-    @Override
-    public java.sql.Connection getConnection() throws SQLException {
-        return new DocumentDbConnection(new DocumentDbConnectionProperties(new Properties()));
     }
 }

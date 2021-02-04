@@ -18,7 +18,6 @@ package software.amazon.documentdb.jdbc;
 
 import software.amazon.documentdb.jdbc.common.PreparedStatement;
 
-import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
@@ -27,56 +26,53 @@ import java.sql.SQLException;
  */
 public class DocumentDbPreparedStatement extends PreparedStatement
         implements java.sql.PreparedStatement {
-    private final DocumentDbQueryExecutor documentDbQueryExecutor;
-    private final String sql;
-    private java.sql.ResultSet resultSet;
+    private final java.sql.PreparedStatement preparedStatement;
 
     /**
      * DocumentDbPreparedStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
-     * @param connection Connection Object.
+     * @param preparedStatement Connection Object.
      * @param sql Sql query.
      */
-    public DocumentDbPreparedStatement(final Connection connection, final String sql) {
-        super(connection, sql);
-        this.sql = sql;
-        documentDbQueryExecutor = new DocumentDbQueryExecutor(this, "uri");
-        resultSet = null;
+    public DocumentDbPreparedStatement(final java.sql.PreparedStatement preparedStatement,
+            final String sql) throws SQLException {
+        super(preparedStatement.getConnection(), sql);
+        this.preparedStatement = preparedStatement;
     }
 
 
     @Override
     protected void cancelQuery() throws SQLException {
         verifyOpen();
-        documentDbQueryExecutor.cancelQuery();
-        // TODO: Async query execution and cancellation.
+        preparedStatement.cancel();
     }
 
     @Override
     protected int getMaxFetchSize() throws SQLException {
         verifyOpen();
-        return documentDbQueryExecutor.getMaxFetchSize();
+        return Integer.MAX_VALUE;
     }
 
     @Override
     public java.sql.ResultSet executeQuery() throws SQLException {
-        resultSet = documentDbQueryExecutor.executeQuery(sql);
-        return resultSet;
+        verifyOpen();
+        return preparedStatement.executeQuery(getSql());
     }
 
     @Override
     public ResultSetMetaData getMetaData() throws SQLException {
-        return (resultSet == null) ? null : resultSet.getMetaData();
+        verifyOpen();
+        return preparedStatement.getMetaData();
     }
 
     @Override
     public int getQueryTimeout() throws SQLException {
         verifyOpen();
-        return documentDbQueryExecutor.getQueryTimeout();
+        return preparedStatement.getQueryTimeout();
     }
 
     @Override
     public void setQueryTimeout(final int seconds) throws SQLException {
         verifyOpen();
-        documentDbQueryExecutor.setQueryTimeout(seconds);
+        preparedStatement.setQueryTimeout(seconds);
     }
 }

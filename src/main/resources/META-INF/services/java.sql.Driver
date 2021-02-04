@@ -1,1 +1,2 @@
 software.amazon.documentdb.jdbc.DocumentDbDriver
+org.apache.calcite.jdbc.Driver

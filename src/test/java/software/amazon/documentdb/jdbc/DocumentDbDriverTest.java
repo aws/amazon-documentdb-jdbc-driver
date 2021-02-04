@@ -23,10 +23,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.sql.Connection;
-import java.sql.Driver;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -46,15 +44,14 @@ public class DocumentDbDriverTest extends DocumentDbTest {
      */
     @BeforeAll
     public static void initialize() throws SQLException, IOException {
-        // Clear out any other registered drivers.
-        final Enumeration<Driver> drivers = DriverManager.getDrivers();
-        while (drivers.hasMoreElements()) {
-            final Driver driver = drivers.nextElement();
-            DriverManager.deregisterDriver(driver);
-        }
-        // Ensure our driver is registered.
-        DriverManager.registerDriver(new DocumentDbDriver());
         startMongoDbInstance(true);
+
+        // Add 2 valid users to the local MongoDB instance.
+        createUser(DATABASE_NAME, "user", "password");
+        createUser(DATABASE_NAME, "user name", "pass word");
+
+        prepareSimpleConsistentData(DATABASE_NAME, COLLECTION_NAME,
+                10, "user", "password");
     }
 
     /**
@@ -82,10 +79,6 @@ public class DocumentDbDriverTest extends DocumentDbTest {
                 //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?tls=true",
                 //"jdbc:documentdb://user%20name:pass%20word@localhost:1/database?replicaSet=rs0",
         };
-
-        // Add 2 valid users to the local MongoDB instance.
-        createUser("database", "user", "password");
-        createUser("database", "user name", "pass word");
 
         for (String test : tests) {
             Assertions.assertNotNull(DriverManager.getDriver(test));
@@ -122,18 +115,9 @@ public class DocumentDbDriverTest extends DocumentDbTest {
      */
     @Test
     public void testNullConnectionString() {
-        final Map<String, String> tests = new HashMap<String, String>() {{
-            put(null, "No suitable driver");
-        }};
-
-        for (Entry<String, String> test : tests.entrySet()) {
-            Assertions.assertEquals(test.getValue(),
-                    Assertions.assertThrows(SQLException.class, () -> DriverManager.getDriver(test.getKey()))
-                            .getMessage());
-            Assertions.assertEquals("The url cannot be null",
-                    Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(test.getKey()))
-                            .getMessage());
-        }
+        Assertions.assertEquals("The url cannot be null",
+                Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(null))
+                        .getMessage());
     }
 
     /**
@@ -174,7 +158,8 @@ public class DocumentDbDriverTest extends DocumentDbTest {
 
         // Connection string does not override existing properties.
         connectionString = "mongodb://username:password@127.0.0.1/newdatabase";
-        properties = DocumentDbDriver.getPropertiesFromConnectionString(info, connectionString);
+        properties = DocumentDbDriver
+                .getPropertiesFromConnectionString(info, connectionString);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
         Assertions.assertEquals("newdatabase", properties.getProperty("database"));
@@ -184,7 +169,8 @@ public class DocumentDbDriverTest extends DocumentDbTest {
         // Get user (unencoded) name and password.
         info.clear();
         connectionString = "mongodb://user%20name:pass%20word@127.0.0.1/newdatabase";
-        properties = DocumentDbDriver.getPropertiesFromConnectionString(info, connectionString);
+        properties = DocumentDbDriver
+                .getPropertiesFromConnectionString(info, connectionString);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
         Assertions.assertEquals("newdatabase", properties.getProperty("database"));
@@ -201,7 +187,8 @@ public class DocumentDbDriverTest extends DocumentDbTest {
                 "&" + DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName() + "=" + "4" +
                 "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true";
-        properties = DocumentDbDriver.getPropertiesFromConnectionString(info, connectionString);
+        properties = DocumentDbDriver
+                .getPropertiesFromConnectionString(info, connectionString);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
     }
 }

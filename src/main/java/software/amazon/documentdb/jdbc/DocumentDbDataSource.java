@@ -10,6 +10,7 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import javax.sql.PooledConnection;
 
 import java.sql.Connection;
+import java.sql.DriverManager;
 import java.sql.SQLException;
 
 /**
@@ -21,16 +22,16 @@ public class DocumentDbDataSource extends DataSource {
 
     @Override
     public java.sql.Connection getConnection() throws SQLException {
-        validateRequiredProperties();
-        return new DocumentDbConnection(properties);
+        properties.validateRequiredProperties();
+        return DriverManager.getConnection(DocumentDbDriver.CONNECT_STRING_PREFIX, properties);
     }
 
     @Override
     public Connection getConnection(final String username, final String password) throws SQLException {
         setUser(username);
         setPassword(password);
-        validateRequiredProperties();
-        return new DocumentDbConnection(properties);
+        properties.validateRequiredProperties();
+        return DriverManager.getConnection(DocumentDbDriver.CONNECT_STRING_PREFIX, properties);
     }
 
     /**
@@ -51,11 +52,11 @@ public class DocumentDbDataSource extends DataSource {
     /**
      * Sets the timeout for opening a connection.
      *
-     * @return The connection timeout in seconds.
+     * @return the connection timeout in seconds.
      */
     @Override
     public int getLoginTimeout() {
-        return (properties.getLoginTimeout());
+        return properties.getLoginTimeout();
     }
 
     @Override
@@ -254,11 +255,6 @@ public class DocumentDbDataSource extends DataSource {
         return properties.getRetryReadsEnabled();
     }
 
-    @VisibleForTesting
-    void validateRequiredProperties() throws SQLException {
-        properties.validateRequiredProperties();
-    }
-
     private void throwInvalidTimeoutException(final long timeout) throws SQLException {
         throw SqlError.createSQLException(
                 LOGGER,
@@ -266,5 +262,10 @@ public class DocumentDbDataSource extends DataSource {
                 SqlError.INVALID_TIMEOUT,
                 Long.valueOf(timeout)
         );
+    }
+
+    @VisibleForTesting
+    void validateRequiredProperties() throws SQLException {
+        properties.validateRequiredProperties();
     }
 }

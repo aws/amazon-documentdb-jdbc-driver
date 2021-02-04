@@ -55,7 +55,7 @@ public class StatementTest {
         HelperFunctions.expectFunctionThrows(() -> statement.setMaxRows(-1));
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.setMaxRows(1));
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.getConnection(), connection);
-        HelperFunctions.expectFunctionDoesntThrow(() -> statement.getFetchDirection(), java.sql.ResultSet.FETCH_FORWARD);
+        HelperFunctions.expectFunctionDoesntThrow(() -> statement.getFetchDirection(), ResultSet.FETCH_FORWARD);
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.getFetchSize(), 0);
         HelperFunctions.expectFunctionThrows(() -> statement.getGeneratedKeys());
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.getLargeMaxRows(), (long)1);
@@ -69,11 +69,11 @@ public class StatementTest {
                 java.sql.Statement.CLOSE_CURRENT_RESULT), false);
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.getResultSet(), null);
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.getResultSetConcurrency(),
-                java.sql.ResultSet.CONCUR_READ_ONLY);
+                ResultSet.CONCUR_READ_ONLY);
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.getResultSetHoldability(),
-                java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT);
+                ResultSet.CLOSE_CURSORS_AT_COMMIT);
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.getResultSetType(),
-                java.sql.ResultSet.TYPE_FORWARD_ONLY);
+                ResultSet.TYPE_FORWARD_ONLY);
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.getUpdateCount(), -1);
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.closeOnCompletion());
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.isCloseOnCompletion(), true);

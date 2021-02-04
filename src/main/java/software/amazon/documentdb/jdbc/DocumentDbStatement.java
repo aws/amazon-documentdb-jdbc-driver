@@ -18,52 +18,51 @@ package software.amazon.documentdb.jdbc;
 
 import software.amazon.documentdb.jdbc.common.Statement;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 
 /**
  * DocumentDb implementation of DatabaseMetadata.
  */
-public class DocumentDbStatement extends Statement implements java.sql.Statement {
-    private final DocumentDbQueryExecutor documentDbQueryExecutor;
+class DocumentDbStatement extends Statement implements java.sql.Statement {
+    private final java.sql.Statement statement;
 
     /**
      * DocumentDbStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
-     * @param connection Connection Object.
+     * @param statement Statement Object.
      */
-    public DocumentDbStatement(final Connection connection) {
-        super(connection);
-        documentDbQueryExecutor = new DocumentDbQueryExecutor(this, "uri");
+    public DocumentDbStatement(final java.sql.Statement statement) throws SQLException {
+        super(statement.getConnection());
+        this.statement = statement;
     }
 
 
     @Override
     protected void cancelQuery() throws SQLException {
         verifyOpen();
-        documentDbQueryExecutor.cancelQuery();
-        // TODO: Async query execution and cancellation.
+        statement.cancel();
     }
 
     @Override
     protected int getMaxFetchSize() throws SQLException {
         verifyOpen();
-        return documentDbQueryExecutor.getMaxFetchSize();
+        return  Integer.MAX_VALUE;
     }
 
     @Override
     public java.sql.ResultSet executeQuery(final String sql) throws SQLException {
-        return documentDbQueryExecutor.executeQuery(sql);
+        verifyOpen();
+        return new DocumentDbResultSet(statement.executeQuery(sql));
     }
 
     @Override
     public int getQueryTimeout() throws SQLException {
         verifyOpen();
-        return documentDbQueryExecutor.getQueryTimeout();
+        return statement.getQueryTimeout();
     }
 
     @Override
     public void setQueryTimeout(final int seconds) throws SQLException {
         verifyOpen();
-        documentDbQueryExecutor.setQueryTimeout(seconds);
+        statement.setQueryTimeout(seconds);
     }
 }

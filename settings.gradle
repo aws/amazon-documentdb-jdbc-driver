@@ -1,2 +1,4 @@
 rootProject.name = 'documentdb-jdbc'
+include 'common'
+include 'calcite-adapter'
 

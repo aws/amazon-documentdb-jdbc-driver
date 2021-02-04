@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import javax.sql.ConnectionEvent;
 import javax.sql.ConnectionEventListener;
 import javax.sql.StatementEventListener;
+import java.sql.SQLException;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -40,6 +41,13 @@ public abstract class PooledConnection implements javax.sql.PooledConnection {
         this.connection = connection;
     }
 
+    /**
+     * Gets the connection.
+     * @return a {@link java.sql.Connection}
+     */
+    public java.sql.Connection getConnection() throws SQLException {
+        return connection;
+    }
 
     @Override
     public void close() {
