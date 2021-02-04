@@ -1,9 +1,15 @@
 package software.amazon.documentdb.jdbc;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
+
+import java.sql.SQLException;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 public class DocumentDbConnectionProperties extends Properties {
 
@@ -210,8 +216,8 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @return The connect timeout in seconds.
      */
-    public Integer getConnectTimeout() {
-        return getPropertyAsInteger(DocumentDbConnectionProperty.CONNECT_TIMEOUT_SEC.getName());
+    public Integer getLoginTimeout() {
+        return getPropertyAsInteger(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName());
     }
 
     /**
@@ -219,8 +225,8 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @param timeout The connect timeout in seconds.
      */
-    public void setConnectTimeout(final String timeout) {
-        setProperty(DocumentDbConnectionProperty.CONNECT_TIMEOUT_SEC.getName(), timeout);
+    public void setLoginTimeout(final String timeout) {
+        setProperty(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName(), timeout);
     }
 
     /**
@@ -295,6 +301,39 @@ public class DocumentDbConnectionProperties extends Properties {
             LOGGER.warn("Property {{}} was ignored as it was not of type integer.",  key, e);
         }
         return property;
+    }
+
+    /**
+     * Validates the existing properties.
+     * @throws SQLException if the required properties are not correctly set.
+     */
+    public void validateRequiredProperties() throws SQLException {
+        if (isNullOrWhitespace(getUser())
+                || isNullOrWhitespace(getPassword())) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_FAILURE,
+                    SqlError.MISSING_USER_PASSWORD
+            );
+        }
+        if (isNullOrWhitespace(getDatabase())) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_FAILURE,
+                    SqlError.MISSING_DATABASE
+            );
+        }
+        if (isNullOrWhitespace(getHostname())) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_FAILURE,
+                    SqlError.MISSING_HOSTNAME
+            );
+        }
+    }
+
+    protected static boolean isNullOrWhitespace(@Nullable final String value) {
+        return value == null || Pattern.matches("^\\s*$", value);
     }
 
 }

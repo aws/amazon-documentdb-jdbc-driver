@@ -86,7 +86,7 @@ public class DocumentDbConnectionTest extends DocumentDbTest {
     void testConnectionWithValidOptions() throws SQLException {
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setApplicationName("test");
-        properties.setConnectTimeout("10");
+        properties.setLoginTimeout("10");
         properties.setRetryReadsEnabled("false");
         properties.setReadPreference(DocumentDbReadPreference.PRIMARY.getName());
 

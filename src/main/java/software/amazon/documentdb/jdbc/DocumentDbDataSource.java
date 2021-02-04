@@ -45,17 +45,17 @@ public class DocumentDbDataSource extends DataSource {
         if (seconds < 0) {
             throwInvalidTimeoutException(seconds);
         }
-        properties.setConnectTimeout(String.valueOf(seconds));
+        properties.setLoginTimeout(String.valueOf(seconds));
     }
 
     /**
      * Sets the timeout for opening a connection.
      *
-     * @returns The connection timeout in seconds.
+     * @return The connection timeout in seconds.
      */
     @Override
-    public int getLoginTimeout() throws SQLException {
-        return (properties.getConnectTimeout());
+    public int getLoginTimeout() {
+        return (properties.getLoginTimeout());
     }
 
     @Override
@@ -256,28 +256,7 @@ public class DocumentDbDataSource extends DataSource {
 
     @VisibleForTesting
     void validateRequiredProperties() throws SQLException {
-        if (DocumentDbDriver.isNullOrWhitespace(properties.getUser())
-                || DocumentDbDriver.isNullOrWhitespace(properties.getPassword())) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_USER_PASSWORD
-            );
-        }
-        if (DocumentDbDriver.isNullOrWhitespace(properties.getDatabase())) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_DATABASE
-            );
-        }
-        if (DocumentDbDriver.isNullOrWhitespace(properties.getHostname())) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_HOSTNAME
-            );
-        }
+        properties.validateRequiredProperties();
     }
 
     private void throwInvalidTimeoutException(final long timeout) throws SQLException {

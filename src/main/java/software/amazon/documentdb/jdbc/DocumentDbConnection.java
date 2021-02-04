@@ -299,7 +299,7 @@ public class DocumentDbConnection extends Connection
     private static void applySocketSettings(
             final DocumentDbConnectionProperties connectionProperties,
             final MongoClientSettings.Builder clientSettingsBuilder) {
-        final Integer connectTimeout = connectionProperties.getConnectTimeout();
+        final Integer connectTimeout = connectionProperties.getLoginTimeout();
 
         clientSettingsBuilder.applyToSocketSettings(
                 b -> {

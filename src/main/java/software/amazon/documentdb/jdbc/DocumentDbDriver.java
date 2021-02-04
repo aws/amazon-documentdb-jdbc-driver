@@ -17,8 +17,6 @@
 package software.amazon.documentdb.jdbc;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.mongodb.ConnectionString;
-import com.mongodb.ReadPreference;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -26,9 +24,15 @@ import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.Driver;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
@@ -39,6 +43,8 @@ public class DocumentDbDriver extends Driver {
     // Note: This class must be marked public for the registration/DeviceManager to work.
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDriver.class.getName());
     private static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
+
+    private static final String UTF8 = "UTF-8";
 
     /**
      * Registers the driver with the DriverManager.
@@ -65,15 +71,16 @@ public class DocumentDbDriver extends Driver {
         if (!isExpectedJdbcScheme(url)) {
             return null;
         }
-
+        final DocumentDbConnectionProperties properties;
         try {
             // Let MongoDB driver check the properties and options of the URL.
-            setPropertiesFromConnectionString(info, getMongoDbUrl(url));
+            properties = getPropertiesFromConnectionString(info, getMongoDbUrl(url));
+            properties.validateRequiredProperties();
         } catch (IllegalArgumentException exception) {
             throw new SQLException(exception.getMessage(), exception);
         }
 
-        return new DocumentDbConnection(new DocumentDbConnectionProperties(info));
+        return new DocumentDbConnection(new DocumentDbConnectionProperties(properties));
     }
 
     @Override
@@ -86,63 +93,108 @@ public class DocumentDbDriver extends Driver {
     }
 
     @VisibleForTesting
-    static void setPropertiesFromConnectionString(final Properties info, final String mongoDbUrl)
-            throws IllegalArgumentException, SQLException {
-        // This can throw IllegalArgumentException
-        final ConnectionString connectionString = new ConnectionString(mongoDbUrl);
-
-        validateDocumentDbProperties(connectionString);
-
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.USER.getName(),
-                connectionString.getUsername());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.PASSWORD.getName(),
-                connectionString.getPassword());
-        // Ignore multiple hosts, if provided. Note: this may include optional port number.
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.HOSTNAME.getName(),
-                connectionString.getHosts().get(0));
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.DATABASE.getName(),
-                connectionString.getDatabase());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.READ_PREFERENCE.getName(),
-                connectionString.getReadPreference());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.APPLICATION_NAME.getName(),
-                connectionString.getApplicationName());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.REPLICA_SET.getName(),
-                connectionString.getRequiredReplicaSetName());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.TLS_ENABLED.getName(),
-                connectionString.getSslEnabled());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName(),
-                connectionString.getSslInvalidHostnameAllowed());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.CONNECT_TIMEOUT_SEC.getName(),
-                connectionString.getConnectTimeout());
-        addPropertyIfNotSet(info, DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName(),
-                connectionString.getRetryReads());
-    }
-
-    static void validateDocumentDbProperties(final ConnectionString connectionString)
+    static DocumentDbConnectionProperties getPropertiesFromConnectionString(final Properties info, final String mongoDbUrl)
             throws SQLException {
-        if (connectionString.getUsername() == null || connectionString.getPassword() == null) {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(info);
+        try {
+            final URI mongoUri = new URI(mongoDbUrl);
+
+            setHostName(properties, mongoUri);
+
+            setUserPassword(properties, mongoUri);
+
+            setDatabase(properties, mongoUri);
+
+            setOptionalProperties(properties, mongoUri);
+
+        } catch (URISyntaxException e) {
             throw SqlError.createSQLException(
                     LOGGER,
                     SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_USER_PASSWORD);
+                    SqlError.INVALID_CONNECTION_PROPERTIES
+            );
+        } catch (UnsupportedEncodingException e) {
+            throw new SQLException(e.getMessage(), e);
         }
-        if (connectionString.getDatabase() == null) {
+        return properties;
+    }
+
+    private static void setDatabase(final Properties properties, final URI mongoUri) throws UnsupportedEncodingException,
+            SQLException {
+        if (mongoUri.getPath() == null) {
             throw SqlError.createSQLException(
                     LOGGER,
                     SqlState.CONNECTION_FAILURE,
                     SqlError.MISSING_DATABASE);
         }
-        if (connectionString.getHosts().size() != 1) {
+        final String database = mongoUri.getPath().substring(1);
+        addPropertyIfNotSet(properties, DocumentDbConnectionProperty.DATABASE.getName(), database);
+
+    }
+
+    private static void setOptionalProperties(final Properties properties, final URI mongoUri) throws UnsupportedEncodingException,
+            SQLException {
+        final String query = mongoUri.getQuery();
+        if (isNullOrWhitespace(query)) {
+            return;
+        }
+        final String[] propertyValues = query.split("&");
+        final Map<String, String> propertyPairs = new HashMap<>();
+        for (String pair: propertyValues) {
+            final int splitIndex = pair.indexOf("=");
+            propertyPairs.put(pair.substring(0, splitIndex),
+                    pair.substring(splitIndex + 1));
+        }
+        for (String propertyKey: propertyPairs.keySet()) {
+            checkValidProperty(propertyKey);
+            addPropertyIfNotSet(properties, propertyKey, propertyPairs.get(propertyKey));
+        }
+    }
+
+    private static void setUserPassword(final Properties properties, final URI mongoUri) throws UnsupportedEncodingException,
+            SQLException {
+        if (mongoUri.getUserInfo() == null) {
             throw SqlError.createSQLException(
                     LOGGER,
                     SqlState.CONNECTION_FAILURE,
-                    SqlError.UNSUPPORTED_MULTIPLE_HOSTS);
+                    SqlError.MISSING_USER_PASSWORD);
         }
-        final String replicaSet = connectionString.getRequiredReplicaSetName();
-        final String replicaSetDefault = DocumentDbConnectionProperty.REPLICA_SET.getDefaultValue();
-        if (replicaSet != null && replicaSet != replicaSetDefault) {
-            LOGGER.warn(String.format("DocumentDB may not support replica set '%s'.", replicaSet));
+        final String userPassword = mongoUri.getUserInfo();
+        addPropertyIfNotSet(properties, DocumentDbConnectionProperty.USER.getName(),
+                userPassword.substring(0, userPassword.indexOf(":")));
+        addPropertyIfNotSet(properties, DocumentDbConnectionProperty.PASSWORD.getName(),
+                userPassword.substring(userPassword.indexOf(":") + 1));
+    }
+
+    private static void setHostName(final Properties properties, final URI mongoUri) throws SQLException {
+        String hostName = mongoUri.getHost();
+        if (hostName == null) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_FAILURE,
+                    SqlError.MISSING_HOSTNAME);
+        } else {
+            if (mongoUri.getPort() > 0) {
+                hostName += ":" + mongoUri.getPort();
+            }
+            addPropertyIfNotSet(properties, DocumentDbConnectionProperty.HOSTNAME.getName(),
+                    hostName);
         }
+    }
+
+    private static void checkValidProperty(final String propertyKey) throws SQLException {
+        // TODO: See if there should be additional checks.
+        for (DocumentDbConnectionProperty property: DocumentDbConnectionProperty.values()) {
+            if (property.getName().equals(propertyKey)) {
+                return;
+            }
+        }
+        throw SqlError.createSQLException(
+                LOGGER,
+                SqlState.CONNECTION_FAILURE,
+                SqlError.UNSUPPORTED_PROPERTY,
+                propertyKey
+        );
     }
 
     private static void addPropertyIfNotSet(
@@ -154,41 +206,6 @@ public class DocumentDbDriver extends Driver {
         }
     }
 
-    private static void addPropertyIfNotSet(
-            @NonNull final Properties info,
-            @NonNull final String key,
-            @Nullable final Integer value) {
-        if (value != null) {
-            info.putIfAbsent(key, value.toString());
-        }
-    }
-
-    private static void addPropertyIfNotSet(
-            @NonNull final Properties info,
-            @NonNull final String key,
-            @Nullable final Boolean value) {
-        if (value != null) {
-            info.putIfAbsent(key, value.toString());
-        }
-    }
-
-    private static void addPropertyIfNotSet(
-            @NonNull final Properties info,
-            @NonNull final String key,
-            @Nullable final char[] value) {
-        if (value != null) {
-            info.putIfAbsent(key, new String(value));
-        }
-    }
-
-    private static void addPropertyIfNotSet(
-            @NonNull final Properties info,
-            @NonNull final String key,
-            @Nullable final ReadPreference value) {
-        if (value != null) {
-            info.putIfAbsent(key, value.getName());
-        }
-    }
 
     private boolean isExpectedJdbcScheme(@Nullable final String url) {
         return url != null && url.startsWith(DOCUMENT_DB_SCHEME);

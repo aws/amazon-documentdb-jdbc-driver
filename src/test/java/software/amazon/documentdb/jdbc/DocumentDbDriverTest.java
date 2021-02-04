@@ -37,6 +37,9 @@ import java.util.Properties;
  */
 public class DocumentDbDriverTest extends DocumentDbTest {
 
+    private static final String DATABASE_NAME = "database";
+    private static final String COLLECTION_NAME = "testDocumentDbDriverTest";
+
     /**
      * Initializes the test class.
      * @throws SQLException if a driver manager error occurs.
@@ -141,9 +144,8 @@ public class DocumentDbDriverTest extends DocumentDbTest {
     public void testInvalidMongoDbConnectionString() throws SQLException {
         final Map<String, String> tests = new HashMap<String, String>() {{
             put("jdbc:documentdb://localhost:1/database", "User and password are required to connect. Syntax: 'jdbc:documentdb://<user>:<password>@<hostname>/<database>[?options...]'");
-            put("jdbc:documentdb://username:password@localhost:1:2/database", "The connection string contains an invalid host 'localhost:1:2'. Reserved characters such as ':' must be escaped according RFC 2396. Any IPv6 address literal must be enclosed in '[' and ']' according to RFC 2732.");
+            put("jdbc:documentdb://username:password@localhost:1:2/database", "Valid hostname is required to connect. Syntax: 'jdbc:documentdb://<user>:<password>@<hostname>/<database>[?options...]'");
             put("jdbc:documentdb://username:password@localhost:1/", "Database is required to connect. Syntax: 'jdbc:documentdb://<user>:<password>@<hostname>/<database>[?options...]'");
-            put("jdbc:documentdb://username:password@localhost:1,localhost:2/database", "Only one host is supported. Use the replicaSet option to connect to a replica set.");
         }};
 
         for (Entry<String, String> test : tests.entrySet()) {
@@ -160,34 +162,34 @@ public class DocumentDbDriverTest extends DocumentDbTest {
     @Test
     public void testSetPropertiesFromConnectionString() throws SQLException {
         final Properties info = new Properties();
-
         info.clear();
         String connectionString = "mongodb://username:password@localhost/database";
-        DocumentDbDriver.setPropertiesFromConnectionString(info, connectionString);
-        Assertions.assertEquals(4, info.size());
-        Assertions.assertEquals("localhost", info.getProperty("host"));
-        Assertions.assertEquals("database", info.getProperty("database"));
-        Assertions.assertEquals("username", info.getProperty("user"));
-        Assertions.assertEquals("password", info.getProperty("password"));
+        DocumentDbConnectionProperties properties = DocumentDbDriver
+                .getPropertiesFromConnectionString(info, connectionString);
+        Assertions.assertEquals(4, properties.size());
+        Assertions.assertEquals("localhost", properties.getProperty("host"));
+        Assertions.assertEquals(DATABASE_NAME, properties.getProperty("database"));
+        Assertions.assertEquals("username", properties.getProperty("user"));
+        Assertions.assertEquals("password", properties.getProperty("password"));
 
         // Connection string does not override existing properties.
         connectionString = "mongodb://username:password@127.0.0.1/newdatabase";
-        DocumentDbDriver.setPropertiesFromConnectionString(info, connectionString);
-        Assertions.assertEquals(4, info.size());
-        Assertions.assertEquals("localhost", info.getProperty("host"));
-        Assertions.assertEquals("database", info.getProperty("database"));
-        Assertions.assertEquals("username", info.getProperty("user"));
-        Assertions.assertEquals("password", info.getProperty("password"));
+        properties = DocumentDbDriver.getPropertiesFromConnectionString(info, connectionString);
+        Assertions.assertEquals(4, properties.size());
+        Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
+        Assertions.assertEquals("newdatabase", properties.getProperty("database"));
+        Assertions.assertEquals("username", properties.getProperty("user"));
+        Assertions.assertEquals("password", properties.getProperty("password"));
 
         // Get user (unencoded) name and password.
         info.clear();
         connectionString = "mongodb://user%20name:pass%20word@127.0.0.1/newdatabase";
-        DocumentDbDriver.setPropertiesFromConnectionString(info, connectionString);
-        Assertions.assertEquals(4, info.size());
-        Assertions.assertEquals("127.0.0.1", info.getProperty("host"));
-        Assertions.assertEquals("newdatabase", info.getProperty("database"));
-        Assertions.assertEquals("user name", info.getProperty("user"));
-        Assertions.assertEquals("pass word", info.getProperty("password"));
+        properties = DocumentDbDriver.getPropertiesFromConnectionString(info, connectionString);
+        Assertions.assertEquals(4, properties.size());
+        Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
+        Assertions.assertEquals("newdatabase", properties.getProperty("database"));
+        Assertions.assertEquals("user name", properties.getProperty("user"));
+        Assertions.assertEquals("pass word", properties.getProperty("password"));
 
         // Check that all properties can be added.
         info.clear();
@@ -197,9 +199,9 @@ public class DocumentDbDriverTest extends DocumentDbTest {
                 "&" + DocumentDbConnectionProperty.REPLICA_SET.getName() + "=" + "rs0" +
                 "&" + DocumentDbConnectionProperty.TLS_ENABLED.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName() + "=" + "true" +
-                "&" + DocumentDbConnectionProperty.CONNECT_TIMEOUT_SEC.getName() + "=" + "4" +
+                "&" + DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName() + "=" + "4" +
                 "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true";
-        DocumentDbDriver.setPropertiesFromConnectionString(info, connectionString);
-        Assertions.assertEquals(DocumentDbConnectionProperty.values().length, info.size());
+        properties = DocumentDbDriver.getPropertiesFromConnectionString(info, connectionString);
+        Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
     }
 }
