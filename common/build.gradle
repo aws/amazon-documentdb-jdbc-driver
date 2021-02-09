@@ -1,8 +1,9 @@
 plugins {
     id 'java'
-    id "com.github.spotbugs" // version "4.5.1"
+    id 'com.github.spotbugs' // version '4.5.1'
     id 'checkstyle'
     id 'jacoco'
+    id 'com.github.hierynomus.license' // version version '0.15.0'
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -154,6 +155,25 @@ jacocoTestCoverageVerification {
 }
 check.dependsOn jacocoTestCoverageVerification
 jacocoTestCoverageVerification.dependsOn jacocoTestReport
+
+/**
+ * License Plugin
+ */
+license {
+    header =  project.parent.file('LICENSE')
+    headerDefinitions {
+        slash_star_with_space {
+            firstLine = '/*'
+            endLine   = ' *\n */\n'
+            beforeEachLine = ' * '
+            firstLineDetectionPattern = '/\\*'
+            lastLineDetectionPattern  = ' \\*\n \\*/\n'
+        }
+    }
+    mapping {
+        java = 'slash_star_with_space'
+    }
+}
 
 repositories {
     mavenCentral()
