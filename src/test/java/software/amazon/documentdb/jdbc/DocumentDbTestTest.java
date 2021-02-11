@@ -26,12 +26,13 @@ import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import java.io.IOException;
 
 /**
  * Test that the base class can start and stop MongoDB instances and prepare test data.
  */
-public class DocumentDbTestTest extends DocumentDbTest {
+public class DocumentDbTestTest extends DocumentDbFlapDoodleTest {
 
     /**
      * Ensures any started instance is stopped.

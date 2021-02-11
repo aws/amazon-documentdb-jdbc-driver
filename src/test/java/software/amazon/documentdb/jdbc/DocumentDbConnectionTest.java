@@ -20,12 +20,13 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
 import java.io.IOException;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
-public class DocumentDbConnectionTest extends DocumentDbTest {
+public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
     private static final String HOSTNAME = "localhost";
     private static final String USERNAME = "username";

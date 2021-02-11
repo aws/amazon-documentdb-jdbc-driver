@@ -20,6 +20,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -33,7 +34,7 @@ import java.util.Properties;
 /**
  * Tests for the DocumentDbDriver
  */
-public class DocumentDbDriverTest extends DocumentDbTest {
+public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
 
     private static final String DATABASE_NAME = "database";
     private static final String COLLECTION_NAME = "testDocumentDbDriverTest";

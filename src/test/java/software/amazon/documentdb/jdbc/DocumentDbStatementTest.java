@@ -20,6 +20,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import java.io.IOException;
 import java.sql.Blob;
 import java.sql.Connection;
@@ -29,7 +30,7 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.util.regex.Pattern;
 
-class DocumentDbStatementTest extends DocumentDbTest {
+class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
     private static final String COLLECTION_NAME = "testDocumentDbDriverTest";
     private static final int RECORD_COUNT = 10;

@@ -4,6 +4,7 @@ plugins {
     id 'checkstyle'
     id 'jacoco'
     id 'com.github.hierynomus.license' // version version '0.15.0'
+    id 'java-test-fixtures'
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -191,6 +192,12 @@ dependencies {
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+
+    testFixturesImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
+    testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+    testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
+    testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
 }
 
 test {
