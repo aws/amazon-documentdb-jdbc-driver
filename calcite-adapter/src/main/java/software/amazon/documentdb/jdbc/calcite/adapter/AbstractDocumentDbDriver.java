@@ -41,8 +41,6 @@ import java.net.URISyntaxException;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Properties;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
@@ -186,22 +184,19 @@ public abstract class AbstractDocumentDbDriver extends Driver {
 
     }
 
-    private static void setOptionalProperties(final Properties properties, final URI mongoUri) throws UnsupportedEncodingException,
-            SQLException {
+    private static void setOptionalProperties(final Properties properties, final URI mongoUri)
+            throws UnsupportedEncodingException {
         final String query = mongoUri.getQuery();
         if (isNullOrWhitespace(query)) {
             return;
         }
-        final String[] propertyValues = query.split("&");
-        final Map<String, String> propertyPairs = new HashMap<>();
-        for (String pair: propertyValues) {
+        final String[] propertyPairs = query.split("&");
+        for (String pair : propertyPairs) {
             final int splitIndex = pair.indexOf("=");
-            propertyPairs.put(pair.substring(0, splitIndex),
-                    pair.substring(splitIndex + 1));
-        }
-        for (String propertyKey: propertyPairs.keySet()) {
-            checkValidProperty(propertyKey);
-            addPropertyIfNotSet(properties, propertyKey, propertyPairs.get(propertyKey));
+            final String key = pair.substring(0, splitIndex);
+            final String value = pair.substring(1 + splitIndex);
+
+            addPropertyIfValid(properties, key, value);
         }
     }
 
@@ -236,19 +231,17 @@ public abstract class AbstractDocumentDbDriver extends Driver {
         }
     }
 
-    private static void checkValidProperty(final String propertyKey) throws SQLException {
-        // TODO: See if there should be additional checks.
-        for (DocumentDbConnectionProperty property: DocumentDbConnectionProperty.values()) {
-            if (property.getName().equals(propertyKey)) {
-                return;
-            }
+    private static void addPropertyIfValid(
+            final Properties info, final String propertyKey, final String propertyValue) {
+        if (DocumentDbConnectionProperty.isSupportedProperty(propertyKey)) {
+            addPropertyIfNotSet(info, propertyKey, propertyValue);
+        } else if (DocumentDbConnectionProperty.isUnsupportedMongoDBProperty(propertyKey)) {
+            LOGGER.warn(
+                    "Ignored MongoDB property: {{}} as it not supported by the driver.",
+                    propertyKey);
+        } else {
+            LOGGER.warn("Ignored invalid property: {{}}", propertyKey);
         }
-        throw SqlError.createSQLException(
-                LOGGER,
-                SqlState.CONNECTION_FAILURE,
-                SqlError.UNSUPPORTED_PROPERTY,
-                propertyKey
-        );
     }
 
     private static void addPropertyIfNotSet(

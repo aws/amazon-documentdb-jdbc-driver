@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc;
 
 import software.amazon.documentdb.jdbc.common.utilities.ConnectionProperty;
+import java.util.Arrays;
 
 /**
  * The enumeration of connection properties.
@@ -39,11 +40,53 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
     TLS_ENABLED("tls", "true",
             "Whether to connect using TLS"),
     TLS_ALLOW_INVALID_HOSTNAMES("tlsAllowInvalidHostnames", "false",
-            "Whether to allow invalid host names for TLS connections."),
+            "Whether to allow invalid host names for TLS connections. Equivalent to tlsInsecure."),
     LOGIN_TIMEOUT_SEC("loginTimeoutSec", "",
             "How long a connection can take to be opened before timing out (in seconds)."),
     RETRY_READS_ENABLED("retryReads", "true",
             "If true the driver will retry supported read operations if they fail due to a network error. Defaults to true.");
+
+    // Unsupported MongoDB connection properties that will be ignored but should have warnings.
+    private static final String[] UNSUPPORTED_MONGO_DB_PROPERTIES = {
+            "authMechanism",
+            "authMechanismProperties",
+            "authSource",
+            "gssapiServiceName",
+            "serverSelectionTimeoutMS",
+            "serverSelectionTryOnce",
+            "localThresholdMS",
+            "heartbeatFrequencyMS",
+            "ssl",
+            "sslInvalidHostnamesAllowed",
+            "sslAllowInvalidCertificates",
+            "sslPEMKeyFile",
+            "sslPEMKeyPassword",
+            "sslCAFile",
+            "tlsInsecure",
+            "tlsCertificateKeyFile",
+            "tlsCertificateKeyFilePassword",
+            "tlsCAFile",
+            "tlsAllowInvalidCertificates",
+            "connectTimeoutMS",
+            "socketTimeoutMS",
+            "maxIdleTimeMS",
+            "maxLifeTimeMS",
+            "maxPoolSize",
+            "minPoolSize",
+            "waitQueueMultiple",
+            "waitQueueTimeoutMS",
+            "safe",
+            "journal",
+            "w",
+            "retryWrites",
+            "wtimeoutMS",
+            "readPreferenceTags",
+            "readConcernLevel",
+            "maxStalenessSeconds",
+            "compressors",
+            "zlibCompressionLevel",
+            "uuidRepresentation"
+    };
 
     private final String connectionProperty;
     private final String defaultValue;
@@ -90,5 +133,27 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
      */
     public String getDescription() {
         return description;
+    }
+
+    /**
+     * Check if the property is supported by the driver.
+     *
+     * @param name The name of the property.
+     * @return {@code true} if property is supported; {@code false} otherwise.
+     */
+    public static boolean isSupportedProperty(final String name) {
+        return Arrays
+                .stream(DocumentDbConnectionProperty.values())
+                .anyMatch(value -> value.getName().equals(name));
+    }
+
+    /**
+     * Check if the property is unsupported by the driver but still a valid MongoDB option.
+     *
+     * @param name The name of the property.
+     * @return {@code true} if property is valid but unsupported; {@code false} otherwise.
+     */
+    public static boolean isUnsupportedMongoDBProperty(final String name) {
+        return Arrays.asList(UNSUPPORTED_MONGO_DB_PROPERTIES).contains(name);
     }
 }

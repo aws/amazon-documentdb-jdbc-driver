@@ -191,5 +191,13 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
         properties = DocumentDbDriver
                 .getPropertiesFromConnectionString(info, connectionString);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
+
+        // Check that unsupported properties are ignored.
+        connectionString = "mongodb://user%20name:pass%20word@127.0.0.1/newdatabase" +
+                "?" + "maxStalenessSeconds" + "=" + "value";
+        properties = DocumentDbDriver
+                .getPropertiesFromConnectionString(info, connectionString);
+        Assertions.assertEquals(4, properties.size());
+        Assertions.assertNull(properties.getProperty("maxStalenessSeconds"));
     }
 }

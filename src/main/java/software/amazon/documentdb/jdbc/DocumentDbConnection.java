@@ -21,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.SQLException;
-import java.util.Arrays;
 import java.util.concurrent.Executor;
 
 /**
@@ -83,8 +82,6 @@ public class DocumentDbConnection extends Connection
 
     @Override
     public boolean isSupportedProperty(final String name) {
-        return Arrays
-                .stream(DocumentDbConnectionProperty.values())
-                .anyMatch(value -> value.getName().equals(name));
+        return DocumentDbConnectionProperty.isSupportedProperty(name);
     }
 }
