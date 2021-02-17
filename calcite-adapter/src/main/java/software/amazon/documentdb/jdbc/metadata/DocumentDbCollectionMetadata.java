@@ -16,21 +16,720 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import lombok.Builder;
 import lombok.Getter;
+import org.bson.BsonArray;
+import org.bson.BsonDocument;
+import org.bson.BsonType;
+import org.bson.BsonValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import java.sql.Types;
+import java.util.AbstractMap.SimpleEntry;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 /**
- * Represents the fields in a collection and their data types. A collection can be broken up into 1
- * (the base table) or more tables (virtual tables from embedded documents or arrays).
+ * Represents the fields in a collection and their data types. A collection can be broken up into
+ * one (the base table) or more tables (virtual tables from embedded documents or arrays).
  */
 @Builder
 @Getter
 public class DocumentDbCollectionMetadata {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbCollectionMetadata.class);
+    private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper()
+            .setSerializationInclusion(Include.NON_NULL)
+            .setSerializationInclusion(Include.NON_EMPTY)
+            .enable(SerializationFeature.INDENT_OUTPUT);
+    private static final String EMPTY_STRING = "";
+    private static final String INDEX_COLUMN_NAME_PREFIX = "index_lvl_";
+    private static final String VALUE_COLUMN_NAME = "value";
+    private static final String PATH_SEPARATOR = ".";
+    private static final String ID_FIELD_NAME = "_id";
+    private static final int ID_PRIMARY_KEY_COLUMN = 1;
+    private static final int KEY_COLUMN_NONE = 0;
+    /**
+     * The map of data type promotions.
+     * @see <a href="https://docs.mongodb.com/bi-connector/current/schema/type-conflicts#scalar-scalar-conflicts">
+     *     Map Relational Schemas to MongoDB - Scalar-Scalar Conflicts</a>
+     */
+    private static final ImmutableMap<Entry<Integer, BsonType>, Integer> PROMOTION_MAP =
+            new ImmutableMap.Builder<Entry<Integer, BsonType>, Integer>()
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.BOOLEAN), Types.BOOLEAN)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.DATE_TIME), Types.TIMESTAMP)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.DOUBLE), Types.DOUBLE)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.INT32), Types.INTEGER)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.INT64), Types.BIGINT)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.NULL), Types.NULL)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.ARRAY), Types.ARRAY)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.DOCUMENT), Types.JAVA_OBJECT)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.BOOLEAN), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.DOUBLE), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.INT32), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.INT64), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.NULL), Types.ARRAY)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.ARRAY), Types.ARRAY)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.DOCUMENT), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.BOOLEAN), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DOUBLE), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.INT32), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.INT64), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.NULL), Types.JAVA_OBJECT)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.ARRAY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DOCUMENT), Types.JAVA_OBJECT)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.BOOLEAN), Types.BOOLEAN)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DOUBLE), Types.DOUBLE)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.INT32), Types.INTEGER)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.INT64), Types.BIGINT)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.NULL), Types.BOOLEAN)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.ARRAY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DOCUMENT), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.BOOLEAN), Types.BIGINT)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DOUBLE), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.INT32), Types.BIGINT)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.INT64), Types.BIGINT)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.NULL), Types.BIGINT)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.ARRAY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DOCUMENT), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.BOOLEAN), Types.DOUBLE)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DOUBLE), Types.DOUBLE)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.INT32), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.INT64), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.NULL), Types.DOUBLE)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.ARRAY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DOCUMENT), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.BOOLEAN), Types.INTEGER)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DOUBLE), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.INT32), Types.INTEGER)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.INT64), Types.BIGINT)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.NULL), Types.INTEGER)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.ARRAY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DOCUMENT), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.BOOLEAN), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DATE_TIME), Types.TIMESTAMP)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DOUBLE), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.INT32), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.INT64), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.NULL), Types.TIMESTAMP)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.ARRAY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DOCUMENT), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.BOOLEAN), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DATE_TIME), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DOUBLE), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.INT32), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.INT64), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.MAX_KEY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.MIN_KEY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.NULL), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.OBJECT_ID), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.STRING), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.ARRAY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DOCUMENT), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.BOOLEAN), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DOUBLE), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.INT32), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.INT64), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.NULL), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.ARRAY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DOCUMENT), Types.VARCHAR)
+                    .build();
 
     /** The name of the collection in the database. */
     private final String path;
 
     /** The tables the collection is composed of indexed by their path. */
     private final ImmutableMap<String, DocumentDbMetadataTable> tables;
+
+    /**
+     * Creates new collection metadata for a given collection from the provided data.
+     *
+     * @param collectionName the name of the collection this model should refer.
+     * @param cursor the cursor for the data from which to create a model.
+     * @return a new {@link DocumentDbCollectionMetadata} built from the data.
+     */
+    public static DocumentDbCollectionMetadata create(
+            final String collectionName,
+            final Iterator<BsonDocument> cursor) {
+
+        final Map<String, DocumentDbMetadataTable> tableMap = new HashMap<>();
+        while (cursor.hasNext()) {
+            final BsonDocument document = cursor.next();
+            processDocument(document, tableMap, new ArrayList<>(),
+                    collectionName, null, true);
+        }
+
+        return DocumentDbCollectionMetadata.builder()
+                .path(collectionName)
+                .tables(ImmutableMap.copyOf(tableMap))
+                .build();
+    }
+
+    @Override
+    public String toString() {
+        try {
+            return JSON_OBJECT_MAPPER.writeValueAsString(this);
+        } catch (JsonProcessingException e) {
+            LOGGER.error("Error converting object to JSON.", e);
+        }
+        return EMPTY_STRING;
+    }
+
+    /**
+     * Process a document including fields, sub-documents and arrays.
+     *
+     * @param document the document to process.
+     * @param tableMap the map of virtual tables
+     * @param foreignKeys the list of foreign keys.
+     * @param path the path for this field.
+     * @param parentPath the path of the parent of this field.
+     */
+    private static void processDocument(
+            final BsonDocument document,
+            final Map<String, DocumentDbMetadataTable> tableMap,
+            final List<DocumentDbMetadataColumn> foreignKeys,
+            final String path,
+            final String parentPath,
+            final boolean isRootDocument) {
+
+        // Need to preserve order of fields.
+        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>();
+
+        if (tableMap.containsKey(path)) {
+            // If we've already visited this document/table,
+            // start with the previously discovered columns.
+            // This will have included and primary/foreign key definitions.
+            columnMap.putAll(tableMap.get(path).getColumns());
+        } else {
+            // Add foreign keys.
+            //
+            // Foreign key(s) are the primary key(s) passed from the parent table.
+            // Minimally, this is the primary key for the "_id" field.
+            //
+            // If called from an array parent, it will also include the "index_lvl_<n>"
+            // column(s) from the previous level in the array.
+            //
+            // The primaryKeyColumn and foreignKeyColumn are the one-indexed value
+            // referencing the order withing the primary or foreign key column.
+            int primaryKeyColumn = KEY_COLUMN_NONE;
+            for (DocumentDbMetadataColumn column : foreignKeys) {
+                primaryKeyColumn++;
+                final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
+                        .builder()
+                        .path(column.getPath())
+                        .name(column.getName())
+                        .isGenerated(column.isGenerated())
+                        .sqlType(column.getSqlType())
+                        .primaryKey(primaryKeyColumn)
+                        .foreignKey(primaryKeyColumn)
+                        .build();
+                columnMap.put(metadataColumn.getPath(), metadataColumn);
+            }
+        }
+
+        // Process all fields in the document
+        for (Entry<String, BsonValue> entry : document.entrySet()) {
+            final String fieldName = entry.getKey();
+            final String fieldPath = combinePath(path, fieldName);
+            final BsonValue bsonValue = entry.getValue();
+            final BsonType bsonType = bsonValue.getBsonType();
+            final DocumentDbMetadataColumn prevMetadataColumn = columnMap
+                    .getOrDefault(fieldName, null);
+
+            // ASSUMPTION: relying on the behaviour that the "_id" field will ALWAYS be first
+            // in the root document.
+            final boolean isPrimaryKey = isRootDocument && isIdField(fieldName);
+            final int prevSqlType = getPrevSqlTypeOrDefault(prevMetadataColumn, Types.NULL);
+            final int nextSqlType = getSqlTypeIfIsPrimaryKey(bsonType, prevSqlType, isPrimaryKey);
+
+            if (nextSqlType == Types.JAVA_OBJECT && bsonType != BsonType.NULL) {
+                // This will create/update virtual table.
+                processDocument(entry.getValue().asDocument(),
+                        tableMap, foreignKeys, fieldPath, path, false);
+
+            } else if (nextSqlType == Types.ARRAY && bsonType != BsonType.NULL) {
+                // This will create/update virtual table.
+                processArray(entry.getValue().asArray(),
+                        tableMap, foreignKeys, fieldPath, path, 0);
+            } else {
+                // Process a scalar data type.
+                if (prevMetadataColumn != null) {
+                    // This column has been promoted to a scalar type from a complex type.
+                    // Remove the previously defined virtual table.
+                    tableMap.remove(fieldPath);
+                }
+            }
+
+            final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
+                    .builder()
+                    .path(fieldPath)
+                    .name(getFieldNameIfIsPrimaryKey(path, fieldName, isPrimaryKey))
+                    .isGenerated(false)
+                    .sqlType(nextSqlType)
+                    .primaryKey(getPrimaryKeyColumn(isPrimaryKey))
+                    .foreignKey(KEY_COLUMN_NONE)
+                    .virtualTablePath(getVirtualTablePathIfIsPrimaryKey(
+                            fieldPath, nextSqlType, isPrimaryKey))
+                    .build();
+            columnMap.put(fieldName, metadataColumn);
+            addToForeignKeysIfIsPrimary(foreignKeys, isPrimaryKey, metadataColumn);
+        }
+
+        // Add virtual table.
+        final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
+                .builder()
+                .path(path)
+                .parentPath(parentPath)
+                .name(toName(path))
+                .columns(ImmutableMap.copyOf(columnMap))
+                .build();
+        tableMap.put(path, metadataTable);
+    }
+
+    /**
+     * Processes an array field, including sub-documents, and sub-arrays.
+     *
+     * @param array the array value to process.
+     * @param tableMap the map of virtual tables
+     * @param foreignKeys the list of foreign keys.
+     * @param path the path for this field.
+     * @param parentPath the path of the parent of this field.
+     * @param arrayLevel the zero-indexed level of the array.
+     */
+    private static void processArray(
+            final BsonArray array,
+            final Map<String, DocumentDbMetadataTable> tableMap,
+            final List<DocumentDbMetadataColumn> foreignKeys,
+            final String path,
+            final String parentPath,
+            final int arrayLevel) {
+
+        // Need to preserve order of fields.
+        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>();
+
+        int primaryKeyColumn = KEY_COLUMN_NONE;
+        int level = arrayLevel;
+        DocumentDbMetadataColumn metadataColumn;
+
+        int prevSqlType = Types.NULL;
+        int sqlType;
+        if (tableMap.containsKey(path)) {
+            // If we've already visited this document/table,
+            // start with the previously discovered columns.
+            // This will have included and primary/foreign key definitions.
+            columnMap.putAll(tableMap.get(path).getColumns());
+            final String valueColumnPath = combinePath(path, VALUE_COLUMN_NAME);
+            // TODO: Figure out if previous type was array of array.
+            if (columnMap.containsKey(valueColumnPath)) {
+                prevSqlType = columnMap.get(valueColumnPath).getSqlType();
+            } else {
+                prevSqlType = Types.JAVA_OBJECT;
+            }
+        }
+
+        // Find the promoted SQL data type for all elements.
+        sqlType = prevSqlType;
+        for (BsonValue element : array) {
+            sqlType = getPromotedSqlType(element.getBsonType(), sqlType);
+        }
+        if (!isComplexType(sqlType)) {
+            if (isComplexType(prevSqlType)) {
+                // If promoted to scalar type from complex type, remove previous definition.
+                handleComplexToScalarConflict(tableMap, path, columnMap);
+            } else {
+                // Check to see if we're processing scalars at a different level than previously
+                // detected.
+                sqlType = handleArrayLevelConflict(columnMap, level, sqlType);
+            }
+        }
+
+        if (!tableMap.containsKey(path)) {
+            // Add foreign keys.
+            //
+            // Foreign key(s) are the primary key(s) passed from the parent table.
+            // Minimally, this is the primary key for the "_id" field.
+            //
+            // If called from an array parent, it will also include the "index_lvl_<n>"
+            // column(s) from the previous level in the array.
+            //
+            // The primaryKeyColumn and foreignKeyColumn are the one-indexed value
+            // referencing the order withing the primary or foreign key column.
+            for (DocumentDbMetadataColumn column : foreignKeys) {
+                primaryKeyColumn++;
+                metadataColumn = DocumentDbMetadataColumn
+                        .builder()
+                        .path(column.getPath())
+                        .name(column.getName())
+                        .isGenerated(true)
+                        .sqlType(column.getSqlType())
+                        .primaryKey(primaryKeyColumn)
+                        .foreignKey(column.getArrayIndexLevel() == null
+                                ? primaryKeyColumn
+                                : KEY_COLUMN_NONE)
+                        .virtualTablePath(column.getVirtualTablePath())
+                        .arrayIndexLevel(column.getArrayIndexLevel())
+                        .build();
+                columnMap.put(metadataColumn.getPath(), metadataColumn);
+            }
+
+            final String indexColumnPath = combinePath(path, INDEX_COLUMN_NAME_PREFIX + level);
+            if (!columnMap.containsKey(indexColumnPath)) {
+                // Add index column
+                primaryKeyColumn++;
+                metadataColumn = DocumentDbMetadataColumn
+                        .builder()
+                        .path(indexColumnPath)
+                        .name(toName(
+                                combinePath(getParentName(path), INDEX_COLUMN_NAME_PREFIX + level)))
+                        .isGenerated(true)
+                        .sqlType(Types.BIGINT)
+                        .primaryKey(primaryKeyColumn)
+                        .foreignKey(KEY_COLUMN_NONE)
+                        .arrayIndexLevel(level)
+                        .build();
+                columnMap.put(metadataColumn.getPath(), metadataColumn);
+                foreignKeys.add(metadataColumn);
+            }
+        }
+
+
+        // Add documents, arrays or just the scalar value.
+        switch (sqlType) {
+            case Types.JAVA_OBJECT:
+                processDocumentsInArray(array,
+                        tableMap,
+                        foreignKeys,
+                        path,
+                        parentPath);
+                break;
+            case Types.ARRAY:
+                // This will add another level to the array.
+                level++;
+                processArrayInArray(array,
+                        tableMap,
+                        foreignKeys,
+                        path,
+                        parentPath,
+                        level);
+                break;
+            default:
+                processValuesInArray(
+                        tableMap,
+                        path,
+                        parentPath,
+                        columnMap,
+                        sqlType);
+                break;
+        }
+    }
+
+    /**
+     * Processes value elements as a value column.
+     *
+     * @param tableMap the table map of virtual tables.
+     * @param path the path to this array
+     * @param parentPath the path to the parent of this array.
+     * @param columnMap the map of columns for this virtual table.
+     * @param  sqlType the promoted SQL data type to use for this array.
+     * encountered.
+     */
+    private static void processValuesInArray(
+            final Map<String, DocumentDbMetadataTable> tableMap,
+            final String path,
+            final String parentPath,
+            final Map<String, DocumentDbMetadataColumn> columnMap,
+            final int sqlType) {
+
+        // Add value column
+        final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
+                .builder()
+                .path(combinePath(path, VALUE_COLUMN_NAME))
+                .name(toName(VALUE_COLUMN_NAME))
+                .isGenerated(false)
+                .sqlType(sqlType)
+                .primaryKey(KEY_COLUMN_NONE)
+                .foreignKey(KEY_COLUMN_NONE)
+                .build();
+        columnMap.put(metadataColumn.getPath(), metadataColumn);
+
+        // Add virtual table.
+        final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
+                .builder()
+                .path(path)
+                .parentPath(parentPath)
+                .name(toName(path))
+                .columns(ImmutableMap.copyOf(columnMap))
+                .build();
+        tableMap.put(path, metadataTable);
+    }
+
+    /**
+     * Processes array elements within an array.
+     *
+     * @param array the array elements to scan.
+     * @param tableMap the table map of virtual tables.
+     * @param foreignKeys the list of foreign keys.
+     * @param path the path to this array
+     * @param parentPath the path to the parent of this array.
+     * @param level the current level of this array.
+     * encountered.
+     */
+    private static void processArrayInArray(final BsonArray array,
+            final Map<String, DocumentDbMetadataTable> tableMap,
+            final List<DocumentDbMetadataColumn> foreignKeys,
+            final String path,
+            final String parentPath,
+            final int level) {
+
+        for (BsonValue element : array) {
+            processArray(element.asArray(),
+                    tableMap, foreignKeys, path, parentPath, level);
+        }
+    }
+
+    /**
+     * Processes document elements in an array.
+     *
+     * @param array the array elements to scan.
+     * @param tableMap the table map of virtual tables.
+     * @param foreignKeys the list of foreign keys.
+     * @param path the path to this array
+     * @param parentPath the path to the parent of this array.
+     * encountered.
+     */
+    private static void processDocumentsInArray(final BsonArray array,
+            final Map<String, DocumentDbMetadataTable> tableMap,
+            final List<DocumentDbMetadataColumn> foreignKeys,
+            final String path,
+            final String parentPath) {
+
+        // This will make the document fields part of this array.
+        for (BsonValue element : array) {
+            processDocument(element.asDocument(),
+                    tableMap, foreignKeys, path, parentPath, false);
+        }
+    }
+
+    /**
+     * Gets the parent name (last node) in the path.
+     *
+     * @param path the path to read.
+     * @return the last node in the path.
+     */
+    private static String getParentName(final String path) {
+        return path.substring(path.lastIndexOf('.') + 1);
+    }
+
+    /**
+     * Combines two paths to form a new path.
+     *
+     * @param path the root/parent path.
+     * @param fieldName the field name to append to the path.
+     * @return a new path with the fieldName append to the root path separated by a period.
+     */
+    @VisibleForTesting
+    static String combinePath(final String path, final String fieldName) {
+        return DocumentDbConnectionProperties.isNullOrWhitespace(path)
+                ? fieldName
+                : path + PATH_SEPARATOR + fieldName;
+    }
+
+    /**
+     * Gets the promoted SQL data type from previous SQL data type and the current BSON data type.
+     *
+     * @param bsonType the current BSON data type.
+     * @param prevSqlType the previous SQL data type.
+     * @return returns the promoted SQL data type.
+     */
+    @VisibleForTesting
+    static Integer getPromotedSqlType(final BsonType bsonType, final int prevSqlType) {
+        final Entry<Integer, BsonType> key = new SimpleEntry<>(prevSqlType, bsonType);
+        return PROMOTION_MAP.getOrDefault(key, Types.VARCHAR);
+    }
+
+    /**
+     * Gets whether the field is the "_id" field.
+     *
+     * @param fieldName the name of the field.
+     * @return returns {@code true} if the field name if "_id", {@code false} otherwise.
+     */
+    private static boolean isIdField(final String fieldName) {
+        return ID_FIELD_NAME.equals(fieldName);
+    }
+
+    /**
+     * Converts the path to name swapping the period character for an underscore character.
+     *
+     * @param path the path to convert.
+     * @return a string with the period character swapped for an underscore character.
+     */
+    @VisibleForTesting
+    static String toName(final String path) {
+        return path.replaceAll("\\.", "_");
+    }
+
+    /**
+     * Handles a complex to scalar conflict by removing the previous table map and clearing
+     * existing column map.
+     *
+     * @param tableMap the table map.
+     * @param path the path to the table.
+     * @param columnMap the column map.
+     */
+    private static void handleComplexToScalarConflict(
+            final Map<String, DocumentDbMetadataTable> tableMap,
+            final String path,
+            final Map<String, DocumentDbMetadataColumn> columnMap) {
+        tableMap.remove(path);
+        columnMap.clear();
+    }
+
+    /**
+     * Detects and handles the case were a conflict occurs at a lower lever in the array.
+     * It removes the index column for the higher level array index.
+     * It ensures the SQL type is set to VARCHAR.
+     *
+     * @param columnMap the column map to modify.
+     * @param level the current array level.
+     * @param sqlType the previous SQL type.
+     * @return if a conflict is detected, returns VARCHAR, otherwise, the original SQL type.
+     */
+    private static int handleArrayLevelConflict(
+            final Map<String, DocumentDbMetadataColumn> columnMap,
+            final int level,
+            final int sqlType) {
+
+        int newSqlType = sqlType;
+
+        // Remove previously detect index columns at higher index level,
+        // if we now have scalars at a lower index level.
+        final Map<String, DocumentDbMetadataColumn> origColumns = new LinkedHashMap<>(columnMap);
+        for (Entry<String, DocumentDbMetadataColumn> entry : origColumns.entrySet()) {
+            final DocumentDbMetadataColumn column = entry.getValue();
+            if (column.getArrayIndexLevel() != null && column.getArrayIndexLevel() > level) {
+                columnMap.remove(entry.getKey());
+                // We're collapsing an array level, so revert to VARCHAR this and for the higher
+                // level array components.
+                newSqlType = Types.VARCHAR;
+            }
+        }
+
+        return newSqlType;
+    }
+
+    private static int getPrimaryKeyColumn(final boolean isPrimaryKey) {
+        // If primary key, then first column, zero indicates not part of primary key.
+        return isPrimaryKey ? ID_PRIMARY_KEY_COLUMN : KEY_COLUMN_NONE;
+    }
+
+    private static String getFieldNameIfIsPrimaryKey(final String path, final String fieldName,
+            final boolean isPrimaryKey) {
+        return isPrimaryKey
+                // For the primary key, qualify it with the parent name.
+                ? toName(combinePath(getParentName(path), fieldName))
+                : fieldName;
+    }
+
+    private static String getVirtualTablePathIfIsPrimaryKey(
+            final String fieldPath,
+            final int nextSqlType,
+            final boolean isPrimaryKey) {
+        return !isPrimaryKey && (nextSqlType == Types.ARRAY || nextSqlType == Types.JAVA_OBJECT)
+                ? fieldPath
+                : null;
+    }
+
+    private static int getSqlTypeIfIsPrimaryKey(
+            final BsonType bsonType,
+            final int prevSqlType,
+            final boolean isPrimaryKey) {
+        return isPrimaryKey && bsonType == BsonType.DOCUMENT
+                ? Types.VARCHAR
+                : getPromotedSqlType(bsonType, prevSqlType);
+    }
+
+    private static int getPrevSqlTypeOrDefault(final DocumentDbMetadataColumn prevMetadataColumn,
+            final int defaultValue) {
+        return prevMetadataColumn != null
+                ? prevMetadataColumn.getSqlType()
+                : defaultValue;
+    }
+
+    private static boolean isComplexType(final int sqlType) {
+        return sqlType == Types.JAVA_OBJECT || sqlType == Types.ARRAY;
+    }
+
+    private static void addToForeignKeysIfIsPrimary(
+            final List<DocumentDbMetadataColumn> foreignKeys,
+            final boolean isPrimaryKey,
+            final DocumentDbMetadataColumn metadataColumn) {
+        // Add the key to the foreign keys for child tables.
+        if (isPrimaryKey) {
+            foreignKeys.add(metadataColumn);
+        }
+    }
 }

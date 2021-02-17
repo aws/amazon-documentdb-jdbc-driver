@@ -49,4 +49,10 @@ public class DocumentDbMetadataColumn {
 
     /** SQL/JDBC type of the field. Refer to the types in {@link java.sql.Types} */
     @Setter private int sqlType;
+
+    /** Path of the virtual table, if present. Null, otherwise. */
+    private String virtualTablePath;
+
+    /** If this column is an array index, returns the zero-indexed level of the array. Null, otherwise. */
+    private Integer arrayIndexLevel;
 }
