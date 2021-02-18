@@ -187,7 +187,9 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
                 "&" + DocumentDbConnectionProperty.TLS_ENABLED.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName() + "=" + "4" +
-                "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true";
+                "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true" +
+                "&" + DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getName() + "=" + "natural" +
+                "&" + DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName() + "=" + "1";
         properties = DocumentDbDriver
                 .getPropertiesFromConnectionString(info, connectionString);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());

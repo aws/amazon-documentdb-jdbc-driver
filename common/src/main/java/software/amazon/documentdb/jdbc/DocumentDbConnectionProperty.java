@@ -44,7 +44,11 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
     LOGIN_TIMEOUT_SEC("loginTimeoutSec", "",
             "How long a connection can take to be opened before timing out (in seconds)."),
     RETRY_READS_ENABLED("retryReads", "true",
-            "If true the driver will retry supported read operations if they fail due to a network error. Defaults to true.");
+            "If true the driver will retry supported read operations if they fail due to a network error. Defaults to true."),
+    METADATA_SCAN_METHOD("scanMethod", "natural",
+            "Method of scanning for metadata."),
+    METADATA_SCAN_LIMIT("scanLimit", "1",
+            "Number of records to scan for metadata");
 
     // Unsupported MongoDB connection properties that will be ignored but should have warnings.
     private static final String[] UNSUPPORTED_MONGO_DB_PROPERTIES = {
@@ -155,5 +159,14 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
      */
     public static boolean isUnsupportedMongoDBProperty(final String name) {
         return Arrays.asList(UNSUPPORTED_MONGO_DB_PROPERTIES).contains(name);
+    }
+
+    protected static DocumentDbConnectionProperty getPropertyFromKey(final String key) {
+        for (DocumentDbConnectionProperty connectionProperty: DocumentDbConnectionProperty.values()) {
+            if (connectionProperty.getName().equals(key)) {
+                return connectionProperty;
+            }
+        }
+        return null;
     }
 }

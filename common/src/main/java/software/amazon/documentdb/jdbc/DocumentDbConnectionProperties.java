@@ -271,6 +271,43 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Gets the method of scanning for metadata.
+     *
+     * @return The method of scanning for metadata.
+     */
+    public DocumentDbMetadataScanMethod getMetadataScanMethod() {
+        return getPropertyAsScanMethod(DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getName());
+    }
+
+    /**
+     * Sets the method of scanning for metadata.
+     *
+     * @param method The name of the scan method.
+     */
+    public void setMetadataScanMethod(final String method) {
+        setProperty(DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getName(), method);
+    }
+
+    /**
+     * Gets the number of records to scan while determining schema.
+     *
+     * @return Integer representing the number of records to scan.
+     */
+    public int getMetadataScanLimit() {
+        return getPropertyAsInteger(DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName());
+    }
+
+    /**
+     * Sets the number of records to scan while determining schema.
+     *
+     * @param limit The name of the read preference.
+     */
+    public void setMetadataScanLimit(final String limit) {
+        setProperty(DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName(), limit);
+    }
+
+
+    /**
      * Builds the MongoClientSettings from properties
      * @return a MongoClientSettings object.
      */
@@ -441,6 +478,28 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Attempts to retrieve a property as a DocumentDbMetadataScanMethod.
+     *
+     * @param key The property to retrieve.
+     * @return The retrieved property as a ReadPreference or null if it did not exist or was not a
+     * valid ReadPreference.
+     */
+    private DocumentDbMetadataScanMethod getPropertyAsScanMethod(@NonNull final String key) {
+        DocumentDbMetadataScanMethod property = null;
+        try {
+            if (getProperty(key) != null) {
+                property = DocumentDbMetadataScanMethod.fromString(getProperty(key));
+            } else if (DocumentDbConnectionProperty.getPropertyFromKey(key) != null) {
+                property =  DocumentDbMetadataScanMethod.fromString(
+                        DocumentDbConnectionProperty.getPropertyFromKey(key).getDefaultValue());
+            }
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Property {{}} was ignored as it was not a valid read preference.", key, e);
+        }
+        return property;
+    }
+
+    /**
      * Attempts to retrieve a property as a Long.
      *
      * @param key The property to retrieve.
@@ -470,6 +529,9 @@ public class DocumentDbConnectionProperties extends Properties {
         try {
             if (getProperty(key) != null) {
                 property = Integer.parseInt(getProperty(key));
+            } else if (DocumentDbConnectionProperty.getPropertyFromKey(key) != null) {
+                property = Integer.parseInt(
+                        DocumentDbConnectionProperty.getPropertyFromKey(key).getDefaultValue());
             }
         } catch (NumberFormatException e) {
             LOGGER.warn("Property {{}} was ignored as it was not of type integer.",  key, e);

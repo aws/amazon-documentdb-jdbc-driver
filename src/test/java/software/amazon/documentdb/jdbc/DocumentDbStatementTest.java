@@ -69,7 +69,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertNotNull(resultSet);
         int count = 0;
         while (resultSet.next()) {
-            Assertions.assertTrue(Pattern.matches("^\\w+$", resultSet.getString("_id")));
+            Assertions.assertTrue(Pattern.matches("^\\w+$", resultSet.getString(COLLECTION_NAME + "__id")));
             Assertions.assertEquals(Double.MAX_VALUE, resultSet.getDouble("fieldDouble"));
             Assertions.assertEquals("新年快乐", resultSet.getString("fieldString"));
             Assertions.assertTrue(Pattern.matches("^\\w+$", resultSet.getString("fieldObjectId")));

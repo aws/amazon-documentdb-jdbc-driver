@@ -16,12 +16,11 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.mongodb.MongoClientSettings;
-import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.MongoIterable;
 import org.apache.calcite.model.JsonCustomSchema;
@@ -30,15 +29,22 @@ import org.apache.calcite.model.JsonRoot;
 import org.apache.calcite.model.JsonView;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.bson.BsonDocument;
-import org.bson.BsonType;
-import org.bson.BsonValue;
+import org.bson.BsonInt32;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbSchemaFactory;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
+
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 
 /**
@@ -49,6 +55,11 @@ public class DocumentDbMetadataScanner {
     private static final String DEFAULT_DATABASE_SCHEMA_NAME_PREFIX = DEFAULT_SCHEMA_NAME + "_";
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbMetadataScanner.class);
 
+    private static final String NATURAL = "$natural";
+    private static final BsonInt32 FORWARD = new BsonInt32(1);
+    private static final BsonInt32 REVERSE = new BsonInt32(-1);
+    private static final String RANDOM = "$sample";
+
     /**
      * Create a {@link JsonRoot} for a view model of the collections in the target database.
      * @param properties the connection properties.
@@ -56,8 +67,6 @@ public class DocumentDbMetadataScanner {
      */
     public static JsonRoot createViewModel(final DocumentDbConnectionProperties properties)
             throws SQLException {
-        // TODO: Generalize
-        final int limit = 1;
 
         final JsonRoot rootModel = new JsonRoot();
         rootModel.version = "1.0";
@@ -83,63 +92,82 @@ public class DocumentDbMetadataScanner {
             pingDatabase(database);
 
             final MongoIterable<String> collectionNames = database.listCollectionNames();
-
-            // Create maps for each collection
             for (String collectionName : collectionNames) {
                 final MongoCollection<BsonDocument> collection = database.getCollection(
                         collectionName, BsonDocument.class);
-                final FindIterable<BsonDocument> documents = collection.find().limit(limit);
-                final MongoCursor<BsonDocument> cursor = documents.cursor();
-                JsonView table = null;
-
-                // TODO: Generalize for various discovery themes.
-                // Iterate through the document(s)
-                while (cursor.hasNext()) {
-                    final BsonDocument document = cursor.next();
-                    table = createJsonView(document, collectionName, customSchema.name);
-                    break;
+                final Iterator<BsonDocument> cursor = getIterator(properties, collection);
+                final DocumentDbCollectionMetadata metadata = DocumentDbCollectionMetadata
+                        .create(collectionName, cursor);
+                if (metadata != null) {
+                    addJsonViewsToSchema(metadata, mapSchema, customSchema.name);
                 }
-                mapSchema.tables.add(table);
             }
         }
-
         rootModel.schemas.add(mapSchema);
         return rootModel;
     }
 
-    private static JsonView createJsonView(
-            final BsonDocument document,
-            final String collectionName,
-            final String schemaName) {
-
-        // TODO: Generalize for various discovery themes.
-        final JsonView tableView = new JsonView();
-        tableView.name = collectionName;
-        final String viewTemplate = "select %s from \"%s\".\"%s\"";
-        final StringBuilder columnBuilder = new StringBuilder();
-
-        // Iterate through the fields
-        for (Entry<String, BsonValue> entry : document.entrySet()) {
-            appendColumnMap(columnBuilder, entry.getKey(), entry.getValue().getBsonType());
+    @VisibleForTesting
+    protected static Iterator<BsonDocument> getIterator(
+            final DocumentDbConnectionProperties properties,
+            final MongoCollection<BsonDocument> collection) throws SQLException {
+        final int scanLimit = properties.getMetadataScanLimit();
+        final DocumentDbMetadataScanMethod method = properties.getMetadataScanMethod();
+        switch (method) {
+            case ALL:
+                return collection.find().cursor();
+            case NATURAL:
+                return collection.find().hint(new BsonDocument(NATURAL, FORWARD)).limit(scanLimit).cursor();
+            case NATURAL_REVERSE:
+                return collection.find().hint(new BsonDocument(NATURAL, REVERSE)).limit(scanLimit).cursor();
+            case RANDOM:
+                final List<BsonDocument> aggregations = new ArrayList<>();
+                aggregations.add(new BsonDocument(RANDOM, new BsonDocument("size", new BsonInt32(scanLimit))));
+                return collection.aggregate(aggregations).cursor();
         }
-
-        tableView.sql = String.format(viewTemplate,
-                columnBuilder.toString(), schemaName, collectionName);
-
-        return tableView;
+        throw SqlError.createSQLException(
+                LOGGER,
+                SqlState.CONNECTION_FAILURE,
+                SqlError.UNSUPPORTED_PROPERTY,
+                method.getName()
+        );
     }
 
-    private static void appendColumnMap(final StringBuilder columnBuilder, final String columnName,
-            final BsonType bsonType) {
+    @VisibleForTesting
+    protected static void addJsonViewsToSchema(final DocumentDbCollectionMetadata metadata,
+            final JsonMapSchema schema, final String customSchemaName) {
+        for (Map.Entry<String, DocumentDbMetadataTable> table: metadata.getTables().entrySet()) {
+            final JsonView tableView = new JsonView();
+            tableView.name = table.getKey();
+
+            final String viewTemplate = "select %s from \"%s\".\"%s\"";
+            final StringBuilder columnBuilder = new StringBuilder();
+
+            for (Entry<String, DocumentDbMetadataColumn> column :
+                    table.getValue().getColumns().entrySet()) {
+                appendColumnMap(
+                        columnBuilder,
+                        column.getKey(),
+                        column.getValue().getName(),
+                        column.getValue().getSqlType());
+            }
+            tableView.sql = String.format(
+                    viewTemplate, columnBuilder.toString(), customSchemaName, tableView.name);
+            schema.tables.add(tableView);
+        }
+    }
+
+    private static void appendColumnMap(final StringBuilder columnBuilder, final String columnPath, final String columnName,
+                                        final int sqlType) {
         final boolean addComma = columnBuilder.length() != 0;
         final String columnTemplate = "cast(_MAP['%s'] AS %s) AS \"%s\"";
         final String columnWithPrecisionTemplate = "cast(_MAP['%s'] AS %s(%s)) AS \"%s\"";
-
-        final SqlTypeName sqlTypeName = toSqlTypeName(bsonType);
         if (addComma) {
             columnBuilder.append(", ");
         }
-
+        final SqlTypeName sqlTypeName = sqlType == 0
+                ? SqlTypeName.NULL
+                : SqlTypeName.getNameForJdbcType(sqlType);
         switch (sqlTypeName) {
             case BIGINT:
             case BOOLEAN:
@@ -147,55 +175,17 @@ public class DocumentDbMetadataScanner {
             case INTEGER:
             case TIMESTAMP:
                 columnBuilder.append(String.format(columnTemplate,
-                        columnName, sqlTypeName.getName(), columnName));
+                        columnPath, sqlTypeName.getName(), columnName));
                 break;
             case VARBINARY:
                 columnBuilder.append(String.format(columnWithPrecisionTemplate,
-                        columnName, "VARBINARY", Integer.MAX_VALUE, columnName));
+                        columnPath, "VARBINARY", Integer.MAX_VALUE, columnName));
                 break;
             case VARCHAR:
-                switch (bsonType) {
-                    case MAX_KEY:
-                    case MIN_KEY:
-                        columnBuilder.append(String.format(columnWithPrecisionTemplate,
-                                columnName, sqlTypeName.getName(), 10, columnName));
-                        break;
-                    case STRING:
-                    case NULL:
-                        columnBuilder.append(String.format(columnWithPrecisionTemplate,
-                                columnName, sqlTypeName.getName(), 0x1000000, columnName));
-                        break;
-                    case OBJECT_ID:
-                        columnBuilder.append(String.format(columnWithPrecisionTemplate,
-                                columnName, sqlTypeName.getName(), 32, columnName));
-                        break;
-                }
-                break;
-            default:
-                throw new UnsupportedOperationException();
-        }
-    }
-
-    private static SqlTypeName toSqlTypeName(final BsonType bsonType) {
-        switch (bsonType) {
-            case BINARY:
-                return SqlTypeName.VARBINARY;
-            case BOOLEAN:
-                return SqlTypeName.BOOLEAN;
-            case DATE_TIME:
-                return SqlTypeName.TIMESTAMP;
-            case DOUBLE:
-                return SqlTypeName.DOUBLE;
-            case INT32:
-                return  SqlTypeName.INTEGER;
-            case INT64:
-                return SqlTypeName.BIGINT;
-            case MAX_KEY:
-            case MIN_KEY:
-            case OBJECT_ID:
             case NULL:
-            case STRING:
-                return SqlTypeName.VARCHAR;
+                columnBuilder.append(String.format(columnWithPrecisionTemplate,
+                        columnPath, "VARCHAR", 0x10000, columnName));
+                break;
             default:
                 throw new UnsupportedOperationException();
         }

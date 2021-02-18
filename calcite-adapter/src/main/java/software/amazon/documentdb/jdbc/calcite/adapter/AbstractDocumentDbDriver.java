@@ -35,6 +35,7 @@ import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataScanner;
+
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -122,6 +123,7 @@ public abstract class AbstractDocumentDbDriver extends Driver {
 
     private static void setViewModel(final DocumentDbConnectionProperties properties)
             throws JsonProcessingException, SQLException {
+
         final JsonRoot rootModel = DocumentDbMetadataScanner.createViewModel(
                 new DocumentDbConnectionProperties(properties));
         final String json = JSON_OBJECT_MAPPER.writeValueAsString(rootModel);
