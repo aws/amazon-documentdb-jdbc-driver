@@ -7,7 +7,7 @@ SQL-relational interface for developers and BI tool users.
 
 ## Connection String Syntax
 
-`jdbc:documentdb://<user>:<password>@<hostname>[:<port>]/<database-name>[?<option>=<value>[&<option>=<value>[...]]]`
+`jdbc:documentdb://[<user>[:<password>]@]<hostname>[:<port>]/<database-name>[?<option>=<value>[&<option>=<value>[...]]]`
 
 ### Scheme
 
@@ -15,10 +15,14 @@ SQL-relational interface for developers and BI tool users.
 
 ### Parameters
 
-- `<user>` Required: the username of the authorized user. _Note: the username must be properly
-  (%) encoded to avoid any confusion with URI special characters._
-- `<password>` Required: the password of the authorized user. _Note: the password must be properly
-  (%) encoded to avoid any confusion with URI special characters._
+- `<user>` Optional: the username of the authorized user. While the username is optional on the
+  connection string, it is still required either via the connection string, or the properties.
+  _Note: the username must be properly (%) encoded to avoid any confusion with URI special 
+  characters._
+- `<password>` Optional: the password of the authorized user. While the password is optional on the 
+  connection string, it is still required either via the connection string, or the properties.
+  _Note: the password must be properly (%) encoded to avoid any confusion with URI special 
+  characters._
 - `<hostname>` Required: the hostname or IP address of the DocumentDB server or cluster.
 - `<port>` Optional: the port number the DocumentDB server or cluster is listening on.
 - `<database>` Required: the name of the database the JDBC driver will connect to.
@@ -30,7 +34,12 @@ SQL-relational interface for developers and BI tool users.
 - `appName` (string) : Sets the logical name of the application.
 - `loginTimeoutSec` (int) : How long a connection can take to be opened before timing out (in seconds). 
   Alias for connectTimeoutMS but using seconds.
-- `readPreference` (enum/string) : The read preference for this connection.
+- `readPreference` (enum/string) : The read preference for this connection. Allowed values: 
+  - `primary` (default)
+  - `primaryPreferred`
+  - `secondary`
+  - `secondaryPreferred`
+  - `nearest`.
 - `replicaSet` (string) : Name of replica set to connect to. For now, passing a name other than 
   rs0 will log a warning.
 - `retryReads` (true|false) : If true, the driver will retry supported read operations if they 
@@ -46,7 +55,7 @@ SQL-relational interface for developers and BI tool users.
   - `random` The sample documents are returned in _random_ order.
   - `all` Sample all the documents in the collection.
 - `scanLimit` (int) The number of documents to sample. The value must be a positive integer.
-  The default value is `1`. If `scanMethod` is set to `all`, this option is ignored. 
+  The default value is `1000`. If `scanMethod` is set to `all`, this option is ignored. 
 
 ## Schema Discovery
 
@@ -69,7 +78,7 @@ The sampling behavior can be modified using connection string or datasource opti
   - `random` - The sample documents are returned in _random_ order.
   - `all` - Sample all the documents in the collection.
 - `scanLimit=<n>` - The number of documents to sample. The value must be a positive integer.
-  The default value is `1`.
+  The default value is `1000`. If `scanMethod` is set to `all`, this option is ignored.
 
 #### DocumentDB Data Types
 

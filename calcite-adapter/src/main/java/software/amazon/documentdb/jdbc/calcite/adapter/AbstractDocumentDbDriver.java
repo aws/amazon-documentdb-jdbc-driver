@@ -176,11 +176,16 @@ public abstract class AbstractDocumentDbDriver extends Driver {
     private static void setDatabase(final Properties properties, final URI mongoUri) throws UnsupportedEncodingException,
             SQLException {
         if (mongoUri.getPath() == null) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_DATABASE);
+            if (properties.getProperty(
+                    DocumentDbConnectionProperty.DATABASE.getName(), null) == null) {
+                throw SqlError.createSQLException(
+                        LOGGER,
+                        SqlState.CONNECTION_FAILURE,
+                        SqlError.MISSING_DATABASE);
+            }
+            return;
         }
+
         final String database = mongoUri.getPath().substring(1);
         addPropertyIfNotSet(properties, DocumentDbConnectionProperty.DATABASE.getName(), database);
 
@@ -205,32 +210,51 @@ public abstract class AbstractDocumentDbDriver extends Driver {
     private static void setUserPassword(final Properties properties, final URI mongoUri)
             throws UnsupportedEncodingException, SQLException {
         if (mongoUri.getUserInfo() == null) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_USER_PASSWORD);
+            if (properties.getProperty(
+                        DocumentDbConnectionProperty.USER.getName(), null) == null
+                || properties.getProperty(
+                    DocumentDbConnectionProperty.PASSWORD.getName(), null) == null) {
+                throw SqlError.createSQLException(
+                        LOGGER,
+                        SqlState.CONNECTION_FAILURE,
+                        SqlError.MISSING_USER_PASSWORD);
+            }
+            return;
         }
+
         final String userPassword = mongoUri.getUserInfo();
-        addPropertyIfNotSet(properties, DocumentDbConnectionProperty.USER.getName(),
-                userPassword.substring(0, userPassword.indexOf(":")));
-        addPropertyIfNotSet(properties, DocumentDbConnectionProperty.PASSWORD.getName(),
-                userPassword.substring(userPassword.indexOf(":") + 1));
+
+        // Password is optional
+        final int userPasswordSeparatorIndex = userPassword.indexOf(":");
+        if (userPasswordSeparatorIndex >= 0) {
+            addPropertyIfNotSet(properties, DocumentDbConnectionProperty.USER.getName(),
+                    userPassword.substring(0, userPasswordSeparatorIndex));
+            addPropertyIfNotSet(properties, DocumentDbConnectionProperty.PASSWORD.getName(),
+                    userPassword.substring(userPasswordSeparatorIndex + 1));
+        } else {
+            addPropertyIfNotSet(properties, DocumentDbConnectionProperty.USER.getName(),
+                    userPassword);
+        }
     }
 
     private static void setHostName(final Properties properties, final URI mongoUri) throws SQLException {
         String hostName = mongoUri.getHost();
         if (hostName == null) {
-            throw SqlError.createSQLException(
-                    LOGGER,
-                    SqlState.CONNECTION_FAILURE,
-                    SqlError.MISSING_HOSTNAME);
-        } else {
-            if (mongoUri.getPort() > 0) {
-                hostName += ":" + mongoUri.getPort();
+            if (properties.getProperty(
+                    DocumentDbConnectionProperty.HOSTNAME.getName(), null) == null) {
+                throw SqlError.createSQLException(
+                        LOGGER,
+                        SqlState.CONNECTION_FAILURE,
+                        SqlError.MISSING_HOSTNAME);
             }
-            addPropertyIfNotSet(properties, DocumentDbConnectionProperty.HOSTNAME.getName(),
-                    hostName);
+            return;
         }
+
+        if (mongoUri.getPort() > 0) {
+            hostName += ":" + mongoUri.getPort();
+        }
+        addPropertyIfNotSet(properties, DocumentDbConnectionProperty.HOSTNAME.getName(),
+                hostName);
     }
 
     private static void addPropertyIfValid(

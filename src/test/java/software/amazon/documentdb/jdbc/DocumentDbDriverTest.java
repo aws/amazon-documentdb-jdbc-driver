@@ -122,15 +122,67 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
+     * Test empty user/password/host/database on connection strings provided by properties.
+     */
+    @Test
+    public void testEmptyRequiredPropertiesOnConnectionString() throws SQLException {
+        Properties properties = new Properties();
+        properties.put(DocumentDbConnectionProperty.PASSWORD.getName(), "password");
+        Connection connection = DriverManager.getConnection(
+                String.format("jdbc:documentdb://user@localhost:%s/database?tls=false", getMongoPort()),
+                properties);
+        Assertions.assertNotNull(connection);
+
+        properties = new Properties();
+        properties.put(DocumentDbConnectionProperty.USER.getName(), "user");
+        properties.put(DocumentDbConnectionProperty.PASSWORD.getName(), "password");
+        connection = DriverManager.getConnection(
+                String.format("jdbc:documentdb://localhost:%s/database?tls=false", getMongoPort()),
+                properties);
+        Assertions.assertNotNull(connection);
+
+        properties = new Properties();
+        properties.put(DocumentDbConnectionProperty.DATABASE.getName(), "database");
+        DriverManager.getConnection(
+                String.format("jdbc:documentdb://user:password@localhost:%s/?tls=false", getMongoPort()),
+                properties);
+        Assertions.assertNotNull(connection);
+
+        properties = new Properties();
+        properties.put(DocumentDbConnectionProperty.USER.getName(), "user");
+        properties.put(DocumentDbConnectionProperty.PASSWORD.getName(), "password");
+        properties.put(
+                DocumentDbConnectionProperty.HOSTNAME.getName(),
+                String.format("localhost:%s", getMongoPort()));
+        DriverManager.getConnection(
+                "jdbc:documentdb:///database?tls=false",
+                properties);
+        Assertions.assertNotNull(connection);
+
+        properties = new Properties();
+        properties.put(DocumentDbConnectionProperty.USER.getName(), "user");
+        properties.put(DocumentDbConnectionProperty.PASSWORD.getName(), "password");
+        properties.put(
+                DocumentDbConnectionProperty.HOSTNAME.getName(),
+                String.format("localhost:%s", getMongoPort()));
+        properties.put(DocumentDbConnectionProperty.DATABASE.getName(), "database");
+        DriverManager.getConnection(
+                "jdbc:documentdb:///?tls=false",
+                properties);
+        Assertions.assertNotNull(connection);
+    }
+
+    /**
      * Test invalid connection strings that fail semantics check
      * @throws SQLException thrown when a driver or connection error is encountered.
      */
     @Test
     public void testInvalidMongoDbConnectionString() throws SQLException {
         final Map<String, String> tests = new HashMap<String, String>() {{
-            put("jdbc:documentdb://localhost:1/database", "User and password are required to connect. Syntax: 'jdbc:documentdb://<user>:<password>@<hostname>/<database>[?options...]'");
-            put("jdbc:documentdb://username:password@localhost:1:2/database", "Valid hostname is required to connect. Syntax: 'jdbc:documentdb://<user>:<password>@<hostname>/<database>[?options...]'");
-            put("jdbc:documentdb://username:password@localhost:1/", "Database is required to connect. Syntax: 'jdbc:documentdb://<user>:<password>@<hostname>/<database>[?options...]'");
+            put("jdbc:documentdb://localhost:1/database", "User and password are required to connect. Syntax: 'jdbc:documentdb://[<user>[:<password>]@]<hostname>/<database>[?options...]'");
+            put("jdbc:documentdb://username:password@localhost:1:2/database", "Valid hostname is required to connect. Syntax: 'jdbc:documentdb://[<user>[:<password>]@]<hostname>/<database>[?options...]'");
+            put("jdbc:documentdb://username:password@localhost:1/", "Database is required to connect. Syntax: 'jdbc:documentdb://[<user>[:<password>]@]<hostname>/<database>[?options...]'");
+            put("jdbc:documentdb://username@localhost:1/database", "User and password are required to connect. Syntax: 'jdbc:documentdb://[<user>[:<password>]@]<hostname>/<database>[?options...]'");
         }};
 
         for (Entry<String, String> test : tests.entrySet()) {

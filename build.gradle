@@ -4,6 +4,7 @@ plugins {
     id 'checkstyle'
     id 'jacoco'
     id 'com.github.hierynomus.license' version '0.15.0'
+    id 'com.github.johnrengelman.shadow' version '6.1.0'
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -32,6 +33,24 @@ jar {
     manifest {
         attributes 'Implementation-Version': archiveVersion
     }
+}
+
+shadowJar {
+    // Relocate (shadow) Calcite excluding the namespaces listed below.
+    relocate('org.apache.calcite', 'org.apache.calcite.shadow') {
+        exclude 'org.apache.calcite.jdbc'
+        exclude 'org.apache.calcite.model'
+    }
+    relocate 'com.google.guava', 'com.google.guava.shadow'
+    relocate 'org.mongodb', 'org.mongodb.shadow'
+    // Remove any unused dependencies (excluding Calcite)
+    minimize {
+        exclude(dependency('org.apache.calcite::'))
+    }
+}
+
+artifacts {
+    archives shadowJar
 }
 
 test {
@@ -195,15 +214,15 @@ dependencies {
     implementation project(":calcite-adapter")
     implementation project(":common")
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.1'
-    implementation group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-    implementation group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.29'
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.26.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
 
+    compileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
+    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
     compileOnly         'org.projectlombok:lombok:1.18.16'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
