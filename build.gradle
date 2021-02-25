@@ -36,6 +36,10 @@ jar {
 }
 
 shadowJar {
+    // NOTE: Patched versions of janino and commons-compiler are being added in resources
+    dependencies {
+        exclude(dependency('org.codehaus.janino::'))
+    }
     // Relocate (shadow) Calcite excluding the namespaces listed below.
     relocate('org.apache.calcite', 'org.apache.calcite.shadow') {
         exclude 'org.apache.calcite.jdbc'
