@@ -89,7 +89,8 @@ public class DocumentDbToEnumerableConverter
         final Expression fields =
                 list.append("fields",
                         constantArrayList(
-                                Pair.zip(DocumentDbRules.mongoFieldNames(rowType),
+                                Pair.zip(DocumentDbRules.mongoFieldNames(rowType,
+                                        mongoImplementor.getMetadataTable()),
                                         new AbstractList<Class>() {
                                             @Override public Class get(final int index) {
                                                 return physType.fieldClass(index);

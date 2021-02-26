@@ -76,9 +76,15 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
 
     @Override public void implement(final Implementor implementor) {
         implementor.visitChild(0, getInput());
+        // DocumentDB: modified - start
+        final DocumentDbRel.Implementor mongoImplementor =
+                new DocumentDbRel.Implementor(implementor.getRexBuilder());
+        mongoImplementor.visitChild(0, getInput());
         final Translator translator =
                 new Translator(implementor.getRexBuilder(),
-                        DocumentDbRules.mongoFieldNames(getRowType()));
+                        DocumentDbRules.mongoFieldNames(getRowType(),
+                                mongoImplementor.getMetadataTable()));
+        // DocumentDB: modified - end
         final String match = translator.translateMatch(condition);
         implementor.add(null, match);
     }

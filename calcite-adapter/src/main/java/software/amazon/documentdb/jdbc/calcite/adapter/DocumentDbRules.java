@@ -45,10 +45,14 @@ import org.apache.calcite.util.Bug;
 import org.apache.calcite.util.Util;
 import org.apache.calcite.util.trace.CalciteTrace;
 import org.slf4j.Logger;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+
 import java.util.AbstractList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
 /**
  * Rules and relational operators for
@@ -84,12 +88,22 @@ public final class DocumentDbRules {
         return null;
     }
 
-    static List<String> mongoFieldNames(final RelDataType rowType) {
+    // DocumentDB: modified - start
+    static List<String> mongoFieldNames(final RelDataType rowType,
+            final DocumentDbMetadataTable metadataTable) {
+        // DocumentDB: modified - end
         return SqlValidatorUtil.uniquify(
                 new AbstractList<String>() {
                     @Override public String get(final int index) {
+                        // DocumentDB: modified - start
                         final String name = rowType.getFieldList().get(index).getName();
-                        return name.startsWith("$") ? "_" + name.substring(2) : name;
+                        final String path = metadataTable.getColumns().get(name).getPath();
+
+                        if (isNullOrWhitespace(path)) {
+                            return null;
+                        }
+                        return path;
+                        // DocumentDB: modified - end
                     }
 
                     @Override public int size() {

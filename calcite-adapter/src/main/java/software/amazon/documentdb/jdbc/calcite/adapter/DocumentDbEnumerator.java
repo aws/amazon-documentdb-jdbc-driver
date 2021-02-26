@@ -22,11 +22,15 @@ import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.linq4j.tree.Primitive;
 import org.bson.Document;
 import org.bson.types.Binary;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 /** Enumerator that reads from a MongoDB collection. */
 class DocumentDbEnumerator implements Enumerator<Object> {
@@ -81,9 +85,13 @@ class DocumentDbEnumerator implements Enumerator<Object> {
     }
 
     /** Returns a function that projects a single field. */
-    static Function1<Document, Object> singletonGetter(final String fieldName,
-            final Class fieldClass) {
-        return a0 -> convert(a0.get(fieldName), fieldClass);
+    static Function1<Document, Object> singletonGetter(final String fieldPath,
+            final Class fieldClass,
+            final DocumentDbMetadataTable tableMetadata) {
+        // DocumentDB: modified - start
+        final DocumentDbMetadataColumn column = tableMetadata.getColumnsByPath().get(fieldPath);
+        return a0 -> getField(a0, column, fieldPath, fieldClass);
+        // DocumentDB: modified - end
     }
 
     /** Returns a function that projects fields.
@@ -91,27 +99,35 @@ class DocumentDbEnumerator implements Enumerator<Object> {
      * @param fields List of fields to project; or null to return map
      */
     static Function1<Document, Object[]> listGetter(
-            final List<Entry<String, Class>> fields) {
+            final List<Entry<String, Class>> fields,
+            final DocumentDbMetadataTable tableMetadata) {
         return a0 -> {
-            final Object[] objects = new Object[fields.size()];
-            for (int i = 0; i < fields.size(); i++) {
-                final Entry<String, Class> field = fields.get(i);
-                final String name = field.getKey();
-                objects[i] = convert(a0.get(name), field.getValue());
-            }
-            return objects;
+            // DocumentDB: modified - start
+            return fields
+                    .stream()
+                    .map(field -> {
+                        final String path = field.getKey();
+                        final DocumentDbMetadataColumn column = tableMetadata.getColumnsByPath().get(path);
+                        return getField(a0, column, path, field.getValue());
+                    })
+                    .toArray();
+            // DocumentDB: modified - end
         };
     }
 
     @SuppressWarnings("unchecked")
     static Function1<Document, Object> getter(
-            final List<Entry<String, Class>> fields) {
+            final List<Entry<String, Class>> fields,
+            final DocumentDbMetadataTable tableMetadata) {
         //noinspection unchecked
+        // DocumentDB: modified - start
         return fields == null
                 ? (Function1) mapGetter()
                 : fields.size() == 1
-                        ? singletonGetter(fields.get(0).getKey(), fields.get(0).getValue())
-                        : (Function1) listGetter(fields);
+                        ? singletonGetter(fields.get(0).getKey(), fields.get(0).getValue(),
+                                tableMetadata)
+                        : (Function1) listGetter(fields, tableMetadata);
+        // DocumentDB: modified - end
     }
 
     @SuppressWarnings("JdkObsolete")
@@ -144,7 +160,40 @@ class DocumentDbEnumerator implements Enumerator<Object> {
         if (sourceObject instanceof Binary) {
             return ((Binary) sourceObject).getData();
         }
+        if (sourceObject instanceof Document) {
+            return ((Document) sourceObject).toJson();
+        }
+        if (sourceObject instanceof List) {
+          return ((List<?>) sourceObject)
+              .stream()
+                  .map(o1 -> o1 instanceof Document ? ((Document) o1).toJson() : o1)
+                  .collect(Collectors.toList());
+        }
         // DocumentDB: modified - end
         return sourceObject;
+    }
+
+    private static Object getField(
+            final Document a0,
+            final DocumentDbMetadataColumn column,
+            final String path,
+            final Class<?> fieldClass)
+            throws UnsupportedOperationException {
+        if (column == null) {
+            throw new UnsupportedOperationException(
+                    String.format("Unable to find column metadata for path: %s", path));
+        }
+        final String[] segmentedPath = path.split("\\.");
+        int j = 0;
+        Object segmentValue = a0.get(segmentedPath[j]);
+        while (segmentValue instanceof Document) {
+            final Document document = (Document) segmentValue;
+            j++;
+            if (j >= segmentedPath.length) {
+                break;
+            }
+            segmentValue = document.get(segmentedPath[j]);
+        }
+        return convert(segmentValue, fieldClass);
     }
 }

@@ -84,10 +84,16 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
     @Override public void implement(final Implementor implementor) {
         implementor.visitChild(0, getInput());
 
+        // DocumentDB: modified - start
+        final DocumentDbRel.Implementor mongoImplementor =
+                new DocumentDbRel.Implementor(implementor.getRexBuilder());
+        mongoImplementor.visitChild(0, getInput());
         final DocumentDbRules.RexToMongoTranslator translator =
                 new DocumentDbRules.RexToMongoTranslator(
                         (JavaTypeFactory) getCluster().getTypeFactory(),
-                        DocumentDbRules.mongoFieldNames(getInput().getRowType()));
+                        DocumentDbRules.mongoFieldNames(getInput().getRowType(),
+                                mongoImplementor.getMetadataTable()));
+        // DocumentDB: modified - end
         final List<String> items = new ArrayList<>();
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String name = pair.right;

@@ -17,20 +17,11 @@
 package software.amazon.documentdb.jdbc.metadata;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.mongodb.MongoClientSettings;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.MongoIterable;
 import org.apache.calcite.model.JsonCustomSchema;
-import org.apache.calcite.model.JsonMapSchema;
 import org.apache.calcite.model.JsonRoot;
-import org.apache.calcite.model.JsonView;
-import org.apache.calcite.sql.type.SqlTypeName;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
-import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -44,15 +35,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Map.Entry;
 
 /**
  * Provides a way to scan metadata in DocumentDB collections
  */
 public class DocumentDbMetadataScanner {
-    private static final String DEFAULT_SCHEMA_NAME = "mongo";
-    private static final String DEFAULT_DATABASE_SCHEMA_NAME_PREFIX = DEFAULT_SCHEMA_NAME + "_";
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbMetadataScanner.class);
 
     private static final String NATURAL = "$natural";
@@ -65,14 +53,13 @@ public class DocumentDbMetadataScanner {
      * @param properties the connection properties.
      * @return a {@link JsonRoot} with the view model set.
      */
-    public static JsonRoot createViewModel(final DocumentDbConnectionProperties properties)
-            throws SQLException {
+    public static JsonRoot createViewModel(final DocumentDbConnectionProperties properties) {
 
         final JsonRoot rootModel = new JsonRoot();
         rootModel.version = "1.0";
-        rootModel.defaultSchema = DEFAULT_SCHEMA_NAME;
+        rootModel.defaultSchema = properties.getDatabase();
         final JsonCustomSchema customSchema = new JsonCustomSchema();
-        customSchema.name = DEFAULT_DATABASE_SCHEMA_NAME_PREFIX + properties.getDatabase();
+        customSchema.name = properties.getDatabase();
         customSchema.factory = DocumentDbSchemaFactory.class.getName();
         customSchema.operand = new HashMap<>();
 
@@ -83,32 +70,19 @@ public class DocumentDbMetadataScanner {
         }
 
         rootModel.schemas.add(customSchema);
-        final JsonMapSchema mapSchema = new JsonMapSchema();
-        mapSchema.name = rootModel.defaultSchema;
-        final MongoClientSettings settings =  properties.buildMongoClientSettings(null);
-
-        try (MongoClient client = MongoClients.create(settings)) {
-            final MongoDatabase database = client.getDatabase(properties.getDatabase());
-            pingDatabase(database);
-
-            final MongoIterable<String> collectionNames = database.listCollectionNames();
-            for (String collectionName : collectionNames) {
-                final MongoCollection<BsonDocument> collection = database.getCollection(
-                        collectionName, BsonDocument.class);
-                final Iterator<BsonDocument> cursor = getIterator(properties, collection);
-                final DocumentDbCollectionMetadata metadata = DocumentDbCollectionMetadata
-                        .create(collectionName, cursor);
-                if (metadata != null) {
-                    addJsonViewsToSchema(metadata, mapSchema, customSchema.name);
-                }
-            }
-        }
-        rootModel.schemas.add(mapSchema);
         return rootModel;
     }
 
+    /**
+     * Gets an iterator for the requested scan type.
+     *
+     * @param properties the connection properties including scan type and limit.
+     * @param collection the {@link MongoCollection} to scan.
+     * @return an {@link Iterator} for the documents.
+     * @throws SQLException if unsupported scan type provided.
+     */
     @VisibleForTesting
-    protected static Iterator<BsonDocument> getIterator(
+    public static Iterator<BsonDocument> getIterator(
             final DocumentDbConnectionProperties properties,
             final MongoCollection<BsonDocument> collection) throws SQLException {
         final int scanLimit = properties.getMetadataScanLimit();
@@ -131,76 +105,5 @@ public class DocumentDbMetadataScanner {
                 SqlError.UNSUPPORTED_PROPERTY,
                 method.getName()
         );
-    }
-
-    @VisibleForTesting
-    protected static void addJsonViewsToSchema(final DocumentDbCollectionMetadata metadata,
-            final JsonMapSchema schema, final String customSchemaName) {
-        for (Map.Entry<String, DocumentDbMetadataTable> table: metadata.getTables().entrySet()) {
-            final JsonView tableView = new JsonView();
-            tableView.name = table.getKey();
-
-            final String viewTemplate = "select %s from \"%s\".\"%s\"";
-            final StringBuilder columnBuilder = new StringBuilder();
-
-            for (Entry<String, DocumentDbMetadataColumn> column :
-                    table.getValue().getColumns().entrySet()) {
-                appendColumnMap(
-                        columnBuilder,
-                        column.getKey(),
-                        column.getValue().getName(),
-                        column.getValue().getSqlType());
-            }
-            tableView.sql = String.format(
-                    viewTemplate, columnBuilder.toString(), customSchemaName, tableView.name);
-            schema.tables.add(tableView);
-        }
-    }
-
-    private static void appendColumnMap(final StringBuilder columnBuilder, final String columnPath, final String columnName,
-                                        final int sqlType) {
-        final boolean addComma = columnBuilder.length() != 0;
-        final String columnTemplate = "cast(_MAP['%s'] AS %s) AS \"%s\"";
-        final String columnWithPrecisionTemplate = "cast(_MAP['%s'] AS %s(%s)) AS \"%s\"";
-        if (addComma) {
-            columnBuilder.append(", ");
-        }
-        final SqlTypeName sqlTypeName = sqlType == 0
-                ? SqlTypeName.NULL
-                : SqlTypeName.getNameForJdbcType(sqlType);
-        switch (sqlTypeName) {
-            case BIGINT:
-            case BOOLEAN:
-            case DOUBLE:
-            case INTEGER:
-            case TIMESTAMP:
-                columnBuilder.append(String.format(columnTemplate,
-                        columnPath, sqlTypeName.getName(), columnName));
-                break;
-            case VARBINARY:
-                columnBuilder.append(String.format(columnWithPrecisionTemplate,
-                        columnPath, "VARBINARY", Integer.MAX_VALUE, columnName));
-                break;
-            case VARCHAR:
-            case NULL:
-                columnBuilder.append(String.format(columnWithPrecisionTemplate,
-                        columnPath, "VARCHAR", 0x10000, columnName));
-                break;
-            default:
-                throw new UnsupportedOperationException();
-        }
-    }
-
-    /**
-     * Attempts to ping the database.
-     *
-     * @throws SQLException if connecting to the database fails for any reason.
-     */
-    private static void pingDatabase(final MongoDatabase mongoDatabase) throws SQLException {
-        try {
-            mongoDatabase.runCommand(new Document("ping", 1));
-        } catch (Exception e) {
-            throw new SQLException(e.getMessage(), e);
-        }
     }
 }

@@ -35,7 +35,7 @@ public class DocumentDbSchemaFactory implements SchemaFactory {
         final DocumentDbConnectionProperties properties = getProperties(operand);
         final MongoDatabase database = getDatabase(properties);
 
-        return new DocumentDbSchema(database);
+        return new DocumentDbSchema(database, properties);
     }
 
     private static MongoDatabase getDatabase(final DocumentDbConnectionProperties properties) {

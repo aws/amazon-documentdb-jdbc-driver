@@ -115,9 +115,15 @@ public class DocumentDbAggregate
     @Override public void implement(final Implementor implementor) {
         implementor.visitChild(0, getInput());
         final List<String> list = new ArrayList<>();
+        final DocumentDbRel.Implementor mongoImplementor =
+                new DocumentDbRel.Implementor(implementor.getRexBuilder());
+        mongoImplementor.visitChild(0, getInput());
         final List<String> inNames =
-                DocumentDbRules.mongoFieldNames(getInput().getRowType());
-        final List<String> outNames = DocumentDbRules.mongoFieldNames(getRowType());
+                DocumentDbRules.mongoFieldNames(getInput().getRowType(),
+                        mongoImplementor.getMetadataTable());
+        final List<String> outNames =
+                DocumentDbRules.mongoFieldNames(getRowType(),
+                        mongoImplementor.getMetadataTable());
         int i = 0;
         if (groupSet.cardinality() == 1) {
             final String inName = inNames.get(groupSet.nth(0));

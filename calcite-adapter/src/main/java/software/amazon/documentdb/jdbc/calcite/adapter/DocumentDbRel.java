@@ -21,6 +21,8 @@ import org.apache.calcite.plan.RelOptTable;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.util.Pair;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +48,7 @@ public interface DocumentDbRel extends RelNode {
         private final RexBuilder rexBuilder;
         private DocumentDbTable mongoTable;
         private RelOptTable table;
+        private DocumentDbMetadataTable metadataTable;
 
         public List<Pair<String, String>> getList() {
             return list;
@@ -66,6 +69,16 @@ public interface DocumentDbRel extends RelNode {
         public void setMongoTable(final DocumentDbTable mongoTable) {
             this.mongoTable = mongoTable;
         }
+
+        // DocumentDB: modified - start
+        public DocumentDbMetadataTable getMetadataTable() {
+            return metadataTable;
+        }
+
+        public void setMetadataTable(final DocumentDbMetadataTable metadataTable) {
+            this.metadataTable = metadataTable;
+        }
+        // DocumentDB: modified - end
 
         public Implementor(final RexBuilder rexBuilder) {
             this.rexBuilder = rexBuilder;

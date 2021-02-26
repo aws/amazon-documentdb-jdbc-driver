@@ -16,12 +16,9 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
-import com.google.common.collect.ImmutableMap;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import org.apache.calcite.model.JsonMapSchema;
-import org.apache.calcite.model.JsonView;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
@@ -34,13 +31,10 @@ import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import java.io.IOException;
 import java.sql.SQLException;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
 public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
@@ -183,7 +177,6 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
     @Test
     public void testGetIteratorReverse() throws SQLException {
         addSimpleDataToDatabase(5);
-        final HashSet<BsonDocument> documentSet = new HashSet<>(documents);
         properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.NATURAL.getName());
         properties.setMetadataScanLimit("5");
         final MongoCollection<BsonDocument> collection = database.getCollection(COLLECTION,
@@ -206,61 +199,6 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
         Assertions.assertThrows(NoSuchElementException.class,
                 iterator::next);
     }
-
-
-    /** Tests that collection metadata is correctly added to schema. */
-    @Test
-    public void testAddJsonViewsToSchema() {
-      // Create simple metadata for a collection with 1 table with 2 columns
-      final Map<String, DocumentDbMetadataColumn> columnMap = new HashMap<>();
-      final DocumentDbMetadataColumn idColumn =
-              DocumentDbMetadataColumn.builder()
-                      .path("collection._id")
-                      .name("collection__id")
-                      .isGenerated(false)
-                      .sqlType(Types.VARCHAR)
-                      .primaryKey(1)
-                      .foreignKey(0)
-                      .build();
-      final DocumentDbMetadataColumn dataColumn =
-              DocumentDbMetadataColumn.builder()
-                      .path("collection.value")
-                      .name("value")
-                      .isGenerated(false)
-                      .sqlType(Types.BIGINT)
-                      .primaryKey(1)
-                      .foreignKey(0)
-                      .build();
-      columnMap.put("collection._id", idColumn);
-      columnMap.put("collection.value", dataColumn);
-      final DocumentDbMetadataTable table =
-              DocumentDbMetadataTable.builder()
-                      .name("collection")
-                      .path("collection")
-                      .columns(ImmutableMap.copyOf(columnMap))
-                      .build();
-      final Map<String, DocumentDbMetadataTable> tableMap = new HashMap<>();
-      tableMap.put("collection", table);
-      final DocumentDbCollectionMetadata metadata =
-              DocumentDbCollectionMetadata.builder()
-                      .path("collection")
-                      .tables(ImmutableMap.copyOf(tableMap))
-                      .build();
-
-      // Create an empty json map view
-      final JsonMapSchema schema = new JsonMapSchema();
-      schema.name = "database";
-      DocumentDbMetadataScanner.addJsonViewsToSchema(metadata, schema, "mongo_database");
-
-      // Assert that it is formatted as expected.
-      final JsonView view = (JsonView) schema.tables.get(0);
-      final String expectedSql =
-              "select cast(_MAP['collection._id'] AS VARCHAR(65536)) AS \"collection__id\","
-                      + " cast(_MAP['collection.value'] AS BIGINT) AS \"value\""
-                      + " from \"mongo_database\".\"collection\"";
-      Assertions.assertEquals(1, schema.tables.size());
-      Assertions.assertEquals(expectedSql, view.sql);
-  }
 
     /**
      * Prepares data for a given database and collection.

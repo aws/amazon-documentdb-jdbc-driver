@@ -28,6 +28,8 @@ import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+
 import java.util.List;
 
 /**
@@ -39,6 +41,7 @@ import java.util.List;
 public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
     private final DocumentDbTable mongoTable;
     private final RelDataType projectRowType;
+    private final DocumentDbMetadataTable metadataTable;
 
     /**
      * Creates a DocumentDbTableScan.
@@ -50,10 +53,12 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
      * @param projectRowType Fields and types to project; null to project raw row
      */
     protected DocumentDbTableScan(final RelOptCluster cluster, final RelTraitSet traitSet,
-            final RelOptTable table, final DocumentDbTable mongoTable, final RelDataType projectRowType) {
+            final RelOptTable table, final DocumentDbTable mongoTable, final RelDataType projectRowType,
+            final DocumentDbMetadataTable metadataTable) {
         super(cluster, traitSet, ImmutableList.of(), table);
         this.mongoTable = mongoTable;
         this.projectRowType = projectRowType;
+        this.metadataTable = metadataTable;
 
         assert mongoTable != null;
         assert getConvention() == DocumentDbRel.CONVENTION;
@@ -86,5 +91,6 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
     @Override public void implement(final Implementor implementor) {
         implementor.setMongoTable(mongoTable);
         implementor.setTable(table);
+        implementor.setMetadataTable(metadataTable);
     }
 }

@@ -28,6 +28,9 @@ public class DocumentDbMetadataColumn {
     /** Original path to the field in the collection. */
     private final String path;
 
+    /** Path to the array field an array index column is indexing. */
+    private final String arrayPath;
+
     /**
      * {@code true} if the column was generated rather than taken directly from the collection;
      * {@code false} otherwise.
@@ -50,9 +53,12 @@ public class DocumentDbMetadataColumn {
     /** SQL/JDBC type of the field. Refer to the types in {@link java.sql.Types} */
     @Setter private int sqlType;
 
-    /** Path of the virtual table, if present. Null, otherwise. */
-    private String virtualTablePath;
+    /** Name of the virtual table, if present. Null, otherwise. */
+    private final String virtualTableName;
 
     /** If this column is an array index, returns the zero-indexed level of the array. Null, otherwise. */
-    private Integer arrayIndexLevel;
+    private final Integer arrayIndexLevel;
+
+    /** The (zero-indexed) index of the column in the table. */
+    private final Integer index;
 }
