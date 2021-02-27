@@ -45,6 +45,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDateTime;
+import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
@@ -54,6 +55,7 @@ import org.bson.BsonMinKey;
 import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
+import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -282,7 +284,8 @@ public class DocumentDbFlapDoodleTest {
                         .append("fieldMaxKey", new BsonMaxKey())
                         .append("fieldMinKey", new BsonMinKey())
                         .append("fieldNull", new BsonNull())
-                        .append("fieldBinary", new BsonBinary(new byte[] { 0, 1, 2 }));
+                        .append("fieldBinary", new BsonBinary(new byte[] { 0, 1, 2 }))
+                        .append("fieldDecimal128", new BsonDecimal128(Decimal128.POSITIVE_INFINITY));
 
                 final InsertOneResult result = collection.insertOne(document);
                 Assertions.assertEquals(count + 1, collection.countDocuments());

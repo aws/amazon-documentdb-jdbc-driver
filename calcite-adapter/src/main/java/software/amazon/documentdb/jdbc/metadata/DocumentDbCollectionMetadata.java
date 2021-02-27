@@ -72,6 +72,7 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.NULL, BsonType.BOOLEAN), Types.BOOLEAN)
                     .put(new SimpleEntry<>(Types.NULL, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.NULL, BsonType.DATE_TIME), Types.TIMESTAMP)
+                    .put(new SimpleEntry<>(Types.NULL, BsonType.DECIMAL128), Types.DECIMAL)
                     .put(new SimpleEntry<>(Types.NULL, BsonType.DOUBLE), Types.DOUBLE)
                     .put(new SimpleEntry<>(Types.NULL, BsonType.INT32), Types.INTEGER)
                     .put(new SimpleEntry<>(Types.NULL, BsonType.INT64), Types.BIGINT)
@@ -85,6 +86,7 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.ARRAY, BsonType.BOOLEAN), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.ARRAY, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.ARRAY, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.DECIMAL128), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.ARRAY, BsonType.DOUBLE), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.ARRAY, BsonType.INT32), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.ARRAY, BsonType.INT64), Types.VARCHAR)
@@ -98,6 +100,7 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.BOOLEAN), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DECIMAL128), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DOUBLE), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.INT32), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.INT64), Types.VARCHAR)
@@ -111,6 +114,7 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.BOOLEAN), Types.BOOLEAN)
                     .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DECIMAL128), Types.DECIMAL)
                     .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DOUBLE), Types.DOUBLE)
                     .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.INT32), Types.INTEGER)
                     .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.INT64), Types.BIGINT)
@@ -124,7 +128,8 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.BOOLEAN), Types.BIGINT)
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DOUBLE), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DECIMAL128), Types.DECIMAL)
+                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DOUBLE), Types.DECIMAL)
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.INT32), Types.BIGINT)
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.INT64), Types.BIGINT)
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.MAX_KEY), Types.VARCHAR)
@@ -134,12 +139,27 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.STRING), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.ARRAY), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.BIGINT, BsonType.DOCUMENT), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.BOOLEAN), Types.DECIMAL)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.BINARY), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.DECIMAL128), Types.DECIMAL)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.DOUBLE), Types.DECIMAL)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.INT32), Types.DECIMAL)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.INT64), Types.DECIMAL)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.MAX_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.MIN_KEY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.NULL), Types.DECIMAL)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.OBJECT_ID), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.STRING), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.ARRAY), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.DOCUMENT), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.DOUBLE, BsonType.BOOLEAN), Types.DOUBLE)
                     .put(new SimpleEntry<>(Types.DOUBLE, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DECIMAL128), Types.DECIMAL)
                     .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DOUBLE), Types.DOUBLE)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.INT32), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.INT64), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.INT32), Types.DOUBLE)
+                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.INT64), Types.DECIMAL)
                     .put(new SimpleEntry<>(Types.DOUBLE, BsonType.MAX_KEY), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.DOUBLE, BsonType.MIN_KEY), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.DOUBLE, BsonType.NULL), Types.DOUBLE)
@@ -150,7 +170,8 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.INTEGER, BsonType.BOOLEAN), Types.INTEGER)
                     .put(new SimpleEntry<>(Types.INTEGER, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.INTEGER, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DOUBLE), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DECIMAL128), Types.DECIMAL)
+                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DOUBLE), Types.DOUBLE)
                     .put(new SimpleEntry<>(Types.INTEGER, BsonType.INT32), Types.INTEGER)
                     .put(new SimpleEntry<>(Types.INTEGER, BsonType.INT64), Types.BIGINT)
                     .put(new SimpleEntry<>(Types.INTEGER, BsonType.MAX_KEY), Types.VARCHAR)
@@ -163,6 +184,7 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.BOOLEAN), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DATE_TIME), Types.TIMESTAMP)
+                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DECIMAL128), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DOUBLE), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.INT32), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.INT64), Types.VARCHAR)
@@ -176,6 +198,7 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.VARBINARY, BsonType.BOOLEAN), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.VARBINARY, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DATE_TIME), Types.VARBINARY)
+                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DECIMAL128), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DOUBLE), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.VARBINARY, BsonType.INT32), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.VARBINARY, BsonType.INT64), Types.VARBINARY)
@@ -189,6 +212,7 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.VARCHAR, BsonType.BOOLEAN), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.VARCHAR, BsonType.BINARY), Types.VARBINARY)
                     .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DATE_TIME), Types.VARCHAR)
+                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DECIMAL128), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DOUBLE), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.VARCHAR, BsonType.INT32), Types.VARCHAR)
                     .put(new SimpleEntry<>(Types.VARCHAR, BsonType.INT64), Types.VARCHAR)
@@ -309,7 +333,7 @@ public class DocumentDbCollectionMetadata {
 
             // ASSUMPTION: relying on the behaviour that the "_id" field will ALWAYS be first
             // in the root document.
-            final int prevSqlType = getPrevSqlTypeOrDefault(prevMetadataColumn, Types.NULL);
+            final int prevSqlType = getPrevSqlTypeOrDefault(prevMetadataColumn);
             final int nextSqlType = getSqlTypeIfIsPrimaryKey(bsonType, prevSqlType, isPrimaryKey);
 
             if (nextSqlType == Types.JAVA_OBJECT && bsonType != BsonType.NULL) {
@@ -344,6 +368,18 @@ public class DocumentDbCollectionMetadata {
                     .build();
             columnMap.put(metadataColumn.getName(), metadataColumn);
             addToForeignKeysIfIsPrimary(foreignKeys, isPrimaryKey, metadataColumn);
+        }
+
+        // Ensure virtual table primary key column data types are consistent.
+        if (isRootDocument) {
+            final String primaryKeyColumnName = toName(combinePath(path, ID_FIELD_NAME));
+            final DocumentDbMetadataColumn primaryKeyColumn = columnMap.get(primaryKeyColumnName);
+            for (DocumentDbMetadataTable table : tableMap.values()) {
+                final DocumentDbMetadataColumn column = table.getColumns().get(primaryKeyColumnName);
+                if (column != null) {
+                    column.setSqlType(primaryKeyColumn.getSqlType());
+                }
+            }
         }
 
         // Add virtual table.
@@ -730,11 +766,10 @@ public class DocumentDbCollectionMetadata {
                 : getPromotedSqlType(bsonType, prevSqlType);
     }
 
-    private static int getPrevSqlTypeOrDefault(final DocumentDbMetadataColumn prevMetadataColumn,
-            final int defaultValue) {
+    private static int getPrevSqlTypeOrDefault(final DocumentDbMetadataColumn prevMetadataColumn) {
         return prevMetadataColumn != null
                 ? prevMetadataColumn.getSqlType()
-                : defaultValue;
+                : Types.NULL;
     }
 
     private static boolean isComplexType(final int sqlType) {

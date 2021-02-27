@@ -85,7 +85,7 @@ The sampling behavior can be modified using connection string or datasource opti
 The DocumentDB server supports a number of MongoDB data types. Listed below are the supported data
 types, and their associated JDBC data types.
 
-| MongoDB Data Type | Supported (in DocumentDB) | JDBC Data Type |
+| MongoDB Data Type | Supported in DocumentDB | JDBC Data Type |
 | ----------- | ----------- | ----------- |
 | Binary Data| Yes | VARBINARY |
 | Boolean | Yes | BOOLEAN |
@@ -101,7 +101,7 @@ types, and their associated JDBC data types.
 | MaxKey | Yes | VARCHAR |
 | Object | Yes | _virtual table_ |
 | Array | Yes | _virtual table_ |
-| Decimal128 | No | VARCHAR |
+| Decimal128 | No | DECIMAL |
 | Regular Expression | No | VARCHAR |
 | JavaScript | No | VARCHAR |
 | JavaScript (with scope) | No | VARCHAR |
@@ -114,12 +114,13 @@ types, and their associated JDBC data types.
 When scanning a sample of documents from a collection, the JDBC driver will create one or more 
 schema to represent the samples in the collection. In general, a scalar field in the document 
 maps to a column in the table schema. For example, in a collection named `team`, and a single 
-document `{ "name" : "Alastair", "age" : 25 }`, this would map to schema:
+document `{ "_id" : "112233", "name" : "Alastair", "age" : 25 }`, this would map to schema:
 
-| Table Name | Column Name | Data Type |
-| ---| --- | --- |
-| team | name | VARCHAR |
-| team | age | INTEGER |
+| Table Name | Column Name | Data Type | Key |
+| ---| --- | --- | --- |
+| team | _**team__id**_ | VARCHAR | PK |
+| team | name | VARCHAR | |
+| team | age | INTEGER | |
 
 #### Data Type Conflict Promotion
 
@@ -264,11 +265,11 @@ maps to schema for the `customer1` table, ...
 | customer1 | _**customer1__id**_ | VARCHAR | PK |
 | customer1 | name | VARCHAR | |
 
-... and the `customer_subscriptions` virtual table
+... and the `customer1_subscriptions` virtual table
 
 | Table Name | Column Name | Data Type | Key |
 | --- | --- | --- | --- |
-| customer1_subscriptions | _**customer__id**_ | VARCHAR | PK/FK |
+| customer1_subscriptions | _**customer1__id**_ | VARCHAR | PK/FK |
 | customer1_subscriptions | subscriptions_index_lvl0 | BIGINT | PK |
 | customer1_subscriptions | value | VARCHAR | |
 

@@ -270,6 +270,12 @@ public class DocumentDbTable extends AbstractQueryableTable
                     ImmutableMap.<Integer, RelDataType>builder()
                             .put(Types.BIGINT, typeFactory.createSqlType(SqlTypeName.BIGINT))
                             .put(Types.BOOLEAN, typeFactory.createSqlType(SqlTypeName.BOOLEAN))
+                            .put(
+                                    Types.DECIMAL,
+                                    typeFactory.createSqlType(
+                                            SqlTypeName.DECIMAL,
+                                            typeFactory.getTypeSystem().getMaxPrecision(SqlTypeName.DECIMAL),
+                                            typeFactory.getTypeSystem().getMaxScale(SqlTypeName.DECIMAL)))
                             .put(Types.DOUBLE, typeFactory.createSqlType(SqlTypeName.DOUBLE))
                             .put(Types.INTEGER, typeFactory.createSqlType(SqlTypeName.INTEGER))
                             .put(Types.NULL, typeFactory.createSqlType(SqlTypeName.VARCHAR))

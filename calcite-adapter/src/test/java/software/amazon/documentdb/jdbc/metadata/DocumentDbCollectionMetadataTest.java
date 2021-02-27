@@ -21,6 +21,7 @@ import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDateTime;
+import org.bson.BsonDecimal128;
 import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt32;
@@ -32,6 +33,7 @@ import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.BsonType;
 import org.bson.BsonValue;
+import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import java.sql.Types;
@@ -66,6 +68,7 @@ class DocumentDbCollectionMetadataTest {
             final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
             final BsonDocument document = new BsonDocument()
                     .append("_id", new BsonObjectId())
+                    .append("fieldDecimal128", new BsonDecimal128(Decimal128.POSITIVE_INFINITY))
                     .append("fieldDouble", new BsonDouble(Double.MAX_VALUE))
                     .append("fieldString", new BsonString("新年快乐"))
                     .append("fieldObjectId", new BsonObjectId())
@@ -90,14 +93,15 @@ class DocumentDbCollectionMetadataTest {
                 metadata.getTables().get(COLLECTION_NAME).getName());
         final Map<String, DocumentDbMetadataTable> metadataTableMap = metadata.getTables();
         final DocumentDbMetadataTable metadataTable = metadataTableMap.get(COLLECTION_NAME);
-        Assertions.assertEquals(12, metadataTable.getColumns().size());
+        Assertions.assertEquals(13, metadataTable.getColumns().size());
         final Set<Integer> integerSet = metadataTable.getColumns().values().stream().collect(
                 Collectors.groupingBy(DocumentDbMetadataColumn::getSqlType)).keySet();
-        Assertions.assertEquals(8, integerSet.size());
+        Assertions.assertEquals(9, integerSet.size());
         final Set<Integer> expectedTypes = ImmutableSet.of(
                 Types.BIGINT,
                 Types.VARBINARY,
                 Types.BOOLEAN,
+                Types.DECIMAL,
                 Types.DOUBLE,
                 Types.INTEGER,
                 Types.NULL,
@@ -122,6 +126,7 @@ class DocumentDbCollectionMetadataTest {
                 BsonType.BINARY,
                 BsonType.BOOLEAN,
                 BsonType.DATE_TIME,
+                BsonType.DECIMAL128,
                 BsonType.DOUBLE,
                 BsonType.INT32,
                 BsonType.INT64,
@@ -137,6 +142,7 @@ class DocumentDbCollectionMetadataTest {
                 new BsonBinary(new byte[]{0, 1, 2}),
                 new BsonBoolean(false),
                 new BsonDateTime(dateTime),
+                new BsonDecimal128(Decimal128.POSITIVE_INFINITY),
                 new BsonDouble(Double.MAX_VALUE),
                 new BsonInt32(Integer.MAX_VALUE),
                 new BsonInt64(Long.MAX_VALUE),
@@ -201,7 +207,6 @@ class DocumentDbCollectionMetadataTest {
     void testUnsupportedCreateScalarPromotedSqlTypes() {
         final BsonType[] unsupportedBsonTypeSet = new BsonType[] {
                 BsonType.DB_POINTER,
-                BsonType.DECIMAL128,
                 BsonType.JAVASCRIPT,
                 BsonType.JAVASCRIPT_WITH_SCOPE,
                 BsonType.REGULAR_EXPRESSION,
@@ -224,7 +229,7 @@ class DocumentDbCollectionMetadataTest {
     @Test
     void testCreateScalarFieldsMissing() {
         final List<BsonDocument> documentList = new ArrayList<>();
-        for (int count = 0; count < 12; count++) {
+        for (int count = 0; count < 13; count++) {
             final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
             final BsonDocument document = new BsonDocument()
                     .append("_id", new BsonObjectId());
@@ -261,6 +266,9 @@ class DocumentDbCollectionMetadataTest {
             if (count == 11) {
                 document.append("fieldBinary", new BsonBinary(new byte[]{0, 1, 2}));
             }
+            if (count == 12) {
+                document.append("fieldDecimal128", new BsonDecimal128(Decimal128.POSITIVE_INFINITY));
+            }
             Assertions.assertTrue(documentList.add(document));
         }
 
@@ -275,14 +283,15 @@ class DocumentDbCollectionMetadataTest {
         final Map<String, DocumentDbMetadataTable> metadataTableMap = metadata.getTables();
         final DocumentDbMetadataTable metadataTable = metadataTableMap.get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(12, metadataTable.getColumns().size());
+        Assertions.assertEquals(13, metadataTable.getColumns().size());
         final Set<Integer> integerSet = metadataTable.getColumns().values().stream().collect(
                 Collectors.groupingBy(DocumentDbMetadataColumn::getSqlType)).keySet();
-        Assertions.assertEquals(8, integerSet.size());
+        Assertions.assertEquals(9, integerSet.size());
         final Set<Integer> expectedTypes = ImmutableSet.of(
                 Types.BIGINT,
                 Types.VARBINARY,
                 Types.BOOLEAN,
+                Types.DECIMAL,
                 Types.DOUBLE,
                 Types.INTEGER,
                 Types.NULL,
@@ -309,6 +318,7 @@ class DocumentDbCollectionMetadataTest {
             Assertions.assertTrue(9 != columnIndex || "fieldMinKey".equals(entry.getKey()));
             Assertions.assertTrue(10 != columnIndex || "fieldNull".equals(entry.getKey()));
             Assertions.assertTrue(11 != columnIndex || "fieldBinary".equals(entry.getKey()));
+            Assertions.assertTrue(12 != columnIndex || "fieldDecimal128".equals(entry.getKey()));
             columnIndex++;
         }
 
@@ -1126,6 +1136,49 @@ class DocumentDbCollectionMetadataTest {
         final String methodName = new Object() {
         }.getClass().getEnclosingMethod().getName();
         printMetadataOutput(metadata, methodName);
+    }
+
+    /**
+     * Test that primrary and foreign key have consistent type after conflict.
+     */
+    @Test
+    void testPrimaryKeyScalarTypeInconsistency() {
+        final List<BsonDocument> documents = new ArrayList<>();
+        BsonDocument document = BsonDocument.parse(
+                "{ \"_id\" : 1, \n" +
+                        "  \"array\" : [1, 1, 1] \n" +
+                        "}"
+        );
+        documents.add(document);
+        document = BsonDocument.parse(
+                "{ \"_id\" : 2.1, \n" +
+                        "  \"array\" : [ 0.0, 0.0, 0.0] \n" +
+                        "}"
+        );
+
+        documents.add(document);
+        final DocumentDbCollectionMetadata metadata = DocumentDbCollectionMetadata.create(
+                COLLECTION_NAME, documents.iterator());
+        Assertions.assertNotNull(metadata);
+        final DocumentDbMetadataTable metadataArrayTable = metadata.getTables().get(
+                toName(combinePath(COLLECTION_NAME, "array")));
+        Assertions.assertNotNull(metadataArrayTable);
+        final DocumentDbMetadataColumn metadataColumnArrayId = metadataArrayTable.getColumns().get(
+                toName(combinePath(COLLECTION_NAME, "_id")));
+        Assertions.assertNotNull(metadataColumnArrayId);
+
+        final DocumentDbMetadataTable metadataTable = metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertNotNull(metadataTable);
+        final DocumentDbMetadataColumn metadataColumnId = metadataTable.getColumns().get(
+                toName(combinePath(COLLECTION_NAME, "_id")));
+        Assertions.assertNotNull(metadataColumnId);
+
+        Assertions.assertEquals(metadataColumnId.getSqlType(), metadataColumnArrayId.getSqlType(),
+                "Type of _id columns (DocumentDbCollectionMetadataTest._id and " +
+                        "DocumentDbCollectionMetadataTest_array._id) should match");
+        Assertions.assertEquals(metadataColumnArrayId.getSqlType(), Types.DOUBLE,
+                "Type of ID columns (DocumentDbCollectionMetadataTest._id and " +
+                        "DocumentDbCollectionMetadataTest_array._id) should be DOUBLE (" + Types.DOUBLE + ")");
     }
 
     private boolean producesVirtualTable(final BsonType bsonType, final BsonType nextBsonType) {
