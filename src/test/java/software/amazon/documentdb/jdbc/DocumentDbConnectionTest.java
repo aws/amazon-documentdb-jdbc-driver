@@ -20,24 +20,32 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
 import java.io.IOException;
+import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+
 
 public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
     private static final String HOSTNAME = "localhost";
-    private static final String USERNAME = "username";
+    private static final String USERNAME = "user";
     private static final String PASSWORD = "password";
-    private static final String DATABASE = "database";
+    private static final String DATABASE = "testDb";
+    private static final String COLLECTION_NAME = "COLLECTION";
     private static final DocumentDbConnectionProperties VALID_CONNECTION_PROPERTIES = new DocumentDbConnectionProperties();
+
+    private static Connection basicConnection;
 
     /** Initializes the test class. */
     @BeforeAll
-    public static void initialize() throws IOException {
+    public static void initialize() throws IOException, SQLException {
+
         VALID_CONNECTION_PROPERTIES.setUser(USERNAME);
         VALID_CONNECTION_PROPERTIES.setPassword(PASSWORD);
         VALID_CONNECTION_PROPERTIES.setDatabase(DATABASE);
@@ -49,6 +57,12 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
         // Add 1 valid user so we can successfully authenticate.
         createUser(DATABASE, USERNAME, PASSWORD);
+        prepareSimpleConsistentData(DATABASE, COLLECTION_NAME,
+                5, USERNAME, PASSWORD);
+
+        final String connectionString = String.format(
+                "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false", USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
+        basicConnection = DriverManager.getConnection(connectionString);
     }
 
     /**
@@ -153,5 +167,98 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
         Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
                 DocumentDbDriver.DOCUMENT_DB_SCHEME, properties));
+    }
+
+    /**
+     * Test for connection.getSchema() and getCatalog
+     */
+    @Disabled // TODO: Change getSchema() to return database name.
+    @Test
+    @DisplayName("Tests that catalog is null, and schema is equal to the database name.")
+    void testGetMetadataSchema() throws SQLException {
+
+        final String catalog = basicConnection.getCatalog();
+        Assertions.assertNull(catalog);
+
+        final String schema = basicConnection.getSchema();
+        Assertions.assertEquals(DATABASE, schema);
+    }
+
+    /**
+     * Test for connection.getMetadata() for basic properties.
+     */
+    @Test
+    @DisplayName("Tests simple metadata of a database connection.")
+    void testGetMetadata() throws SQLException {
+        final DocumentDbDatabaseMetadata metadata = (DocumentDbDatabaseMetadata) basicConnection.getMetaData();
+        metadata.getSQLKeywords();
+        Assertions.assertNotNull(metadata);
+
+        Assertions.assertEquals("jdbc:documentdb:", metadata.getURL());
+        Assertions.assertEquals(USERNAME, metadata.getUserName());
+
+        final ResultSet procedures = metadata.getProcedures(null, null, null);
+        Assertions.assertFalse(procedures.next());
+        final ResultSet catalogs = metadata.getCatalogs();
+        Assertions.assertTrue(catalogs.next());
+        Assertions.assertNull(catalogs.getString(1));
+        Assertions.assertFalse(catalogs.next());
+        final ResultSet columnPrivileges = metadata.getColumnPrivileges(null,
+                null, null, null);
+        Assertions.assertFalse(columnPrivileges.next());
+    }
+
+    /**
+     * Tests getting primary keys from database.
+     */
+    @Disabled // TODO: Fix primary keys metadata.
+    @Test
+    @DisplayName("Tests that metadata can return primary keys.")
+    void testGetPrimaryKeys() throws SQLException {
+        final ResultSet primaryKeys = basicConnection.getMetaData()
+                .getPrimaryKeys(null, null, COLLECTION_NAME);
+        Assertions.assertTrue(primaryKeys.next());
+        Assertions.assertEquals("COLLECTION__id", primaryKeys.getString(4));
+        Assertions.assertEquals(1, primaryKeys.getShort(5));
+    }
+
+    /**
+     * Tests metadata for tables of database.
+     */
+    @Test
+    @DisplayName("Tests the database metadata contains the expected tables.")
+    void testGetMetadataTables() throws SQLException {
+        final ResultSet tables = basicConnection.getMetaData().getTables(null, null, null, null);
+        Assertions.assertTrue(tables.next());
+        Assertions.assertNull(tables.getString(1));
+        Assertions.assertEquals("metadata", tables.getString(2));
+        Assertions.assertEquals("COLUMNS", tables.getString(3));
+        Assertions.assertEquals("SYSTEM TABLE", tables.getString(4));
+        Assertions.assertTrue(tables.next());
+        Assertions.assertNull(tables.getString(1));
+        Assertions.assertEquals("metadata", tables.getString(2));
+        Assertions.assertEquals("TABLES", tables.getString(3));
+        Assertions.assertEquals("SYSTEM TABLE", tables.getString(4));
+        Assertions.assertTrue(tables.next());
+        Assertions.assertNull(tables.getString(1));
+        Assertions.assertEquals("testDb", tables.getString(2));
+        Assertions.assertEquals("COLLECTION", tables.getString(3));
+        Assertions.assertEquals("TABLE", tables.getString(4));
+        Assertions.assertFalse(tables.next());
+    }
+
+    /**
+     * Tests metadata for table types.
+     */
+    @Test
+    @DisplayName("Tests that the table types table contains table and view.")
+    void testMetadataGetTableTypes() throws SQLException {
+        final ResultSet tableTypes = basicConnection.getMetaData().getTableTypes();
+        Assertions.assertEquals("TABLE_TYPE", tableTypes.getMetaData().getColumnName(1));
+        Assertions.assertTrue(tableTypes.next());
+        Assertions.assertEquals("TABLE", tableTypes.getString(1));
+        Assertions.assertTrue(tableTypes.next());
+        Assertions.assertEquals("VIEW", tableTypes.getString(1));
+        Assertions.assertFalse(tableTypes.next());
     }
 }
