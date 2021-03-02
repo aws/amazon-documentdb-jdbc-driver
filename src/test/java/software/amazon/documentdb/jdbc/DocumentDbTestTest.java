@@ -25,6 +25,7 @@ import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import java.io.IOException;
@@ -188,5 +189,14 @@ public class DocumentDbTestTest extends DocumentDbFlapDoodleTest {
         } finally {
             Assertions.assertTrue(stopMongoDbInstance());
         }
+    }
+
+    /**
+     * Tests that we can prepare data and retrieve it back again.
+     */
+    @Test
+    @DisplayName("Tests the GitHub Actions")
+    protected void alwaysFailureTest() {
+        Assertions.fail("This failure is expected. Test needs to be removed.");
     }
 }
