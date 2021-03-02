@@ -190,13 +190,4 @@ public class DocumentDbTestTest extends DocumentDbFlapDoodleTest {
             Assertions.assertTrue(stopMongoDbInstance());
         }
     }
-
-    /**
-     * Tests that we can prepare data and retrieve it back again.
-     */
-    @Test
-    @DisplayName("Tests the GitHub Actions")
-    protected void alwaysFailureTest() {
-        Assertions.fail("This failure is expected. Test needs to be removed.");
-    }
 }
