@@ -25,7 +25,6 @@ import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import java.io.IOException;
