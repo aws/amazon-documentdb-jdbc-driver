@@ -124,6 +124,7 @@ jacoco {
 jacocoTestReport {
     reports {
         html.enabled true
+        csv.enabled true
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
