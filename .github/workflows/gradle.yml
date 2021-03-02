@@ -48,8 +48,14 @@ jobs:
       with:
         name: output
         path: output
-    - name: Publish Unit Test Results
+    - name: Publish Summary Test Results
       uses: EnricoMi/publish-unit-test-result-action@v1.9
       if: always()
       with:
         files: build/test-results/**/*.xml
+    - name: Publish Detailed Test Report
+        if: ${{ always() }}
+        uses: scacap/action-surefire-report@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          report_paths: '**/build/test-results/test/TEST-*.xml'
