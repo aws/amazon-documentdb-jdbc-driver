@@ -46,11 +46,10 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
     private static final String COLLECTION = "collection";
     private static final String ADMIN = "admin";
 
-    private static DocumentDbConnectionProperties properties;
+    private DocumentDbConnectionProperties properties;
+    private ArrayList<BsonDocument> documents;
+    private MongoDatabase database;
 
-    private static ArrayList<BsonDocument> documents;
-
-    private static MongoDatabase database;
     /**
      * Init mongodb for testing
      * @throws IOException if starting mongo instance fails.
@@ -204,7 +203,7 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
      * Prepares data for a given database and collection.
      * @param recordCount - the number of records to insert data into.
      */
-    protected static void addSimpleDataToDatabase(final int recordCount) {
+    protected void addSimpleDataToDatabase(final int recordCount) {
         final MongoCollection<BsonDocument> collection = database
                 .getCollection(COLLECTION, BsonDocument.class);
 

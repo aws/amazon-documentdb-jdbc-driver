@@ -24,7 +24,6 @@ import java.sql.SQLException;
 public class DocumentDbQueryExecutor {
     private static final int MAX_FETCH_SIZE = Integer.MAX_VALUE;
     private final java.sql.Statement statement;
-    private final int fetchSize = -1;
     private final String uri;
     private int queryTimeout = -1;
 

@@ -6,7 +6,9 @@
  
 # Mac
 .DS_Store
- 
+out/
+common/out/
+calcite-adapter/out/
 # Maven
 log/
 target/

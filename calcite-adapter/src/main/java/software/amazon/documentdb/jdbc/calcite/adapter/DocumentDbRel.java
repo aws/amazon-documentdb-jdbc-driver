@@ -46,7 +46,6 @@ public interface DocumentDbRel extends RelNode {
 
         private final List<Pair<String, String>> list = new ArrayList<>();
         private final RexBuilder rexBuilder;
-        private DocumentDbTable mongoTable;
         private RelOptTable table;
         private DocumentDbMetadataTable metadataTable;
 
@@ -67,7 +66,8 @@ public interface DocumentDbRel extends RelNode {
         }
 
         public void setMongoTable(final DocumentDbTable mongoTable) {
-            this.mongoTable = mongoTable;
+            // TODO unread property - should be fixed
+            //this.mongoTable = mongoTable;
         }
 
         // DocumentDB: modified - start

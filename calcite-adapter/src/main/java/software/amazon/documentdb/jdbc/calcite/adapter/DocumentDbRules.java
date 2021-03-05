@@ -65,7 +65,7 @@ public final class DocumentDbRules {
     protected static final Logger LOGGER = CalciteTrace.getPlannerTracer();
 
     @SuppressWarnings("MutablePublicArray")
-    public static final RelOptRule[] RULES = {
+    static final RelOptRule[] RULES = {
             DocumentDbSortRule.INSTANCE,
             DocumentDbFilterRule.INSTANCE,
             DocumentDbProjectRule.INSTANCE,

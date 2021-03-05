@@ -28,7 +28,7 @@ import java.sql.SQLException;
  */
 public class DocumentDbDataSourceTest extends DocumentDbFlapDoodleTest {
 
-    private static DocumentDbDataSource dataSource;
+    private DocumentDbDataSource dataSource;
 
     /**
      * Instantiates data source object for testing.
