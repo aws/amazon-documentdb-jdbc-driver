@@ -11,7 +11,6 @@
 <!--- Link to issue where this is tracked -->
 
 ### Additional Reviewers
-@kylepbit
 @birschick-bq
 @mitchell-elholm
 @alexey-temnikov 
