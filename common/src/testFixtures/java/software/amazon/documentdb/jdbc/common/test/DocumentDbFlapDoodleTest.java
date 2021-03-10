@@ -59,8 +59,10 @@ import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileWriter;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -78,13 +80,13 @@ public class DocumentDbFlapDoodleTest {
     protected static final int DEFAULT_PORT = 27017;
     private static final long INIT_TIMEOUT_MS = 30000;
     private static final String USER_ADDED_TOKEN = "Successfully added user";
+    private static final String ADMIN_DATABASE = "admin";
+    private static final String ADMIN_USERNAME = "admin";
+    private static final String ADMIN_PASSWORD = "admin";
     private static MongodConfig mongoConfig;
     private static MongodExecutable mongoExecutable = null;
     private static MongodProcess mongoProcess = null;
     private static int mongoPort = -1;
-    private static final String ADMIN_DATABASE = "admin";
-    private static final String ADMIN_USERNAME = "admin";
-    private static final String ADMIN_PASSWORD = "admin";
 
     /**
      * Starts the mongod using default parameters.
@@ -224,7 +226,7 @@ public class DocumentDbFlapDoodleTest {
 
         final String[] roles = new String[] { "{\"db\":\"" + databaseName + "\",\"role\":\"dbOwner\"}" };
         final String scriptText = StringUtils.join(String.format("db = db.getSiblingDB('%s'); " +
-                        "db.createUser({\"user\":\"%s\",\"pwd\":\"%s\",\"roles\":[%s]});\n" +
+                        "db.createUser({\"user\":\"%s\",\"pwd\":\"%s\",\"roles\":[%s]});%n" +
                         "db.getUser('%s');",
                 ADMIN_DATABASE, username, password, StringUtils.join(roles, ","), username), "");
         runScriptAndWait(
@@ -306,7 +308,7 @@ public class DocumentDbFlapDoodleTest {
                                 "{\"role\":\"dbAdminAnyDatabase\",\"db\":\"admin\"}," +
                                 "{\"role\":\"clusterAdmin\",\"db\":\"admin\"}," +
                                 "{\"role\":\"dbOwner\",\"db\":\"admin\"}," +
-                                "]});\n",
+                                "]});%n",
                         ADMIN_USERNAME, ADMIN_PASSWORD));
         runScriptAndWait(scriptText, USER_ADDED_TOKEN, new String[]{"couldn't add user", "failed to load", "login failed"}, ADMIN_DATABASE, null, null);
     }
@@ -361,7 +363,8 @@ public class DocumentDbFlapDoodleTest {
     private static File writeTmpScriptFile(final String scriptText) throws IOException {
         final File scriptFile = File.createTempFile("tempfile", ".js");
         scriptFile.deleteOnExit();
-        final BufferedWriter bw = new BufferedWriter(new FileWriter(scriptFile));
+        final Writer writer = new OutputStreamWriter(new FileOutputStream(scriptFile), "UTF-8");
+        final BufferedWriter bw = new BufferedWriter(writer);
         bw.write(scriptText);
         bw.close();
         return scriptFile;

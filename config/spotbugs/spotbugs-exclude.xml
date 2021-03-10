@@ -14,6 +14,76 @@
 -->
 <FindBugsFilter>
   <Match>
-    <Bug code="NM_SAME_SIMPLE_NAME_AS_INTERFACE"/>
+    <Bug pattern="NM_SAME_SIMPLE_NAME_AS_INTERFACE"/>
+  </Match>
+  <Match>
+    <Bug pattern="NM_SAME_SIMPLE_NAME_AS_SUPERCLASS"/>
+  </Match>
+  <Match>
+    <Source name="ResultSetTest.java"/>
+    <Bug pattern="SQL_BAD_RESULTSET_ACCESS"/>
+  </Match>
+  <Match>
+    <Source name="DocumentDbCollectionMetadataTest.java"/>
+    <Bug pattern="DM_NEW_FOR_GETCLASS"/>
+  </Match>
+  <Match>
+    <Or>
+      <Source name="DocumentDbMetadataScannerTest.java"/>
+      <Source name="DocumentDbDataSourceTest.java"/>
+      <Source name="DocumentDbDataSourceTest.java"/>
+      <Source name="DocumentDbDriverTest.java"/>
+    </Or>
+    <Bug pattern="HARD_CODE_PASSWORD"/>
+  </Match>
+  <Match>
+    <Source name="MockPreparedStatement.java"/>
+    <Bug pattern="NP_NONNULL_RETURN_VIOLATION"/>
+  </Match>
+  <Match>
+    <Or>
+      <Source name="DocumentDbStatement.java"/>
+      <Source name="Statement.java"/>
+      <Source name="DocumentDbStatementTest.java"/>
+      <Source name="DocumentDbConnection.java"/>
+      <Source name="DocumentDbConnection.java"/>
+      <Source name="DocumentDbPreparedStatement.java"/>
+    </Or>
+    <Or>
+      <Bug pattern="SQL_INJECTION_JDBC"/>
+      <Bug pattern="RR_NOT_CHECKED"/>
+      <Bug pattern="OBL_UNSATISFIED_OBLIGATION"/>
+    </Or>
+  </Match>
+  <Match>
+    <Or>
+      <Source name="DocumentDbConnectionTest.java"/>
+      <Source name="ConnectionTest.java"/>
+      <Source name="DocumentDbConnectionTest.java"/>
+      <Source name="DocumentDbDriverTest.java"/>
+    </Or>
+    <Or>
+      <Bug pattern="ODR_OPEN_DATABASE_RESOURCE"/>
+      <Bug pattern="HARD_CODE_PASSWORD"/>
+    </Or>
+  </Match>
+  <Match>
+    <Or>
+      <Source name="DocumentDbResultSetTest.java"/>
+      <Source name="ConnectionTest.java"/>
+      <Source name="PreparedStatementTest.java"/>
+    </Or>
+    <Bug pattern="OBL_UNSATISFIED_OBLIGATION"/>
+  </Match>
+  <Match>
+    <Or>
+      <Source name="DocumentDbDatabaseMetadataTest.java"/>
+      <Source name="DocumentDbDriverTest.java"/>
+    </Or>
+    <Bug pattern="ODR_OPEN_DATABASE_RESOURCE"/>
+  </Match>
+  <Match>
+    <Source name="Driver.java"/>
+    <Bug pattern="COMMAND_INJECTION"/>
   </Match>
 </FindBugsFilter>

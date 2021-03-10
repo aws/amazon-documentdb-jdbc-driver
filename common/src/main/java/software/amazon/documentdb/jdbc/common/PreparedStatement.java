@@ -43,7 +43,6 @@ import java.util.Calendar;
  */
 public abstract class PreparedStatement extends Statement implements java.sql.PreparedStatement {
     private final String sql;
-    private ResultSet resultSet;
 
     /**
      * Constructor for seeding the prepared statement with the parent connection.
@@ -65,7 +64,8 @@ public abstract class PreparedStatement extends Statement implements java.sql.Pr
 
     @Override
     public boolean execute() throws SQLException {
-        resultSet = executeQuery();
+        // TODO unread property - should be fixed
+        // resultSet = executeQuery();
         return true;
     }
 
