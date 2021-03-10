@@ -59,12 +59,12 @@ artifacts {
 
 test {
     useJUnitPlatform {
-        if (project.hasProperty('runRemoteIntegrationTests') && project.property('runRemoteIntegrationTests') == true) {
-            environment "connectionString", project.CONNECTION_STRING_REMOTE
-            excludeTags 'local-integration'
-        } else {
+        if (project.hasProperty('runRemoteIntegrationTests') && project.property('runRemoteIntegrationTests') == 'false') {
             environment "connectionString", project.CONNECTION_STRING_LOCAL
             excludeTags 'remote-integration'
+        } else {
+            environment "connectionString", project.CONNECTION_STRING_REMOTE
+            excludeTags 'local-integration'
         }
     }
 }

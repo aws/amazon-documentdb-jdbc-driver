@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc.common.test;
 
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.InsertOneResult;
@@ -75,9 +74,8 @@ import static org.apache.logging.log4j.core.util.Assert.isEmpty;
 /**
  * Base class for DocumentDb tests
  */
-public class DocumentDbFlapDoodleTest {
+public class DocumentDbFlapDoodleTest extends DocumentDbTest {
 
-    protected static final int DEFAULT_PORT = 27017;
     private static final long INIT_TIMEOUT_MS = 30000;
     private static final String USER_ADDED_TOKEN = "Successfully added user";
     private static final String ADMIN_DATABASE = "admin";
@@ -86,7 +84,6 @@ public class DocumentDbFlapDoodleTest {
     private static MongodConfig mongoConfig;
     private static MongodExecutable mongoExecutable = null;
     private static MongodProcess mongoProcess = null;
-    private static int mongoPort = -1;
 
     /**
      * Starts the mongod using default parameters.
@@ -135,7 +132,6 @@ public class DocumentDbFlapDoodleTest {
         final MongoCmdOptions cmdOptions = MongoCmdOptions.builder()
                 .auth(enableAuthentication)
                 .build();
-        mongoPort = port;
         final MongodStarter starter = MongodStarter.getDefaultInstance();
         final Builder builder = MongodConfig.builder()
                 .version(Main.PRODUCTION)
@@ -147,6 +143,7 @@ public class DocumentDbFlapDoodleTest {
         mongoConfig = builder.build();
         mongoExecutable = starter.prepare(mongoConfig);
         mongoProcess = mongoExecutable.start();
+        setMongoPort(mongoProcess.getConfig().net().getPort());
         addAdmin();
 
         return true;
@@ -165,7 +162,7 @@ public class DocumentDbFlapDoodleTest {
         mongoExecutable.stop();
         mongoExecutable = null;
         mongoProcess = null;
-        mongoPort = -1;
+        setMongoPort(-1);
         return true;
     }
 
@@ -175,41 +172,6 @@ public class DocumentDbFlapDoodleTest {
      */
     protected static synchronized boolean isMongoDbProcessRunning() {
         return mongoProcess != null && mongoProcess.isProcessRunning();
-    }
-
-    /**
-     * Gets the port number of the mongod process is listening to.
-     * @return if the process is running, returns the port the mongod process is listening to, -1 otherwise.
-     */
-    protected static synchronized int getMongoPort() {
-        return mongoProcess != null ? mongoProcess.getConfig().net().getPort() : DEFAULT_PORT;
-    }
-
-    /**
-     * Creates a new MongoClient instance using the current port.
-     * @return a new instance of MongoClient.
-     */
-    protected static MongoClient createMongoClient() {
-        return createMongoClient(null, null, null);
-    }
-
-    /**
-     * Creates a new MongoClient instance using the current port.
-     * @param database the authenticating database to authenticate
-     * @param username the username to authenticate
-     * @param password the password to authenticate
-     * @return a new instance of MongoClient.
-     */
-    protected static MongoClient createMongoClient(
-            final String database, final String username, final String password) {
-
-        final int port = getMongoPort();
-        final String credentials = username != null && password != null
-                ? String.format("%s:%s@", username, password) : "";
-        final String hostname = "localhost";
-        final String authDatabase = database != null ? "/" + database : "";
-        return MongoClients.create(String.format("mongodb://%s%s:%s%s",
-                credentials, hostname, port, authDatabase));
     }
 
     /**
