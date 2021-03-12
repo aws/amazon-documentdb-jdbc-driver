@@ -16,31 +16,11 @@
 
 package software.amazon.documentdb.jdbc.common.test;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.InsertOneResult;
-import de.flapdoodle.embed.mongo.Command;
-import de.flapdoodle.embed.mongo.MongoShellStarter;
-import de.flapdoodle.embed.mongo.MongodExecutable;
-import de.flapdoodle.embed.mongo.MongodProcess;
-import de.flapdoodle.embed.mongo.MongodStarter;
-import de.flapdoodle.embed.mongo.config.Defaults;
-import de.flapdoodle.embed.mongo.config.ImmutableMongoShellConfig;
-import de.flapdoodle.embed.mongo.config.ImmutableMongodConfig.Builder;
-import de.flapdoodle.embed.mongo.config.MongoCmdOptions;
-import de.flapdoodle.embed.mongo.config.MongoShellConfig;
-import de.flapdoodle.embed.mongo.config.MongodConfig;
-import de.flapdoodle.embed.mongo.config.Net;
-import de.flapdoodle.embed.mongo.distribution.Version.Main;
-import de.flapdoodle.embed.process.config.RuntimeConfig;
-import de.flapdoodle.embed.process.config.io.ProcessOutput;
-import de.flapdoodle.embed.process.io.LogWatchStreamProcessor;
-import de.flapdoodle.embed.process.io.NamedOutputStreamProcessor;
-import de.flapdoodle.embed.process.io.Processors;
-import de.flapdoodle.embed.process.io.StreamProcessor;
-import de.flapdoodle.embed.process.runtime.Network;
-import org.apache.commons.lang3.StringUtils;
 import org.bson.BsonBinary;
 import org.bson.BsonBoolean;
 import org.bson.BsonDateTime;
@@ -56,124 +36,24 @@ import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
-
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileOutputStream;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.TestInstance;
 import java.io.IOException;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
-import static de.flapdoodle.embed.process.io.Processors.namedConsole;
-import static org.apache.logging.log4j.core.util.Assert.isEmpty;
 
 /**
- * Base class for DocumentDb tests
+ * Base class for DocumentDb FlapDoodle tests
  */
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class DocumentDbFlapDoodleTest extends DocumentDbTest {
+    protected static final String ADMIN_DATABASE = "admin";
+    protected static final String ADMIN_USERNAME = "admin";
+    protected static final String ADMIN_PASSWORD = "admin";
 
-    private static final long INIT_TIMEOUT_MS = 30000;
-    private static final String USER_ADDED_TOKEN = "Successfully added user";
-    private static final String ADMIN_DATABASE = "admin";
-    private static final String ADMIN_USERNAME = "admin";
-    private static final String ADMIN_PASSWORD = "admin";
-    private static MongodConfig mongoConfig;
-    private static MongodExecutable mongoExecutable = null;
-    private static MongodProcess mongoProcess = null;
-
-    /**
-     * Starts the mongod using default parameters.
-     * @return returns true if the mongod is started, or false if already started.
-     * @throws IOException if unable to start the mongod.
-     */
-    protected static boolean startMongoDbInstance() throws IOException {
-        return startMongoDbInstance(Network.getFreeServerPort());
-    }
-
-    /**
-     * Starts the mongod using custom port number.
-     * @param port the port number that mongod listens on.
-     * @return returns true if the mongod is started, or false if already started.
-     * @throws IOException if unable to start the mongod.
-     */
-    protected static boolean startMongoDbInstance(final int port) throws IOException {
-        return startMongoDbInstance(port, false);
-    }
-
-    /**
-     * Starts the mongod using custom command options.
-     * @param enableAuthentication indicates whether to start the process with authentication enabled.
-     * @return returns true if the mongod is started, or false if already started.
-     * @throws IOException if unable to start the mongod.
-     */
-    protected static boolean startMongoDbInstance(final boolean enableAuthentication) throws IOException {
-        return startMongoDbInstance(Network.getFreeServerPort(), enableAuthentication);
-    }
-
-    /**
-     * Starts the mongod using custom port and command options.
-     * @param port the port number that mongod listens on.
-     * @param enableAuthentication indicates whether to start the process with authentication enabled.
-     * @return returns true if the mongod is started, or false if already started.
-     * @throws IOException if unable to start the mongod.
-     */
-    protected static synchronized boolean startMongoDbInstance(
-            final int port,
-            final boolean enableAuthentication) throws IOException {
-
-        if (mongoExecutable != null) {
-            return false;
-        }
-
-        final MongoCmdOptions cmdOptions = MongoCmdOptions.builder()
-                .auth(enableAuthentication)
-                .build();
-        final MongodStarter starter = MongodStarter.getDefaultInstance();
-        final Builder builder = MongodConfig.builder()
-                .version(Main.PRODUCTION)
-                .net(new Net(port, Network.localhostIsIPv6()));
-        if (cmdOptions != null) {
-            builder.cmdOptions(cmdOptions);
-        }
-
-        mongoConfig = builder.build();
-        mongoExecutable = starter.prepare(mongoConfig);
-        mongoProcess = mongoExecutable.start();
-        setMongoPort(mongoProcess.getConfig().net().getPort());
-        addAdmin();
-
-        return true;
-    }
-
-    /**
-     * Stops the running mongod process.
-     * @return returns true if the mongod is stopped, or false if already stopped.
-     */
-    protected static synchronized boolean stopMongoDbInstance() {
-        if (mongoExecutable == null) {
-            return false;
-        }
-
-        mongoProcess.stop();
-        mongoExecutable.stop();
-        mongoExecutable = null;
-        mongoProcess = null;
-        setMongoPort(-1);
-        return true;
-    }
-
-    /**
-     * Gets whether the mongod process is running.
-     * @return returns true if process is running, false otherwise.
-     */
-    protected static synchronized boolean isMongoDbProcessRunning() {
-        return mongoProcess != null && mongoProcess.isProcessRunning();
+    @BeforeAll
+    void init(final Integer mongoPort) {
+        setMongoPort(mongoPort);
     }
 
     /**
@@ -186,31 +66,16 @@ public class DocumentDbFlapDoodleTest extends DocumentDbTest {
     protected static void createUser(
             final String databaseName,
             final String username,
-            final String password) throws IOException {
+            final String password) {
 
-        final String[] roles = new String[] { "{\"db\":\"" + databaseName + "\",\"role\":\"dbOwner\"}" };
-        final String scriptText = StringUtils.join(String.format("db = db.getSiblingDB('%s'); " +
-                        "db.createUser({\"user\":\"%s\",\"pwd\":\"%s\",\"roles\":[%s]});%n" +
-                        "db.getUser('%s');",
-                ADMIN_DATABASE, username, password, StringUtils.join(roles, ","), username), "");
-        runScriptAndWait(
-                scriptText,
-                USER_ADDED_TOKEN,
-                new String[]{"already exists", "failed to load", "login failed"},
-                ADMIN_DATABASE, ADMIN_USERNAME, ADMIN_PASSWORD);
-    }
-
-    /**
-     * Prepares data for a given database and collection.
-     * @param databaseName - the name of the database to insert data into.
-     * @param collectionName - the name of the collection to insert data into.
-     * @param recordCount - the number of records to insert data into.
-     */
-    protected static void prepareSimpleConsistentData(
-            final String databaseName,
-            final String collectionName,
-            final int recordCount) {
-        prepareSimpleConsistentData(databaseName, collectionName, recordCount, null, null);
+        try (MongoClient client = createMongoClient(ADMIN_DATABASE, ADMIN_USERNAME, ADMIN_PASSWORD)) {
+            final MongoDatabase db = client.getDatabase(ADMIN_DATABASE);
+            final BasicDBObject createUserCommand = new BasicDBObject("createUser", username)
+                    .append("pwd", password)
+                    .append("roles",
+                    Collections.singletonList(new BasicDBObject("role", "dbOwner").append("db", databaseName)));
+            db.runCommand(createUserCommand);
+        }
     }
 
     /**
@@ -256,148 +121,6 @@ public class DocumentDbFlapDoodleTest extends DocumentDbTest {
                 final InsertOneResult result = collection.insertOne(document);
                 Assertions.assertEquals(count + 1, collection.countDocuments());
                 Assertions.assertEquals(document.getObjectId("_id"), result.getInsertedId());
-            }
-        }
-    }
-
-    private static void addAdmin() throws IOException {
-        final String scriptText = StringUtils.join(
-                String.format("db.createUser(" +
-                                "{\"user\":\"%s\",\"pwd\":\"%s\"," +
-                                "\"roles\":[" +
-                                "\"root\"," +
-                                "{\"role\":\"userAdmin\",\"db\":\"admin\"}," +
-                                "{\"role\":\"dbAdmin\",\"db\":\"admin\"}," +
-                                "{\"role\":\"userAdminAnyDatabase\",\"db\":\"admin\"}," +
-                                "{\"role\":\"dbAdminAnyDatabase\",\"db\":\"admin\"}," +
-                                "{\"role\":\"clusterAdmin\",\"db\":\"admin\"}," +
-                                "{\"role\":\"dbOwner\",\"db\":\"admin\"}," +
-                                "]});%n",
-                        ADMIN_USERNAME, ADMIN_PASSWORD));
-        runScriptAndWait(scriptText, USER_ADDED_TOKEN, new String[]{"couldn't add user", "failed to load", "login failed"}, ADMIN_DATABASE, null, null);
-    }
-
-    private static void runScriptAndWait(
-            final String scriptText,
-            final String token,
-            final String[] failures,
-            final String dbName,
-            final String username,
-            final String password) throws IOException {
-
-        final StreamProcessor mongoOutput;
-        if (!isEmpty(token)) {
-            mongoOutput = new MongoLogWatchStreamProcessor(
-                    token,
-                    (failures != null)
-                            ? new HashSet<>(Arrays.asList(failures))
-                            : Collections.<String>emptySet(),
-                    namedConsole("[mongo shell output]"));
-        } else {
-            mongoOutput = new NamedOutputStreamProcessor("[mongo shell output]", Processors.console());
-        }
-        final RuntimeConfig runtimeConfig = Defaults.runtimeConfigFor(Command.Mongo)
-                .processOutput(new ProcessOutput(
-                        mongoOutput,
-                        namedConsole("[mongo shell error]"),
-                        Processors.console()))
-                .build();
-        final MongoShellStarter starter = MongoShellStarter.getInstance(runtimeConfig);
-        final File scriptFile = writeTmpScriptFile(scriptText);
-        final ImmutableMongoShellConfig.Builder builder = MongoShellConfig.builder();
-        if (!isEmpty(dbName)) {
-            builder.dbName(dbName);
-        }
-        if (!isEmpty(username)) {
-            builder.userName(username);
-        }
-        if (!isEmpty(password)) {
-            builder.password(password);
-        }
-        starter.prepare(builder
-                .scriptName(scriptFile.getAbsolutePath())
-                .version(mongoConfig.version())
-                .net(mongoConfig.net())
-                .build()).start();
-        if (mongoOutput instanceof MongoLogWatchStreamProcessor) {
-            ((MongoLogWatchStreamProcessor) mongoOutput).waitForResult(INIT_TIMEOUT_MS);
-        }
-    }
-
-    private static File writeTmpScriptFile(final String scriptText) throws IOException {
-        final File scriptFile = File.createTempFile("tempfile", ".js");
-        scriptFile.deleteOnExit();
-        final Writer writer = new OutputStreamWriter(new FileOutputStream(scriptFile),
-                StandardCharsets.UTF_8);
-        final BufferedWriter bw = new BufferedWriter(writer);
-        bw.write(scriptText);
-        bw.close();
-        return scriptFile;
-    }
-
-    /**
-     * Watches the mongo or mongod output stream.
-     */
-    private static class MongoLogWatchStreamProcessor extends LogWatchStreamProcessor {
-        private final Object mutex = new Object();
-        private final String success;
-        private final Set<String> failures;
-        private volatile boolean found = false;
-
-        /**
-         * Creates a new MongoLogWatchStreamProcessor
-         * @param success the string token to watch for to indicate success.
-         * @param failures the set of strings to watch for to indicate failure.
-         * @param destination the stream processor.
-         */
-        public MongoLogWatchStreamProcessor(
-                final String success,
-                final Set<String> failures,
-                final StreamProcessor destination) {
-
-            super(success, failures, destination);
-            this.success = success;
-            this.failures = failures;
-        }
-
-        @Override
-        public void process(final String block) {
-            if (containsSuccess(block) || containsFailure(block)) {
-                synchronized (mutex) {
-                    found = true;
-                    mutex.notifyAll();
-                }
-            } else {
-                super.process(block);
-            }
-        }
-
-        private boolean containsSuccess(final String block) {
-            return block.contains(success);
-        }
-
-        private boolean containsFailure(final String block) {
-            for (String failure : failures) {
-                if (block.contains(failure)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        /**
-         * Waits for result for a result up to as long as given timeout.
-         * @param timeout the timeout when waiting for a result.
-         */
-        public void waitForResult(final long timeout) {
-            synchronized (mutex) {
-                try {
-                    while (!found) {
-                        mutex.wait(timeout);
-                    }
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
             }
         }
     }

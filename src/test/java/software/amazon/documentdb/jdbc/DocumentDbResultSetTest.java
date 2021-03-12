@@ -25,11 +25,12 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
 import java.io.IOException;
@@ -40,6 +41,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
 
+@ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
     private static final String USERNAME = "user";
@@ -52,22 +54,10 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
     /** Initializes the test class. */
     @BeforeAll
-    public static void initialize() throws IOException {
-
-        // Start mongod instance and get the port number for the connection.
-        startMongoDbInstance(true);
-
+    void initialize() throws IOException {
         // Add 1 valid user so we can successfully authenticate.
         createUser(DATABASE, USERNAME, PASSWORD);
 
-    }
-
-    /**
-     * Clean-up
-     */
-    @AfterAll
-    public static void cleanup() {
-        stopMongoDbInstance();
     }
 
     /**

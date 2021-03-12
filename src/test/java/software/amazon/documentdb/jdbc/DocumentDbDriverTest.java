@@ -16,10 +16,11 @@
 
 package software.amazon.documentdb.jdbc;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
 import java.io.IOException;
@@ -34,6 +35,7 @@ import java.util.Properties;
 /**
  * Tests for the DocumentDbDriver
  */
+@ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
 
     private static final String DATABASE_NAME = "database";
@@ -44,8 +46,7 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException if a driver manager error occurs.
      */
     @BeforeAll
-    public static void initialize() throws SQLException, IOException {
-        startMongoDbInstance(true);
+    public void initialize() throws SQLException, IOException {
 
         // Add 2 valid users to the local MongoDB instance.
         createUser(DATABASE_NAME, "user", "password");
@@ -53,14 +54,6 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
 
         prepareSimpleConsistentData(DATABASE_NAME, COLLECTION_NAME,
                 10, "user", "password");
-    }
-
-    /**
-     * Cleans-up any start up tasks.
-     */
-    @AfterAll
-    public static void cleanup() {
-        stopMongoDbInstance();
     }
 
     /**

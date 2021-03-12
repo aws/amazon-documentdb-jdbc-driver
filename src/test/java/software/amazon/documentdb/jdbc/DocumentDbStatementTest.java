@@ -20,12 +20,13 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
 import java.io.IOException;
@@ -39,6 +40,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+@ExtendWith(DocumentDbFlapDoodleExtension.class)
 class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
 
     private static final String DATABASE_NAME = "database";
@@ -47,20 +49,9 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     private static final String PASSWORD = "password";
 
     @BeforeAll
-    static void initialize() throws IOException {
-        // Ensure our driver is registered.
-        startMongoDbInstance(true);
-
+    void initialize() throws IOException {
         // Add a valid users to the local MongoDB instance.
         createUser(DATABASE_NAME, USER, PASSWORD);
-    }
-
-    /**
-     * Cleans-up any start up tasks.
-     */
-    @AfterAll
-    public static void cleanup() {
-        stopMongoDbInstance();
     }
 
     /**

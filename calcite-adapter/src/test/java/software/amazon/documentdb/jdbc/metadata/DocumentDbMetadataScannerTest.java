@@ -22,14 +22,15 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
-import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -37,37 +38,35 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+@ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
 
     private static final String USER = "user";
     private static final String PASS = "password";
     private static final String DATABASE = "testDb";
     private static final String HOST = "localhost";
-    private static final String COLLECTION = "collection";
     private static final String ADMIN = "admin";
 
     private DocumentDbConnectionProperties properties;
-    private ArrayList<BsonDocument> documents;
-    private MongoDatabase database;
 
+    private ArrayList<BsonDocument> documents;
+
+    private MongoDatabase database;
     /**
      * Init mongodb for testing
-     * @throws IOException if starting mongo instance fails.
      */
-    @BeforeEach
-    public void setup() throws IOException {
+    @BeforeAll
+    public void setup()  {
         properties = new DocumentDbConnectionProperties();
         properties.setUser(USER);
         properties.setPassword(PASS);
         properties.setDatabase(DATABASE);
         properties.setTlsEnabled("false");
 
-        startMongoDbInstance(false);
         createUser(DATABASE, USER, PASS);
 
         final MongoClient client = createMongoClient(ADMIN, USER, PASS);
         database = client.getDatabase(DATABASE);
-        documents = new ArrayList<>();
 
         properties.setHostname(HOST + ":" + getMongoPort());
     }
@@ -75,10 +74,9 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
     /**
      * Stops the mongoDb instance between tests to allow for fresh environment.
      */
-    @AfterEach
+    @BeforeEach
     public void close() {
-        documents = null;
-        stopMongoDbInstance();
+        documents = new ArrayList<>();
     }
 
     /**
@@ -86,11 +84,11 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     public void testGetIteratorBasic() throws SQLException {
-        addSimpleDataToDatabase(3);
+        addSimpleDataToDatabase(3, "testGetIteratorBasic");
         final HashSet<BsonDocument> documentSet = new HashSet<>(documents);
         properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.NATURAL.getName());
         properties.setMetadataScanLimit("1");
-        final MongoCollection<BsonDocument> collection = database.getCollection(COLLECTION,
+        final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorBasic",
                 BsonDocument.class);
 
         final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
@@ -104,11 +102,11 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     public void testGetIteratorNatural() throws SQLException {
-        addSimpleDataToDatabase(10);
+        addSimpleDataToDatabase(10, "testGetIteratorNatural");
         final HashSet<BsonDocument> documentSet = new HashSet<>(documents);
         properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.NATURAL.getName());
         properties.setMetadataScanLimit("5");
-        final MongoCollection<BsonDocument> collection = database.getCollection(COLLECTION,
+        final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorNatural",
                 BsonDocument.class);
 
         final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
@@ -133,10 +131,10 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     public void testGetIteratorRandom() throws SQLException {
-        addSimpleDataToDatabase(105);
+        addSimpleDataToDatabase(105, "testGetIteratorRandom");
         properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.RANDOM.getName());
         properties.setMetadataScanLimit("5");
-        final MongoCollection<BsonDocument> collection = database.getCollection(COLLECTION,
+        final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorRandom",
                 BsonDocument.class);
 
         final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
@@ -156,10 +154,10 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     public void testGetIteratorAll() throws SQLException {
-        addSimpleDataToDatabase(3);
+        addSimpleDataToDatabase(3, "testGetIteratorAll");
         final HashSet<BsonDocument> documentSet = new HashSet<>(documents);
         properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.ALL.getName());
-        final MongoCollection<BsonDocument> collection = database.getCollection("collection",
+        final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorAll",
                 BsonDocument.class);
 
         final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
@@ -175,10 +173,10 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     public void testGetIteratorReverse() throws SQLException {
-        addSimpleDataToDatabase(5);
+        addSimpleDataToDatabase(5, "testGetIteratorReverse");
         properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.NATURAL.getName());
         properties.setMetadataScanLimit("5");
-        final MongoCollection<BsonDocument> collection = database.getCollection(COLLECTION,
+        final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorReverse",
                 BsonDocument.class);
 
         final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
@@ -203,9 +201,9 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
      * Prepares data for a given database and collection.
      * @param recordCount - the number of records to insert data into.
      */
-    protected void addSimpleDataToDatabase(final int recordCount) {
+    protected void addSimpleDataToDatabase(final int recordCount, final String collectionName) {
         final MongoCollection<BsonDocument> collection = database
-                .getCollection(COLLECTION, BsonDocument.class);
+                .getCollection(collectionName, BsonDocument.class);
 
         for (int count = 0; count < recordCount; count++) {
             final BsonDocument document = new BsonDocument()

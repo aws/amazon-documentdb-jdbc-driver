@@ -19,14 +19,13 @@ package software.amazon.documentdb.jdbc;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
 import java.sql.SQLException;
 
 /**
  * Tests for the DocumentDbDataSource
  */
-public class DocumentDbDataSourceTest extends DocumentDbFlapDoodleTest {
+public class DocumentDbDataSourceTest {
 
     private DocumentDbDataSource dataSource;
 

@@ -16,21 +16,21 @@
 
 package software.amazon.documentdb.jdbc;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-
+@ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
     private static final String HOSTNAME = "localhost";
@@ -39,20 +39,16 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE = "testDb";
     private static final String COLLECTION_NAME = "COLLECTION";
     private static final DocumentDbConnectionProperties VALID_CONNECTION_PROPERTIES = new DocumentDbConnectionProperties();
-
     private static Connection basicConnection;
 
     /** Initializes the test class. */
     @BeforeAll
-    public static void initialize() throws IOException, SQLException {
+    public static void initialize() throws SQLException {
 
         VALID_CONNECTION_PROPERTIES.setUser(USERNAME);
         VALID_CONNECTION_PROPERTIES.setPassword(PASSWORD);
         VALID_CONNECTION_PROPERTIES.setDatabase(DATABASE);
         VALID_CONNECTION_PROPERTIES.setTlsEnabled("false");
-
-        // Start mongod instance and get the port number for the connection.
-        startMongoDbInstance(true);
         VALID_CONNECTION_PROPERTIES.setHostname(HOSTNAME + ":" + getMongoPort());
 
         // Add 1 valid user so we can successfully authenticate.
@@ -66,21 +62,12 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
-     * Clean-up
-     */
-    @AfterAll
-    public static void cleanup() {
-        stopMongoDbInstance();
-    }
-
-    /**
      * Tests isValid() when connected to a local MongoDB instance.
      *
      * @throws SQLException if an error occurs instantiating a Connection.
      */
     @Test
     void testIsValidWhenConnectionIsValid() throws SQLException {
-
         final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
                 DocumentDbDriver.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
         // NOTE: Observed approximate 10 .. 11 seconds delay before first heartbeat is returned.

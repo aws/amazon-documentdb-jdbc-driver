@@ -16,21 +16,22 @@
 
 package software.amazon.documentdb.jdbc;
 
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
-import java.io.IOException;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
+@ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbDatabaseMetadataTest extends DocumentDbFlapDoodleTest {
 
     private static final String USERNAME = "user";
@@ -43,22 +44,13 @@ public class DocumentDbDatabaseMetadataTest extends DocumentDbFlapDoodleTest {
 
     /** Initializes the test class. */
     @BeforeAll
-    public static void initialize() throws IOException, SQLException {
-        startMongoDbInstance(true);
+    public static void initialize() throws SQLException {
         createUser(DATABASE, USERNAME, PASSWORD);
         prepareSimpleConsistentData(DATABASE, COLLECTION_NAME,
                 5, USERNAME, PASSWORD);
         final String connectionString = String.format(
                 "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false", USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
         metadata = DriverManager.getConnection(connectionString).getMetaData();
-    }
-
-    /**
-     * Closes the MongoDB instance.
-     */
-    @AfterAll
-    public static void cleanUp() {
-        stopMongoDbInstance();
     }
 
     /**
