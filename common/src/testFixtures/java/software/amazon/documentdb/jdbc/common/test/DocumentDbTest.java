@@ -31,7 +31,7 @@ public class DocumentDbTest {
      */
     protected static int getMongoPort() {
         return mongoPort;
-    };
+    }
 
     /**
      * Sets the current listening port.

@@ -56,12 +56,14 @@ import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
@@ -325,7 +327,8 @@ public class DocumentDbFlapDoodleTest extends DocumentDbTest {
     private static File writeTmpScriptFile(final String scriptText) throws IOException {
         final File scriptFile = File.createTempFile("tempfile", ".js");
         scriptFile.deleteOnExit();
-        final Writer writer = new OutputStreamWriter(new FileOutputStream(scriptFile), "UTF-8");
+        final Writer writer = new OutputStreamWriter(new FileOutputStream(scriptFile),
+                StandardCharsets.UTF_8);
         final BufferedWriter bw = new BufferedWriter(writer);
         bw.write(scriptText);
         bw.close();

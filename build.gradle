@@ -61,9 +61,13 @@ test {
     useJUnitPlatform {
         if (project.hasProperty('runRemoteIntegrationTests') && project.property('runRemoteIntegrationTests') == 'false') {
             environment "connectionString", project.CONNECTION_STRING_LOCAL
+            // Ensure to match the enumeration name exactly from DocumentDbTestEnvironmentType.
+            environment "CONFIGURED_ENVIRONMENTS", "MONGODB40_FLAPDOODLE"
             excludeTags 'remote-integration'
         } else {
             environment "connectionString", project.CONNECTION_STRING_REMOTE
+            // Ensure to match the enumeration name exactly from DocumentDbTestEnvironmentType.
+            environment "CONFIGURED_ENVIRONMENTS", "MONGODB40_FLAPDOODLE,DOCUMENTDB40_SSH_TUNNEL"
             excludeTags 'local-integration'
         }
     }
