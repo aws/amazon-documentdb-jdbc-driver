@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.linq4j.tree.Types;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -28,7 +29,8 @@ public enum DocumentDbMethod {
     MONGO_QUERYABLE_FIND(DocumentDbTable.DocumentDbQueryable.class, "find", String.class,
             String.class, List.class),
     MONGO_QUERYABLE_AGGREGATE(DocumentDbTable.DocumentDbQueryable.class, "aggregate",
-            List.class, List.class);
+            List.class, List.class),
+    MONGO_JOIN(DocumentDbJoin.class, "innerJoin", Enumerable.class, Enumerable.class);
 
     @SuppressWarnings("ImmutableEnumChecker")
     private final Method method;

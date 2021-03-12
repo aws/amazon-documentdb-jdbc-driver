@@ -21,6 +21,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.HashSet;
 import java.util.Map.Entry;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
@@ -48,11 +49,16 @@ public class DocumentDbMetadataTable {
      */
     public ImmutableMap<String, DocumentDbMetadataColumn> getColumnsByPath() {
         if (columnsByPath == null) {
+            // TODO: Remove after implementing JOIN properly.
+            //  Added for the bad join that "merges" 2 tables into a new metadata table,
+            //  creating duplicate columns. Not good :(.
+            final HashSet<String> keys = new HashSet<>();
             final ImmutableMap.Builder<String, DocumentDbMetadataColumn> builder =
                     ImmutableMap.builder();
             for (Entry<String, DocumentDbMetadataColumn> entry : columns.entrySet()) {
                 final DocumentDbMetadataColumn column = entry.getValue();
-                if (!isNullOrWhitespace(column.getPath())) {
+                if (!isNullOrWhitespace(column.getPath()) && !keys.contains(column.getPath())) {
+                    keys.add(entry.getValue().getPath());
                     builder.put(entry.getValue().getPath(), entry.getValue());
                 }
             }

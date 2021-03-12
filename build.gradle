@@ -231,7 +231,7 @@ dependencies {
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
 
-    compileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
+    compile             group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
     compileOnly         'org.projectlombok:lombok:1.18.16'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'

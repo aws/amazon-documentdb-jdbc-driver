@@ -38,6 +38,15 @@ public class DocumentDbSchemaFactory implements SchemaFactory {
         return new DocumentDbSchema(database, properties);
     }
 
+    /**
+     * Added for use in DocumentDbQueryMapper.
+     * @param properties the connection properties
+     * @return a DocumentDbSchema for the database specified in properties.
+     */
+    public Schema create(final DocumentDbConnectionProperties properties) {
+        return new DocumentDbSchema(getDatabase(properties), properties);
+    }
+
     private static MongoDatabase getDatabase(final DocumentDbConnectionProperties properties) {
         final MongoClientSettings settings = properties.buildMongoClientSettings();
         final MongoClient client = MongoClients.create(settings);

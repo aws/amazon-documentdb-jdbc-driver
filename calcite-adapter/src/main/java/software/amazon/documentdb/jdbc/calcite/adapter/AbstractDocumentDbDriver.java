@@ -122,7 +122,7 @@ public abstract class AbstractDocumentDbDriver extends Driver {
     }
 
     private static void setViewModel(final DocumentDbConnectionProperties properties)
-            throws JsonProcessingException, SQLException {
+            throws JsonProcessingException {
 
         final JsonRoot rootModel = DocumentDbMetadataScanner.createViewModel(
                 new DocumentDbConnectionProperties(properties));

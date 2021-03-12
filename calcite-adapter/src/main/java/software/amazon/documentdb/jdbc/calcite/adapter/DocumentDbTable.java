@@ -40,7 +40,6 @@ import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.TranslatableTable;
 import org.apache.calcite.schema.impl.AbstractTableQueryable;
 import org.apache.calcite.sql.type.SqlTypeName;
-import org.apache.calcite.util.Util;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -54,7 +53,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import java.sql.Types;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -173,7 +171,7 @@ public class DocumentDbTable extends AbstractQueryableTable
      * @param operations One or more JSON strings
      * @return Enumerator of results
      */
-    private Enumerable<Object> aggregate(final MongoDatabase mongoDb,
+    Enumerable<Object> aggregate(final MongoDatabase mongoDb,
             final List<Entry<String, Class>> fields,
             final List<String> operations) {
         final List<Bson> list = new ArrayList<>();
@@ -202,19 +200,8 @@ public class DocumentDbTable extends AbstractQueryableTable
         }
         final Function1<Document, Object> getter =
                 DocumentDbEnumerator.getter(fields, tableMetadata);
-        return new AbstractEnumerable<Object>() {
-            @Override public Enumerator<Object> enumerator() {
-                final Iterator<Document> resultIterator;
-                try {
-                    resultIterator = mongoDb.getCollection(collectionName)
-                            .aggregate(list).iterator();
-                } catch (Exception e) {
-                    throw new RuntimeException("While running MongoDB query "
-                            + Util.toString(operations, "[", ",\n", "]"), e);
-                }
-                return new DocumentDbEnumerator(resultIterator, getter);
-            }
-        };
+        // Return this instead of the anonymous class to get more information from CalciteSignature.
+        return new DocumentDbEnumerable(mongoDb, tableMetadata, collectionName, list, operations, fields, getter);
     }
 
     /** Implementation of {@link org.apache.calcite.linq4j.Queryable} based on
