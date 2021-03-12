@@ -21,6 +21,7 @@ import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.UnwindOptions;
 import lombok.SneakyThrows;
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
@@ -189,6 +190,11 @@ public class DocumentDbTable extends AbstractQueryableTable
                 opts.includeArrayIndex(indexName);
                 list.add(Aggregates.unwind(arrayPath, opts));
             }
+        }
+        // In DocumentDbTable.aggregate, Add a match operation if it is a virtual table to remove null rows
+        if (!tableMetadata.getPath().isEmpty()) {
+            final String path = tableMetadata.getPath();
+            list.add(Aggregates.match(Filters.exists(path, true)));
         }
 
         for (String operation : operations) {

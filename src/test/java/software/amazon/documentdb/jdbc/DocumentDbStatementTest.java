@@ -22,6 +22,7 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -35,6 +36,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -755,6 +757,78 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    /**
+     * Tests that documents missing a sub-document do not create null rows.
+     */
+    @DisplayName("Test that documents not containing a sub-document do not add null rows.")
+    @Test
+    void testDocumentWithMissingSubDocument() throws SQLException {
+        final String collection = "testMissingSubdocumentNotNull";
+        final List<BsonDocument> documents = new ArrayList<>();
+        BsonDocument document = BsonDocument.parse(
+                "{ \"_id\" : \"key0\", \n" +
+                        "  \"name\" : \"withDocument\", \n" +
+                        "  \"subDocument\" : {\n" +
+                        "    \"field1\" : 1, \n" +
+                        "    \"field2\" : 2 \n" +
+                        "  } \n" +
+                        "}"
+        );
+        documents.add(document);
+        document = BsonDocument.parse(
+                "{ \"_id\" : \"key1\", \n" +
+                        "  \"name\" : \"withoutDocument\" \n" +
+                        "}"
+        );
+        documents.add(document);
+        insertBsonDocuments(collection, documents.toArray(new BsonDocument[]{}));
+        final Statement statement = getDocumentDbStatement();
+        statement.execute(String.format(
+                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection + "_subDocument"));
+        final ResultSet results = statement.getResultSet();
+        Assertions.assertTrue(results.next());
+        Assertions.assertEquals("key0", results.getString(1));
+        Assertions.assertEquals(1, results.getInt(2));
+        Assertions.assertEquals(2, results.getInt(3));
+        Assertions.assertFalse(results.next(), "Contained unexpected extra row.");
+    }
+
+    /**
+     * Tests that documents missing a nested sub-document do not create null rows.
+     */
+    @DisplayName("Test that documents not containing a sub-document do not add null rows.")
+    @Test
+    void testDocumentWithMissingNestedSubDocument() throws SQLException {
+        final String collection = "testMissingNestedSubdocumentNotNull";
+        final List<BsonDocument> documents = new ArrayList<>();
+        BsonDocument document = BsonDocument.parse(
+                "{ \"_id\" : \"key0\", \n" +
+                        "  \"name\" : \"withDocument\", \n" +
+                        "  \"subDocument\" : {\n" +
+                        "    \"field1\" : 1, \n" +
+                        "    \"nestedSubDoc\" : {\n" +
+                        "       \"nestedField\": 7 \n" +
+                        "   } \n" +
+                        "  } \n" +
+                        "}"
+        );
+        documents.add(document);
+        document = BsonDocument.parse(
+                "{ \"_id\" : \"key1\", \n" +
+                        "  \"name\" : \"withoutDocument\" \n" +
+                        "}"
+        );
+        documents.add(document);
+        insertBsonDocuments(collection, documents.toArray(new BsonDocument[]{}));
+        final Statement statement = getDocumentDbStatement();
+        statement.execute(String.format(
+                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection + "_subDocument_nestedSubDoc"));
+        final ResultSet results = statement.getResultSet();
+        Assertions.assertTrue(results.next());
+        Assertions.assertEquals("key0", results.getString(1));
+        Assertions.assertEquals(7, results.getInt(2));
+        Assertions.assertFalse(results.next(), "Contained unexpected extra row.");
+    }
 
     private static DocumentDbStatement getDocumentDbStatement() throws SQLException {
         return getDocumentDbStatement(DocumentDbMetadataScanMethod.NATURAL);
