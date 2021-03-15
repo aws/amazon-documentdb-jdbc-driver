@@ -159,7 +159,6 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     /**
      * Test for connection.getSchema() and getCatalog
      */
-    @Disabled // TODO: Change getSchema() to return database name.
     @Test
     @DisplayName("Tests that catalog is null, and schema is equal to the database name.")
     void testGetMetadataSchema() throws SQLException {

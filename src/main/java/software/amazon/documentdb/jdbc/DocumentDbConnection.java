@@ -57,6 +57,11 @@ public class DocumentDbConnection extends Connection
     }
 
     @Override
+    public String getSchema() throws SQLException {
+        return connection.getSchema();
+    }
+
+    @Override
     public int getNetworkTimeout() throws SQLException {
         return connection.getNetworkTimeout();
     }
