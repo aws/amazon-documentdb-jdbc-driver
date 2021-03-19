@@ -16,9 +16,6 @@
 
 package software.amazon.documentdb.jdbc;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -46,7 +43,6 @@ import java.util.regex.Pattern;
 class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
 
     private static final String DATABASE_NAME = "database";
-    private static final String ADMIN_DATABASE = "admin";
     private static final String USER = "user";
     private static final String PASSWORD = "password";
 
@@ -113,7 +109,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     void testQueryWithTwoLevelDocument() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1 } }");
-        insertBsonDocuments("testComplexDocument", new BsonDocument[]{document});
+        insertBsonDocuments(
+                "testComplexDocument", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
@@ -131,9 +128,11 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
 
         // Verify PROJECT.
         final ResultSet resultSet3 = statement.executeQuery(String.format(
-                "SELECT \"%s\" FROM \"%s\".\"%s\"", "testComplexDocument__id", DATABASE_NAME, "testComplexDocument_doc"));
+                "SELECT \"%s\", \"%s\" FROM \"%s\".\"%s\"", "field", "testComplexDocument__id", DATABASE_NAME, "testComplexDocument_doc"));
         Assertions.assertNotNull(resultSet3);
-        Assertions.assertEquals(1, resultSet3.getMetaData().getColumnCount());
+        Assertions.assertTrue(resultSet3.next());
+        Assertions.assertEquals("key", resultSet3.getString("testComplexDocument__id"));
+        Assertions.assertEquals(1, resultSet3.getInt("field"));
 
         // Verify JOIN on the base table and nested table to produce 3 columns and 1 row.
         final ResultSet resultSet4 =
@@ -166,7 +165,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"doc2\" : { \"field2\" : \"value\" } } }");
-        insertBsonDocuments("testComplex3LevelDocument", new BsonDocument[]{document});
+        insertBsonDocuments(
+                "testComplex3LevelDocument", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
@@ -229,7 +229,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     void testQueryWithScalarArray() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ 1, 2, 3 ] }");
-        insertBsonDocuments("testScalarArray", new BsonDocument[]{document});
+        insertBsonDocuments(
+                "testScalarArray", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
@@ -284,7 +285,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
-        insertBsonDocuments("testDocumentArray", new BsonDocument[]{document});
+        insertBsonDocuments(
+                "testDocumentArray", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
@@ -355,7 +357,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     void testQueryWithTwoLevelArray() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ [1, 2, 3 ], [ 4, 5, 6 ] ]}");
-        insertBsonDocuments("test2LevelArray", new BsonDocument[]{document});
+        insertBsonDocuments(
+                "test2LevelArray", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
@@ -428,7 +431,12 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     void testQueryWithTwoLevelDocumentWithArray() throws SQLException {
         final BsonDocument document =
             BsonDocument.parse("{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"array\" : [1, 2, 3 ] } }");
-        insertBsonDocuments("testComplexDocumentWithArray", new BsonDocument[]{document});
+        insertBsonDocuments(
+                "testComplexDocumentWithArray",
+                DATABASE_NAME,
+                USER,
+                PASSWORD,
+                new BsonDocument[] {document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
@@ -508,7 +516,12 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         final BsonDocument document =
             BsonDocument.parse(
                 "{ \"_id\" : \"key\", \"array\" : [ { \"array2\" : [ 1, 2, 3 ] }, { \"array2\" : [ 4, 5, 6 ] } ]}");
-            insertBsonDocuments("testArrayOfDocumentsWithArray", new BsonDocument[]{document});
+        insertBsonDocuments(
+                "testArrayOfDocumentsWithArray",
+                DATABASE_NAME,
+                USER,
+                PASSWORD,
+                new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
@@ -612,7 +625,12 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments("testArrayScalarConflict", documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments(
+                "testArrayScalarConflict",
+                DATABASE_NAME,
+                USER,
+                PASSWORD,
+                documents.toArray(new BsonDocument[]{}));
 
         final DocumentDbStatement statement = getDocumentDbStatement();
 
@@ -653,7 +671,12 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments("testDocumentScalarConflict", documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments(
+                "testDocumentScalarConflict",
+                DATABASE_NAME,
+                USER,
+                PASSWORD,
+                documents.toArray(new BsonDocument[]{}));
 
         final DocumentDbStatement statement = getDocumentDbStatement();
 
@@ -694,7 +717,12 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments("testArrayDocumentConflict", documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments(
+                "testArrayDocumentConflict",
+                DATABASE_NAME,
+                USER,
+                PASSWORD,
+                documents.toArray(new BsonDocument[]{}));
 
         final DocumentDbStatement statement = getDocumentDbStatement();
 
@@ -740,7 +768,12 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments("testDocumentAndArrayOfMixedTypesConflict", documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments(
+                "testDocumentAndArrayOfMixedTypesConflict",
+                DATABASE_NAME,
+                USER,
+                PASSWORD,
+                documents.toArray(new BsonDocument[]{}));
 
         final DocumentDbStatement statement = getDocumentDbStatement();
 
@@ -782,7 +815,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments(collection, documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments(
+                collection, DATABASE_NAME, USER, PASSWORD, documents.toArray(new BsonDocument[]{}));
         final Statement statement = getDocumentDbStatement();
         statement.execute(String.format(
                 "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection + "_subDocument"));
@@ -820,7 +854,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments(collection, documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments(
+                collection, DATABASE_NAME, USER, PASSWORD, documents.toArray(new BsonDocument[]{}));
         final Statement statement = getDocumentDbStatement();
         statement.execute(String.format(
                 "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection + "_subDocument_nestedSubDoc"));
@@ -845,19 +880,5 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();
         Assertions.assertNotNull(statement);
         return statement;
-    }
-
-    protected static void insertBsonDocuments(
-            final String collectionName,
-            final BsonDocument[] documents) {
-        try (MongoClient client = createMongoClient(ADMIN_DATABASE, USER, PASSWORD)) {
-            final MongoDatabase database = client.getDatabase(DATABASE_NAME);
-            final MongoCollection<BsonDocument> collection =
-                    database.getCollection(collectionName, BsonDocument.class);
-            for (int count = 0; count < documents.length; count++) {
-                collection.insertOne(documents[count]);
-                Assertions.assertEquals(count + 1, collection.countDocuments());
-            }
-        }
     }
 }

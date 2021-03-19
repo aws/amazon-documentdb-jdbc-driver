@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.adapter.enumerable.EnumerableMergeJoin;
 import org.apache.calcite.adapter.enumerable.EnumerableRel;
@@ -38,8 +39,10 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A starting point for implementing JOIN but needs A LOT of additional work.
@@ -113,29 +116,43 @@ public class DocumentDbJoin extends EnumerableMergeJoin {
         final DocumentDbEnumerable leftTable = (DocumentDbEnumerable) left;
         final DocumentDbEnumerable rightTable = (DocumentDbEnumerable) right;
 
-        // Join the column maps
-        final HashMap<String, DocumentDbMetadataColumn> columnMap = new HashMap<>(leftTable.getMetadataTable().getColumns());
-        columnMap.putAll(rightTable.getMetadataTable().getColumns());
-        final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
-                .builder()
-                .path(leftTable.getMetadataTable().getPath())
-                .name(leftTable.getMetadataTable().getName())
-                .columns(ImmutableMap.copyOf(columnMap))
-                .build();
+        // Check if the belong to the same collection
+        if (leftTable.getCollectionName().equals(rightTable.getCollectionName())) {
+            // Join the column maps and remove virtual table columns
+            Map<String, DocumentDbMetadataColumn> columnMap = new HashMap<>(leftTable.getMetadataTable().getColumns());
+            columnMap.putAll(rightTable.getMetadataTable().getColumns());
+            columnMap = columnMap
+                    .entrySet()
+                    .stream()
+                    .filter(entry -> Strings.isNullOrEmpty(entry.getValue().getVirtualTableName()))
+                    .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
 
-        // Join the field lists
-        final List<Entry<String, Class>> fields = new ArrayList<>();
-        fields.addAll(leftTable.getFields());
-        fields.addAll(rightTable.getFields());
+            final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
+                    .builder()
+                    .path(leftTable.getMetadataTable().getPath())
+                    .name(leftTable.getMetadataTable().getName())
+                    .columns(ImmutableMap.copyOf(columnMap))
+                    .build();
 
-        // TODO: Implement a join properly. This is probably not the right way to go and
-        //  should figure out how to handle multiple tables rather
-        //  than creating a merged table.
-        final DocumentDbTable joinedTable = new DocumentDbTable(leftTable.getCollectionName(), metadata);
+            // Join the field lists
+            final List<Entry<String, Class>> fields = new ArrayList<>();
+            fields.addAll(leftTable.getFields());
+            fields.addAll(rightTable.getFields());
 
-        // How to join the operations?? do we always use $lookup?
-        // Sometimes don't need to do anything when from same collection??
-        return joinedTable.aggregate(leftTable.getMongoDb(), fields, leftTable.getOperations());
+            // Join the operations
+            final List<String> operations = new ArrayList<>();
+            operations.addAll(leftTable.getOperations());
+            operations.addAll(rightTable.getOperations());
+
+            // Process the join conditions
+
+
+            final DocumentDbTable joinedTable = new DocumentDbTable(leftTable.getCollectionName(), metadata);
+            return joinedTable.aggregate(leftTable.getMongoDb(), fields, operations);
+        }
+
+        // If the tables are from a different collection, we need to join them using $lookup.
+        return null;
     }
 }
 

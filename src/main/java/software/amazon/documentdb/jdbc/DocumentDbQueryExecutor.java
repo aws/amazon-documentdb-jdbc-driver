@@ -17,6 +17,8 @@
 package software.amazon.documentdb.jdbc;
 
 import software.amazon.documentdb.jdbc.metadata.JdbcColumnMetaData;
+import software.amazon.documentdb.jdbc.query.DocumentDbMqlQueryContext;
+import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -32,14 +34,14 @@ public class DocumentDbQueryExecutor {
     private final java.sql.Statement statement;
     private final String uri;
     private int queryTimeout = -1;
-    private final DocumentDbQueryMapper queryMapper;
+    private final DocumentDbQueryMappingService queryMapper;
 
     /**
      * DocumentDbQueryExecutor constructor.
      * @param statement java.sql.Statement Object.
      * @param uri Endpoint to execute queries against.
      */
-    DocumentDbQueryExecutor(final java.sql.Statement statement, final String uri, final DocumentDbQueryMapper queryMapper) {
+    DocumentDbQueryExecutor(final java.sql.Statement statement, final String uri, final DocumentDbQueryMappingService queryMapper) {
         this.uri = uri;
         this.statement = statement;
         this.queryMapper = queryMapper;
@@ -59,8 +61,8 @@ public class DocumentDbQueryExecutor {
      * @param sql Query to execute.
      * @return java.sql.ResultSet object returned from query execution.
      */
-    public java.sql.ResultSet executeQuery(final String sql) {
-        final DocumentDbMqlQueryContext mql = queryMapper.getMqlQueryContext(sql);
+    public java.sql.ResultSet executeQuery(final String sql) throws SQLException {
+        final DocumentDbMqlQueryContext mql = queryMapper.get(sql);
         // TODO: Do the query here somehow.
 
         // Construct the result set

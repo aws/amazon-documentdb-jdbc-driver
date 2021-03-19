@@ -14,7 +14,7 @@
  *
  */
 
-package software.amazon.documentdb.jdbc;
+package software.amazon.documentdb.jdbc.query;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.calcite.DataContext;
@@ -34,87 +34,93 @@ import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.SchemaVersion;
 import org.apache.calcite.schema.impl.LongSchemaVersion;
 import org.apache.calcite.tools.RelRunner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbEnumerable;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbSchemaFactory;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
 import software.amazon.documentdb.jdbc.metadata.JdbcColumnMetaData;
 
+import java.sql.SQLException;
 import java.util.List;
 
-/**
- * This is the POC of our module that maps SQL to MQL.
- */
-public class DocumentDbQueryMapper {
+
+public class DocumentDbQueryMappingService {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
     private final DocumentDbPrepareContext prepareContext;
     private final CalcitePrepare prepare;
-    private final DocumentDbDatabaseMetadata databaseMetadata;
 
     /**
-     * Holds the CalcitePrepare.Context and the CalcitePrepare generated for a particular connection.
+     * Holds the DocumentDbDatabaseMetadata, CalcitePrepare.Context and the CalcitePrepare generated for a particular connection.
      * The default prepare factory is used like in CalciteConnectImpl.
-     * @param properties the connection properties
      */
-    public DocumentDbQueryMapper(final DocumentDbConnectionProperties properties,
+    public DocumentDbQueryMappingService(final DocumentDbConnectionProperties connectionProperties,
             final DocumentDbDatabaseMetadata databaseMetadata) {
-        this.databaseMetadata = databaseMetadata;
-        this.prepareContext = new DocumentDbPrepareContext(
-                getRootSchema(databaseMetadata, properties),
-                properties.getDatabase(),
-                properties);
+        this.prepareContext =
+                new DocumentDbPrepareContext(
+                        getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
+                        connectionProperties.getDatabase(),
+                        connectionProperties);
         this.prepare = CalcitePrepare.DEFAULT_FACTORY.apply();
     }
 
     /**
      * Uses CalcitePrepare API to parse and validate sql and convert to MQL.
      * @param sql the query in sql
-     * @return the query context that has the fields, aggregation stages, and table metadata.
+     * @return the query context that has the target collection, aggregation stages, and result set metadata.
      */
-    public DocumentDbMqlQueryContext getMqlQueryContext(final String sql) {
+    public DocumentDbMqlQueryContext get(final String sql) throws SQLException {
         final CalcitePrepare.Query<Object> query = CalcitePrepare.Query.of(sql);
+
         // In prepareSql:
-        // -    We validate the sql based on the schema in prepareContext.
-        // -    SqlToRelConverter turns this into the RelNode tree. (SQL->AST)
-        // -    The query planner optimizes the tree with the Document DB adapter rules we have.
-        // -    We then visit each node (depth first, left-right-root) and go into its implement method.
-        //      The implement methods turn the RelNodes into a physical plan. (AST->MQL)
-        final CalciteSignature<?> signature = prepare.prepareSql(prepareContext, query, Object[].class, -1);
+        // -    We validate the sql based on the schema and turn this into a tree. (SQL->AST)
+        // -    The query planner optimizes the tree with the DocumentDb adapter rules.
+        // -    We visit each node and go into its implement method where the nodes become a physical
+        // plan. (AST->MQL)
+        try {
+            final CalciteSignature<?> signature =
+                    prepare.prepareSql(prepareContext, query, Object[].class, -1);
 
-        // Enumerable contains the operations and fields we need to do the aggregation call.
-        // Signature also contains a column list that has information about the columns/types of the
-        // return row (ordinal, nullability, precision, etc). This is different than our own DocumentDbColumnMetadata.
-        // TODO: We also might want to use additional information from signature to construct the result set.
-        final Enumerable<?> enumerable = signature.enumerable(prepareContext.getDataContext());
-        if (enumerable instanceof DocumentDbEnumerable) {
-            final DocumentDbEnumerable documentDbEnumerable = (DocumentDbEnumerable) enumerable;
-            return DocumentDbMqlQueryContext.builder()
-                    .columnMetaData(JdbcColumnMetaData.fromCalciteColumnMetaData(signature.columns)) // This is essentially the ResultSetMetaData
-                    .aggregateOperations(documentDbEnumerable.getList())
-                    .collectionName(documentDbEnumerable.getCollectionName())
-                    .metadataTable(documentDbEnumerable.getMetadataTable())
-                    .build();
+            // Enumerable contains the operations and fields we need to do the aggregation call.
+            // Signature also contains a column list that has information about the columns/types of the
+            // return row (ordinal, nullability, precision, etc).
+            final Enumerable<?> enumerable = signature.enumerable(prepareContext.getDataContext());
+            if (enumerable instanceof DocumentDbEnumerable) {
+                final DocumentDbEnumerable documentDbEnumerable = (DocumentDbEnumerable) enumerable;
+                return DocumentDbMqlQueryContext.builder()
+                        .columnMetaData(JdbcColumnMetaData.fromCalciteColumnMetaData(signature.columns))
+                        .aggregateOperations(documentDbEnumerable.getList())
+                        .collectionName(documentDbEnumerable.getCollectionName())
+                        .build();
+            }
+        } catch (Exception e) {
+            throw SqlError.createSQLException(
+                    LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql);
         }
-
-        return null;
+        // Query could be parsed but cannot be executed in pure MQL (likely involves joins or subqueries).
+        throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.UNSUPPORTED_SQL, sql);
     }
 
     /**
-     * Prepares the rootSchema so the PrepareContext uses the DocumentDB adapter.
-     * Logic is lifted from Calcite's ModelHandler. It is simplified because we know that we
-     * only care about the DocumentDb schema and do not have to visit any other potential schemas.
+     * Creates a {@link CalciteSchema} from the database metadata.
+     * @param databaseMetadata the metadata for the target database.
+     * @return a {@link CalciteSchema} for the database described by the databaseMetadata.
      */
-    private static CalciteSchema getRootSchema(
-            final DocumentDbDatabaseMetadata databaseMetadata,
-            final DocumentDbConnectionProperties properties) {
+    private static CalciteSchema getRootSchemaFromDatabaseMetadata(
+            final DocumentDbConnectionProperties connectionProperties,
+            final DocumentDbDatabaseMetadata databaseMetadata) {
         final SchemaPlus parentSchema = CalciteSchema.createRootSchema(true).plus();
-        final Schema schema = new DocumentDbSchemaFactory().create(databaseMetadata, properties);
-        parentSchema.add(properties.getDatabase(), schema);
+        final Schema schema = new DocumentDbSchemaFactory().create(databaseMetadata, connectionProperties);
+        parentSchema.add(connectionProperties.getDatabase(), schema);
         return CalciteSchema.from(parentSchema);
     }
 
     /**
-     * Our own implementation of CalcitePrepare.Context that doesn't need a Connection object.
-     * Based on ContextImp in CalciteConnectionImpl.
-     * PrepareContext is needed to leverage the CalcitePrepare API.
+     * Our own implementation of {@link CalcitePrepare.Context} to pass the schema without a {@link java.sql.Connection}.
+     * Based on the prepare context in CalciteConnectionImpl.
      */
     private static class DocumentDbPrepareContext implements CalcitePrepare.Context {
         private final CalciteSchema rootSchema;

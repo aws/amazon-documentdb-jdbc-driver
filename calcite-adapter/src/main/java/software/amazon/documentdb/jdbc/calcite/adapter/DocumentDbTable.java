@@ -189,7 +189,8 @@ public class DocumentDbTable extends AbstractQueryableTable
                 list.add(Aggregates.unwind(arrayPath, opts));
             }
         }
-        // In DocumentDbTable.aggregate, Add a match operation if it is a virtual table to remove null rows
+
+        // Add a match operation if it is a virtual table to remove null rows
         if (!tableMetadata.getPath().isEmpty()) {
             final String path = tableMetadata.getPath();
             list.add(Aggregates.match(Filters.exists(path, true)));

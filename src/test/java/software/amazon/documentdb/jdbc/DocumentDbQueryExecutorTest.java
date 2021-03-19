@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.bson.BsonDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -25,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
+import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -32,7 +32,6 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 import static software.amazon.documentdb.jdbc.DocumentDbStatementTest.getDocumentDbStatement;
-import static software.amazon.documentdb.jdbc.DocumentDbStatementTest.insertBsonDocuments;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
@@ -44,7 +43,6 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
     @BeforeAll
     @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
     static void initialize() {
-
         // Add a valid users to the local MongoDB instance.
         createUser(DATABASE_NAME, TEST_USER, TEST_PASSWORD);
         VALID_CONNECTION_PROPERTIES.setUser(TEST_USER);
@@ -52,85 +50,6 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         VALID_CONNECTION_PROPERTIES.setDatabase(DATABASE_NAME);
         VALID_CONNECTION_PROPERTIES.setTlsEnabled("false");
         VALID_CONNECTION_PROPERTIES.setHostname("localhost:" + getMongoPort());
-    }
-
-    /**
-     * Shows that we can get the aggregation operations needed to execute a query.
-     */
-    @Test
-    void testQueryMappingPOC() throws SQLException {
-        final BsonDocument document =
-                BsonDocument.parse(
-                        "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
-        insertBsonDocuments("testQueryMappingPOC", new BsonDocument[]{document});
-
-        final DocumentDbDatabaseMetadata databaseMetadata = DocumentDbDatabaseMetadata.get(
-                "id",
-                VALID_CONNECTION_PROPERTIES, true);
-        final DocumentDbQueryMapper queryMapper = new DocumentDbQueryMapper(VALID_CONNECTION_PROPERTIES,
-                databaseMetadata);
-
-        // Get the base table.
-        final String basicQuery = String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
-                                "testQueryMappingPOC");
-        DocumentDbMqlQueryContext result = queryMapper.getMqlQueryContext(basicQuery);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals("testQueryMappingPOC", result.getCollectionName());
-        Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(0, result.getAggregateOperations().size());
-
-        // Get the nested table.
-        final String nestedTableQuery = String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
-                                "testQueryMappingPOC_array");
-        result = queryMapper.getMqlQueryContext(nestedTableQuery);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals("testQueryMappingPOC", result.getCollectionName());
-        Assertions.assertEquals(5, result.getColumnMetaData().size());
-        Assertions.assertEquals(2, result.getAggregateOperations().size());
-        Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"
-                ),
-                result.getAggregateOperations().get(0));
-
-        // Verify WHERE on the nested table to produce only rows where field = 2.
-        final String whereQuery = String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = 2", DATABASE_NAME,
-                                "testQueryMappingPOC_array");
-        result = queryMapper.getMqlQueryContext(whereQuery);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals("testQueryMappingPOC", result.getCollectionName());
-        Assertions.assertEquals(5, result.getColumnMetaData().size());
-        Assertions.assertEquals(3, result.getAggregateOperations().size());
-        Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"
-                ),
-                result.getAggregateOperations().get(0));
-        Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{ \"$match\": {\"array.field\" : 2 } }"
-                ),
-                result.getAggregateOperations().get(2));
-
-        // Verify JOIN on the base table and nested table to produce 6 columns and 2 rows.
-        final String joinQuery = String.format(
-                                "SELECT * FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s",
-                                DATABASE_NAME,
-                                "testQueryMappingPOC",
-                                DATABASE_NAME,
-                                "testQueryMappingPOC_array",
-                                "\"testQueryMappingPOC\".\"testQueryMappingPOC__id\"",
-                                "\"testQueryMappingPOC_array\".\"testQueryMappingPOC__id\"");
-        result = queryMapper.getMqlQueryContext(joinQuery);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals("testQueryMappingPOC", result.getCollectionName());
-        Assertions.assertEquals(6, result.getColumnMetaData().size());
-        Assertions.assertEquals(2, result.getAggregateOperations().size());
     }
 
     /**
@@ -146,8 +65,8 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 "id",
                 VALID_CONNECTION_PROPERTIES,
                 true);
-        final DocumentDbQueryMapper queryMapper = new DocumentDbQueryMapper(VALID_CONNECTION_PROPERTIES,
-                databaseMetadata);
+        final DocumentDbQueryMappingService queryMapper = new DocumentDbQueryMappingService(
+                VALID_CONNECTION_PROPERTIES, databaseMetadata);
         final DocumentDbStatement statement = getDocumentDbStatement();
         final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(statement, null, queryMapper);
         final ResultSet resultSet = queryExecutor.executeQuery(String.format(

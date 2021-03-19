@@ -124,4 +124,21 @@ public class DocumentDbFlapDoodleTest extends DocumentDbTest {
             }
         }
     }
+
+    protected static void insertBsonDocuments(
+            final String collectionName,
+            final String databaseName,
+            final String user,
+            final String password,
+            final BsonDocument[] documents) {
+        try (MongoClient client = createMongoClient(ADMIN_DATABASE, user, password)) {
+            final MongoDatabase database = client.getDatabase(databaseName);
+            final MongoCollection<BsonDocument> collection =
+                    database.getCollection(collectionName, BsonDocument.class);
+            for (int count = 0; count < documents.length; count++) {
+                collection.insertOne(documents[count]);
+                Assertions.assertEquals(count + 1, collection.countDocuments());
+            }
+        }
+    }
 }

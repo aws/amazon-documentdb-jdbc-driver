@@ -25,7 +25,6 @@ import org.apache.calcite.rel.RelFieldCollation;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.Sort;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
-import org.apache.calcite.rel.type.RelDataTypeField;
 import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.util.Util;
@@ -70,11 +69,12 @@ public class DocumentDbSort extends Sort implements DocumentDbRel {
         implementor.visitChild(0, getInput());
         if (!collation.getFieldCollations().isEmpty()) {
             final List<String> keys = new ArrayList<>();
-            final List<RelDataTypeField> fields = getRowType().getFieldList();
             for (RelFieldCollation fieldCollation : collation.getFieldCollations()) {
-                final String name =
-                        fields.get(fieldCollation.getFieldIndex()).getName();
-                keys.add(name + ": " + direction(fieldCollation));
+                // DocumentDB: modified - start
+                final List<String> names = DocumentDbRules.mongoFieldNames(getRowType(), implementor.getMetadataTable());
+                final String name = names.get(fieldCollation.getFieldIndex());
+                keys.add(DocumentDbRules.maybeQuote(name) + ": " + direction(fieldCollation));
+                // DocumentDB: modified - end
                 if (false) {
                     // TODO: NULLS FIRST and NULLS LAST
                     switch (fieldCollation.nullDirection) {

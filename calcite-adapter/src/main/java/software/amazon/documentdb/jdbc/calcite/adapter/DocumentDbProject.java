@@ -26,6 +26,7 @@ import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.Project;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
+import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
@@ -93,15 +94,24 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                         (JavaTypeFactory) getCluster().getTypeFactory(),
                         DocumentDbRules.mongoFieldNames(getInput().getRowType(),
                                 mongoImplementor.getMetadataTable()));
-        // DocumentDB: modified - end
         final List<String> items = new ArrayList<>();
+        final List<String> inNames = DocumentDbRules.mongoFieldNames(getInput().getRowType(),
+                mongoImplementor.getMetadataTable());
+
         for (Pair<RexNode, String> pair : getNamedProjects()) {
-            final String name = pair.right;
+            String name = pair.right;
             final String expr = pair.left.accept(translator);
+
+            // Do not rename fields, use the original name so path matches metadata.
+            if (pair.left instanceof RexInputRef) {
+                final RexInputRef ref = (RexInputRef) pair.left;
+                name = inNames.get(ref.getIndex());
+            }
             items.add(("'$" + name + "'").equals(expr)
                     ? DocumentDbRules.maybeQuote(name) + ": 1"
                     : DocumentDbRules.maybeQuote(name) + ": " + expr);
         }
+        // DocumentDB: modified - end
         final String findString = Util.toString(items, "{", ", ", "}");
         final String aggregateString = "{$project: " + findString + "}";
         final Pair<String, String> op = Pair.of(findString, aggregateString);

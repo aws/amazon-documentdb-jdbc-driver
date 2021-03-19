@@ -14,12 +14,11 @@
  *
  */
 
-package software.amazon.documentdb.jdbc;
+package software.amazon.documentdb.jdbc.query;
 
 import lombok.Builder;
 import lombok.Getter;
 import org.bson.conversions.Bson;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import software.amazon.documentdb.jdbc.metadata.JdbcColumnMetaData;
 import java.util.List;
 
@@ -31,12 +30,10 @@ import java.util.List;
 @Getter
 @Builder
 public class DocumentDbMqlQueryContext {
-    /** The column metadata (a Calcite interface) describing the return row. */
+    /** The column metadata describing the return row. */
     private final List<JdbcColumnMetaData> columnMetaData;
     /** The operations to use in the aggregation. */
     private final List<Bson> aggregateOperations;
-    /** The table metadata (perhaps this needs to be a list?) */
-    private final DocumentDbMetadataTable metadataTable;
     /** The collection name to use in the aggregation. */
     private final String collectionName;
 }

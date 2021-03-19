@@ -118,6 +118,7 @@ public class DocumentDbAggregate
         final DocumentDbRel.Implementor mongoImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
         mongoImplementor.visitChild(0, getInput());
+        // DocumentDB: modified - start
         final List<String> inNames =
                 DocumentDbRules.mongoFieldNames(getInput().getRowType(),
                         mongoImplementor.getMetadataTable());
@@ -133,11 +134,13 @@ public class DocumentDbAggregate
             final List<String> keys = new ArrayList<>();
             for (int group : groupSet) {
                 final String inName = inNames.get(group);
-                keys.add(inName + ": " + DocumentDbRules.quote("$" + inName));
+                // Replace any '.'s with _ as the temporary field names in the group by output document.
+                keys.add(acceptedMongoFieldName(inName) + ": " + DocumentDbRules.quote("$" + inName));
                 ++i;
             }
             list.add("_id: " + Util.toString(keys, "{", ", ", "}"));
         }
+        // DocumentDB: modified - end
         for (AggregateCall aggCall : aggCalls) {
             list.add(
                     DocumentDbRules.maybeQuote(outNames.get(i++)) + ": "
@@ -162,13 +165,16 @@ public class DocumentDbAggregate
             fixups = new ArrayList<>();
             fixups.add("_id: 0");
             i = 0;
+            // DocumentDB: modified - start
+            // We project the original field names (inNames) rather than any renames so the path matches the metadata.
             for (int group : groupSet) {
                 fixups.add(
-                        DocumentDbRules.maybeQuote(outNames.get(group))
+                        DocumentDbRules.maybeQuote(inNames.get(group))
                                 + ": "
-                                + DocumentDbRules.maybeQuote("$_id." + outNames.get(group)));
+                                + DocumentDbRules.maybeQuote("$_id." + acceptedMongoFieldName(inNames.get(group))));
                 ++i;
             }
+            // DocumentDB: modified - end
             for (AggregateCall ignored : aggCalls) {
                 final String outName = outNames.get(i++);
                 fixups.add(
@@ -214,5 +220,9 @@ public class DocumentDbAggregate
         } else {
             throw new AssertionError("unknown aggregate " + aggregation);
         }
+    }
+
+    private static String acceptedMongoFieldName(final String path) {
+        return path.replace('.', '_');
     }
 }
