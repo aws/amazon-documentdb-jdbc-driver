@@ -18,9 +18,9 @@ package software.amazon.documentdb.jdbc;
 
 import lombok.Builder;
 import lombok.Getter;
-import org.apache.calcite.avatica.ColumnMetaData;
 import org.bson.conversions.Bson;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.JdbcColumnMetaData;
 import java.util.List;
 
 /**
@@ -32,7 +32,7 @@ import java.util.List;
 @Builder
 public class DocumentDbMqlQueryContext {
     /** The column metadata (a Calcite interface) describing the return row. */
-    private final List<ColumnMetaData> columnMetaData;
+    private final List<JdbcColumnMetaData> columnMetaData;
     /** The operations to use in the aggregation. */
     private final List<Bson> aggregateOperations;
     /** The table metadata (perhaps this needs to be a list?) */

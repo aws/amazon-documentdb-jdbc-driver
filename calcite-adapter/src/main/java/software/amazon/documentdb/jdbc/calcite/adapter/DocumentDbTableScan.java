@@ -95,7 +95,6 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
     }
 
     @Override public void implement(final Implementor implementor) {
-        implementor.setMongoTable(mongoTable);
         implementor.setTable(table);
         implementor.setMetadataTable(metadataTable);
     }

@@ -94,7 +94,7 @@ public class DocumentDbMongoTestEnvironment extends DocumentDbAbstractTestEnviro
             final String username,
             final String password,
             final boolean enableAuthentication) {
-        super(MONGO_LOCAL_HOST, username, password, null);
+        super(MONGO_LOCAL_HOST, username, password, "tls=false");
         this.enableAuthentication = enableAuthentication;
         this.databaseName = databaseName;
     }

@@ -65,11 +65,6 @@ public interface DocumentDbRel extends RelNode {
             this.table = table;
         }
 
-        public void setMongoTable(final DocumentDbTable mongoTable) {
-            // TODO unread property - should be fixed
-            //this.mongoTable = mongoTable;
-        }
-
         // DocumentDB: modified - start
         public DocumentDbMetadataTable getMetadataTable() {
             return metadataTable;

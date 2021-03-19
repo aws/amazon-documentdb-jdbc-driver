@@ -16,7 +16,8 @@
 
 package software.amazon.documentdb.jdbc;
 
-import org.apache.calcite.avatica.ColumnMetaData;
+import software.amazon.documentdb.jdbc.metadata.JdbcColumnMetaData;
+
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -144,9 +145,9 @@ public class DocumentDbQueryExecutor {
      * column metadata from Calcite.
      */
     private static class POCResultSetMetaData extends software.amazon.documentdb.jdbc.common.ResultSetMetaData {
-        private final List<ColumnMetaData> columnMetaDataList;
+        private final List<JdbcColumnMetaData> columnMetaDataList;
 
-        POCResultSetMetaData(final List<ColumnMetaData> columnMetaDataList) {
+        POCResultSetMetaData(final List<JdbcColumnMetaData> columnMetaDataList) {
             this.columnMetaDataList = columnMetaDataList;
         }
         @Override
@@ -156,102 +157,102 @@ public class DocumentDbQueryExecutor {
 
         @Override
         public boolean isAutoIncrement(final int column) {
-            return columnMetaDataList.get(column - 1).autoIncrement;
+            return columnMetaDataList.get(column - 1).isAutoIncrement();
         }
 
         @Override
         public boolean isCaseSensitive(final int column) {
-            return columnMetaDataList.get(column - 1).caseSensitive;
+            return columnMetaDataList.get(column - 1).isCaseSensitive();
         }
 
         @Override
         public boolean isSearchable(final int column) {
-            return columnMetaDataList.get(column - 1).searchable;
+            return columnMetaDataList.get(column - 1).isSearchable();
         }
 
         @Override
         public boolean isCurrency(final int column) {
-            return columnMetaDataList.get(column - 1).currency;
+            return columnMetaDataList.get(column - 1).isCurrency();
         }
 
         @Override
         public int isNullable(final int column) {
-            return columnMetaDataList.get(column - 1).nullable;
+            return columnMetaDataList.get(column - 1).getNullable();
         }
 
         @Override
         public boolean isSigned(final int column) {
-            return columnMetaDataList.get(column - 1).signed;
+            return columnMetaDataList.get(column - 1).isSigned();
         }
 
         @Override
         public int getColumnDisplaySize(final int column) {
-            return columnMetaDataList.get(column - 1).displaySize;
+            return columnMetaDataList.get(column - 1).getColumnDisplaySize();
         }
 
         @Override
         public String getColumnLabel(final int column) {
-            return columnMetaDataList.get(column - 1).label;
+            return columnMetaDataList.get(column - 1).getColumnLabel();
         }
 
         @Override
         public String getColumnName(final int column) {
-            return columnMetaDataList.get(column - 1).columnName;
+            return columnMetaDataList.get(column - 1).getColumnName();
         }
 
         @Override
         public String getSchemaName(final int column) {
-            return columnMetaDataList.get(column - 1).schemaName;
+            return columnMetaDataList.get(column - 1).getSchemaName();
         }
 
         @Override
         public int getPrecision(final int column) {
-            return columnMetaDataList.get(column - 1).precision;
+            return columnMetaDataList.get(column - 1).getPrecision();
         }
 
         @Override
         public int getScale(final int column) {
-            return columnMetaDataList.get(column - 1).scale;
+            return columnMetaDataList.get(column - 1).getScale();
         }
 
         @Override
         public String getTableName(final int column) {
-            return columnMetaDataList.get(column - 1).tableName;
+            return columnMetaDataList.get(column - 1).getTableName();
         }
 
         @Override
         public String getCatalogName(final int column) {
-            return columnMetaDataList.get(column - 1).catalogName;
+            return columnMetaDataList.get(column - 1).getCatalogName();
         }
 
         @Override
         public int getColumnType(final int column) {
-            return columnMetaDataList.get(column - 1).type.id;
+            return columnMetaDataList.get(column - 1).getColumnType();
         }
 
         @Override
         public String getColumnTypeName(final int column) {
-            return columnMetaDataList.get(column - 1).type.name;
+            return columnMetaDataList.get(column - 1).getColumnTypeName();
         }
 
         @Override
         public boolean isReadOnly(final int column) {
-            return columnMetaDataList.get(column - 1).readOnly;
+            return columnMetaDataList.get(column - 1).isReadOnly();
         }
 
         @Override
         public boolean isWritable(final int column) {
-            return columnMetaDataList.get(column - 1).writable;
+            return columnMetaDataList.get(column - 1).isWritable();
         }
 
         @Override
         public boolean isDefinitelyWritable(final int column) {
-            return columnMetaDataList.get(column - 1).writable;
+            return columnMetaDataList.get(column - 1).isDefinitelyWritable();
         }
 
         @Override
         public String getColumnClassName(final int column) {
-            return columnMetaDataList.get(column - 1).columnClassName;
+            return columnMetaDataList.get(column - 1).getColumnClassName();
         }
     }
 }

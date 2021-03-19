@@ -24,6 +24,8 @@ import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaFactory;
 import org.apache.calcite.schema.SchemaPlus;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
+
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Properties;
@@ -39,12 +41,14 @@ public class DocumentDbSchemaFactory implements SchemaFactory {
     }
 
     /**
-     * Added for use in DocumentDbQueryMapper.
-     * @param properties the connection properties
-     * @return a DocumentDbSchema for the database specified in properties.
+     * Creates {@link Schema} from database metadata.
+     *
+     * @param databaseMetadata the database metadata.
+     * @return a new {@link Schema} for the database.
      */
-    public Schema create(final DocumentDbConnectionProperties properties) {
-        return new DocumentDbSchema(getDatabase(properties), properties);
+    public Schema create(final DocumentDbDatabaseMetadata databaseMetadata,
+            final DocumentDbConnectionProperties properties) {
+        return new DocumentDbSchema(databaseMetadata, getDatabase(properties), properties);
     }
 
     private static MongoDatabase getDatabase(final DocumentDbConnectionProperties properties) {

@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
+
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -56,13 +58,17 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
      * Shows that we can get the aggregation operations needed to execute a query.
      */
     @Test
-    void testQueryMappingPOC() {
+    void testQueryMappingPOC() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
         insertBsonDocuments("testQueryMappingPOC", new BsonDocument[]{document});
 
-        final DocumentDbQueryMapper queryMapper = new DocumentDbQueryMapper(VALID_CONNECTION_PROPERTIES);
+        final DocumentDbDatabaseMetadata databaseMetadata = DocumentDbDatabaseMetadata.get(
+                "id",
+                VALID_CONNECTION_PROPERTIES, true);
+        final DocumentDbQueryMapper queryMapper = new DocumentDbQueryMapper(VALID_CONNECTION_PROPERTIES,
+                databaseMetadata);
 
         // Get the base table.
         final String basicQuery = String.format(
@@ -136,7 +142,12 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final String collectionSimple = "collectionSimple";
         prepareSimpleConsistentData(DATABASE_NAME, collectionSimple,
                 5, TEST_USER, TEST_PASSWORD);
-        final DocumentDbQueryMapper queryMapper = new DocumentDbQueryMapper(VALID_CONNECTION_PROPERTIES);
+        final DocumentDbDatabaseMetadata databaseMetadata = DocumentDbDatabaseMetadata.get(
+                "id",
+                VALID_CONNECTION_PROPERTIES,
+                true);
+        final DocumentDbQueryMapper queryMapper = new DocumentDbQueryMapper(VALID_CONNECTION_PROPERTIES,
+                databaseMetadata);
         final DocumentDbStatement statement = getDocumentDbStatement();
         final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(statement, null, queryMapper);
         final ResultSet resultSet = queryExecutor.executeQuery(String.format(

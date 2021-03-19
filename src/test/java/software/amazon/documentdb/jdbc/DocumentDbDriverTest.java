@@ -193,9 +193,9 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
     public void testSetPropertiesFromConnectionString() throws SQLException {
         final Properties info = new Properties();
         info.clear();
-        String connectionString = "mongodb://username:password@localhost/database";
-        DocumentDbConnectionProperties properties = DocumentDbDriver
-                .getPropertiesFromConnectionString(info, connectionString);
+        String connectionString = "jdbc:documentdb://username:password@localhost/database";
+        DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("localhost", properties.getProperty("host"));
         Assertions.assertEquals(DATABASE_NAME, properties.getProperty("database"));
@@ -203,9 +203,9 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals("password", properties.getProperty("password"));
 
         // Connection string does not override existing properties.
-        connectionString = "mongodb://username:password@127.0.0.1/newdatabase";
-        properties = DocumentDbDriver
-                .getPropertiesFromConnectionString(info, connectionString);
+        connectionString = "jdbc:documentdb://username:password@127.0.0.1/newdatabase";
+        properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
         Assertions.assertEquals("newdatabase", properties.getProperty("database"));
@@ -214,9 +214,9 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
 
         // Get user (unencoded) name and password.
         info.clear();
-        connectionString = "mongodb://user%20name:pass%20word@127.0.0.1/newdatabase";
-        properties = DocumentDbDriver
-                .getPropertiesFromConnectionString(info, connectionString);
+        connectionString = "jdbc:documentdb://user%20name:pass%20word@127.0.0.1/newdatabase";
+        properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
         Assertions.assertEquals("newdatabase", properties.getProperty("database"));
@@ -225,7 +225,7 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
 
         // Check that all properties can be added.
         info.clear();
-        connectionString = "mongodb://user%20name:pass%20word@127.0.0.1/newdatabase" +
+        connectionString = "jdbc:documentdb://user%20name:pass%20word@127.0.0.1/newdatabase" +
                 "?" + DocumentDbConnectionProperty.READ_PREFERENCE.getName() + "=" + "secondaryPreferred" +
                 "&" + DocumentDbConnectionProperty.APPLICATION_NAME.getName() + "=" + "application" +
                 "&" + DocumentDbConnectionProperty.REPLICA_SET.getName() + "=" + "rs0" +
@@ -235,15 +235,15 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
                 "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getName() + "=" + "natural" +
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName() + "=" + "1";
-        properties = DocumentDbDriver
-                .getPropertiesFromConnectionString(info, connectionString);
+        properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
 
         // Check that unsupported properties are ignored.
-        connectionString = "mongodb://user%20name:pass%20word@127.0.0.1/newdatabase" +
+        connectionString = "jdbc:documentdb://user%20name:pass%20word@127.0.0.1/newdatabase" +
                 "?" + "maxStalenessSeconds" + "=" + "value";
-        properties = DocumentDbDriver
-                .getPropertiesFromConnectionString(info, connectionString);
+        properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertNull(properties.getProperty("maxStalenessSeconds"));
     }

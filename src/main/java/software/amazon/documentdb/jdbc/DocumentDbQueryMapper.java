@@ -36,6 +36,9 @@ import org.apache.calcite.schema.impl.LongSchemaVersion;
 import org.apache.calcite.tools.RelRunner;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbEnumerable;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbSchemaFactory;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
+import software.amazon.documentdb.jdbc.metadata.JdbcColumnMetaData;
+
 import java.util.List;
 
 /**
@@ -44,14 +47,19 @@ import java.util.List;
 public class DocumentDbQueryMapper {
     private final DocumentDbPrepareContext prepareContext;
     private final CalcitePrepare prepare;
+    private final DocumentDbDatabaseMetadata databaseMetadata;
 
     /**
      * Holds the CalcitePrepare.Context and the CalcitePrepare generated for a particular connection.
      * The default prepare factory is used like in CalciteConnectImpl.
      * @param properties the connection properties
      */
-    public DocumentDbQueryMapper(final DocumentDbConnectionProperties properties) {
-        this.prepareContext = new DocumentDbPrepareContext(getRootSchema(properties), properties.getDatabase(),
+    public DocumentDbQueryMapper(final DocumentDbConnectionProperties properties,
+            final DocumentDbDatabaseMetadata databaseMetadata) {
+        this.databaseMetadata = databaseMetadata;
+        this.prepareContext = new DocumentDbPrepareContext(
+                getRootSchema(databaseMetadata, properties),
+                properties.getDatabase(),
                 properties);
         this.prepare = CalcitePrepare.DEFAULT_FACTORY.apply();
     }
@@ -79,7 +87,7 @@ public class DocumentDbQueryMapper {
         if (enumerable instanceof DocumentDbEnumerable) {
             final DocumentDbEnumerable documentDbEnumerable = (DocumentDbEnumerable) enumerable;
             return DocumentDbMqlQueryContext.builder()
-                    .columnMetaData(signature.columns) // This is essentially the ResultSetMetaData
+                    .columnMetaData(JdbcColumnMetaData.fromCalciteColumnMetaData(signature.columns)) // This is essentially the ResultSetMetaData
                     .aggregateOperations(documentDbEnumerable.getList())
                     .collectionName(documentDbEnumerable.getCollectionName())
                     .metadataTable(documentDbEnumerable.getMetadataTable())
@@ -94,9 +102,11 @@ public class DocumentDbQueryMapper {
      * Logic is lifted from Calcite's ModelHandler. It is simplified because we know that we
      * only care about the DocumentDb schema and do not have to visit any other potential schemas.
      */
-    private static CalciteSchema getRootSchema(final DocumentDbConnectionProperties properties) {
+    private static CalciteSchema getRootSchema(
+            final DocumentDbDatabaseMetadata databaseMetadata,
+            final DocumentDbConnectionProperties properties) {
         final SchemaPlus parentSchema = CalciteSchema.createRootSchema(true).plus();
-        final Schema schema = new DocumentDbSchemaFactory().create(properties);
+        final Schema schema = new DocumentDbSchemaFactory().create(databaseMetadata, properties);
         parentSchema.add(properties.getDatabase(), schema);
         return CalciteSchema.from(parentSchema);
     }

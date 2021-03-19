@@ -231,12 +231,12 @@ dependencies {
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
 
-    compile             group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
     compileOnly         'org.projectlombok:lombok:1.18.16'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     testImplementation(testFixtures(project(':common')))
+    testCompileOnly    group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     testImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
     testImplementation group: 'junit', name: 'junit', version: '4.12'
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.0'
