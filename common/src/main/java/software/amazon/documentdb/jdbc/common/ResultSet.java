@@ -175,6 +175,7 @@ public abstract class ResultSet implements java.sql.ResultSet {
 
     @Override
     public boolean isFirst() throws SQLException {
+        verifyOpen();
         return (getRowIndex() == 0);
     }
 
@@ -223,7 +224,9 @@ public abstract class ResultSet implements java.sql.ResultSet {
 
     @Override
     public int getRow() throws SQLException {
-        return getRowIndex();
+        // getRow() returns 1-based row numbers where 0 indicates no current row such as when cursor
+        // is beforeFirst or afterLast.
+        return ((isBeforeFirst() || isAfterLast()) ? 0 : getRowIndex() + 1);
     }
 
     @Override
@@ -231,11 +234,11 @@ public abstract class ResultSet implements java.sql.ResultSet {
         verifyOpen();
         if (row < 1) {
             throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.INVALID_ROW_VALUE);
-        } else if (getRowIndex() > row) {
+        } else if (getRow() > row) {
             throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.RESULT_FORWARD_ONLY);
         }
 
-        while ((getRowIndex() < row) && next()) {
+        while ((getRow() < row) && next()) {
             continue;
         }
         return !isBeforeFirst() && !isAfterLast();

@@ -345,3 +345,40 @@ So the resulting data in the table would look like this...
 | --- | --- | --- |
 | "112233" | "George Jackson" | "\[ \\"Vogue\\", \\"People\\",  \\"USA Today\\" \]" |
 | "112244" | "Joan Starr" | "1" |
+
+
+## ResultSet Limitations
+
+  Every `ResultSet` returned by the driver will have a read-only concurrency mode, 
+  a forward fetch direction, and a forward-only cursor. 
+  As such, this limits the methods available on a `ResultSet`.
+  Of the JDBC API's `ResultSet` [methods](https://docs.oracle.com/javase/8/docs/api/java/sql/ResultSet.html), 
+  the following are unsupported or supported with some limitations:
+
+  ### Unsupported methods 
+  When called, these methods will throw a `SqlException`: 
+
+  - `afterLast()` 
+  - `beforeFirst()`
+  - `cancelRowUpdates()`
+  - `deleteRow()`
+  - `first()` 
+  - `insertRow()`
+  - `last()`
+  - `moveToCurrentRow()`
+  - `moveToInsertRow()`
+  - `previous()`
+  - `refreshRow()`
+  - `rowDeleted()`
+  - `rowInserted()`
+  - `rowUpdated()`
+  - any update method for all data types such as `updateBlob(int columnLabel, Blob x)` 
+  - any of the get methods for unsupported data types
+  
+  ### Supported with limitations 
+  These methods only accept certain inputs. When called with an invalid input, these will throw a `SqlException`.
+  - `absolute(int row)` - This will only accept positive values that are greater or equal to the current row. 
+  - `relative(int rows)` - This only accepts positive values as the cursor only moves forward. 
+  - `setFetchDirection(int direction)` - This only accepts setting the direction to `FETCH_FORWARD` which would be 
+a no-op since this is already the default direction.
+

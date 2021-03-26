@@ -240,14 +240,15 @@ public class ResultSetTest {
         HelperFunctions.expectFunctionThrows(() -> resultSet.beforeFirst());
         HelperFunctions.expectFunctionThrows(() -> resultSet.afterLast());
         ((MockResultSet)resultSet).setRowIdx(0);
-        HelperFunctions.expectFunctionDoesntThrow(() -> resultSet.getRow(), 0);
+        HelperFunctions.expectFunctionDoesntThrow(() -> resultSet.getRow(), 1);
         HelperFunctions.expectFunctionThrows(() -> resultSet.absolute(-1));
         HelperFunctions.expectFunctionThrows(() -> resultSet.absolute(0));
         ((MockResultSet)resultSet).setRowIdx(10);
         HelperFunctions.expectFunctionThrows(() -> resultSet.absolute(0));
         ((MockResultSet)resultSet).setRowIdx(0);
         HelperFunctions.expectFunctionDoesntThrow(() -> resultSet.absolute(5), true);
-        HelperFunctions.expectFunctionDoesntThrow(() -> resultSet.absolute(10), false);
+        HelperFunctions.expectFunctionDoesntThrow(() -> resultSet.absolute(11), false);
+        HelperFunctions.expectFunctionDoesntThrow(() -> resultSet.getRow(), 0);
     }
 
     @Test

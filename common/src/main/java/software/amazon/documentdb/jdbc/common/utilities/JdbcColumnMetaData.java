@@ -17,12 +17,14 @@
 package software.amazon.documentdb.jdbc.common.utilities;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 
 /**
  * A data class to provide metadata for a result set column.
  */
 @AllArgsConstructor
+@Builder
 @Getter
 public class JdbcColumnMetaData {
 

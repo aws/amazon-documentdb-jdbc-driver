@@ -22,6 +22,7 @@ import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
@@ -30,7 +31,6 @@ import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.util.Iterator;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -95,15 +95,14 @@ public class DocumentDbQueryExecutor {
             if (getMaxFetchSize() > 0) {
                 iterable = iterable.batchSize(getMaxFetchSize());
             }
-            final Iterator<Document> iterator = iterable.iterator();
+            final MongoCursor<Document> iterator = iterable.iterator();
 
             final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                     .copyOf(queryContext.getColumnMetaData());
             return new DocumentDbResultSet(
                     this.statement,
                     iterator,
-                    columnMetaData,
-                    new DocumentDbResultSetMetaData(columnMetaData));
+                    columnMetaData);
         }
     }
 
