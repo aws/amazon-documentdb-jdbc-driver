@@ -23,6 +23,7 @@ import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
 import org.apache.calcite.jdbc.CalcitePrepare;
 import org.apache.calcite.jdbc.CalcitePrepare.CalciteSignature;
+import org.apache.calcite.jdbc.CalcitePrepare.Query;
 import org.apache.calcite.jdbc.CalcitePrepare.SparkHandler;
 import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
@@ -41,8 +42,8 @@ import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbEnumerable;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbSchemaFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
-import software.amazon.documentdb.jdbc.metadata.JdbcColumnMetaData;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbJdbcMetaDataConverter;
 
 import java.sql.SQLException;
 import java.util.List;
@@ -54,11 +55,11 @@ public class DocumentDbQueryMappingService {
     private final CalcitePrepare prepare;
 
     /**
-     * Holds the DocumentDbDatabaseMetadata, CalcitePrepare.Context and the CalcitePrepare generated for a particular connection.
+     * Holds the DocumentDbDatabaseSchemaMetadata, CalcitePrepare.Context and the CalcitePrepare generated for a particular connection.
      * The default prepare factory is used like in CalciteConnectImpl.
      */
     public DocumentDbQueryMappingService(final DocumentDbConnectionProperties connectionProperties,
-            final DocumentDbDatabaseMetadata databaseMetadata) {
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
         this.prepareContext =
                 new DocumentDbPrepareContext(
                         getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
@@ -73,7 +74,7 @@ public class DocumentDbQueryMappingService {
      * @return the query context that has the target collection, aggregation stages, and result set metadata.
      */
     public DocumentDbMqlQueryContext get(final String sql) throws SQLException {
-        final CalcitePrepare.Query<Object> query = CalcitePrepare.Query.of(sql);
+        final Query<Object> query = Query.of(sql);
 
         // In prepareSql:
         // -    We validate the sql based on the schema and turn this into a tree. (SQL->AST)
@@ -91,7 +92,7 @@ public class DocumentDbQueryMappingService {
             if (enumerable instanceof DocumentDbEnumerable) {
                 final DocumentDbEnumerable documentDbEnumerable = (DocumentDbEnumerable) enumerable;
                 return DocumentDbMqlQueryContext.builder()
-                        .columnMetaData(JdbcColumnMetaData.fromCalciteColumnMetaData(signature.columns))
+                        .columnMetaData(DocumentDbJdbcMetaDataConverter.fromCalciteColumnMetaData(signature.columns))
                         .aggregateOperations(documentDbEnumerable.getList())
                         .collectionName(documentDbEnumerable.getCollectionName())
                         .build();
@@ -111,7 +112,7 @@ public class DocumentDbQueryMappingService {
      */
     private static CalciteSchema getRootSchemaFromDatabaseMetadata(
             final DocumentDbConnectionProperties connectionProperties,
-            final DocumentDbDatabaseMetadata databaseMetadata) {
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
         final SchemaPlus parentSchema = CalciteSchema.createRootSchema(true).plus();
         final Schema schema = new DocumentDbSchemaFactory().create(databaseMetadata, connectionProperties);
         parentSchema.add(connectionProperties.getDatabase(), schema);

@@ -28,7 +28,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import java.sql.SQLException;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
@@ -55,8 +55,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
 
         insertBsonDocuments(
                 COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[] {document});
-        final DocumentDbDatabaseMetadata databaseMetadata =
-                DocumentDbDatabaseMetadata.get("id", connectionProperties, true);
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata =
+                DocumentDbDatabaseSchemaMetadata.get("id", connectionProperties, true);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
     }
 

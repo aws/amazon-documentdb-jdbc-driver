@@ -176,11 +176,14 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests simple metadata of a database connection.")
     void testGetMetadata() throws SQLException {
-        final DocumentDbDatabaseMetadata metadata = (DocumentDbDatabaseMetadata) basicConnection.getMetaData();
-        metadata.getSQLKeywords();
+        final DocumentDbDatabaseMetaData metadata = (DocumentDbDatabaseMetaData) basicConnection.getMetaData();
+        Assertions.assertEquals("", metadata.getSQLKeywords());
         Assertions.assertNotNull(metadata);
 
-        Assertions.assertEquals("jdbc:documentdb:", metadata.getURL());
+        final String connectionString = String.format(
+                "jdbc:documentdb://%s@%s:%s/%s?tls=false", USERNAME, HOSTNAME, getMongoPort(), DATABASE);
+
+        Assertions.assertEquals(connectionString, metadata.getURL());
         Assertions.assertEquals(USERNAME, metadata.getUserName());
 
         final ResultSet procedures = metadata.getProcedures(null, null, null);
@@ -197,7 +200,6 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     /**
      * Tests getting primary keys from database.
      */
-    @Disabled // TODO: Fix primary keys metadata.
     @Test
     @DisplayName("Tests that metadata can return primary keys.")
     void testGetPrimaryKeys() throws SQLException {
@@ -216,20 +218,16 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     void testGetMetadataTables() throws SQLException {
         final ResultSet tables = basicConnection.getMetaData().getTables(null, null, null, null);
         Assertions.assertTrue(tables.next());
-        Assertions.assertNull(tables.getString(1));
-        Assertions.assertEquals("metadata", tables.getString(2));
-        Assertions.assertEquals("COLUMNS", tables.getString(3));
-        Assertions.assertEquals("SYSTEM TABLE", tables.getString(4));
-        Assertions.assertTrue(tables.next());
-        Assertions.assertNull(tables.getString(1));
-        Assertions.assertEquals("metadata", tables.getString(2));
-        Assertions.assertEquals("TABLES", tables.getString(3));
-        Assertions.assertEquals("SYSTEM TABLE", tables.getString(4));
-        Assertions.assertTrue(tables.next());
+        // Test by column index
         Assertions.assertNull(tables.getString(1));
         Assertions.assertEquals("testDb", tables.getString(2));
         Assertions.assertEquals("COLLECTION", tables.getString(3));
         Assertions.assertEquals("TABLE", tables.getString(4));
+        // Test by column label, case-insensitive
+        Assertions.assertNull(tables.getString("TABLE_cat"));
+        Assertions.assertEquals("testDb", tables.getString("TABLE_SCHEM"));
+        Assertions.assertEquals("COLLECTION", tables.getString("table_name"));
+        Assertions.assertEquals("TABLE", tables.getString("table_TYPE"));
         Assertions.assertFalse(tables.next());
     }
 
@@ -243,8 +241,6 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals("TABLE_TYPE", tableTypes.getMetaData().getColumnName(1));
         Assertions.assertTrue(tableTypes.next());
         Assertions.assertEquals("TABLE", tableTypes.getString(1));
-        Assertions.assertTrue(tableTypes.next());
-        Assertions.assertEquals("VIEW", tableTypes.getString(1));
         Assertions.assertFalse(tableTypes.next());
     }
 }

@@ -16,11 +16,23 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.mongodb.MongoClientSettings;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoDatabase;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.Connection;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+
 import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
+import java.util.UUID;
 import java.util.concurrent.Executor;
 
 /**
@@ -31,62 +43,147 @@ public class DocumentDbConnection extends Connection
 
     private static final Logger LOGGER =
             LoggerFactory.getLogger(DocumentDbConnection.class.getName());
-    private final java.sql.Connection connection;
+
+    private final DocumentDbConnectionProperties connectionProperties;
+    private final String connectionId;
+    private DocumentDbDatabaseMetaData metadata;
+    private DocumentDbDatabaseSchemaMetadata databaseMetadata;
+    private MongoClient mongoClient = null;
+    private MongoDatabase mongoDatabase = null;
 
     /**
      * DocumentDbConnection constructor, initializes super class.
      */
-    public DocumentDbConnection(final java.sql.Connection connection) throws SQLException {
-        super(connection.getClientInfo());
-        this.connection = connection;
+    DocumentDbConnection(final DocumentDbConnectionProperties connectionProperties)
+            throws SQLException {
+        super(connectionProperties);
+        this.connectionProperties = connectionProperties;
+        connectionId = UUID.randomUUID().toString();
+        initializeClients(connectionProperties);
     }
 
     @Override
     public boolean isValid(final int timeout) throws SQLException {
-        return connection.isValid(timeout);
+        if (timeout < 0) {
+            throw SqlError.createSQLException(LOGGER,
+                    SqlState.CONNECTION_EXCEPTION,
+                    SqlError.INVALID_TIMEOUT,
+                    timeout);
+        }
+        if (mongoDatabase != null) {
+            try {
+                // Convert to milliseconds
+                final int maxTimeMS = timeout + 1000;
+                pingDatabase(maxTimeMS);
+                return true;
+            } catch (Exception e) {
+                LOGGER.error(e.getMessage(), e);
+            }
+        }
+        return false;
     }
 
     @Override
-    public void doClose() throws SQLException {
-        connection.close();
+    public void doClose() {
+        if (mongoDatabase != null) {
+            mongoDatabase = null;
+        }
+        if (mongoClient != null) {
+            mongoClient.close();
+            mongoClient = null;
+        }
     }
 
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
-        return new DocumentDbDatabaseMetadata(connection.getMetaData());
+        ensureDatabaseMetadata();
+        return metadata;
+    }
+
+    private void ensureDatabaseMetadata() throws SQLException {
+        if (metadata == null) {
+            databaseMetadata = DocumentDbDatabaseSchemaMetadata
+                            .get(connectionId, connectionProperties, true);
+            metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
+        }
+    }
+
+    DocumentDbDatabaseSchemaMetadata getDatabaseMetadata()
+            throws SQLException {
+        ensureDatabaseMetadata();
+        return databaseMetadata;
     }
 
     @Override
-    public String getSchema() throws SQLException {
-        return connection.getSchema();
+    public String getSchema() {
+        return connectionProperties.getDatabase();
     }
 
     @Override
     public int getNetworkTimeout() throws SQLException {
-        return connection.getNetworkTimeout();
+        // TODO: Implement network timeout.
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void setNetworkTimeout(final Executor executor, final int milliseconds)
             throws SQLException {
-        connection.setNetworkTimeout(executor, milliseconds);
+        // TODO: Implement network timeout.
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public java.sql.Statement createStatement(final int resultSetType,
             final int resultSetConcurrency)
             throws SQLException {
-        return new DocumentDbStatement(
-                connection.createStatement(resultSetType, resultSetConcurrency));
+
+        verifyOpen();
+        if (resultSetType != ResultSet.TYPE_FORWARD_ONLY || resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
+            throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.UNSUPPORTED_RESULT_SET_TYPE);
+        }
+
+        return new DocumentDbStatement(this);
     }
 
     @Override
     public java.sql.PreparedStatement prepareStatement(final String sql) throws SQLException {
-        return new DocumentDbPreparedStatement(connection.prepareStatement(sql), sql);
+        // TODO: Implement prepared statement.
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean isSupportedProperty(final String name) {
         return DocumentDbConnectionProperty.isSupportedProperty(name);
+    }
+
+    DocumentDbConnectionProperties getConnectionProperties() {
+        return connectionProperties;
+    }
+
+    private void initializeClients(final DocumentDbConnectionProperties connectionProperties)
+            throws SQLException {
+        // Create the mongo client.
+        final MongoClientSettings settings = connectionProperties
+                .buildMongoClientSettings();
+
+        mongoClient = MongoClients.create(settings);
+        mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
+        pingDatabase();
+    }
+
+    private void pingDatabase() throws SQLException {
+        pingDatabase(0);
+    }
+
+    private void pingDatabase(final int maxTimeMS) throws SQLException {
+        try {
+            final String maxTimeMSOption = (maxTimeMS > 0)
+                    ? String.format(", \"maxTimeMS\" : %d", maxTimeMS )
+                    : "";
+            mongoDatabase.runCommand(
+                    Document.parse(String.format("{ \"ping\" : 1 %s }", maxTimeMSOption)));
+        } catch (Exception e) {
+            throw new SQLException(e.getMessage(), e);
+        }
     }
 }

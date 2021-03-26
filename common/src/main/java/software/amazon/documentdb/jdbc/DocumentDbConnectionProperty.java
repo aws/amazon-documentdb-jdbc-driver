@@ -41,7 +41,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
             "Whether to connect using TLS"),
     TLS_ALLOW_INVALID_HOSTNAMES("tlsAllowInvalidHostnames", "false",
             "Whether to allow invalid host names for TLS connections. Equivalent to tlsInsecure."),
-    LOGIN_TIMEOUT_SEC("loginTimeoutSec", "",
+    LOGIN_TIMEOUT_SEC("loginTimeoutSec", "10",
             "How long a connection can take to be opened before timing out (in seconds)."),
     RETRY_READS_ENABLED("retryReads", "true",
             "If true the driver will retry supported read operations if they fail due to a network error. Defaults to true."),

@@ -31,8 +31,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Contains the metadata for a DocumentDB database including all of the collection and any
  * virtual tables.
  */
-public final class DocumentDbDatabaseMetadata {
-    private static final Map<StoreEntryKey, DocumentDbDatabaseMetadata> DOCUMENT_DB_DATABASE_METADATA_STORE =
+public final class DocumentDbDatabaseSchemaMetadata {
+    private static final Map<StoreEntryKey, DocumentDbDatabaseSchemaMetadata> DOCUMENT_DB_DATABASE_METADATA_STORE =
             new ConcurrentHashMap<>();
 
     private final ImmutableMap<String, DocumentDbCollectionMetadata> collectionMetadataMap;
@@ -67,14 +67,14 @@ public final class DocumentDbDatabaseMetadata {
     }
 
     /**
-     * Constructs a {@link DocumentDbDatabaseMetadata} instance from properties.
+     * Constructs a {@link DocumentDbDatabaseSchemaMetadata} instance from properties.
      *
      * @param clientId the client ID for this database
      * @param version the version of the metadata.
      * @param collectionMetadataMap the map of {@link DocumentDbCollectionMetadata} keyed by
      *                              collection name for this database.
      */
-    DocumentDbDatabaseMetadata(
+    DocumentDbDatabaseSchemaMetadata(
             final String clientId,
             final int version,
             final ImmutableMap<String, DocumentDbCollectionMetadata> collectionMetadataMap) {
@@ -84,35 +84,35 @@ public final class DocumentDbDatabaseMetadata {
     }
 
     /**
-     * Gets the latest or a new {@link DocumentDbDatabaseMetadata} instance based on the clientId
+     * Gets the latest or a new {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId
      * and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST} for the
      * version to indicate to get the latest or create a new instance if none exists.
      *
      * @param clientId the client ID of the caller.
      * @param properties the connection properties.
-     * @return a {@link DocumentDbDatabaseMetadata} instance.
+     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
-    public static DocumentDbDatabaseMetadata get(final String clientId,
+    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
             final DocumentDbConnectionProperties properties) throws SQLException {
         return get(clientId, properties, false);
     }
 
     /**
-     * Gets the {@link DocumentDbDatabaseMetadata} by given client ID, connection properties
+     * Gets the {@link DocumentDbDatabaseSchemaMetadata} by given client ID, connection properties
      * and an indicator of whether to refresh the metadata from the cached version.
      *
      * @param clientId the client ID.
      * @param properties the connection properties.
      * @param refreshAll an indicator of whether to get refreshed metadata and ignore the cached
      *                   version.
-     * @return a {@link DocumentDbDatabaseMetadata} instance.
+     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
-    public static DocumentDbDatabaseMetadata get(final String clientId,
+    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
             final DocumentDbConnectionProperties properties,
             final boolean refreshAll) throws SQLException {
 
         if (refreshAll) {
-            final DocumentDbDatabaseMetadata databaseMetadata = DocumentDbMetadataService
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbMetadataService
                     .get(clientId, properties, DocumentDbMetadataService.VERSION_NEW);
             if (databaseMetadata != null) {
                 final StoreEntryKey key = StoreEntryKey.builder()
@@ -131,7 +131,7 @@ public final class DocumentDbDatabaseMetadata {
             return DOCUMENT_DB_DATABASE_METADATA_STORE.get(key);
         }
 
-        final DocumentDbDatabaseMetadata databaseMetadata = DocumentDbMetadataService
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbMetadataService
                 .get(clientId, properties);
         if (databaseMetadata != null) {
             key = StoreEntryKey.builder()
@@ -145,16 +145,16 @@ public final class DocumentDbDatabaseMetadata {
     }
 
     /**
-     * Gets an existing {@link DocumentDbDatabaseMetadata} instance based on the clientId and version.
+     * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId and version.
      * @param clientId the clientId of the metadata.
      * @param properties the properties of the connection.
      * @param version the version of the metadata. A version number of
      *                {@link DocumentDbMetadataService#VERSION_LATEST} indicates to get the latest
      *                or create a new instance.
-     * @return a {@link DocumentDbDatabaseMetadata} instance if the clientId and version exist, null,
+     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the clientId and version exist, null,
      * otherwise.
      */
-    public static DocumentDbDatabaseMetadata get(final String clientId,
+    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
             final DocumentDbConnectionProperties properties,
             final int version) throws SQLException {
         final StoreEntryKey key = StoreEntryKey.builder()
@@ -164,7 +164,7 @@ public final class DocumentDbDatabaseMetadata {
                 .build();
 
         // Try to get it from the local cache.
-        DocumentDbDatabaseMetadata databaseMetadata = DOCUMENT_DB_DATABASE_METADATA_STORE
+        DocumentDbDatabaseSchemaMetadata databaseMetadata = DOCUMENT_DB_DATABASE_METADATA_STORE
                 .get(key);
         if (databaseMetadata != null) {
             return databaseMetadata;
@@ -187,7 +187,7 @@ public final class DocumentDbDatabaseMetadata {
      * @return a non-null {@link StoreEntryKey} entry if an entry exists, null, otherwise.
      */
     static StoreEntryKey findLatestKey(
-            final Map<StoreEntryKey, DocumentDbDatabaseMetadata> store,
+            final Map<StoreEntryKey, DocumentDbDatabaseSchemaMetadata> store,
             final String clientId,
             final String databaseName) {
         return store.keySet().stream()

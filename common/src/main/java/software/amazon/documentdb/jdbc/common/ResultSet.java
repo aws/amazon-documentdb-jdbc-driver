@@ -32,7 +32,6 @@ import java.sql.NClob;
 import java.sql.Ref;
 import java.sql.RowId;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.sql.SQLXML;
 import java.sql.Statement;
@@ -78,13 +77,13 @@ public abstract class ResultSet implements java.sql.ResultSet {
      * Gets the current row (zero-based) index.
      * @return A value representing the current row (zero-based) index.
      */
-    protected abstract int getRowIndex() throws SQLFeatureNotSupportedException;
+    protected abstract int getRowIndex() throws SQLException;
 
     /**
      * Gets the number of rows in the result set.
      * @return A value representing the number of rows in the result set.
      */
-    protected abstract int getRowCount() throws SQLFeatureNotSupportedException;
+    protected abstract int getRowCount() throws SQLException;
 
     /**
      * Verify the result set is open.
@@ -101,7 +100,7 @@ public abstract class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
+    public boolean isClosed() {
         return isClosed.get();
     }
 

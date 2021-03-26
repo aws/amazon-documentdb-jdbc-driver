@@ -81,7 +81,7 @@ class DocumentDbTestEnvironmentFactoryTest {
         try (Connection connection = DriverManager.getConnection(connectionString, new Properties())) {
             Assertions.assertTrue(connection instanceof DocumentDbConnection);
             final DatabaseMetaData metaData = connection.getMetaData();
-            Assertions.assertTrue(metaData instanceof DocumentDbDatabaseMetadata);
+            Assertions.assertTrue(metaData instanceof DocumentDbDatabaseMetaData);
             final ResultSet schemas = metaData.getSchemas();
             Assertions.assertNotNull(schemas);
             Assertions.assertTrue(schemas.next());

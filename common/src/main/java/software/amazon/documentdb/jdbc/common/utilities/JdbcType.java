@@ -16,6 +16,9 @@
 
 package software.amazon.documentdb.jdbc.common.utilities;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Copy of the java.sql.Types constants but as an enum, for use in lookups.
  */
@@ -51,19 +54,48 @@ public enum JdbcType {
     LONGNVARCHAR(-16),
     NCLOB(2011),
     SQLXML(2009),
-    REF_CURSOR(2012);
+    REF_CURSOR(2012),
+    NULL(0);
+
+    private static final Map<Integer, JdbcType> TYPE_MAP = new HashMap<>();
 
     /**
      * The java.sql.Types JDBC type.
      */
-    private final int jdbcCode;
+    private final int jdbcType;
+
+    static {
+        for (JdbcType type : JdbcType.values()) {
+            TYPE_MAP.put(type.jdbcType, type);
+        }
+    }
 
     /**
      * JdbcType constructor.
-     * @param jdbcCode The java.sql.Types JDBC type associated with this value.
+     * @param jdbcType The java.sql.Types JDBC type associated with this value.
      */
-    JdbcType(final int jdbcCode) {
-        this.jdbcCode = jdbcCode;
+    JdbcType(final int jdbcType) {
+        this.jdbcType = jdbcType;
+    }
+
+    /**
+     * Get the JDBC type.
+     *
+     * @return an integer for the JDBC type.
+     */
+    public int getJdbcType() {
+        return jdbcType;
+    }
+
+    /**
+     * Get the type associated with the JDBC type.
+     *
+     * @param type the type value to search for.
+     *
+     * @return a {@link JdbcType} assocated with the JDBC type value.
+     */
+    public static JdbcType fromType(final int type) {
+        return TYPE_MAP.get(type);
     }
 }
 

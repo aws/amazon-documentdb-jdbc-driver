@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.ResultSet;
@@ -61,14 +61,19 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final String collectionSimple = "collectionSimple";
         prepareSimpleConsistentData(DATABASE_NAME, collectionSimple,
                 5, TEST_USER, TEST_PASSWORD);
-        final DocumentDbDatabaseMetadata databaseMetadata = DocumentDbDatabaseMetadata.get(
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
                 "id",
                 VALID_CONNECTION_PROPERTIES,
                 true);
         final DocumentDbQueryMappingService queryMapper = new DocumentDbQueryMappingService(
                 VALID_CONNECTION_PROPERTIES, databaseMetadata);
         final DocumentDbStatement statement = getDocumentDbStatement();
-        final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(statement, null, queryMapper);
+        final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(
+                statement,
+                null,
+                queryMapper,
+                0,
+                0);
         final ResultSet resultSet = queryExecutor.executeQuery(String.format(
                 "SELECT * FROM \"%s\"", collectionSimple));
         Assertions.assertNotNull(resultSet);

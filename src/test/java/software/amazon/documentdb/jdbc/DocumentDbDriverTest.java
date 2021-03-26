@@ -195,7 +195,7 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
         info.clear();
         String connectionString = "jdbc:documentdb://username:password@localhost/database";
         DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("localhost", properties.getProperty("host"));
         Assertions.assertEquals(DATABASE_NAME, properties.getProperty("database"));
@@ -205,7 +205,7 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
         // Connection string does not override existing properties.
         connectionString = "jdbc:documentdb://username:password@127.0.0.1/newdatabase";
         properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
         Assertions.assertEquals("newdatabase", properties.getProperty("database"));
@@ -216,7 +216,7 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
         info.clear();
         connectionString = "jdbc:documentdb://user%20name:pass%20word@127.0.0.1/newdatabase";
         properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
         Assertions.assertEquals("newdatabase", properties.getProperty("database"));
@@ -236,14 +236,14 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getName() + "=" + "natural" +
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName() + "=" + "1";
         properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
 
         // Check that unsupported properties are ignored.
         connectionString = "jdbc:documentdb://user%20name:pass%20word@127.0.0.1/newdatabase" +
                 "?" + "maxStalenessSeconds" + "=" + "value";
         properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.CONNECT_STRING_PREFIX);
+                .getPropertiesFromConnectionString(info, connectionString, DocumentDbDriver.DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertNull(properties.getProperty("maxStalenessSeconds"));
     }

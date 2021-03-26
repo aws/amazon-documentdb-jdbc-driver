@@ -367,6 +367,58 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Builds the sanitized connection string from properties.
+     *
+     * @return a {@link String} with the sanitized connection properties.
+     */
+    public String buildSanitizedConnectionString() {
+        final String connectionStringTemplate = "//%s%s/%s%s";
+        final String loginInfo = isNullOrWhitespace(getUser()) ? "" : getUser() + "@";
+        final String hostInfo = isNullOrWhitespace(getHostname()) ? "" : getHostname();
+        final String databaseInfo = isNullOrWhitespace(getDatabase()) ? "" : getDatabase();
+        final StringBuilder optionalInfo = new StringBuilder();
+        if (getApplicationName() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.APPLICATION_NAME, getApplicationName());
+        }
+        if (getLoginTimeout() != Integer.parseInt(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC, getLoginTimeout());
+        }
+        if (getMetadataScanLimit() != Integer.parseInt(DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_LIMIT, getMetadataScanLimit());
+        }
+        if (getMetadataScanMethod() != DocumentDbMetadataScanMethod.fromString(DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_METHOD, getMetadataScanMethod().getName());
+        }
+        if (getRetryReadsEnabled() != Boolean.parseBoolean(DocumentDbConnectionProperty.RETRY_READS_ENABLED.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.RETRY_READS_ENABLED, getRetryReadsEnabled());
+        }
+        if (getReadPreference() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.READ_PREFERENCE, getReadPreference().getName());
+        }
+        if (getReplicaSet() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.REPLICA_SET, getReplicaSet());
+        }
+        if (getTlsEnabled() != Boolean.parseBoolean(DocumentDbConnectionProperty.TLS_ENABLED.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_ENABLED, getTlsEnabled());
+        }
+        if (getTlsAllowInvalidHostnames() != Boolean.parseBoolean(DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES, getTlsAllowInvalidHostnames());
+        }
+        return String.format(connectionStringTemplate,
+                loginInfo,
+                hostInfo,
+                databaseInfo,
+                optionalInfo.toString());
+    }
+
+    private void appendOption(final StringBuilder optionInfo,
+            final DocumentDbConnectionProperty option,
+            final Object optionValue) {
+        optionInfo.append(optionInfo.length() == 0 ? "?" : "&");
+        optionInfo.append(option.getName() + "=" + optionValue);
+    }
+
+    /**
      * Validates the existing properties.
      * @throws SQLException if the required properties are not correctly set.
      */

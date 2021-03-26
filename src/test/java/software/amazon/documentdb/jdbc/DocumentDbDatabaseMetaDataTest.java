@@ -16,15 +16,16 @@
 
 package software.amazon.documentdb.jdbc;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
+import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -32,7 +33,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
-public class DocumentDbDatabaseMetadataTest extends DocumentDbFlapDoodleTest {
+public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
 
     private static final String USERNAME = "user";
     private static final String PASSWORD = "password";
@@ -40,6 +41,7 @@ public class DocumentDbDatabaseMetadataTest extends DocumentDbFlapDoodleTest {
     private static final String COLLECTION_NAME = "COLLECTION";
     private static final String HOSTNAME = "localhost";
 
+    private static Connection connection;
     private static DatabaseMetaData metadata;
 
     /** Initializes the test class. */
@@ -50,19 +52,24 @@ public class DocumentDbDatabaseMetadataTest extends DocumentDbFlapDoodleTest {
                 5, USERNAME, PASSWORD);
         final String connectionString = String.format(
                 "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false", USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
-        metadata = DriverManager.getConnection(connectionString).getMetaData();
+        connection = DriverManager.getConnection(connectionString);
+        metadata = connection.getMetaData();
+    }
+
+    @AfterAll
+    static void afterAll() throws SQLException {
+        connection.close();
     }
 
     /**
      * Tests for basic metadata fields.
      */
-    @Disabled // TODO Fix metadata.getDatabaseProductVersion() and getJDBCMajor/MinorVersion()
     @Test
     @DisplayName("Tests basic common properties of a database.")
     void testBasicMetadata() throws SQLException {
-        Assertions.assertEquals("Document DB", metadata.getDatabaseProductName());
-        Assertions.assertEquals("4.0.0", metadata.getDatabaseProductVersion());
-        Assertions.assertEquals("Document DB JDBC Driver", metadata.getDriverName());
+        Assertions.assertEquals("DocumentDB", metadata.getDatabaseProductName());
+        Assertions.assertEquals("4.0", metadata.getDatabaseProductVersion());
+        Assertions.assertEquals("DocumentDB JDBC Driver", metadata.getDriverName());
         Assertions.assertNotNull(metadata.getSQLKeywords());
         Assertions.assertNotNull(metadata.getNumericFunctions());
         Assertions.assertNotNull(metadata.getStringFunctions());
@@ -228,14 +235,14 @@ public class DocumentDbDatabaseMetadataTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals("DELETE_RULE", foreignKeysMetadata.getColumnName(11));
         Assertions.assertEquals("FK_NAME", foreignKeysMetadata.getColumnName(12));
         Assertions.assertEquals("PK_NAME", foreignKeysMetadata.getColumnName(13));
-        Assertions.assertEquals("DEFERABILITY", foreignKeysMetadata.getColumnName(14));
+        Assertions.assertEquals("DEFERRABILITY", foreignKeysMetadata.getColumnName(14));
     }
 
     /**
      * Tests columns of getAttributes().
      */
     @Test
-    @DisplayName("Tests the correct columns of attributes.")
+    @DisplayName("Tests the correct columns of getAttributes.")
     void testGetAttributes() throws SQLException {
         final ResultSet attributes = metadata.getAttributes(null,
                 null, null, null);

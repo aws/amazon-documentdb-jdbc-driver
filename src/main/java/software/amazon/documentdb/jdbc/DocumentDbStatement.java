@@ -17,29 +17,32 @@
 package software.amazon.documentdb.jdbc;
 
 import software.amazon.documentdb.jdbc.common.Statement;
+import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 
 /**
  * DocumentDb implementation of DatabaseMetadata.
  */
 class DocumentDbStatement extends Statement implements java.sql.Statement {
-    private final java.sql.Statement statement;
+    private int queryTimeout;
 
     /**
      * DocumentDbStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
-     * @param statement Statement Object.
+     *
+     * @param connection the connection.
      */
-    public DocumentDbStatement(final java.sql.Statement statement) throws SQLException {
-        super(statement.getConnection());
-        this.statement = statement;
+    DocumentDbStatement(
+            final DocumentDbConnection connection) {
+        super(connection);
     }
-
 
     @Override
     protected void cancelQuery() throws SQLException {
         verifyOpen();
-        statement.cancel();
+        // TODO: Implement
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -51,18 +54,29 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     @Override
     public java.sql.ResultSet executeQuery(final String sql) throws SQLException {
         verifyOpen();
-        return new DocumentDbResultSet(statement.executeQuery(sql));
+
+        final DocumentDbConnection connection = (DocumentDbConnection)getConnection();
+        final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
+                ((DocumentDbConnection)getConnection()).getConnectionProperties(),
+                connection.getDatabaseMetadata());
+        final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(
+                this,
+                null,
+                mappingService,
+                getQueryTimeout(),
+                getMaxFetchSize());
+        return queryExecutor.executeQuery(sql);
     }
 
     @Override
     public int getQueryTimeout() throws SQLException {
         verifyOpen();
-        return statement.getQueryTimeout();
+        return queryTimeout;
     }
 
     @Override
     public void setQueryTimeout(final int seconds) throws SQLException {
         verifyOpen();
-        statement.setQueryTimeout(seconds);
+        queryTimeout = seconds;
     }
 }

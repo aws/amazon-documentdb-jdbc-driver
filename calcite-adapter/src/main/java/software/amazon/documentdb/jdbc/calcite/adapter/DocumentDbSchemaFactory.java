@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.mongodb.MongoClientSettings;
@@ -21,34 +22,19 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import org.apache.calcite.schema.Schema;
-import org.apache.calcite.schema.SchemaFactory;
-import org.apache.calcite.schema.SchemaPlus;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
-
-public class DocumentDbSchemaFactory implements SchemaFactory {
-
-    @Override
-    public Schema create(final SchemaPlus parentSchema, final String name, final Map<String, Object> operand) {
-        final DocumentDbConnectionProperties properties = getProperties(operand);
-        final MongoDatabase database = getDatabase(properties);
-
-        return new DocumentDbSchema(database, properties);
-    }
-
+public class DocumentDbSchemaFactory {
     /**
      * Creates {@link Schema} from database metadata.
      *
      * @param databaseMetadata the database metadata.
      * @return a new {@link Schema} for the database.
      */
-    public Schema create(final DocumentDbDatabaseMetadata databaseMetadata,
+    public Schema create(final DocumentDbDatabaseSchemaMetadata databaseMetadata,
             final DocumentDbConnectionProperties properties) {
-        return new DocumentDbSchema(databaseMetadata, getDatabase(properties), properties);
+        return new DocumentDbSchema(databaseMetadata, getDatabase(properties));
     }
 
     private static MongoDatabase getDatabase(final DocumentDbConnectionProperties properties) {
@@ -56,14 +42,5 @@ public class DocumentDbSchemaFactory implements SchemaFactory {
         final MongoClient client = MongoClients.create(settings);
 
         return client.getDatabase(properties.getDatabase());
-    }
-
-    private static DocumentDbConnectionProperties getProperties(final Map<String, Object> operand) {
-        final Properties info = new Properties();
-        for (Entry<String, Object> entry : operand.entrySet()) {
-            info.put(entry.getKey(), entry.getValue());
-        }
-
-        return new DocumentDbConnectionProperties(info);
     }
 }

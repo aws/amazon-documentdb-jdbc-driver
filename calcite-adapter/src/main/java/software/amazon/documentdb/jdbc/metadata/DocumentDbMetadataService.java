@@ -24,7 +24,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseMetadata.StoreEntryKey;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.StoreEntryKey;
 
 import java.sql.SQLException;
 import java.util.Iterator;
@@ -38,40 +38,40 @@ public class DocumentDbMetadataService {
     public static final int VERSION_LATEST = 0;
     public static final int VERSION_NEW = -1;
 
-    private static final Map<StoreEntryKey, DocumentDbDatabaseMetadata> DOCUMENT_DB_DATABASE_METADATA_STORE =
+    private static final Map<StoreEntryKey, DocumentDbDatabaseSchemaMetadata> DOCUMENT_DB_DATABASE_METADATA_STORE =
             new ConcurrentHashMap<>();
 
     /**
-     * Gets the latest or a new {@link DocumentDbDatabaseMetadata} instance based on the clientId
+     * Gets the latest or a new {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId
      * and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST} for the
      * version to indicate to get the latest or create a new instance if none exists.
      *
      * @param clientId the client ID.
      * @param properties the connection properties.
-     * @return a {@link DocumentDbDatabaseMetadata} instance.
+     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
-    public static DocumentDbDatabaseMetadata get(final String clientId,
+    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
             final DocumentDbConnectionProperties properties) throws SQLException {
         return get(clientId, properties, VERSION_LATEST);
     }
 
 
     /**
-     * Gets an existing {@link DocumentDbDatabaseMetadata} instance based on the clientId and version.
+     * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId and version.
      *
      * @param clientId the client ID.
      * @param properties the connection properties.
      * @param version the version of the metadata. A version number of
      *                {@link DocumentDbMetadataService#VERSION_LATEST} indicates to get the latest
      *                or create a new instance.
-     * @return a {@link DocumentDbDatabaseMetadata} instance if the clientId and version exist, null,
+     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the clientId and version exist, null,
      * otherwise.
      */
-    public static DocumentDbDatabaseMetadata get(final String clientId,
+    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
             final DocumentDbConnectionProperties properties,
             final int version) throws SQLException {
         if (version == VERSION_LATEST) {
-            final StoreEntryKey latestKey = DocumentDbDatabaseMetadata.findLatestKey(
+            final StoreEntryKey latestKey = DocumentDbDatabaseSchemaMetadata.findLatestKey(
                     DOCUMENT_DB_DATABASE_METADATA_STORE,
                     clientId, properties.getDatabase());
 
@@ -83,7 +83,7 @@ public class DocumentDbMetadataService {
             final int newVersion = 1;
             return getNewDatabaseMetadata(clientId, properties, newVersion);
         } else if (version == VERSION_NEW) {
-            final StoreEntryKey latestKey = DocumentDbDatabaseMetadata.findLatestKey(
+            final StoreEntryKey latestKey = DocumentDbDatabaseSchemaMetadata.findLatestKey(
                     DOCUMENT_DB_DATABASE_METADATA_STORE,
                     clientId, properties.getDatabase());
             final int newVersion = latestKey != null ? latestKey.getVersion() + 1 : 1;
@@ -99,7 +99,7 @@ public class DocumentDbMetadataService {
         return DOCUMENT_DB_DATABASE_METADATA_STORE.get(key);
     }
 
-    private static DocumentDbDatabaseMetadata getNewDatabaseMetadata(final String clientId,
+    private static DocumentDbDatabaseSchemaMetadata getNewDatabaseMetadata(final String clientId,
             final DocumentDbConnectionProperties properties, final int newVersion)
             throws SQLException {
         final StoreEntryKey newKey = StoreEntryKey.builder()
@@ -107,7 +107,7 @@ public class DocumentDbMetadataService {
                 .databaseName(properties.getDatabase())
                 .version(newVersion)
                 .build();
-        final DocumentDbDatabaseMetadata databaseMetadata = new DocumentDbDatabaseMetadata(
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata = new DocumentDbDatabaseSchemaMetadata(
                 newKey.getClientId(),
                 newKey.getVersion(),
                 getCollectionMetadataMapDirect(properties));

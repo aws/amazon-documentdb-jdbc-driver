@@ -63,7 +63,7 @@ class DocumentDbMetadataTest {
                         new Properties(),
                         testEnvironment.getJdbcConnectionString(),
                         "jdbc:documentdb:");
-        final DocumentDbDatabaseMetadata databaseMetadata0 = DocumentDbDatabaseMetadata
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
                 .get(id, properties);
         Assertions.assertEquals(0,
                 databaseMetadata0.getCollectionMetadataMap().keySet().stream().count());
@@ -76,14 +76,14 @@ class DocumentDbMetadataTest {
         });
 
         // Even though we've added data, we're not refreshing, so expecting 0.
-        final DocumentDbDatabaseMetadata databaseMetadata00 = DocumentDbDatabaseMetadata
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata00 = DocumentDbDatabaseSchemaMetadata
                 .get(id, properties, false);
         Assertions.assertEquals(0,
                 databaseMetadata00.getCollectionMetadataMap().keySet().stream().count());
         Assertions.assertEquals(1, databaseMetadata0.getVersion());
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
-        final DocumentDbDatabaseMetadata databaseMetadata1 = DocumentDbDatabaseMetadata
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
                 .get(id, properties, true);
 
         Assertions.assertEquals(1,
@@ -99,7 +99,7 @@ class DocumentDbMetadataTest {
         Assertions.assertEquals(13, metadataTable.getColumns().size());
 
         // Without a refresh we'll get the same metadata.
-        final DocumentDbDatabaseMetadata databaseMetadata2 = DocumentDbDatabaseMetadata
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
                 .get(id, properties);
         // This is exactly the same as it is cached.
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
@@ -118,7 +118,7 @@ class DocumentDbMetadataTest {
                         new Properties(),
                         testEnvironment.getJdbcConnectionString(),
                         "jdbc:documentdb:");
-        final DocumentDbDatabaseMetadata databaseMetadata0 = DocumentDbDatabaseMetadata
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
                 .get(id, properties);
         Assertions.assertEquals(0,
                 databaseMetadata0.getCollectionMetadataMap().keySet().stream().count());
@@ -131,7 +131,7 @@ class DocumentDbMetadataTest {
         });
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
-        final DocumentDbDatabaseMetadata databaseMetadata1 = DocumentDbDatabaseMetadata
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
                 .get(id, properties, true);
 
         Assertions.assertEquals(1,
@@ -146,12 +146,12 @@ class DocumentDbMetadataTest {
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(13, metadataTable.getColumns().size());
 
-        final DocumentDbDatabaseMetadata databaseMetadata2 = DocumentDbDatabaseMetadata
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
                 .get(id, properties, databaseMetadata1.getVersion());
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
 
         // Check that specifying an unknown version results in no associated metadata.
-        final DocumentDbDatabaseMetadata databaseMetadata3 = DocumentDbDatabaseMetadata
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata3 = DocumentDbDatabaseSchemaMetadata
                 .get(id, properties, databaseMetadata1.getVersion() + 1);
         Assertions.assertNull(databaseMetadata3);
     }

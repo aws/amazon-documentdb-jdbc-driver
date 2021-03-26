@@ -18,7 +18,6 @@ package software.amazon.documentdb.jdbc;
 
 import lombok.SneakyThrows;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import software.amazon.documentdb.jdbc.calcite.adapter.AbstractDocumentDbDriver;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -27,7 +26,7 @@ import java.util.Properties;
 /**
  * Provides a JDBC driver for the Amazon DocumentDB database.
  */
-public class DocumentDbDriver extends AbstractDocumentDbDriver {
+public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Driver {
     // Note: This class must be marked public for the registration/DeviceManager to work.
     public static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
 
@@ -37,7 +36,6 @@ public class DocumentDbDriver extends AbstractDocumentDbDriver {
     }
 
     @SneakyThrows
-    @Override
     protected void register() {
         DriverManager.registerDriver(this);
     }
@@ -46,15 +44,41 @@ public class DocumentDbDriver extends AbstractDocumentDbDriver {
     public @Nullable Connection connect(final @Nullable String url, final Properties info)
             throws SQLException {
 
-        final Connection connection = super.connect(url, info);
-        if (connection == null) {
+        if (url == null || !acceptsURL(url)) {
             return null;
         }
 
-        return new DocumentDbConnection(connection);
+        final DocumentDbConnectionProperties properties;
+        try {
+            // Get the properties and options of the URL.
+            properties = DocumentDbConnectionProperties
+                    .getPropertiesFromConnectionString(info, url, getConnectStringPrefix());
+        } catch (IllegalArgumentException exception) {
+            throw new SQLException(exception.getMessage(), exception);
+        }
+
+        return new DocumentDbConnection(properties);
     }
 
+    /**
+     * Retrieves whether the driver thinks that it can open a connection to the given URL.
+     * Typically drivers will return <code>true</code> if they understand the sub-protocol specified
+     * in the URL and <code>false</code> if they do not.
+     *
+     * @param url the URL of the database
+     * @return <code>true</code> if this driver understands the given URL;
+     * <code>false</code> otherwise
+     * @throws SQLException if a database access error occurs or the url is {@code null}
+     */
     @Override
+    public boolean acceptsURL(final String url) throws SQLException {
+        if (url == null) {
+            throw new SQLException("The url cannot be null");
+        }
+
+        return url.startsWith(getConnectStringPrefix());
+    }
+
     protected String getConnectStringPrefix() {
         return DOCUMENT_DB_SCHEME;
     }

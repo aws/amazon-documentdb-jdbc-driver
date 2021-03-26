@@ -19,7 +19,7 @@ package software.amazon.documentdb.jdbc.query;
 import lombok.Builder;
 import lombok.Getter;
 import org.bson.conversions.Bson;
-import software.amazon.documentdb.jdbc.metadata.JdbcColumnMetaData;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import java.util.List;
 
 /**
