@@ -66,7 +66,6 @@ public class DocumentDbResultSetTest {
         Assertions.assertEquals(0, resultSet.getRow());
 
         // Test cursor at first row.
-        Mockito.when(iterator.next()).thenReturn(doc1);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertFalse(resultSet.isBeforeFirst());
         Assertions.assertTrue(resultSet.isFirst());
@@ -76,7 +75,6 @@ public class DocumentDbResultSetTest {
         Assertions.assertEquals(1, resultSet.getRow());
 
         // Test cursor at second row.
-        Mockito.when(iterator.next()).thenReturn(doc2);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertFalse(resultSet.isBeforeFirst());
         Assertions.assertFalse(resultSet.isFirst());
@@ -87,7 +85,6 @@ public class DocumentDbResultSetTest {
 
         // Test cursor at last row.
         Mockito.when(iterator.hasNext()).thenReturn(true).thenReturn(false);
-        Mockito.when(iterator.next()).thenReturn(doc3);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertFalse(resultSet.isBeforeFirst());
         Assertions.assertFalse(resultSet.isFirst());
@@ -238,5 +235,43 @@ public class DocumentDbResultSetTest {
         Assertions.assertEquals(MOCK_FETCH_SIZE, resultSet.getFetchSize());
         Assertions.assertDoesNotThrow(() -> resultSet.setFetchSize(10));
         Assertions.assertEquals(10, resultSet.getFetchSize());
+    }
+
+    @Test
+    @DisplayName("Test verifyRow and verifyColumnIndex")
+    void testVerifyRowVerifyColumnIndex() throws SQLException {
+        final Document doc1 = Document.parse("{\"_id\": null }");
+
+        final JdbcColumnMetaData column =
+                JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
+        resultSet =
+                new DocumentDbResultSet(statement, iterator, ImmutableList.of(column));
+
+        // Try access before first row.
+        Assertions.assertEquals("Result set before first row.",
+                Assertions.assertThrows(SQLException.class, () -> resultSet.getString(1))
+                        .getMessage());
+
+        // Move to first row.
+        Mockito.when(iterator.hasNext()).thenReturn(true);
+        Mockito.when(iterator.next()).thenReturn(doc1);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertNull(Assertions.assertDoesNotThrow(() -> resultSet.getString(1)));
+        Assertions.assertEquals("Invalid index (2), indexes must be between 1 and 1 (inclusive).",
+                Assertions.assertThrows(SQLException.class, () -> resultSet.getString(2))
+                        .getMessage());
+        Assertions.assertEquals("Invalid index (0), indexes must be between 1 and 1 (inclusive).",
+                Assertions.assertThrows(SQLException.class, () -> resultSet.getString(0))
+                        .getMessage());
+        Assertions.assertEquals("Invalid index (-1), indexes must be between 1 and 1 (inclusive).",
+                Assertions.assertThrows(SQLException.class, () -> resultSet.getString(-1))
+                        .getMessage());
+
+        // Move past last row.
+        Mockito.when(iterator.hasNext()).thenReturn(false);
+        Assertions.assertFalse(resultSet.next());
+        Assertions.assertEquals("Result set after last row.",
+                Assertions.assertThrows(SQLException.class, () -> resultSet.getString(1))
+                        .getMessage());
     }
 }
