@@ -189,8 +189,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         final ResultSet procedures = metadata.getProcedures(null, null, null);
         Assertions.assertFalse(procedures.next());
         final ResultSet catalogs = metadata.getCatalogs();
-        Assertions.assertTrue(catalogs.next());
-        Assertions.assertNull(catalogs.getString(1));
+        // No records indicates we don't support/use catalogs.
         Assertions.assertFalse(catalogs.next());
         final ResultSet columnPrivileges = metadata.getColumnPrivileges(null,
                 null, null, null);

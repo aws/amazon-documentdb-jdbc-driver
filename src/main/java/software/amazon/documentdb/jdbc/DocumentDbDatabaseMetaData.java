@@ -266,7 +266,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     public ResultSet getCatalogs() {
         final List<List<Object>> metaData = new ArrayList<>();
         // 1. TABLE_CAT String => catalog name
-        metaData.add(Collections.singletonList(null));
+        // Note: return NO records to indicate no catalogs.
         return new DocumentDbListResultSet(
                 null,
                 buildCatalogsColumnMetaData(properties.getDatabase()),
