@@ -17,31 +17,79 @@
 package software.amazon.documentdb.jdbc;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCursor;
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.bson.BsonInt64;
+import org.bson.BsonNull;
+import org.bson.BsonString;
 import org.bson.Document;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.MockitoAnnotations;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+
+import java.math.BigDecimal;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
-public class DocumentDbResultSetTest {
+@ExtendWith(DocumentDbFlapDoodleExtension.class)
+public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
     private static final int MOCK_FETCH_SIZE = 20;
+    private static final String DATABASE_NAME = "resultDatabase";
+    private static final String TEST_USER = "user";
+    private static final String TEST_PASSWORD = "password";
+    private static MongoClient client;
+    private static Connection connection;
+    private static Statement statement;
+    private ResultSet resultSetFlapdoodle;
 
-    @Mock private DocumentDbStatement statement;
+    @Mock
+    private DocumentDbStatement mockStatement;
 
-    @Mock private MongoCursor<Document> iterator;
+    @Mock
+    private MongoCursor<Document> iterator;
+
+    // Used for tests not involving getters.
+    private static DocumentDbDatabaseSchemaMetadata emptyMetadata;
 
     private DocumentDbResultSet resultSet;
+
+    @BeforeAll
+    @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
+    static void initialize() throws SQLException {
+        // Add a valid users to the local MongoDB instance.
+        client = createMongoClient("admin", "admin", "admin");
+        createUser(DATABASE_NAME, TEST_USER, TEST_PASSWORD);
+
+        emptyMetadata = new DocumentDbDatabaseSchemaMetadata(null, 0, ImmutableMap.of());
+    }
 
     @BeforeEach
     void init() throws SQLException {
         MockitoAnnotations.initMocks(this);
-        Mockito.when(statement.getFetchSize()).thenReturn(MOCK_FETCH_SIZE);
+        Mockito.when(mockStatement.getFetchSize()).thenReturn(MOCK_FETCH_SIZE);
+    }
+
+    @AfterAll
+    void close() throws SQLException {
+        resultSetFlapdoodle.close();
+        statement.close();
+        connection.close();
     }
 
     @Test
@@ -54,7 +102,7 @@ public class DocumentDbResultSetTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(statement, iterator, ImmutableList.of(column));
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
 
         // Test cursor before first row.
         Mockito.when(iterator.hasNext()).thenReturn(true);
@@ -113,7 +161,7 @@ public class DocumentDbResultSetTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(statement, iterator, ImmutableList.of(column));
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
 
         // Test going to negative row number. (0 -> -1)
         Mockito.when(iterator.hasNext()).thenReturn(true);
@@ -152,7 +200,7 @@ public class DocumentDbResultSetTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(statement, iterator, ImmutableList.of(column));
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
 
         // Test going to valid row number. (0 -> 2)
         Mockito.when(iterator.hasNext()).thenReturn(true);
@@ -185,7 +233,7 @@ public class DocumentDbResultSetTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(statement, iterator, ImmutableList.of(column));
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
 
         // Test close.
         Assertions.assertDoesNotThrow(() -> resultSet.close());
@@ -214,7 +262,7 @@ public class DocumentDbResultSetTest {
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData =
                 ImmutableList.of(column1, column2, column3);
-        resultSet = new DocumentDbResultSet(statement, iterator, columnMetaData);
+        resultSet = new DocumentDbResultSet(mockStatement, iterator, columnMetaData, emptyMetadata);
 
         Assertions.assertEquals(2, resultSet.findColumn("value"));
         Assertions.assertEquals(3, resultSet.findColumn("Value"));
@@ -230,14 +278,13 @@ public class DocumentDbResultSetTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList.of(column);
-        resultSet = new DocumentDbResultSet(statement, iterator, columnMetaData);
+        resultSet = new DocumentDbResultSet(mockStatement, iterator, columnMetaData, emptyMetadata);
 
         Assertions.assertEquals(MOCK_FETCH_SIZE, resultSet.getFetchSize());
         Assertions.assertDoesNotThrow(() -> resultSet.setFetchSize(10));
         Assertions.assertEquals(10, resultSet.getFetchSize());
     }
 
-    @Test
     @DisplayName("Test verifyRow and verifyColumnIndex")
     void testVerifyRowVerifyColumnIndex() throws SQLException {
         final Document doc1 = Document.parse("{\"_id\": null }");
@@ -245,7 +292,7 @@ public class DocumentDbResultSetTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(statement, iterator, ImmutableList.of(column));
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
 
         // Try access before first row.
         Assertions.assertEquals("Result set before first row.",
@@ -273,5 +320,137 @@ public class DocumentDbResultSetTest {
         Assertions.assertEquals("Result set after last row.",
                 Assertions.assertThrows(SQLException.class, () -> resultSet.getString(1))
                         .getMessage());
+    }
+
+    @Test
+    @DisplayName("Tests get from string")
+    void testGetString() throws SQLException {
+        final String collection = "resultSetTestString";
+        final Document document = Document.parse("{\"_id\": \"key1\"}");
+        document.append("field", new BsonString("3"));
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals("3", resultSetFlapdoodle.getString(2));
+    }
+
+    @Test
+    @DisplayName("Tests get from int")
+    void testGetInt() throws SQLException {
+        final String collection = "resultSetTestInt";
+        final Document document = Document.parse("{\"_id\": \"key1\", \"field\": 3}");
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(new BigDecimal("3"), resultSetFlapdoodle.getBigDecimal(2));
+        Assertions.assertEquals(3, resultSetFlapdoodle.getDouble(2), 0.01);
+        Assertions.assertEquals(3, resultSetFlapdoodle.getFloat(2), 0.01);
+        Assertions.assertEquals(3, resultSetFlapdoodle.getInt(2));
+        Assertions.assertEquals(3, resultSetFlapdoodle.getLong(2));
+        Assertions.assertEquals(3, resultSetFlapdoodle.getShort(2));
+        Assertions.assertEquals("3", resultSetFlapdoodle.getString(2));
+    }
+
+    @Test
+    @DisplayName("Tests get from double")
+    void testGetDouble() throws SQLException {
+        final String collection = "resultSetTestDouble";
+        final Document document = Document.parse("{\"_id\": \"key1\", \"field\": 1.5}");
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(new BigDecimal("1.5"), resultSetFlapdoodle.getBigDecimal(2));
+        Assertions.assertEquals(1.5, resultSetFlapdoodle.getDouble(2), 0.01);
+        Assertions.assertEquals(1.5, resultSetFlapdoodle.getFloat(2), 0.01);
+        Assertions.assertEquals(1, resultSetFlapdoodle.getInt(2));
+        Assertions.assertEquals(1, resultSetFlapdoodle.getLong(2));
+        Assertions.assertEquals(1, resultSetFlapdoodle.getShort(2));
+        Assertions.assertEquals("1.5", resultSetFlapdoodle.getString(2));
+    }
+
+    @Test
+    @DisplayName("Tests get from int64")
+    void testGetInt64() throws SQLException {
+        final String collection = "resultSetTestInt64";
+        final Document document = Document.parse("{\"_id\": \"key1\"}");
+        document.append("field", new BsonInt64(1000000000000L));
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(new BigDecimal("1000000000000"), resultSetFlapdoodle.getBigDecimal(2));
+        Assertions.assertEquals(1000000000000d, resultSetFlapdoodle.getDouble(2), 1);
+        Assertions.assertEquals(1000000000000f, resultSetFlapdoodle.getFloat(2), 1000);
+        Assertions.assertEquals(0, resultSetFlapdoodle.getInt(2)); // getInt returns default value 0 if result > max value
+        Assertions.assertEquals(1000000000000L, resultSetFlapdoodle.getLong(2));
+        Assertions.assertEquals(0, resultSetFlapdoodle.getShort(2)); // getShort returns default value 0 if result > max value
+        Assertions.assertEquals("1000000000000", resultSetFlapdoodle.getString(2));
+    }
+
+    @Test
+    @DisplayName("Tests get from null")
+    void testGetNull() throws SQLException {
+        final String collection = "resultSetTestNull";
+        final Document document = Document.parse("{\"_id\": \"key1\"}");
+        document.append("field", new BsonNull());
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(new BigDecimal("0"), resultSetFlapdoodle.getBigDecimal(2));
+        Assertions.assertEquals(0, resultSetFlapdoodle.getDouble(2), 1);
+        Assertions.assertEquals(0, resultSetFlapdoodle.getFloat(2), 1000);
+        Assertions.assertEquals(0, resultSetFlapdoodle.getInt(2));
+        Assertions.assertEquals(0, resultSetFlapdoodle.getLong(2));
+        Assertions.assertEquals(0, resultSetFlapdoodle.getShort(2));
+        Assertions.assertNull(resultSetFlapdoodle.getString(2));
+    }
+
+    @Test
+    @DisplayName("Tests that getters from nested documents work.")
+    void testGetNested() throws SQLException {
+        final String collection = "resultSetTestNested";
+        final Document document = Document.parse("{\"_id\": \"key1\", " +
+                "\"extraField\": \"string\"," +
+                "\"subdocument\": " +
+                "{\"field\": 4}}");
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection + "_subdocument"));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(new BigDecimal("4"), resultSetFlapdoodle.getBigDecimal(2));
+        Assertions.assertEquals(4, resultSetFlapdoodle.getDouble(2), 0.1);
+        Assertions.assertEquals(4, resultSetFlapdoodle.getFloat(2), 0.1);
+        Assertions.assertEquals(4, resultSetFlapdoodle.getInt(2));
+        Assertions.assertEquals(4L, resultSetFlapdoodle.getLong(2));
+        Assertions.assertEquals(4, resultSetFlapdoodle.getShort(2));
+        Assertions.assertEquals("4", resultSetFlapdoodle.getString(2));
     }
 }

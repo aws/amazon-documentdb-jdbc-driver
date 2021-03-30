@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import lombok.Builder;
 import lombok.Getter;
@@ -74,7 +75,8 @@ public final class DocumentDbDatabaseSchemaMetadata {
      * @param collectionMetadataMap the map of {@link DocumentDbCollectionMetadata} keyed by
      *                              collection name for this database.
      */
-    DocumentDbDatabaseSchemaMetadata(
+    @VisibleForTesting
+    public DocumentDbDatabaseSchemaMetadata(
             final String clientId,
             final int version,
             final ImmutableMap<String, DocumentDbCollectionMetadata> collectionMetadataMap) {

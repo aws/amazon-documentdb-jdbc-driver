@@ -102,7 +102,8 @@ public class DocumentDbQueryExecutor {
             return new DocumentDbResultSet(
                     this.statement,
                     iterator,
-                    columnMetaData);
+                    columnMetaData,
+                    connection.getDatabaseMetadata());
         }
     }
 

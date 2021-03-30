@@ -19,7 +19,6 @@ package software.amazon.documentdb.jdbc;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -61,7 +60,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      */
     @ParameterizedTest
     @EnumSource(DocumentDbMetadataScanMethod.class)
-    @Disabled("AD-129")
     protected void testQueryWithAllDataTypes(final DocumentDbMetadataScanMethod method) throws SQLException, IOException {
         final String collectionName = "testDocumentDbDriverTest_" + method.getName();
         final int recordCount = 10;
@@ -108,7 +106,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @Test
-    @Disabled("AD-129")
     void testQueryWithTwoLevelDocument() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1 } }");
@@ -164,7 +161,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @Test
-    @Disabled("AD-129")
     void testQueryWithThreeLevelDocument() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse(
@@ -230,7 +226,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @Test
-    @Disabled("AD-129")
     void testQueryWithScalarArray() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ 1, 2, 3 ] }");
@@ -286,7 +281,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @Test
-    @Disabled("AD-129")
     void testQueryWithArrayOfDocuments() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse(
@@ -360,7 +354,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @Test
-    @Disabled("AD-129")
     void testQueryWithTwoLevelArray() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ [1, 2, 3 ], [ 4, 5, 6 ] ]}");
@@ -435,7 +428,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @Test
-    @Disabled("AD-129")
     void testQueryWithTwoLevelDocumentWithArray() throws SQLException {
         final BsonDocument document =
             BsonDocument.parse("{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"array\" : [1, 2, 3 ] } }");
@@ -520,7 +512,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @Test
-    @Disabled("AD-129")
     void testQueryWithArrayOfDocumentsWithArrays() throws SQLException {
         final BsonDocument document =
             BsonDocument.parse(
@@ -617,7 +608,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
    * @throws SQLException occurs if executing the statement or retrieving a value fails.
    */
   @Test
-  @Disabled("AD-129")
   void testArrayScalarConflict() throws SQLException {
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
@@ -664,7 +654,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @Test
-    @Disabled("AD-129")
     void testDocumentScalarConflict() throws SQLException {
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
@@ -711,7 +700,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
    * @throws SQLException occurs if executing the statement or retrieving a value fails.
    */
   @Test
-  @Disabled("AD-129")
   void testArrayDocumentConflict() throws SQLException {
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
@@ -758,7 +746,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
    * @throws SQLException occurs if executing the statement or retrieving a value fails.
    */
   @Test
-  @Disabled("AD-129")
   void testDocumentAndArrayOfMixedTypesConflict() throws SQLException {
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
@@ -809,7 +796,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      */
     @DisplayName("Test that documents not containing a sub-document do not add null rows.")
     @Test
-    @Disabled("AD-129")
     void testDocumentWithMissingSubDocument() throws SQLException {
         final String collection = "testMissingSubdocumentNotNull";
         final List<BsonDocument> documents = new ArrayList<>();
@@ -847,7 +833,6 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      */
     @DisplayName("Test that documents not containing a sub-document do not add null rows.")
     @Test
-    @Disabled("AD-129")
     void testDocumentWithMissingNestedSubDocument() throws SQLException {
         final String collection = "testMissingNestedSubdocumentNotNull";
         final List<BsonDocument> documents = new ArrayList<>();

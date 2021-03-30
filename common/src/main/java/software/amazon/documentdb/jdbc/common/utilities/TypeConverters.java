@@ -22,6 +22,7 @@ import org.apache.commons.beanutils.converters.ArrayConverter;
 import org.apache.commons.beanutils.converters.BigDecimalConverter;
 import org.apache.commons.beanutils.converters.BooleanConverter;
 import org.apache.commons.beanutils.converters.ByteConverter;
+import org.apache.commons.beanutils.converters.DateConverter;
 import org.apache.commons.beanutils.converters.DoubleConverter;
 import org.apache.commons.beanutils.converters.FloatConverter;
 import org.apache.commons.beanutils.converters.IntegerConverter;
@@ -29,11 +30,15 @@ import org.apache.commons.beanutils.converters.LongConverter;
 import org.apache.commons.beanutils.converters.ShortConverter;
 import org.apache.commons.beanutils.converters.SqlTimestampConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
+import org.bson.types.MaxKey;
+import org.bson.types.MinKey;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.Date;
 
 /**
  * Provides a map of type converters.
@@ -49,6 +54,7 @@ public class TypeConverters {
                 .put(boolean.class, new BooleanConverter(false))
                 .put(Byte.class, new ByteConverter(0))
                 .put(byte.class, new ByteConverter(0))
+                .put(Date.class, new DateConverter())
                 .put(Double.class, new DoubleConverter(0.0))
                 .put(double.class, new DoubleConverter(0.0))
                 .put(Float.class, new FloatConverter(0.0))
@@ -57,6 +63,9 @@ public class TypeConverters {
                 .put(int.class, new IntegerConverter(0))
                 .put(Long.class, new LongConverter(0))
                 .put(long.class, new LongConverter(0))
+                .put(MaxKey.class, new StringConverter())
+                .put(MinKey.class, new StringConverter())
+                .put(ObjectId.class, new StringConverter())
                 .put(Short.class, new ShortConverter(0))
                 .put(short.class, new ShortConverter(0))
                 .put(String.class, new StringConverter())

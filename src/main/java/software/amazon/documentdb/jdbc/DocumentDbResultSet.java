@@ -19,14 +19,23 @@ package software.amazon.documentdb.jdbc;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.client.MongoCursor;
 import org.bson.Document;
+import org.bson.types.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.stream.Collectors;
 
 /**
  * DocumentDb implementation of ResultSet.
@@ -38,19 +47,23 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
     private int rowIndex = -1;
     private final MongoCursor<Document> iterator;
     private Document current;
-
+    private final Map<String, DocumentDbMetadataTable> tableMap;
     /**
      * DocumentDbResultSet constructor, initializes super class.
      */
     DocumentDbResultSet(
             final Statement statement,
             final MongoCursor<Document> iterator,
-            final ImmutableList<JdbcColumnMetaData> columnMetaData) throws SQLException {
+            final ImmutableList<JdbcColumnMetaData> columnMetaData,
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata) throws SQLException {
         super(statement, columnMetaData, true);
         this.iterator = iterator;
 
         // Set fetch size to be fetch size of statement if it exists. Otherwise, use default.
         this.fetchSize = statement != null ? statement.getFetchSize() : DEFAULT_FETCH_SIZE;
+        this.tableMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+
+        createTableMap(databaseMetadata);
     }
 
     @Override
@@ -115,7 +128,38 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
 
     @Override
     protected Object getValue(final int columnIndex) throws SQLException {
-        // TODO: Implement in [AD-8]
-        return null;
+        final ResultSetMetaData metadata = getMetaData();
+        final DocumentDbMetadataTable table = tableMap.get(metadata.getTableName(columnIndex));
+        final String path = table.getColumns().get(metadata.getColumnName(columnIndex)).getPath();
+        if (path == null || path.isEmpty()) {
+            return null;
+        }
+        final String[] segmentedPath = path.split("\\.");
+        Object segmentValue = current.get(segmentedPath[0]);
+        for (int j = 1; j < segmentedPath.length && segmentValue instanceof Document; j++) {
+            segmentValue = ((Document) segmentValue).get(segmentedPath[j]);
+        }
+        // Apache converters cannot handle the following types, must be specifically converted.
+        if (segmentValue instanceof Binary) {
+            return ((Binary) segmentValue).getData();
+        }
+        if (segmentValue instanceof Document) {
+            return ((Document) segmentValue).toJson();
+        }
+        if (segmentValue instanceof List) {
+            final List<?> modifiedList = ((List<?>) segmentValue)
+                    .stream()
+                    .map(o1 -> o1 instanceof Document ? ((Document) o1).toJson() : o1)
+                    .collect(Collectors.toList());
+            return modifiedList.toString();
+        }
+        return segmentValue;
+    }
+
+    private void createTableMap(final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
+        for (DocumentDbCollectionMetadata collectionMetadata: databaseMetadata.getCollectionMetadataMap().values()) {
+            collectionMetadata.getTables().values().forEach(
+                    table -> tableMap.putIfAbsent(table.getName(), table));
+        }
     }
 }

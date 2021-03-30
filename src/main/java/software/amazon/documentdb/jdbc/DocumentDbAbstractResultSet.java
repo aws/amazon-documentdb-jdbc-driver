@@ -24,12 +24,16 @@ import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.common.utilities.TypeConverters;
+import javax.sql.rowset.serial.SerialBlob;
+import javax.sql.rowset.serial.SerialClob;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.sql.Blob;
+import java.sql.Clob;
 import java.sql.Date;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -169,7 +173,9 @@ public abstract class DocumentDbAbstractResultSet extends
             throw SqlError.createSQLException(LOGGER,
                     SqlState.DATA_EXCEPTION,
                     e,
-                    SqlError.UNSUPPORTED_CONVERSION);
+                    SqlError.UNSUPPORTED_CONVERSION,
+                    sourceType.getSimpleName(),
+                    targetType.getSimpleName());
         }
     }
 
@@ -307,34 +313,38 @@ public abstract class DocumentDbAbstractResultSet extends
 
     @Override
     public Date getDate(final int columnIndex, final Calendar cal) throws SQLException {
-        final Timestamp timestamp = getTimestamp(columnIndex, cal);
-        if (timestamp == null) {
+        final Date value = getValue(columnIndex, Date.class);
+        if (value == null) {
             return null;
         }
-        return new Date(timestamp.getTime());
+        return getMaybeAdjustedTime(value, cal);
+    }
+
+    private Date getMaybeAdjustedTime(final Date utcTime, final Calendar cal) {
+        if (cal != null) {
+            long adjustedTime = utcTime.getTime();
+            adjustedTime -= cal.getTimeZone().getOffset(adjustedTime);
+            return new Date(adjustedTime);
+        }
+        return utcTime;
     }
 
     @Override
     public Time getTime(final int columnIndex, final Calendar cal) throws SQLException {
-        final Timestamp timestamp = getTimestamp(columnIndex, cal);
-        if (timestamp == null) {
+        final Date value = getDate(columnIndex, cal);
+        if (value == null) {
             return null;
         }
-        return new Time(timestamp.getTime());
+        return new Time(value.getTime());
     }
 
     @Override
     public Timestamp getTimestamp(final int columnIndex, final Calendar cal) throws SQLException {
-        Timestamp timestamp = getValue(columnIndex, Timestamp.class);
-        if (timestamp == null) {
+        final Date value = getDate(columnIndex, cal);
+        if (value == null) {
             return null;
         }
-        if (cal != null) {
-            long v = timestamp.getTime();
-            v -= cal.getTimeZone().getOffset(v);
-            timestamp = new Timestamp(v);
-        }
-        return timestamp;
+        return new Timestamp(value.getTime());
     }
 
     @Override
@@ -350,5 +360,23 @@ public abstract class DocumentDbAbstractResultSet extends
     @Override
     public String getNString(final int columnIndex) throws SQLException {
         return getString(columnIndex);
+    }
+
+    @Override
+    public Blob getBlob(final int columnIndex) throws SQLException {
+        final byte[] bytes = getBytes(columnIndex);
+        if (bytes == null) {
+            return null;
+        }
+        return new SerialBlob(bytes);
+    }
+
+    @Override
+    public Clob getClob(final int columnIndex) throws SQLException {
+        final String value = getString(columnIndex);
+        if (value == null) {
+            return null;
+        }
+        return new SerialClob(value.toCharArray());
     }
 }
