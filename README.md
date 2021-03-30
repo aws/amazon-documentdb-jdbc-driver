@@ -1,4 +1,6 @@
 ﻿# DocumentDB JDBC Driver
+![Code Coverage Instructions](./.github/badges/jacoco.svg)
+![Code Coverage Branches](./.github/badges/branches.svg)
 
 ## Overview
 
