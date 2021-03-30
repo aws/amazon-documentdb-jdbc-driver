@@ -119,6 +119,12 @@ spotbugsTest.finalizedBy checkSpotBugsTestReport
 /**
  * JaCoCo Plugin
  */
+test {
+    jacoco {
+        excludes = ['org/codehaus/**', 'org.codehaus.*']
+    }
+}
+
 jacoco {
     toolVersion = "0.8.5"
 }
@@ -129,7 +135,8 @@ jacocoTestReport {
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it)
+            fileTree(dir: it,
+                     exclude: ['**/resources/**', '**janino**', '**commons**'])
         }))
     }
 }
@@ -138,8 +145,7 @@ jacocoTestCoverageVerification {
     violationRules {
         rule {
             element = 'CLASS'
-            excludes = [
-            ]
+            excludes = ['org.codehaus.*']
             limit {
                 counter = 'LINE'
                 minimum = 0.00
@@ -152,7 +158,8 @@ jacocoTestCoverageVerification {
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
-            fileTree(dir: it)
+            fileTree(dir: it,
+                     exclude: ['org/codehaus/**'])
         }))
     }
 }
