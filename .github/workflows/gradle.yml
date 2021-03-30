@@ -109,6 +109,7 @@ jobs:
     - name: Commit Coverage Badge
       uses: stefanzweifel/git-auto-commit-action@v4
       with:
+        commit_options: '--allow-empty --no-verify'
         commit_message: Commit Code Coverage Badge
         file_pattern: '*.svg'
         skip_fetch: true
