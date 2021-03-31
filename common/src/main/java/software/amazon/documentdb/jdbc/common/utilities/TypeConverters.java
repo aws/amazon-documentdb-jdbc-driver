@@ -30,6 +30,8 @@ import org.apache.commons.beanutils.converters.LongConverter;
 import org.apache.commons.beanutils.converters.ShortConverter;
 import org.apache.commons.beanutils.converters.SqlTimestampConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
+import org.bson.BsonRegularExpression;
+import org.bson.BsonTimestamp;
 import org.bson.types.MaxKey;
 import org.bson.types.MinKey;
 import org.bson.types.ObjectId;
@@ -52,6 +54,8 @@ public class TypeConverters {
                 .put(BigDecimal.class, new BigDecimalConverter(0))
                 .put(Boolean.class, new BooleanConverter(false))
                 .put(boolean.class, new BooleanConverter(false))
+                .put(BsonTimestamp.class, new StringConverter())
+                .put(BsonRegularExpression.class, new StringConverter())
                 .put(Byte.class, new ByteConverter(0))
                 .put(byte.class, new ByteConverter(0))
                 .put(Date.class, new DateConverter())

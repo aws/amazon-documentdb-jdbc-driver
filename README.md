@@ -374,8 +374,13 @@ So the resulting data in the table would look like this...
   - `rowDeleted()`
   - `rowInserted()`
   - `rowUpdated()`
-  - any update method for all data types such as `updateBlob(int columnLabel, Blob x)` 
-  - any of the get methods for unsupported data types
+  - `getUnicodeStream()`
+  - `getRef()` 
+  - `getArray()`
+  - `getURL()`
+  - `getRowId()`
+  - `getSQLXML()`
+  - any update method for all data types such as `updateBlob(int columnLabel, Blob x)`
   
   ### Supported with limitations 
   These methods only accept certain inputs. When called with an invalid input, these will throw a `SqlException`.

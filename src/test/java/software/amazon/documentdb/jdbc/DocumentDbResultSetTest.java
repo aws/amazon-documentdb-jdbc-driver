@@ -21,10 +21,17 @@ import com.google.common.collect.ImmutableMap;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCursor;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.bson.BsonBinary;
+import org.bson.BsonDateTime;
 import org.bson.BsonInt64;
+import org.bson.BsonMaxKey;
+import org.bson.BsonMinKey;
 import org.bson.BsonNull;
+import org.bson.BsonRegularExpression;
 import org.bson.BsonString;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -41,11 +48,15 @@ import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
@@ -327,7 +338,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
     void testGetString() throws SQLException {
         final String collection = "resultSetTestString";
         final Document document = Document.parse("{\"_id\": \"key1\"}");
-        document.append("field", new BsonString("3"));
+        document.append("field", new BsonString("30"));
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
         connection = DriverManager.getConnection(String.format(
                 "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
@@ -336,7 +347,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
-        Assertions.assertEquals("3", resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals("30", resultSetFlapdoodle.getString(2));
     }
 
     @Test
@@ -358,7 +369,6 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(3, resultSetFlapdoodle.getInt(2));
         Assertions.assertEquals(3, resultSetFlapdoodle.getLong(2));
         Assertions.assertEquals(3, resultSetFlapdoodle.getShort(2));
-        Assertions.assertEquals("3", resultSetFlapdoodle.getString(2));
     }
 
     @Test
@@ -452,5 +462,137 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(4L, resultSetFlapdoodle.getLong(2));
         Assertions.assertEquals(4, resultSetFlapdoodle.getShort(2));
         Assertions.assertEquals("4", resultSetFlapdoodle.getString(2));
+    }
+
+    @Test
+    @DisplayName("Test for get from ObjectId")
+    void testGetId() throws SQLException {
+        final String collection = "resultSetTestId";
+        final Document document = new Document();
+        final ObjectId id = new ObjectId();
+        document.append("_id", id);
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(id.toString(), resultSetFlapdoodle.getString(1));
+    }
+
+    @Test
+    @DisplayName("Test for get from Boolean")
+    void testGetBoolean() throws SQLException {
+        final String collection = "resultSetTestBoolean";
+        final Document document = Document.parse("{\"_id\": \"key1\", \"field\": false}");
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals("false", resultSetFlapdoodle.getString(2));
+        Assertions.assertFalse(resultSetFlapdoodle.getBoolean(2));
+    }
+
+    @Test
+    @DisplayName("Test for get from Date")
+    void testGetDate() throws SQLException {
+        final String collection = "resultSetTestDate";
+        final Document document = Document.parse("{\"_id\": \"key1\"}");
+        final BsonDateTime date = new BsonDateTime(100000);
+        document.append("date", date);
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(new Date(date.getValue()), resultSetFlapdoodle.getDate(2));
+        Assertions.assertEquals(new Timestamp(date.getValue()), resultSetFlapdoodle.getTimestamp(2));
+        Assertions.assertEquals(new Time(date.getValue()), resultSetFlapdoodle.getTime(2));
+    }
+
+    @Test
+    @DisplayName("Test for get from Regex")
+    void testGetRegex() throws SQLException {
+        final String collection = "resultSetTestRegex";
+        final Document document = Document.parse("{\"_id\": \"key1\"}");
+        final BsonRegularExpression regex = new BsonRegularExpression("^example");
+        document.append("regex", regex);
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(regex.toString(), resultSetFlapdoodle.getString(2));
+    }
+
+    @Test
+    @DisplayName("Test for get from Min/Max key")
+    void testGetMinMaxKey() throws SQLException {
+        final String collection = "resultSetTestMinMax";
+        final Document document = Document.parse("{\"_id\": \"key1\"}");
+        final BsonMaxKey max = new BsonMaxKey();
+        final BsonMinKey min = new BsonMinKey();
+        document.append("max", max);
+        document.append("min", min);
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals("MaxKey", resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals("MinKey", resultSetFlapdoodle.getString(3));
+    }
+
+    @Test
+    @DisplayName("Test for get from timestamp")
+    void testGetTimestamp() throws SQLException {
+        final String collection = "resultSetTestTimestamp";
+        final Document document = Document.parse("{\"_id\": \"key1\"}");
+        final BsonTimestamp timestamp = new BsonTimestamp(100000);
+        document.append("timestamp", timestamp);
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertEquals(timestamp.toString(), resultSetFlapdoodle.getString(2));
+    }
+
+    @Test
+    @DisplayName("Test for get from binary")
+    void testGetBinary() throws SQLException {
+        final String collection = "resultSetTestBinary";
+        final Document document = Document.parse("{\"_id\": \"key1\"}");
+        final BsonBinary binary = new BsonBinary("123abc".getBytes(StandardCharsets.UTF_8));
+        document.append("binary", binary);
+        client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
+        connection = DriverManager.getConnection(String.format(
+                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        statement = connection.createStatement();
+        resultSetFlapdoodle = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        Assertions.assertTrue(resultSetFlapdoodle.next());
+        Assertions.assertArrayEquals(binary.getData(), resultSetFlapdoodle.getBytes(2));
+        Assertions.assertArrayEquals(binary.getData(), resultSetFlapdoodle.getBlob(2).getBytes(1,6));
+
     }
 }
