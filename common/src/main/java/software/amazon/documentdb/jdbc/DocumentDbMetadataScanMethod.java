@@ -20,8 +20,8 @@ package software.amazon.documentdb.jdbc;
  * The enumeration of methods to scan for metadata.
  */
 public enum DocumentDbMetadataScanMethod {
-    NATURAL("natural"),
-    NATURAL_REVERSE("naturalReverse"),
+    ID_FORWARD("idForward"),
+    ID_REVERSE("idReverse"),
     ALL("all"),
     RANDOM("random");
 

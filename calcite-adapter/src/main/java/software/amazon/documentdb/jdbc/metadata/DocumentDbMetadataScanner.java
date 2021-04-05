@@ -38,7 +38,7 @@ import java.util.List;
 public class DocumentDbMetadataScanner {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbMetadataScanner.class);
 
-    private static final String NATURAL = "$natural";
+    private static final String ID = "_id";
     private static final BsonInt32 FORWARD = new BsonInt32(1);
     private static final BsonInt32 REVERSE = new BsonInt32(-1);
     private static final String RANDOM = "$sample";
@@ -60,10 +60,10 @@ public class DocumentDbMetadataScanner {
         switch (method) {
             case ALL:
                 return collection.find().cursor();
-            case NATURAL:
-                return collection.find().hint(new BsonDocument(NATURAL, FORWARD)).limit(scanLimit).cursor();
-            case NATURAL_REVERSE:
-                return collection.find().hint(new BsonDocument(NATURAL, REVERSE)).limit(scanLimit).cursor();
+            case ID_FORWARD:
+                return collection.find().sort(new BsonDocument(ID, FORWARD)).limit(scanLimit).cursor();
+            case ID_REVERSE:
+                return collection.find().sort(new BsonDocument(ID, REVERSE)).limit(scanLimit).cursor();
             case RANDOM:
                 final List<BsonDocument> aggregations = new ArrayList<>();
                 aggregations.add(new BsonDocument(RANDOM, new BsonDocument("size", new BsonInt32(scanLimit))));

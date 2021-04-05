@@ -52,10 +52,10 @@ SQL-relational interface for developers and BI tool users.
   are allowed. This is useful when using an SSH tunnel to a DocumentDB server. Defaults to false.
 - `scanMethod` (enum/string) : The scanning (sampling) method to use when discovering collection 
   metadata for determining table schema. Possible values include the following:
-  - `natural` (default) The sample documents are returned in _natural forward_ order.
-  - `naturalReverse` The sample documents are returned in _natural reverse_ order.
-  - `random` The sample documents are returned in _random_ order.
-  - `all` Sample all the documents in the collection.
+  - `random` - (default) The sample documents are returned in _random_ order.
+  - `idForward` - The sample documents are returned in order of id.
+  - `idReverse` - The sample documents are returned in reverse order of id.
+  - `all` - Sample all the documents in the collection.
 - `scanLimit` (int) The number of documents to sample. The value must be a positive integer.
   The default value is `1000`. If `scanMethod` is set to `all`, this option is ignored. 
 
@@ -75,9 +75,9 @@ based on the following behavior.
 The sampling behavior can be modified using connection string or datasource options.
 
 - `scanMethod=<option>`
-  - `natural` - (default) The sample documents are returned in _natural forward_ order.
-  - `naturalReverse` - The sample documents are returned in _natural reverse_ order.
-  - `random` - The sample documents are returned in _random_ order.
+  - `random` - (default) The sample documents are returned in _random_ order.
+  - `idForward` - The sample documents are returned in order of id.
+  - `idReverse` - The sample documents are returned in reverse order of id.
   - `all` - Sample all the documents in the collection.
 - `scanLimit=<n>` - The number of documents to sample. The value must be a positive integer.
   The default value is `1000`. If `scanMethod` is set to `all`, this option is ignored.

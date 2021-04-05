@@ -45,7 +45,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
             "How long a connection can take to be opened before timing out (in seconds)."),
     RETRY_READS_ENABLED("retryReads", "true",
             "If true the driver will retry supported read operations if they fail due to a network error. Defaults to true."),
-    METADATA_SCAN_METHOD("scanMethod", "natural",
+    METADATA_SCAN_METHOD("scanMethod", "random",
             "Method of scanning for metadata."),
     METADATA_SCAN_LIMIT("scanLimit", "1000",
             "Number of records to scan for metadata");

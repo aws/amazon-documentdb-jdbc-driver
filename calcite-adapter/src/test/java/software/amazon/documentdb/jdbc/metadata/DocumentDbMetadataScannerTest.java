@@ -31,6 +31,7 @@ import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,6 +51,7 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
     private DocumentDbConnectionProperties properties;
 
     private ArrayList<BsonDocument> documents;
+    private ArrayList<String> ids;
 
     private MongoDatabase database;
     /**
@@ -57,67 +59,63 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
      */
     @BeforeAll
     public void setup()  {
+        createUser(DATABASE, USER, PASS);
+        final MongoClient client = createMongoClient(ADMIN, USER, PASS);
+        database = client.getDatabase(DATABASE);
+    }
+
+    /**
+     * Resets the properties, documents, and ids.
+     */
+    @BeforeEach
+    public void closeAndResetProperties() {
         properties = new DocumentDbConnectionProperties();
         properties.setUser(USER);
         properties.setPassword(PASS);
         properties.setDatabase(DATABASE);
         properties.setTlsEnabled("false");
-
-        createUser(DATABASE, USER, PASS);
-
-        final MongoClient client = createMongoClient(ADMIN, USER, PASS);
-        database = client.getDatabase(DATABASE);
-
         properties.setHostname(HOST + ":" + getMongoPort());
-    }
-
-    /**
-     * Stops the mongoDb instance between tests to allow for fresh environment.
-     */
-    @BeforeEach
-    public void close() {
         documents = new ArrayList<>();
+        ids = new ArrayList<>();
+
     }
 
     /**
-     * Test for basic natural scan.
+     * Test for basic default (random) scan.
      */
     @Test
     public void testGetIteratorBasic() throws SQLException {
         addSimpleDataToDatabase(3, "testGetIteratorBasic");
         final HashSet<BsonDocument> documentSet = new HashSet<>(documents);
-        properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.NATURAL.getName());
+        Assertions.assertEquals(DocumentDbMetadataScanMethod.RANDOM, properties.getMetadataScanMethod());
         properties.setMetadataScanLimit("1");
         final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorBasic",
                 BsonDocument.class);
 
         final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
+
         Assertions.assertTrue(documentSet.contains(iterator.next()));
         Assertions.assertThrows(NoSuchElementException.class,
                 iterator::next);
     }
 
     /**
-     * Test that natural scan is consistent.
+     * Test that forward id scan works and is ordered correctly.
      */
     @Test
-    public void testGetIteratorNatural() throws SQLException {
-        addSimpleDataToDatabase(10, "testGetIteratorNatural");
-        final HashSet<BsonDocument> documentSet = new HashSet<>(documents);
-        properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.NATURAL.getName());
+    public void testGetIteratorForward() throws SQLException {
+        addSimpleDataToDatabase(10, "testGetIteratorForward");
+        properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.ID_FORWARD.getName());
         properties.setMetadataScanLimit("5");
-        final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorNatural",
+        final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorForward",
                 BsonDocument.class);
 
         final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
-        final Iterator<BsonDocument> iteratorRepeat = DocumentDbMetadataScanner.getIterator(properties, collection);
-
+        Collections.sort(ids);
         for (int i = 0; i < 5; i++) {
-            Assertions.assertTrue(iterator.hasNext() && iteratorRepeat.hasNext());
+            Assertions.assertTrue(iterator.hasNext());
             final BsonDocument document = iterator.next();
-            final BsonDocument repeatDocument = iteratorRepeat.next();
-            Assertions.assertTrue(documentSet.contains(document));
-            Assertions.assertEquals(document, repeatDocument);
+            Assertions.assertEquals(ids.get(i), document.get("_id").toString());
         }
         Assertions.assertThrows(NoSuchElementException.class,
                 iterator::next);
@@ -150,7 +148,7 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
 
 
     /**
-     * Test for all option
+     * Test for all option.
      */
     @Test
     public void testGetIteratorAll() throws SQLException {
@@ -169,30 +167,22 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
-     * Tests get iterator with reverse natural order.
+     * Tests get iterator with reverse id order.
      */
     @Test
     public void testGetIteratorReverse() throws SQLException {
         addSimpleDataToDatabase(5, "testGetIteratorReverse");
-        properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.NATURAL.getName());
         properties.setMetadataScanLimit("5");
+        properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.ID_REVERSE.getName());
         final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorReverse",
                 BsonDocument.class);
-
         final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
-        properties.setMetadataScanMethod(DocumentDbMetadataScanMethod.NATURAL_REVERSE.getName());
-        final Iterator<BsonDocument> iteratorReverse = DocumentDbMetadataScanner.getIterator(properties, collection);
-
-        final ArrayList<BsonDocument> forwardList = new ArrayList<>();
-        final ArrayList<BsonDocument> reverseList = new ArrayList<>();
-
-        for (int i = 0; i < 5; i++) {
-            Assertions.assertTrue(iterator.hasNext() && iteratorReverse.hasNext());
-            forwardList.add(iterator.next());
-            reverseList.add(iteratorReverse.next());
+        Collections.sort(ids);
+        for (int i = 4; i >= 0; i--) {
+            Assertions.assertTrue(iterator.hasNext());
+            final BsonDocument document = iterator.next();
+            Assertions.assertEquals(ids.get(i), document.get("_id").toString());
         }
-        Collections.reverse(forwardList);
-        Assertions.assertEquals(reverseList, forwardList);
         Assertions.assertThrows(NoSuchElementException.class,
                 iterator::next);
     }
@@ -210,9 +200,9 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
                     .append("_id", new BsonObjectId())
                     .append("count", new BsonInt32(count));
             documents.add(document);
+            ids.add(document.get("_id").toString());
         }
         collection.insertMany(documents);
         Assertions.assertEquals(recordCount, collection.countDocuments());
-
     }
 }

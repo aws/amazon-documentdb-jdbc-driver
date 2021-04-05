@@ -867,7 +867,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     }
 
     protected static DocumentDbStatement getDocumentDbStatement() throws SQLException {
-        return getDocumentDbStatement(DocumentDbMetadataScanMethod.NATURAL);
+        return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);
     }
 
     private static DocumentDbStatement getDocumentDbStatement(final DocumentDbMetadataScanMethod method) throws SQLException {
