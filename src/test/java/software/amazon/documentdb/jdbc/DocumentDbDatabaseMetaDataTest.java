@@ -16,9 +16,12 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.mongodb.client.MongoClient;
+import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,7 +41,9 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     private static final String USERNAME = "user";
     private static final String PASSWORD = "password";
     private static final String DATABASE = "testDb";
-    private static final String COLLECTION_NAME = "COLLECTION";
+    private static final String COLLECTION_BASIC = "COLLECTION";
+    private static final String COLLECTION_SUB = "collectionSubDocument";
+    private static final String COLLECTION_ARRAY = "collectionWithArray";
     private static final String HOSTNAME = "localhost";
 
     private static Connection connection;
@@ -48,8 +53,23 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @BeforeAll
     public static void initialize() throws SQLException {
         createUser(DATABASE, USERNAME, PASSWORD);
-        prepareSimpleConsistentData(DATABASE, COLLECTION_NAME,
+        prepareSimpleConsistentData(DATABASE, COLLECTION_BASIC,
                 5, USERNAME, PASSWORD);
+        final MongoClient client = createMongoClient(ADMIN_DATABASE, USERNAME, PASSWORD);
+        final Document nestedDocument = Document.parse(
+                "{ \"_id\" : \"key\", " +
+                        "\"doc\" : { \"field\" : 1 } }");
+        client.getDatabase(DATABASE).getCollection(COLLECTION_SUB).insertOne(nestedDocument);
+        final Document arrayDocument = Document.parse(
+            "{\n" +
+                    "  \"_id\":3,\n" +
+                    "  \"field\":\"string\",\n" +
+                    "  \"array\": [\n" +
+                    "    1, 2, 3\n" +
+                    "  ]\n" +
+                    "}"
+        );
+        client.getDatabase(DATABASE).getCollection(COLLECTION_ARRAY).insertOne(arrayDocument);
         final String connectionString = String.format(
                 "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false", USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
         connection = DriverManager.getConnection(connectionString);
@@ -204,7 +224,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the correct columns of getPrimaryKeys.")
     void testGetPrimaryKeys() throws SQLException {
-        final ResultSet primaryKeys = metadata.getPrimaryKeys(null, null, COLLECTION_NAME);
+        final ResultSet primaryKeys = metadata.getPrimaryKeys(null, null, COLLECTION_BASIC);
         final ResultSetMetaData primaryKeysMetadata = primaryKeys.getMetaData();
         Assertions.assertEquals("TABLE_CAT", primaryKeysMetadata.getColumnName(1));
         Assertions.assertEquals("TABLE_SCHEM", primaryKeysMetadata.getColumnName(2));
@@ -220,7 +240,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the correct columns of foreign keys.")
     void testGetImportedKeys() throws SQLException {
-        final ResultSet importedKeys = metadata.getImportedKeys(null, null, COLLECTION_NAME);
+        final ResultSet importedKeys = metadata.getImportedKeys(null, null, COLLECTION_BASIC);
         final ResultSetMetaData foreignKeysMetadata = importedKeys.getMetaData();
         Assertions.assertEquals("PKTABLE_CAT", foreignKeysMetadata.getColumnName(1));
         Assertions.assertEquals("PKTABLE_SCHEM", foreignKeysMetadata.getColumnName(2));
@@ -268,5 +288,123 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals("SCOPE_SCHEMA", attributesMetadata.getColumnName(19));
         Assertions.assertEquals("SCOPE_TABLE", attributesMetadata.getColumnName(20));
         Assertions.assertEquals("SOURCE_DATA_TYPE", attributesMetadata.getColumnName(21));
+    }
+
+    @Test
+    @DisplayName("Tests basic primary key metadata.")
+    void testGetPrimaryKeyBasic() throws SQLException {
+        final ResultSet primaryKeys = metadata.getPrimaryKeys(null, DATABASE, COLLECTION_BASIC);
+        Assertions.assertNotNull(primaryKeys);
+        Assertions.assertTrue(primaryKeys.next());
+        Assertions.assertNull(primaryKeys.getString(1));
+        Assertions.assertEquals(DATABASE, primaryKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_BASIC, primaryKeys.getString(3));
+        Assertions.assertEquals(COLLECTION_BASIC + "__id", primaryKeys.getString(4));
+        Assertions.assertEquals(1, primaryKeys.getShort(5));
+        Assertions.assertNull(primaryKeys.getString(6));
+        Assertions.assertFalse(primaryKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests primary keys of sub-document virtual table.")
+    void testGetPrimaryKeySubdocument() throws SQLException {
+        final ResultSet primaryKeys = metadata.getPrimaryKeys(null, DATABASE, COLLECTION_SUB + "_doc");
+        Assertions.assertNotNull(primaryKeys);
+        Assertions.assertTrue(primaryKeys.next());
+        Assertions.assertNull(primaryKeys.getString(1));
+        Assertions.assertEquals(DATABASE, primaryKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_SUB + "_doc", primaryKeys.getString(3));
+        Assertions.assertEquals(COLLECTION_SUB + "__id", primaryKeys.getString(4));
+        Assertions.assertEquals(1, primaryKeys.getShort(5));
+        Assertions.assertNull(primaryKeys.getString(6));
+        Assertions.assertFalse(primaryKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests that filtering by schema and table works on getPrimaryKeys.")
+    void testGetPrimaryKeysFilters() throws SQLException {
+        final ResultSet emptyResultSetSchema = metadata.getPrimaryKeys(null, "invalidDb", null);
+        Assertions.assertFalse(emptyResultSetSchema.next());
+        final ResultSet emptyResultSetTable = metadata.getPrimaryKeys(null, null, "invalidCollection");
+        Assertions.assertFalse(emptyResultSetTable.next());
+        final ResultSet noFilterPrimaryKeys = metadata.getPrimaryKeys(null, null, null);
+        Assertions.assertTrue(noFilterPrimaryKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests that filtering by schema and table works on getImportedKeys.")
+    void testGetImportedKeysFilters() throws SQLException {
+        final ResultSet emptyResultSetSchema = metadata.getImportedKeys(null, "invalidDb", null);
+        Assertions.assertFalse(emptyResultSetSchema.next());
+        final ResultSet emptyResultSetTable = metadata.getImportedKeys(null, null, "invalidCollection");
+        Assertions.assertFalse(emptyResultSetTable.next());
+        final ResultSet noFilterImportedKeys = metadata.getImportedKeys(null, null, null);
+        Assertions.assertTrue(noFilterImportedKeys.next());
+
+    }
+
+    @Disabled("Wildcard characters in key filters are not working.")
+    @Test
+    @DisplayName("Tests primary/foreign key queries with wildcard characters (% and _)")
+    void testPrimaryKeyWildcards() throws SQLException {
+        final ResultSet primaryWildcardKeys = metadata.getPrimaryKeys(null, null, "_ollect%");
+        Assertions.assertTrue(primaryWildcardKeys.next());
+        final ResultSet foreignWildcardKeys = metadata.getImportedKeys(null, null, "_ollect%");
+        Assertions.assertTrue(foreignWildcardKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests primary keys of array virtual tables.")
+    void testGetPrimaryKeysArray() throws SQLException {
+        final ResultSet arrayPrimaryKeys = metadata.getPrimaryKeys(null, null, COLLECTION_ARRAY + "_array");
+        Assertions.assertTrue(arrayPrimaryKeys.next());
+        Assertions.assertNull(arrayPrimaryKeys.getString(1));
+        Assertions.assertEquals(DATABASE, arrayPrimaryKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayPrimaryKeys.getString(3));
+        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayPrimaryKeys.getString(4));
+        Assertions.assertEquals(1, arrayPrimaryKeys.getShort(5));
+        Assertions.assertNull(arrayPrimaryKeys.getString(6));
+        Assertions.assertTrue(arrayPrimaryKeys.next());
+        Assertions.assertNull(arrayPrimaryKeys.getString(1));
+        Assertions.assertEquals(DATABASE, arrayPrimaryKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayPrimaryKeys.getString(3));
+        Assertions.assertEquals("array_index_lvl_0", arrayPrimaryKeys.getString(4));
+        Assertions.assertEquals(2, arrayPrimaryKeys.getShort(5)); // Indicates second column of PK
+        Assertions.assertNull(arrayPrimaryKeys.getString(6));
+        Assertions.assertFalse(arrayPrimaryKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests foreign keys of sub-document virtual tables.")
+    void testGetImportedKeysDocument() throws SQLException {
+        final ResultSet subdocImportedKeys = metadata.getImportedKeys(null, null, COLLECTION_SUB + "_doc");
+        Assertions.assertTrue(subdocImportedKeys.next());
+        Assertions.assertNull(subdocImportedKeys.getString(1));
+        Assertions.assertEquals(DATABASE, subdocImportedKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_SUB, subdocImportedKeys.getString(3));
+        Assertions.assertEquals(COLLECTION_SUB + "__id", subdocImportedKeys.getString(4));
+        Assertions.assertNull(subdocImportedKeys.getString(5));
+        Assertions.assertEquals(DATABASE, subdocImportedKeys.getString(6));
+        Assertions.assertEquals(COLLECTION_SUB + "_doc", subdocImportedKeys.getString(7));
+        Assertions.assertEquals(COLLECTION_SUB + "__id", subdocImportedKeys.getString(8));
+        Assertions.assertEquals(1, subdocImportedKeys.getShort(9));
+        Assertions.assertFalse(subdocImportedKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests foreign keys of array virtual tables.")
+    void testGetImportedKeysArray() throws SQLException {
+        final ResultSet arrayImportedKeys = metadata.getImportedKeys(null, null, COLLECTION_ARRAY + "_array");
+        Assertions.assertTrue(arrayImportedKeys.next());
+        Assertions.assertNull(arrayImportedKeys.getString(1));
+        Assertions.assertEquals(DATABASE, arrayImportedKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_ARRAY, arrayImportedKeys.getString(3));
+        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayImportedKeys.getString(4));
+        Assertions.assertNull(arrayImportedKeys.getString(5));
+        Assertions.assertEquals(DATABASE, arrayImportedKeys.getString(6));
+        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayImportedKeys.getString(7));
+        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayImportedKeys.getString(8));
+        Assertions.assertEquals(1, arrayImportedKeys.getShort(9));
+        Assertions.assertFalse(arrayImportedKeys.next());
     }
 }
