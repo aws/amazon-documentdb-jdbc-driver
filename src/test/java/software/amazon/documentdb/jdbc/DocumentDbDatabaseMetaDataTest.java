@@ -21,7 +21,6 @@ import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -343,7 +342,6 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
 
     }
 
-    @Disabled("Wildcard characters in key filters are not working.")
     @Test
     @DisplayName("Tests primary/foreign key queries with wildcard characters (% and _)")
     void testPrimaryKeyWildcards() throws SQLException {

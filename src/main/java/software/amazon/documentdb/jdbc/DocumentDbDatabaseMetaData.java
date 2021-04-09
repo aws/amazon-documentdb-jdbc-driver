@@ -459,11 +459,11 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         // 5. KEY_SEQ short => sequence number within primary key( a value of 1 represents the first column of the primary key, a value of 2 would represent the second column within the primary key).
         // 6. PK_NAME String => primary key name (may be null)
         final List<List<Object>> metaData = new ArrayList<>();
-        if (schema == null || schema.equals(properties.getDatabase())) {
+        if (schema == null || properties.getDatabase().matches(convertPatternToRegex(schema))) {
             for (Entry<String, DocumentDbCollectionMetadata> collection : databaseMetadata
                     .getCollectionMetadataMap().entrySet()) {
                 for (DocumentDbMetadataTable metadataTable : collection.getValue().getTables().values()) {
-                    if (table == null || table.equals(metadataTable.getName())) {
+                    if (table == null || metadataTable.getName().matches(convertPatternToRegex(table))) {
                         for (DocumentDbMetadataColumn column : metadataTable.getColumns()
                                 .values()) {
                             // 1. TABLE_CAT String => table catalog (may be null)
@@ -502,7 +502,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final String table) {
         final List<List<Object>> metaData = new ArrayList<>();
         if (isNullOrWhitespace(catalog)) {
-            if (schema == null || schema.equals(properties.getDatabase())) {
+            if (schema == null || properties.getDatabase().matches(convertPatternToRegex(schema))) {
                 addImportedKeysForSchema(table, metaData);
             }
         }
@@ -521,7 +521,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final DocumentDbMetadataTable baseMetadataTable = collection.getTables()
                     .get(collection.getPath());
             for (DocumentDbMetadataTable metadataTable : collection.getTables().values()) {
-                if (table == null || table.equals(metadataTable.getName())) {
+                if (table == null || metadataTable.getName().matches(convertPatternToRegex(table))) {
                     addImportedKeysForTable(metaData, baseMetadataTable, metadataTable);
                 }
             }
