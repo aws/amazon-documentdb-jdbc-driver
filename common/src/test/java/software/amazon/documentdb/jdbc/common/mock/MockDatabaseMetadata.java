@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.common.mock;
 
 import software.amazon.documentdb.jdbc.common.DatabaseMetaData;
+import javax.annotation.Nullable;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -35,72 +36,73 @@ public class MockDatabaseMetadata extends DatabaseMetaData implements java.sql.D
     }
 
     @Override
-    public String getURL() throws SQLException {
+    public @Nullable
+    String getURL() throws SQLException {
         return null;
     }
 
     @Override
-    public String getUserName() throws SQLException {
+    public @Nullable String getUserName() throws SQLException {
         return null;
     }
 
     @Override
-    public String getDatabaseProductName() throws SQLException {
+    public @Nullable String getDatabaseProductName() throws SQLException {
         return null;
     }
 
     @Override
-    public String getDatabaseProductVersion() throws SQLException {
+    public @Nullable String getDatabaseProductVersion() throws SQLException {
         return null;
     }
 
     @Override
-    public String getDriverName() throws SQLException {
+    public @Nullable String getDriverName() throws SQLException {
         return null;
     }
 
     @Override
-    public String getSQLKeywords() throws SQLException {
+    public @Nullable String getSQLKeywords() throws SQLException {
         return null;
     }
 
     @Override
-    public String getNumericFunctions() throws SQLException {
+    public @Nullable String getNumericFunctions() throws SQLException {
         return null;
     }
 
     @Override
-    public String getStringFunctions() throws SQLException {
+    public @Nullable String getStringFunctions() throws SQLException {
         return null;
     }
 
     @Override
-    public String getSystemFunctions() throws SQLException {
+    public @Nullable String getSystemFunctions() throws SQLException {
         return null;
     }
 
     @Override
-    public String getTimeDateFunctions() throws SQLException {
+    public @Nullable String getTimeDateFunctions() throws SQLException {
         return null;
     }
 
     @Override
-    public String getSearchStringEscape() throws SQLException {
+    public @Nullable String getSearchStringEscape() throws SQLException {
         return null;
     }
 
     @Override
-    public String getExtraNameCharacters() throws SQLException {
+    public @Nullable String getExtraNameCharacters() throws SQLException {
         return null;
     }
 
     @Override
-    public String getCatalogTerm() throws SQLException {
+    public @Nullable String getCatalogTerm() throws SQLException {
         return null;
     }
 
     @Override
-    public String getCatalogSeparator() throws SQLException {
+    public @Nullable String getCatalogSeparator() throws SQLException {
         return null;
     }
 
@@ -110,79 +112,79 @@ public class MockDatabaseMetadata extends DatabaseMetaData implements java.sql.D
     }
 
     @Override
-    public ResultSet getProcedures(final String catalog, final String schemaPattern, final String procedureNamePattern)
+    public @Nullable ResultSet getProcedures(final String catalog, final String schemaPattern, final String procedureNamePattern)
             throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getTables(final String catalog, final String schemaPattern, final String tableNamePattern,
+    public @Nullable ResultSet getTables(final String catalog, final String schemaPattern, final String tableNamePattern,
                                final String[] types)
             throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getSchemas() throws SQLException {
+    public @Nullable ResultSet getSchemas() throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getCatalogs() throws SQLException {
+    public @Nullable ResultSet getCatalogs() throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getTableTypes() throws SQLException {
+    public @Nullable ResultSet getTableTypes() throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getColumns(final String catalog, final String schemaPattern, final String tableNamePattern,
+    public @Nullable ResultSet getColumns(final String catalog, final String schemaPattern, final String tableNamePattern,
                                 final String columnNamePattern)
             throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getColumnPrivileges(final String catalog, final String schema, final String table,
+    public @Nullable ResultSet getColumnPrivileges(final String catalog, final String schema, final String table,
                                          final String columnNamePattern)
             throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getBestRowIdentifier(final String catalog, final String schema, final String table,
+    public @Nullable ResultSet getBestRowIdentifier(final String catalog, final String schema, final String table,
                                           final int scope, final boolean nullable)
             throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getPrimaryKeys(final String catalog, final String schema, final String table) throws SQLException {
+    public @Nullable ResultSet getPrimaryKeys(final String catalog, final String schema, final String table) throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getImportedKeys(final String catalog, final String schema, final String table)
+    public @Nullable ResultSet getImportedKeys(final String catalog, final String schema, final String table)
             throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getTypeInfo() throws SQLException {
+    public @Nullable ResultSet getTypeInfo() throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getIndexInfo(final String catalog, final String schema, final String table, final boolean unique,
+    public @Nullable ResultSet getIndexInfo(final String catalog, final String schema, final String table, final boolean unique,
                                   final boolean approximate)
             throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getAttributes(final String catalog, final String schemaPattern, final String typeNamePattern,
+    public @Nullable ResultSet getAttributes(final String catalog, final String schemaPattern, final String typeNamePattern,
                                    final String attributeNamePattern) throws SQLException {
         return null;
     }
@@ -208,12 +210,12 @@ public class MockDatabaseMetadata extends DatabaseMetaData implements java.sql.D
     }
 
     @Override
-    public ResultSet getSchemas(final String catalog, final String schemaPattern) throws SQLException {
+    public @Nullable ResultSet getSchemas(final String catalog, final String schemaPattern) throws SQLException {
         return null;
     }
 
     @Override
-    public ResultSet getClientInfoProperties() throws SQLException {
+    public @Nullable ResultSet getClientInfoProperties() throws SQLException {
         return null;
     }
 }
