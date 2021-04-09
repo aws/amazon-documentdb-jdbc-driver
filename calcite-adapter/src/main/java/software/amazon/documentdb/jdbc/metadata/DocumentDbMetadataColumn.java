@@ -61,4 +61,7 @@ public class DocumentDbMetadataColumn {
 
     /** The (zero-indexed) index of the column in the table. */
     private final Integer index;
+
+    /** The name of the table this column belongs. */
+    private final String tableName;
 }

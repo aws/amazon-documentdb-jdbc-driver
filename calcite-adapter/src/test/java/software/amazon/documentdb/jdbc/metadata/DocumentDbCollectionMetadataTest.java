@@ -35,6 +35,7 @@ import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import java.sql.Types;
 import java.time.Instant;
@@ -56,6 +57,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests a collection where all the fields are consistent.
      */
+    @DisplayName("Tests a collection where all the fields are consistent.")
     @Test
     void testCreateScalarSingleDepth() {
         final List<BsonDocument> documentList = new ArrayList<>();
@@ -119,6 +121,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * This tests SQL type promotion.
      */
+    @DisplayName("This tests SQL type promotion.")
     @Test
     void testSqlTypesPromotion() {
         final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
@@ -203,6 +206,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * This tests unsupported scalar type promotion.
      */
+    @DisplayName("This tests unsupported scalar type promotion.")
     @Test
     void testUnsupportedCreateScalarPromotedSqlTypes() {
         final BsonType[] unsupportedBsonTypeSet = new BsonType[] {
@@ -226,6 +230,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests whether all columns are found, even if missing at first.
      */
+    @DisplayName("Tests whether all columns are found, even if missing at first.")
     @Test
     void testCreateScalarFieldsMissing() {
         final List<BsonDocument> documentList = new ArrayList<>();
@@ -330,6 +335,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests a two-level document.
      */
+    @DisplayName("Tests a two-level document.")
     @Test
     void testComplexTwoLevelDocument() {
         final BsonDocument document = BsonDocument.parse(
@@ -389,6 +395,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests a three-level document.
      */
+    @DisplayName("Tests a three-level document.")
     @Test
     void testComplexThreeLevelDocument() {
         final BsonDocument document = BsonDocument.parse(
@@ -477,6 +484,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests a single-level array as virtual table.
      */
+    @DisplayName("Tests a single-level array as virtual table.")
     @Test
     void testComplexSingleLevelArray() {
         final BsonDocument document = BsonDocument.parse(
@@ -517,7 +525,7 @@ class DocumentDbCollectionMetadataTest {
                 metadataColumn.getName());
         Assertions.assertEquals(1, metadataColumn.getPrimaryKey());
         Assertions.assertEquals(1, metadataColumn.getForeignKey());
-        Assertions.assertTrue(metadataColumn.isGenerated());
+        Assertions.assertFalse(metadataColumn.isGenerated());
 
         // index key column
         metadataColumn = metadataTable.getColumns().get(
@@ -552,6 +560,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests a two-level array as virtual table.
      */
+    @DisplayName("Tests a two-level array as virtual table.")
     @Test
     void testComplexTwoLevelArray() {
         final BsonDocument document = BsonDocument.parse(
@@ -592,7 +601,7 @@ class DocumentDbCollectionMetadataTest {
                 metadataColumn.getName());
         Assertions.assertEquals(1, metadataColumn.getPrimaryKey());
         Assertions.assertEquals(1, metadataColumn.getForeignKey());
-        Assertions.assertTrue(metadataColumn.isGenerated());
+        Assertions.assertFalse(metadataColumn.isGenerated());
 
         // index key column
         metadataColumn = metadataTable.getColumns().get(
@@ -640,8 +649,157 @@ class DocumentDbCollectionMetadataTest {
     }
 
     /**
+     * Test metadata creation for document with array in document in array.
+     */
+    @DisplayName("Test metadata creation for document with array in document in array.")
+    @Test
+    void testComplexSingleLevelWithDocumentsWithArray() {
+        final BsonDocument document = BsonDocument.parse(
+                "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"array2\" : [ \"a\", \"b\", \"c\" ] } ]}");
+        final DocumentDbCollectionMetadata metadata = DocumentDbCollectionMetadata.create(
+                COLLECTION_NAME,
+                Arrays.stream((new BsonDocument[]{document})).iterator());
+
+        Assertions.assertNotNull(metadata);
+        Assertions.assertEquals(3, metadata.getTables().size());
+        DocumentDbMetadataTable metadataTable = metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertNotNull(metadataTable);
+        Assertions.assertEquals(2, metadataTable.getColumns().size());
+        DocumentDbMetadataColumn metadataColumn = metadataTable.getColumns()
+                .get(toName(combinePath(COLLECTION_NAME, "_id")));
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals("_id", metadataColumn.getPath());
+        Assertions.assertEquals(toName(combinePath(COLLECTION_NAME, "_id")),
+                metadataColumn.getName());
+        Assertions.assertEquals(1, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(0, metadataColumn.getForeignKey());
+        Assertions.assertFalse(metadataColumn.isGenerated());
+
+        // Virtual table for array with name "array"
+        metadataTable = metadata.getTables().get(toName(combinePath(
+                COLLECTION_NAME, "array")));
+        Assertions.assertEquals(5, metadataTable.getColumns().size());
+
+        // _id foreign key column
+        metadataColumn = metadataTable.getColumns().get(
+                toName(combinePath(COLLECTION_NAME, "_id")));
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals("_id",metadataColumn.getPath());
+        Assertions.assertEquals(
+                toName(combinePath(COLLECTION_NAME, "_id")),
+                metadataColumn.getName());
+        Assertions.assertEquals(1, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(1, metadataColumn.getForeignKey());
+        Assertions.assertFalse(metadataColumn.isGenerated());
+
+        // index key column
+        metadataColumn = metadataTable.getColumns().get(
+                toName(combinePath("array", "index_lvl_0")));
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(
+                toName(combinePath("array", "index_lvl_0")),
+                metadataColumn.getPath());
+        Assertions.assertEquals(
+                toName(combinePath("array", "index_lvl_0")),
+                metadataColumn.getName());
+        Assertions.assertEquals(2, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(0, metadataColumn.getForeignKey());
+        Assertions.assertTrue(metadataColumn.isGenerated());
+
+        // document column
+        metadataColumn = metadataTable.getColumns().get("field");
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.INTEGER, metadataColumn.getSqlType());
+        Assertions.assertEquals(combinePath("array", "field"),
+                metadataColumn.getPath());
+        Assertions.assertEquals("field", metadataColumn.getName());
+        Assertions.assertEquals(0, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(0, metadataColumn.getForeignKey());
+        Assertions.assertFalse(metadataColumn.isGenerated());
+
+        // document column
+        metadataColumn = metadataTable.getColumns().get("field1");
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(combinePath("array", "field1"),
+                metadataColumn.getPath());
+        Assertions.assertEquals("field1", metadataColumn.getName());
+        Assertions.assertEquals(0, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(0, metadataColumn.getForeignKey());
+        Assertions.assertFalse(metadataColumn.isGenerated());
+
+
+        // Virtual table for array in array
+        metadataTable = metadata.getTables().get(toName(combinePath(combinePath(
+                COLLECTION_NAME, "array"), "array2")));
+        Assertions.assertEquals(4, metadataTable.getColumns().size());
+
+        // _id foreign key column
+        metadataColumn = metadataTable.getColumns().get(
+                toName(combinePath(COLLECTION_NAME, "_id")));
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals("_id",metadataColumn.getPath());
+        Assertions.assertEquals(
+                toName(combinePath(COLLECTION_NAME, "_id")),
+                metadataColumn.getName());
+        Assertions.assertEquals(1, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(1, metadataColumn.getForeignKey());
+        Assertions.assertFalse(metadataColumn.isGenerated());
+
+        // index key column
+        metadataColumn = metadataTable.getColumns().get(
+                toName(combinePath("array", "index_lvl_0")));
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(
+                toName(combinePath("array", "index_lvl_0")),
+                metadataColumn.getPath());
+        Assertions.assertEquals(
+                toName(combinePath("array", "index_lvl_0")),
+                metadataColumn.getName());
+        Assertions.assertEquals(2, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(2, metadataColumn.getForeignKey());
+        Assertions.assertTrue(metadataColumn.isGenerated());
+
+        // index key column
+        metadataColumn = metadataTable.getColumns().get(
+                toName(combinePath("array_array2", "index_lvl_0")));
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(
+                toName(combinePath("array_array2", "index_lvl_0")),
+                metadataColumn.getPath());
+        Assertions.assertEquals(
+                toName(combinePath("array_array2", "index_lvl_0")),
+                metadataColumn.getName());
+        Assertions.assertEquals(3, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(0, metadataColumn.getForeignKey());
+        Assertions.assertTrue(metadataColumn.isGenerated());
+
+        // value column
+        metadataColumn = metadataTable.getColumns().get("value");
+        Assertions.assertNotNull(metadataColumn);
+        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(combinePath("array", "array2"),
+                metadataColumn.getPath());
+        Assertions.assertEquals("value", metadataColumn.getName());
+        Assertions.assertEquals(0, metadataColumn.getPrimaryKey());
+        Assertions.assertEquals(0, metadataColumn.getForeignKey());
+        Assertions.assertFalse(metadataColumn.isGenerated());
+
+        final String methodName = new Object() {
+        }.getClass().getEnclosingMethod().getName();
+        printMetadataOutput(metadata, methodName);
+    }
+
+    /**
      * Tests a two-level array as virtual table with multiple documents.
      */
+    @DisplayName("Tests a two-level array as virtual table with multiple documents.")
     @Test
     void testComplexSingleLevelArrayWithDocuments() {
         final BsonDocument document = BsonDocument.parse(
@@ -696,7 +854,7 @@ class DocumentDbCollectionMetadataTest {
                 toName(combinePath("array", "index_lvl_0")),
                 metadataColumn.getName());
         Assertions.assertEquals(2, metadataColumn.getPrimaryKey());
-        Assertions.assertEquals(2, metadataColumn.getForeignKey());
+        Assertions.assertEquals(0, metadataColumn.getForeignKey());
         Assertions.assertTrue(metadataColumn.isGenerated());
 
         // document column
@@ -740,6 +898,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests a three-level document with multiple documents.
      */
+    @DisplayName("Tests a three-level document with multiple documents.")
     @Test
     void testComplexThreeLevelMultipleDocuments() {
         final List<BsonDocument> documents = new ArrayList<>();
@@ -862,6 +1021,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests inconsistent data types in arrays should not fail.
      */
+    @DisplayName("Tests inconsistent data types in arrays should not fail.")
     @Test
     void testInconsistentArrayDataType() {
         final BsonDocument[] tests = new BsonDocument[] {
@@ -916,6 +1076,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Tests that the "_id" field of type DOCUMENT will be promoted to VARCHAR.
      */
+    @DisplayName("Tests that the \"_id\" field of type DOCUMENT will be promoted to VARCHAR.")
     @Test
     void testIdFieldIsDocument() {
         final BsonDocument document = BsonDocument
@@ -942,6 +1103,7 @@ class DocumentDbCollectionMetadataTest {
      * Test whether a conflict is detected in inconsistent arrays over multiple documents.
      * Here, array of object, then array of integer
      */
+    @DisplayName("Test whether a conflict is detected in inconsistent arrays over multiple documents. Here, array of object, then array of integer.")
     @Test
     void testMultiDocumentInconsistentArrayDocumentToInt32() {
         final List<BsonDocument> documents = new ArrayList<>();
@@ -983,6 +1145,7 @@ class DocumentDbCollectionMetadataTest {
      * Test whether a conflict is detected in inconsistent arrays over multiple documents.
      * Here, array of array of integer, then array of integer
      */
+    @DisplayName("Test whether a conflict is detected in inconsistent arrays over multiple documents. Here, array of array of integer, then array of integer")
     @Test
     void testMultiDocumentInconsistentArrayOfArrayToInt32() {
         final List<BsonDocument> documents = new ArrayList<>();
@@ -1020,6 +1183,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Test whether empty sub-documents are handled.
      */
+    @DisplayName("Test whether empty sub-documents are handled.")
     @Test
     void testEmptyDocuments() {
         final List<BsonDocument> documents = new ArrayList<>();
@@ -1058,6 +1222,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Test whether null scalars are handled.
      */
+    @DisplayName("Test whether null scalars are handled.")
     @Test
     void testNullScalar() {
         final List<BsonDocument> documents = new ArrayList<>();
@@ -1100,6 +1265,7 @@ class DocumentDbCollectionMetadataTest {
     /**
      * Test whether empty array is handled.
      */
+    @DisplayName("Test whether empty array is handled.")
     @Test
     void testEmptyArray() {
         final List<BsonDocument> documents = new ArrayList<>();
@@ -1139,8 +1305,9 @@ class DocumentDbCollectionMetadataTest {
     }
 
     /**
-     * Test that primrary and foreign key have consistent type after conflict.
+     * Test that primary and foreign key have consistent type after conflict.
      */
+    @DisplayName("Test that primary and foreign key have consistent type after conflict.")
     @Test
     void testPrimaryKeyScalarTypeInconsistency() {
         final List<BsonDocument> documents = new ArrayList<>();

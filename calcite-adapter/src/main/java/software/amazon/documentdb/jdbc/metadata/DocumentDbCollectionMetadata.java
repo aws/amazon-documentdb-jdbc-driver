@@ -311,8 +311,11 @@ public class DocumentDbCollectionMetadata {
                         .name(column.getName())
                         .isGenerated(column.isGenerated())
                         .sqlType(column.getSqlType())
+                        .tableName(column.getTableName())
                         .primaryKey(primaryKeyColumn)
-                        .foreignKey(primaryKeyColumn)
+                        .foreignKey(column.getTableName().equals(tableName)
+                                ? KEY_COLUMN_NONE
+                                : primaryKeyColumn)
                         .arrayIndexLevel(column.getArrayIndexLevel())
                         .build();
                 columnMap.put(metadataColumn.getName(), metadataColumn);
@@ -361,6 +364,7 @@ public class DocumentDbCollectionMetadata {
                     .name(columnName)
                     .isGenerated(false)
                     .sqlType(nextSqlType)
+                    .tableName(tableName)
                     .primaryKey(getPrimaryKeyColumn(isPrimaryKey))
                     .foreignKey(KEY_COLUMN_NONE)
                     .virtualTableName(getVirtualTableNameIfIsPrimaryKey(
@@ -386,7 +390,7 @@ public class DocumentDbCollectionMetadata {
         final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
                 .builder()
                 .path(path)
-                .name(toName(combinePath(collectionName, path)))
+                .name(tableName)
                 .columns(ImmutableMap.copyOf(columnMap))
                 .build();
         tableMap.put(metadataTable.getName(), metadataTable);
@@ -470,12 +474,13 @@ public class DocumentDbCollectionMetadata {
                         .path(column.getPath())
                         .arrayPath(column.getArrayPath())
                         .name(column.getName())
-                        .isGenerated(true)
+                        .isGenerated(column.isGenerated())
                         .sqlType(column.getSqlType())
+                        .tableName(column.getTableName())
                         .primaryKey(primaryKeyColumn)
-                        .foreignKey(column.getArrayIndexLevel() == null
-                                ? primaryKeyColumn
-                                : KEY_COLUMN_NONE)
+                        .foreignKey(column.getTableName().equals(tableName)
+                                ? KEY_COLUMN_NONE
+                                : primaryKeyColumn)
                         .virtualTableName(column.getVirtualTableName())
                         .arrayIndexLevel(column.getArrayIndexLevel())
                         .build();
@@ -495,6 +500,7 @@ public class DocumentDbCollectionMetadata {
                         .name(toName(indexColumnName))
                         .isGenerated(true)
                         .sqlType(Types.BIGINT)
+                        .tableName(tableName)
                         .primaryKey(primaryKeyColumn)
                         .foreignKey(KEY_COLUMN_NONE)
                         .arrayIndexLevel(level)
@@ -551,6 +557,7 @@ public class DocumentDbCollectionMetadata {
             final Map<String, DocumentDbMetadataColumn> columnMap,
             final int sqlType) {
 
+        final String tableName = toName(combinePath(collectionName, path));
         // Get column if it already exists so we can preserve index order.
         final DocumentDbMetadataColumn prevMetadataColumn = columnMap.get(toName(VALUE_COLUMN_NAME));
         // Add value column
@@ -561,6 +568,7 @@ public class DocumentDbCollectionMetadata {
                 .name(toName(VALUE_COLUMN_NAME))
                 .isGenerated(false)
                 .sqlType(sqlType)
+                .tableName(tableName)
                 .primaryKey(KEY_COLUMN_NONE)
                 .foreignKey(KEY_COLUMN_NONE)
                 .build();
@@ -570,7 +578,7 @@ public class DocumentDbCollectionMetadata {
         final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
                 .builder()
                 .path(path)
-                .name(toName(combinePath(collectionName, path)))
+                .name(tableName)
                 .columns(ImmutableMap.copyOf(columnMap))
                 .build();
         tableMap.put(metadataTable.getName(), metadataTable);

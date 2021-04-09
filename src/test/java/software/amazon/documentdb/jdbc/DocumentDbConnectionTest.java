@@ -18,7 +18,6 @@ package software.amazon.documentdb.jdbc;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -146,14 +145,16 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     }
 
     /** Tests constructor when passed invalid credentials. */
-    @Disabled // TODO: Determine if connection can/should be tested when creating a connection.
     @Test
     void testConnectionWithInvalidCredentials() {
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setUser("invalidUser");
 
-        Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
-                DocumentDbDriver.DOCUMENT_DB_SCHEME, properties));
+        Assertions.assertTrue(
+                Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
+                        DocumentDbDriver.DOCUMENT_DB_SCHEME, properties))
+                        .getMessage()
+                        .contains("Security error detected:"));
     }
 
     /**

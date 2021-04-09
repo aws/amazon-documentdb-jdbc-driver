@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc;
 
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
@@ -178,10 +179,16 @@ public class DocumentDbConnection extends Connection
     private void pingDatabase(final int maxTimeMS) throws SQLException {
         try {
             final String maxTimeMSOption = (maxTimeMS > 0)
-                    ? String.format(", \"maxTimeMS\" : %d", maxTimeMS )
+                    ? String.format(", \"maxTimeMS\" : %d", maxTimeMS)
                     : "";
             mongoDatabase.runCommand(
                     Document.parse(String.format("{ \"ping\" : 1 %s }", maxTimeMSOption)));
+        } catch (MongoSecurityException e) {
+            throw SqlError.createSQLException(LOGGER,
+                    SqlState.CONNECTION_EXCEPTION,
+                    e,
+                    SqlError.SECURITY_ERROR,
+                    e.getMessage());
         } catch (Exception e) {
             throw new SQLException(e.getMessage(), e);
         }
