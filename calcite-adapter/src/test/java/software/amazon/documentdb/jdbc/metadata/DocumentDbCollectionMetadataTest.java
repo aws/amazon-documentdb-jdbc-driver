@@ -648,10 +648,6 @@ class DocumentDbCollectionMetadataTest {
         printMetadataOutput(metadata, methodName);
     }
 
-    /**
-     * Test metadata creation for document with array in document in array.
-     */
-    @DisplayName("Test metadata creation for document with array in document in array.")
     @Test
     void testComplexSingleLevelWithDocumentsWithArray() {
         final BsonDocument document = BsonDocument.parse(

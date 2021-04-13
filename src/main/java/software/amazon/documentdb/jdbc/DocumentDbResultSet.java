@@ -24,8 +24,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 
 import java.sql.ResultSetMetaData;
@@ -129,11 +131,26 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
     @Override
     protected Object getValue(final int columnIndex) throws SQLException {
         final ResultSetMetaData metadata = getMetaData();
-        final DocumentDbMetadataTable table = tableMap.get(metadata.getTableName(columnIndex));
-        final String path = table.getColumns().get(metadata.getColumnName(columnIndex)).getPath();
-        if (path == null || path.isEmpty()) {
-            return null;
+        final String columnLabel = metadata.getColumnLabel(columnIndex);
+        final String columnName = metadata.getColumnName(columnIndex);
+        final String tableName = metadata.getTableName(columnIndex);
+
+        final String path;
+        // Check if the column has been renamed or has no underlying table.
+        // Field will be available at root level.
+        if (!columnLabel.equals(columnName) || tableName == null) {
+            path = columnLabel;
+        } else {
+            final DocumentDbMetadataTable table = tableMap.get(metadata.getTableName(columnIndex));
+            final DocumentDbMetadataColumn column = table != null ? table.getColumns().get(columnName) : null;
+            path = column != null ? column.getPath() : null;
         }
+
+        if (path == null || path.isEmpty()) {
+            throw SqlError.createSQLException(LOGGER, SqlState.DATA_EXCEPTION,
+                    SqlError.CANNOT_RETRIEVE_COLUMN, columnName);
+        }
+
         final String[] segmentedPath = path.split("\\.");
         Object segmentValue = current.get(segmentedPath[0]);
         for (int j = 1; j < segmentedPath.length && segmentValue instanceof Document; j++) {

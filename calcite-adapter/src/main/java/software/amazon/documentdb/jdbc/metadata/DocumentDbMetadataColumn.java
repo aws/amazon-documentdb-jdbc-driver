@@ -21,7 +21,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 /** Represents a field in a document, embedded document or array as a column in a table. */
-@Builder
+@Builder(toBuilder = true)
 @Getter
 public class DocumentDbMetadataColumn {
 
@@ -64,4 +64,7 @@ public class DocumentDbMetadataColumn {
 
     /** The name of the table this column belongs. */
     private final String tableName;
+
+    /** The new path of a column that was renamed due to a path collision. Only used in query processing. **/
+    private final String resolvedPath;
 }

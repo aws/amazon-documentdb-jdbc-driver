@@ -56,7 +56,7 @@ public class DocumentDbSort extends Sort implements DocumentDbRel {
 
     @Override public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
             final RelMetadataQuery mq) {
-        return super.computeSelfCost(planner, mq).multiplyBy(0.05);
+        return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.SORT_COST_FACTOR);
     }
 
     @Override public Sort copy(final RelTraitSet traitSet, final RelNode input,

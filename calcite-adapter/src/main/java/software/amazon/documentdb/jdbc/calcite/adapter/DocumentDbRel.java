@@ -47,7 +47,10 @@ public interface DocumentDbRel extends RelNode {
         private final List<Pair<String, String>> list = new ArrayList<>();
         private final RexBuilder rexBuilder;
         private RelOptTable table;
+        // DocumentDB: modified - start
         private DocumentDbMetadataTable metadataTable;
+        private DocumentDbTable documentDbTable;
+        // DocumentDB: modified - end
 
         public List<Pair<String, String>> getList() {
             return list;
@@ -66,6 +69,14 @@ public interface DocumentDbRel extends RelNode {
         }
 
         // DocumentDB: modified - start
+        public void setDocumentDbTable(final DocumentDbTable table) {
+            this.documentDbTable = table;
+        }
+
+        public DocumentDbTable getDocumentDbTable() {
+            return documentDbTable;
+        }
+
         public DocumentDbMetadataTable getMetadataTable() {
             return metadataTable;
         }
@@ -73,7 +84,6 @@ public interface DocumentDbRel extends RelNode {
         public void setMetadataTable(final DocumentDbMetadataTable metadataTable) {
             this.metadataTable = metadataTable;
         }
-        // DocumentDB: modified - end
 
         public Implementor(final RexBuilder rexBuilder) {
             this.rexBuilder = rexBuilder;
@@ -82,6 +92,11 @@ public interface DocumentDbRel extends RelNode {
         public void add(final String findOp, final String aggOp) {
             list.add(Pair.of(findOp, aggOp));
         }
+
+        public void add(final int index, final String findOp, final String aggOp) {
+            list.add(index, Pair.of(findOp, aggOp));
+        }
+        // DocumentDB: modified - end
 
         public void visitChild(final int ordinal, final RelNode input) {
             assert ordinal == 0;

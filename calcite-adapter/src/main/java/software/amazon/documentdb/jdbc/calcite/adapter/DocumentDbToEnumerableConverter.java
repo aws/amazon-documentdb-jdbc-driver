@@ -16,6 +16,8 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.UnwindOptions;
 import org.apache.calcite.adapter.enumerable.EnumerableRel;
 import org.apache.calcite.adapter.enumerable.EnumerableRelImplementor;
 import org.apache.calcite.adapter.enumerable.JavaRowFormat;
@@ -40,8 +42,13 @@ import org.apache.calcite.util.BuiltInMethod;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRel.Implementor;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import java.util.AbstractList;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 
 /**
  * Relational expression representing a scan of a table in a Mongo data source.
@@ -63,7 +70,7 @@ public class DocumentDbToEnumerableConverter
 
     @Override public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
             final RelMetadataQuery mq) {
-        return super.computeSelfCost(planner, mq).multiplyBy(.1);
+        return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.ENUMERABLE_COST_FACTOR);
     }
 
     @Override public Result implement(final EnumerableRelImplementor implementor, final Prefer pref) {
@@ -105,6 +112,10 @@ public class DocumentDbToEnumerableConverter
                 list.append("table",
                         mongoImplementor.getTable().getExpression(
                                 DocumentDbTable.DocumentDbQueryable.class));
+        // DocumentDB: modified - start
+        addVirtualTableOperations(mongoImplementor);
+        resolveRenamedFields(mongoImplementor, rowType);
+        // DocumentDB: modified - end
         final List<String> opList = Pair.right(mongoImplementor.getList());
         final Expression ops =
                 list.append("ops",
@@ -140,5 +151,60 @@ public class DocumentDbToEnumerableConverter
      * {@code {ConstantExpression("x"), ConstantExpression("y")}}. */
     private static <T> List<Expression> constantList(final List<T> values) {
         return Util.transform(values, Expressions::constant);
+    }
+
+    /**
+     * Adds aggregation stages to handle arrays and virtual tables that may be null.
+     * @param implementor the implementor.
+     */
+    private static void addVirtualTableOperations(final Implementor implementor) {
+        final DocumentDbMetadataTable tableMetadata  = implementor.getMetadataTable();
+        int index = 0;
+
+        // Add an unwind operation for each embedded array to convert to separate rows.
+        // Assumes that all queries will use aggregate and not find.
+        // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
+        for (Entry<String, DocumentDbMetadataColumn> column : tableMetadata.getColumns().entrySet()) {
+            if (column.getValue().getArrayIndexLevel() != null) {
+                final String indexName = column.getKey();
+                final UnwindOptions opts = new UnwindOptions();
+                String arrayPath = column.getValue().getArrayPath();
+                arrayPath = "$" + arrayPath;
+                opts.includeArrayIndex(indexName);
+                implementor.add(index++, null, String.valueOf(Aggregates.unwind(arrayPath, opts)));
+            }
+        }
+
+        // Add a match operation if it is a virtual table to remove null rows.
+        if (!tableMetadata.getPath().isEmpty()) {
+            final String path = DocumentDbRules.quote(tableMetadata.getPath());
+            implementor.add(index, null, "{ \"$match\" : {" + path + ": { \"$exists\": true } } }");
+        }
+    }
+
+    /**
+     * Renames any fields that were explicitly renamed or renamed as a result of naming collisions.
+     * @param implementor the implementor.
+     * @param rowType the output row type.
+     */
+    private static void resolveRenamedFields(final Implementor implementor, final RelDataType rowType) {
+        final List<String> renames = new ArrayList<>();
+        final DocumentDbMetadataTable metadataTable = implementor.getMetadataTable();
+        rowType.getFieldList().forEach( field -> {
+                final String name = field.getName();
+                final DocumentDbMetadataColumn column = metadataTable.getColumns().get(name);
+
+                if (column != null && !name.equals(column.getName())) {
+                    final String newPath = DocumentDbRules.maybeQuote("$" + column.getPath());
+                    renames.add(DocumentDbRules.maybeQuote(name) + ": " + newPath);;
+                }
+            }
+        );
+
+        if (!renames.isEmpty()) {
+            final String newFields = Util.toString(renames, "{", ", ", "}");
+            final String aggregateString = "{ $addFields : " + newFields + "}";
+            implementor.add(null, aggregateString);
+        }
     }
 }

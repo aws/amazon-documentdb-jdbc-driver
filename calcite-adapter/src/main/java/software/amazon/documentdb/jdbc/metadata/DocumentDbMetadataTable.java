@@ -16,17 +16,19 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-
+import java.util.Comparator;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
 /** Represents the fields in a document, embedded document or array. */
-@Builder
+@Builder(toBuilder = true)
 @Getter
 public class DocumentDbMetadataTable {
 
@@ -40,6 +42,8 @@ public class DocumentDbMetadataTable {
     @Setter private String name;
 
     private ImmutableMap<String, DocumentDbMetadataColumn> columnsByPath;
+
+    private ImmutableList<DocumentDbMetadataColumn> foreignKeys;
 
     /**
      * The columns mapped by (non-empty) path.
@@ -59,5 +63,21 @@ public class DocumentDbMetadataTable {
             columnsByPath = builder.build();
         }
         return columnsByPath;
+    }
+
+    /**
+     * The columns that are foreign keys.
+     * @return the foreign keys as a list of {@link DocumentDbMetadataColumn}.
+     */
+    public ImmutableList<DocumentDbMetadataColumn> getForeignKeys() {
+        if (foreignKeys == null) {
+            foreignKeys = ImmutableList.copyOf(columns.entrySet()
+                    .stream()
+                    .filter(entry -> entry.getValue().getForeignKey() != 0)
+                    .map(entry -> entry.getValue())
+                    .sorted(Comparator.comparingInt(DocumentDbMetadataColumn::getForeignKey))
+                    .collect(Collectors.toList()));
+        }
+        return foreignKeys;
     }
 }

@@ -22,7 +22,6 @@ import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.linq4j.tree.Primitive;
 import org.bson.Document;
 import org.bson.types.Binary;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 
 import java.util.Date;
@@ -89,8 +88,7 @@ class DocumentDbEnumerator implements Enumerator<Object> {
             final Class fieldClass,
             final DocumentDbMetadataTable tableMetadata) {
         // DocumentDB: modified - start
-        final DocumentDbMetadataColumn column = tableMetadata.getColumnsByPath().get(fieldPath);
-        return a0 -> getField(a0, column, fieldPath, fieldClass);
+        return a0 -> getField(a0, fieldPath, fieldClass);
         // DocumentDB: modified - end
     }
 
@@ -107,8 +105,7 @@ class DocumentDbEnumerator implements Enumerator<Object> {
                     .stream()
                     .map(field -> {
                         final String path = field.getKey();
-                        final DocumentDbMetadataColumn column = tableMetadata.getColumnsByPath().get(path);
-                        return getField(a0, column, path, field.getValue());
+                        return getField(a0, path, field.getValue());
                     })
                     .toArray();
             // DocumentDB: modified - end
@@ -175,14 +172,9 @@ class DocumentDbEnumerator implements Enumerator<Object> {
 
     private static Object getField(
             final Document a0,
-            final DocumentDbMetadataColumn column,
             final String path,
             final Class<?> fieldClass)
             throws UnsupportedOperationException {
-        if (column == null) {
-            throw new UnsupportedOperationException(
-                    String.format("Unable to find column metadata for path: %s", path));
-        }
         final String[] segmentedPath = path.split("\\.");
         int j = 0;
         Object segmentValue = a0.get(segmentedPath[j]);

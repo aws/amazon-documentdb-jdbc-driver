@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.calcite.adapter.enumerable.EnumerableRules;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -84,18 +83,14 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
 
     @Override public void register(final RelOptPlanner planner) {
         planner.addRule(DocumentDbToEnumerableConverterRule.INSTANCE);
-        planner.addRule(DocumentDbJoinRule.INSTANCE);
         for (RelOptRule rule : DocumentDbRules.RULES) {
             planner.addRule(rule);
         }
-        // Remove the existing enumerable rules to force the planner to choose our own join.
-        // Based on example for PigJoin in the pig adapter
-        planner.removeRule(EnumerableRules.ENUMERABLE_JOIN_RULE);
-        planner.removeRule(EnumerableRules.ENUMERABLE_MERGE_JOIN_RULE);
     }
 
     @Override public void implement(final Implementor implementor) {
         implementor.setTable(table);
+        implementor.setDocumentDbTable(mongoTable);
         implementor.setMetadataTable(metadataTable);
     }
 }

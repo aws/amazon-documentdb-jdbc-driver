@@ -20,9 +20,6 @@ import com.google.common.collect.ImmutableMap;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.UnwindOptions;
 import lombok.SneakyThrows;
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
 import org.apache.calcite.linq4j.AbstractEnumerable;
@@ -78,6 +75,10 @@ public class DocumentDbTable extends AbstractQueryableTable
         return "DocumentDbTable {" + tableMetadata.getName() + "}";
     }
 
+    public String getCollectionName() {
+        return this.collectionName;
+    }
+
     @SneakyThrows
     @Override public RelDataType getRowType(final RelDataTypeFactory typeFactory) {
         final List<Map.Entry<String, RelDataType>> fieldList = new ArrayList<>();
@@ -106,7 +107,6 @@ public class DocumentDbTable extends AbstractQueryableTable
                         SqlError.UNSUPPORTED_TYPE, sqlType);
             }
 
-            // TODO: Determine if PK/FK relationship can be set here (or anywhere)?
             nullable = entry.getValue().getPrimaryKey() == 0;
             field = new SimpleEntry<>(entry.getKey(),
                     typeFactory.createTypeWithNullability(relDataType, nullable));
@@ -175,26 +175,6 @@ public class DocumentDbTable extends AbstractQueryableTable
             final List<Entry<String, Class>> fields,
             final List<String> operations) {
         final List<Bson> list = new ArrayList<>();
-
-        // Add an unwind operation for each embedded array to convert to separate rows.
-        // Assumes that all queries will use aggregate and not find.
-        // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
-        for (Entry<String, DocumentDbMetadataColumn> column : tableMetadata.getColumns().entrySet()) {
-            if (column.getValue().getArrayIndexLevel() != null) {
-                final String indexName = column.getKey();
-                final UnwindOptions opts = new UnwindOptions();
-                String arrayPath = column.getValue().getArrayPath();
-                arrayPath = "$" + arrayPath;
-                opts.includeArrayIndex(indexName);
-                list.add(Aggregates.unwind(arrayPath, opts));
-            }
-        }
-
-        // Add a match operation if it is a virtual table to remove null rows
-        if (!tableMetadata.getPath().isEmpty()) {
-            final String path = tableMetadata.getPath();
-            list.add(Aggregates.match(Filters.exists(path, true)));
-        }
 
         for (String operation : operations) {
             list.add(BsonDocument.parse(operation));

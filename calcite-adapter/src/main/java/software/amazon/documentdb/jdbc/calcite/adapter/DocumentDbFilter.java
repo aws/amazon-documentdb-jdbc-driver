@@ -66,7 +66,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
 
     @Override public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
             final RelMetadataQuery mq) {
-        return super.computeSelfCost(planner, mq).multiplyBy(0.1);
+        return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.FILTER_COST_FACTOR);
     }
 
     @Override public DocumentDbFilter copy(final RelTraitSet traitSet, final RelNode input,

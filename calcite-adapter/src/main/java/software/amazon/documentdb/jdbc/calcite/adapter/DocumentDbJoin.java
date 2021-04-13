@@ -17,27 +17,30 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import org.apache.calcite.adapter.enumerable.EnumerableMergeJoin;
-import org.apache.calcite.adapter.enumerable.EnumerableRel;
-import org.apache.calcite.adapter.enumerable.EnumerableRelImplementor;
-import org.apache.calcite.adapter.enumerable.PhysType;
-import org.apache.calcite.adapter.enumerable.PhysTypeImpl;
-import org.apache.calcite.adapter.java.JavaTypeFactory;
-import org.apache.calcite.linq4j.Enumerable;
-import org.apache.calcite.linq4j.tree.BlockBuilder;
-import org.apache.calcite.linq4j.tree.Expression;
-import org.apache.calcite.linq4j.tree.Expressions;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Streams;
 import org.apache.calcite.plan.RelOptCluster;
+import org.apache.calcite.plan.RelOptCost;
+import org.apache.calcite.plan.RelOptPlanner;
+import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
-import org.apache.calcite.rel.core.CorrelationId;
+import org.apache.calcite.rel.core.Join;
 import org.apache.calcite.rel.core.JoinRelType;
+import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.sql.validate.SqlValidatorUtil;
+import org.apache.calcite.util.Util;
+import org.checkerframework.checker.nullness.qual.Nullable;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -45,114 +48,248 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * A starting point for implementing JOIN but needs A LOT of additional work.
- * Calcite was handling the joins for us after getting cursors to both tables
- * but we would ideally like to do the joins purely in MQL in 1 query.
+ * Implementation of {@link Join} in DocumentDb.
  */
-public class DocumentDbJoin extends EnumerableMergeJoin {
+public class DocumentDbJoin extends Join implements DocumentDbRel {
 
-    protected DocumentDbJoin(
+    /**
+     * Creates a new {@link DocumentDbJoin}
+     * @param cluster the cluster.
+     * @param traitSet the trait set.
+     * @param left the left node.
+     * @param right the right node.
+     * @param condition the condition.
+     * @param joinType the join type.
+     */
+    public DocumentDbJoin(
             final RelOptCluster cluster,
-            final RelTraitSet traits,
+            final RelTraitSet traitSet,
             final RelNode left,
             final RelNode right,
             final RexNode condition,
-            final Set<CorrelationId> variablesSet,
             final JoinRelType joinType) {
-        super(cluster, traits, left, right, condition, variablesSet, joinType);
+        super(cluster, traitSet, ImmutableList.of(), left, right, condition,
+                ImmutableSet.of(), joinType);
+        assert getConvention() == DocumentDbRel.CONVENTION;
     }
 
     @Override
-    public DocumentDbJoin copy(
+    public @Nullable RelOptCost computeSelfCost(
+            final RelOptPlanner planner,
+            final RelMetadataQuery mq) {
+        return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.JOIN_COST_FACTOR);
+    }
+
+    @Override
+    public Join copy(
             final RelTraitSet traitSet,
-            final RexNode condition,
+            final RexNode conditionExpr,
             final RelNode left,
             final RelNode right,
             final JoinRelType joinType,
             final boolean semiJoinDone) {
-        return new DocumentDbJoin(
-                getCluster(), traitSet, left, right, condition, variablesSet, joinType);
+        return new DocumentDbJoin(getCluster(), traitSet, left, right, conditionExpr, joinType);
     }
 
     @Override
-    public Result implement(final EnumerableRelImplementor implementor, final Prefer pref) {
-        final BlockBuilder builder = new BlockBuilder();
-        final Result leftResult =
-                implementor.visitChild(this, 0, (EnumerableRel) left, pref);
-        final Expression leftExpression =
-                builder.append("left", leftResult.block);
-        final Result rightResult =
-                implementor.visitChild(this, 1, (EnumerableRel) right, pref);
-        final Expression rightExpression =
-                builder.append("right", rightResult.block);
-        final JavaTypeFactory typeFactory = implementor.getTypeFactory();
-        final PhysType physType =
-                PhysTypeImpl.of(typeFactory, getRowType(), pref.preferArray());
+    public void implement(final Implementor implementor) {
+        // Visit all nodes to the left of the join.
+        implementor.visitChild(0, getLeft());
+        final DocumentDbTable leftTable = implementor.getDocumentDbTable();
+        final DocumentDbMetadataTable leftMetadata =  implementor.getMetadataTable();
 
+        // Create a new implementor and visit all nodes to the right of the join.
+        // This implementor can contain operations specific to the right.
+        final DocumentDbRel.Implementor rightImplementor =
+                new DocumentDbRel.Implementor(implementor.getRexBuilder());
+        rightImplementor.visitChild(0, getRight());
+        final DocumentDbTable rightTable = rightImplementor.getDocumentDbTable();
+        final DocumentDbMetadataTable rightMetadata =  rightImplementor.getMetadataTable();
 
-        final Expression enumerable =
-                builder.append("enumerable",
-                        Expressions.call(
-                                DocumentDbMethod.MONGO_JOIN.getMethod(), leftExpression, rightExpression));
+        if (leftTable.getCollectionName().equals(rightTable.getCollectionName())) {
+            joinSameCollection(implementor, rightImplementor, leftTable.getCollectionName(), leftMetadata, rightMetadata);
+        } else {
+            //TODO: Will need to join tables from different collections through $lookup. Joining
+            // on the same collection with arbitrary keys could also be potentially supported with lookup.
+            throw new IllegalArgumentException(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, "join on different collections"));
 
-        builder.add(
-                Expressions.return_(null, enumerable));
-        return implementor.result(physType, builder.toBlock());
+        }
     }
 
     /**
-     * Called with code generation.
-     * This is not a proper implementation and only "works" for a natural inner join between 2 tables
-     * belonging to the same collection.
-     * Need to figure out:
-     *      - How to extract the join condition and type.
-     *      - How to handle tables from different collections.
-     *      - How to actually "join" 2 or MORE tables in MongoDB using an aggregation stage.
-     * @param left an enumerator for the left side of the join
-     * @param right an enumerator for the right side of the join
-     * @return a new enumerable to iterate through the "joined" tables
+     * Performs a "join" on tables from the same collection by combining their metadata and
+     * filtering out null rows based on join type.
+     * This is only applicable for joins where we are only "denormalizing" virtual tables by joining
+     * on foreign keys.
+     * @param implementor the implementor from the left side of the join. Operations are
+     *                    added to the left.
+     * @param rightImplementor the implementor from the rifht side of the join.
+     * @param collectionName The collection both tables are from.
+     * @param left the metadata of the left side of the join.
+     * @param right the metadata of the right side of the join.
      */
-    public static Enumerable<Object> innerJoin(final Enumerable<?> left, final Enumerable<?> right) {
-        final DocumentDbEnumerable leftTable = (DocumentDbEnumerable) left;
-        final DocumentDbEnumerable rightTable = (DocumentDbEnumerable) right;
+    private void joinSameCollection(
+            final Implementor implementor,
+            final Implementor rightImplementor,
+            final String collectionName,
+            final DocumentDbMetadataTable left,
+            final DocumentDbMetadataTable right) {
+        validateSameCollectionJoin(left, right);
 
-        // Check if the belong to the same collection
-        if (leftTable.getCollectionName().equals(rightTable.getCollectionName())) {
-            // Join the column maps and remove virtual table columns
-            Map<String, DocumentDbMetadataColumn> columnMap = new HashMap<>(leftTable.getMetadataTable().getColumns());
-            columnMap.putAll(rightTable.getMetadataTable().getColumns());
-            columnMap = columnMap
-                    .entrySet()
-                    .stream()
-                    .filter(entry -> Strings.isNullOrEmpty(entry.getValue().getVirtualTableName()))
-                    .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
+        // Add remaining operations from the right.
+        rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));
 
-            final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
-                    .builder()
-                    .path(leftTable.getMetadataTable().getPath())
-                    .name(leftTable.getMetadataTable().getName())
-                    .columns(ImmutableMap.copyOf(columnMap))
-                    .build();
-
-            // Join the field lists
-            final List<Entry<String, Class>> fields = new ArrayList<>();
-            fields.addAll(leftTable.getFields());
-            fields.addAll(rightTable.getFields());
-
-            // Join the operations
-            final List<String> operations = new ArrayList<>();
-            operations.addAll(leftTable.getOperations());
-            operations.addAll(rightTable.getOperations());
-
-            // Process the join conditions
-
-
-            final DocumentDbTable joinedTable = new DocumentDbTable(leftTable.getCollectionName(), metadata);
-            return joinedTable.aggregate(leftTable.getMongoDb(), fields, operations);
+        // Eliminate null (i.e. "unmatched") rows from any virtual tables based on join type.
+        // If an inner join, eliminate any null rows from either table.
+        // If a left outer join, eliminate the null rows of the left side.
+        // If a right outer join, eliminate the null rows of the right side.
+        final String filterLeft =
+                Strings.isNullOrEmpty(left.getPath())
+                        ? null
+                        : "{ \"$match\" : {" + DocumentDbRules.maybeQuote(left.getPath()) + ": { \"$exists\": true } } }";
+        final String filterRight =
+                Strings.isNullOrEmpty(right.getPath())
+                        ? null
+                        : "{ \"$match\" : {" + DocumentDbRules.maybeQuote(right.getPath()) + ": { \"$exists\": true } } }";
+        switch (getJoinType()) {
+            case INNER:
+                if (filterLeft != null) {
+                    implementor.add(null, filterLeft);
+                }
+                if (filterRight != null) {
+                    implementor.add(null, filterRight);
+                }
+                break;
+            case LEFT:
+                if (filterLeft != null) {
+                    implementor.add(null, filterLeft);
+                }
+                break;
+            case RIGHT:
+                if (filterRight != null) {
+                    implementor.add(null, filterRight);
+                }
+                break;
+            case FULL:
+                // Full join will retain null rows from either side.
+                break;
+            default:
+                //TODO: Figure out if/how we will support semi-join and anti-join.
+                throw new IllegalArgumentException(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
         }
 
-        // If the tables are from a different collection, we need to join them using $lookup.
-        return null;
+        // Create a new metadata table representing the denormalized form that will be used
+        // in later parts of the query. Resolve column naming collisions from the right table.
+        Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(left.getColumns());
+        final List<String> renames = new ArrayList<>();
+        final Set<String> usedKeys = new LinkedHashSet<>(columnMap.keySet());
+        for (Entry<String, DocumentDbMetadataColumn> entry : right.getColumns().entrySet()) {
+            final String key = entry.getKey();
+            if (columnMap.containsKey(key)) {
+                final String newKey = SqlValidatorUtil.uniquify(key, usedKeys, SqlValidatorUtil.EXPR_SUGGESTER);
+                final DocumentDbMetadataColumn leftColumn = columnMap.get(key);
+
+                // If the columns correspond to the same field, they may have different values depending on join
+                // type. Create a new column and add a new field.
+                if (entry.getValue().getPath().equals(leftColumn.getPath())) {
+                    columnMap.put(newKey, entry.getValue());
+
+                    final DocumentDbMetadataColumn newRightColumn = entry.getValue().toBuilder()
+                            .name(newKey)
+                            .resolvedPath(newKey)
+                            .build();
+                    columnMap.put(newKey, newRightColumn);
+
+                    // Set the fields to be their original value unless their parent table is null for this row.
+                    final String newRightPath = !Strings.isNullOrEmpty(right.getPath()) ?
+                            "{ $cond : [ {" + "$ifNull : [" + DocumentDbRules.maybeQuote("$" + right.getPath()) + ", false ] }, "
+                                    + DocumentDbRules.maybeQuote("$" + entry.getValue().getPath()) + ", "
+                                    + "null ] }"
+                            : DocumentDbRules.maybeQuote("$" + entry.getValue().getPath());
+                    final String newLeftPath = !Strings.isNullOrEmpty(left.getPath()) ?
+                            "{ $cond : [ {" + "$ifNull : [" + DocumentDbRules.maybeQuote("$" + left.getPath()) + ", false ] }, "
+                                    + DocumentDbRules.maybeQuote("$" + leftColumn.getPath()) + ", "
+                                    + "null ] }"
+                            : DocumentDbRules.maybeQuote("$" + entry.getValue().getPath());
+                    renames.add(DocumentDbRules.maybeQuote(newKey) + ": " + newRightPath);
+                    renames.add(DocumentDbRules.maybeQuote(leftColumn.getPath()) + ": " + newLeftPath);
+                } else {
+                    columnMap.put(newKey, entry.getValue());
+                }
+            } else {
+                columnMap.put(key, entry.getValue());
+            }
+        }
+
+        if (!renames.isEmpty()) {
+            final String newFields = Util.toString(renames, "{", ", ", "}");
+            final String aggregateString = "{ $addFields : " + newFields + "}";
+            implementor.add(null, aggregateString);
+        }
+
+        // Remove virtual tables.
+        columnMap = columnMap
+                .entrySet()
+                .stream()
+                .filter(entry -> Strings.isNullOrEmpty(entry.getValue().getVirtualTableName()))
+                .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+
+        final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
+                .builder()
+                .path("")
+                .name(left.getName())
+                .columns(ImmutableMap.copyOf(columnMap))
+                .build();
+
+        final DocumentDbTable joinedTable = new DocumentDbTable(collectionName, metadata);
+        implementor.setDocumentDbTable(joinedTable);
+        implementor.setMetadataTable(metadata);
+    }
+
+    /**
+     * Validates that the same collection join is only denormalizing any virtual tables
+     * by checking the join keys and join conditions.
+     * @param left the metadata of the left side of the join.
+     * @param right the metadata of the right side of the join.
+     */
+    private void validateSameCollectionJoin(
+            final DocumentDbMetadataTable left, final DocumentDbMetadataTable right) {
+        // Extract the join keys.
+        // We can ignore filterNulls for this case as primary and foreign keys are not nullable.
+        final List<Integer> leftKeys = new ArrayList<>();
+        final List<Integer> rightKeys = new ArrayList<>();
+        final List<RexNode> nonEquiList = new ArrayList<>();
+        final List<Boolean> filterNulls = new ArrayList<>();
+        RelOptUtil.splitJoinCondition(
+                getLeft(), getRight(), getCondition(), leftKeys, rightKeys, filterNulls, nonEquiList);
+
+        // Check that there are only equality conditions.
+        if (!nonEquiList.isEmpty()) {
+            throw new IllegalArgumentException(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY));
+        }
+
+        // Check that all equality conditions are actually comparing the same fields.
+        final List<String> leftNames = DocumentDbRules.mongoFieldNames(getLeft().getRowType(), left, true);
+        final List<String> rightNames = DocumentDbRules.mongoFieldNames(getRight().getRowType(), right, true);
+        final List<String> leftKeyNames =
+                leftKeys.stream().map(leftNames::get).collect(Collectors.toList());
+        final List<String> rightKeyNames =
+                rightKeys.stream().map(rightNames::get).collect(Collectors.toList());
+        if (!leftKeyNames.equals(rightKeyNames)) {
+            throw new IllegalArgumentException(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY));
+        }
+
+        // Check that if joining with a virtual table, only its complete set of foreign keys are used.
+        final List<String> requiredKeys = Streams
+                .concat(left.getForeignKeys().stream(), right.getForeignKeys().stream())
+                .map(DocumentDbMetadataColumn::getPath)
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+        Collections.sort(leftKeyNames);
+        if (!(leftKeyNames).equals(requiredKeys)) {
+            throw new IllegalArgumentException(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY));
+        }
     }
 }
 

@@ -16,8 +16,6 @@
 
 package software.amazon.documentdb.jdbc.query;
 
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.Filters;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Assertions;
@@ -96,16 +94,14 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(3, result.getAggregateOperations().size());
+        Assertions.assertEquals(2, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field\": 1}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
     }
 
     @Test
@@ -125,9 +121,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(" {\"$match\": {\"array\": {\"$exists\": true } } }"),
+                result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field\": 1}}"),
+                BsonDocument.parse("{ \"$addFields\": {\"renamed\": \"$array.field\"} }"),
                 result.getAggregateOperations().get(2));
     }
 
@@ -148,7 +145,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{ \"$match\": {\"array.field\": 1} }"),
                 result.getAggregateOperations().get(2));
@@ -167,7 +165,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$match\": {\"array.field1\": \"value\", \"array.field\": { \"$gt\": 0 } } }"),
@@ -190,7 +189,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(2));
     }
@@ -212,7 +212,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{ \"$sort\": {\"array.field\": 1 } }"),
                 result.getAggregateOperations().get(2));
@@ -231,7 +232,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{ \"$sort\": {\"array.field\": -1 } }"),
                 result.getAggregateOperations().get(2));
@@ -250,7 +252,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{ \"$sort\": {\"array.field\": 1, \"array.field1\": -1 } }"),
                 result.getAggregateOperations().get(2));
@@ -280,7 +283,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}}}"),
@@ -302,20 +306,18 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field1\": 1}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": {\"$cond\": [{\"$eq\": [\"array.field1\", null]}, 0, 1]}}}}"),
-                result.getAggregateOperations().get(3));
+                result.getAggregateOperations().get(2));
 
         final String queryWithAverage =
                 String.format(
@@ -325,19 +327,17 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field\": 1}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$avg\": \"$array.field\"}}}"),
-                result.getAggregateOperations().get(3));
+                result.getAggregateOperations().get(2));
 
         final String queryWithSum =
                 String.format(
@@ -347,19 +347,17 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field\": 1}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": \"$array.field\"}}}"),
-                result.getAggregateOperations().get(3));
+                result.getAggregateOperations().get(2));
 
         final String queryWithMin =
                 String.format(
@@ -369,19 +367,17 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field\": 1}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$min\": \"$array.field\"}}}"),
-                result.getAggregateOperations().get(3));
+                result.getAggregateOperations().get(2));
 
         final String queryWithMax =
                 String.format(
@@ -391,19 +387,17 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field\": 1}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$max\": \"$array.field\"}}}"),
-                result.getAggregateOperations().get(3));
+                result.getAggregateOperations().get(2));
     }
 
     @Test
@@ -417,24 +411,22 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(4, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field\": 1}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$group\": {\"_id\": {}, \"_0\": {\"$sum\": \"$array.field\"}, \"_1\": {\"$sum\": {\"$cond\": [{\"$eq\": [\"array.field\", null]}, 0, 1]}}}}"),
-                result.getAggregateOperations().get(3));
+                result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$divide\": [{\"$cond\": [{\"$eq\": [\"$_1\", {\"$literal\": 0}]}, null, \"$_0\"]}, \"$_1\"]}}}"),
-                result.getAggregateOperations().get(4));
+                        "{\"$addFields\": {\"EXPR$0\": {\"$divide\": [{\"$cond\": [{\"$eq\": [\"$_1\", {\"$literal\": 0}]}, null, \"$_0\"]}, \"$_1\"]}}}"),
+                result.getAggregateOperations().get(3));
     }
 
     @Test
@@ -456,13 +448,14 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(3, result.getColumnMetaData().size());
-        Assertions.assertEquals(6, result.getAggregateOperations().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, \"_3\": {\"$sum\": 1}}}"),
@@ -474,9 +467,6 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {\"_3\": {\"$gt\": 1}}}"),
                 result.getAggregateOperations().get(4));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"_id\": 1, \"array.field\": 1, \"array.field1\": 1}}"),
-                result.getAggregateOperations().get(5));
     }
 
     @Test
@@ -486,7 +476,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 String.format(
                         "SELECT \"%s\", \"%s\" AS \"renamed\", COUNT(*) AS \"Total\" FROM \"%s\".\"%s\""
                                 + "WHERE \"%s\" = 'key' GROUP BY \"%s\", \"%s\", \"%s\""
-                                + "HAVING COUNT(*) > 1 ORDER BY \"Total\" LIMIT 1",
+                                + "HAVING COUNT(*) > 1 ORDER BY \"renamed\" LIMIT 1",
                         COLLECTION_NAME + "__id",
                         "field",
                         DATABASE_NAME,
@@ -505,7 +495,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                Aggregates.match(Filters.exists("array", true)), result.getAggregateOperations().get(1));
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {\"_id\": \"key\"}}"),
                 result.getAggregateOperations().get(2));
@@ -521,13 +512,111 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"_id\": 1, \"array.field\": 1, \"Total\": 1}}"),
+                BsonDocument.parse("{\"$sort\": {\"array.field\": 1}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
-                BsonDocument.parse("{ \"$sort\": {\"Total\": 1 } }"),
+                BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(7));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$addFields\": {\"renamed\": \"$array.field\"}}"),
+                result.getAggregateOperations().get(8));
+    }
+
+    @Test
+    @DisplayName("Tests that a statement with join works for two tables from the same collection.")
+    void testSimpleJoin() throws SQLException {
+        final String complexQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\""
+                                + "INNER JOIN \"%s\".\"%s\""
+                                + "ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                        DATABASE_NAME,
+                        COLLECTION_NAME,
+                        DATABASE_NAME,
+                        COLLECTION_NAME + "_array",
+                        COLLECTION_NAME,
+                        COLLECTION_NAME + "__id",
+                        COLLECTION_NAME + "_array",
+                        COLLECTION_NAME + "__id");
+        final DocumentDbMqlQueryContext result = queryMapper.get(complexQuery);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(6, result.getColumnMetaData().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$match\": {\"array\": {\"$exists\": true } } }"), result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {\"_id\": \"$_id\", \"testCollection__id0\": {\"$cond\": [{\"$ifNull\": [\"$array\", false]}, \"$_id\", null]}}}"),
+                result.getAggregateOperations().get(2));
+    }
+    @Test
+    @DisplayName("Tests that a statement with project, where, group by, having, order, and limit "
+            + "works for tables from the same collection.")
+    void testComplexQueryWithJoin() throws SQLException {
+        final String complexQuery =
+                String.format(
+                        "SELECT \"%s\" AS \"renamed\", COUNT(*) AS \"Total\" FROM \"%s\".\"%s\""
+                                + "INNER JOIN \"%s\".\"%s\""
+                                + "ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                                + "WHERE \"%s\" > 1 GROUP BY \"%s\".\"%s\", \"%s\", \"%s\""
+                                + "HAVING COUNT(*) > 1 ORDER BY \"renamed\" LIMIT 1",
+                        "field",
+                        DATABASE_NAME,
+                        COLLECTION_NAME,
+                        DATABASE_NAME,
+                        COLLECTION_NAME + "_array",
+                        COLLECTION_NAME,
+                        COLLECTION_NAME + "__id",
+                        COLLECTION_NAME + "_array",
+                        COLLECTION_NAME + "__id",
+                        "field",
+                        COLLECTION_NAME,
+                        COLLECTION_NAME + "__id",
+                        "field",
+                        "field1");
+        final DocumentDbMqlQueryContext result = queryMapper.get(complexQuery);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(2, result.getColumnMetaData().size());
+        Assertions.assertEquals(10, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {\"path\": \"$array\", \"includeArrayIndex\" : \"array_index_lvl_0\"} }"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"array.field\": {\"$gt\": 1}}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"array\": {\"$exists\": true}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                "{\"$addFields\": {\"testCollection__id0\": {\"$cond\": [{\"$ifNull\": [\"$array\", false]}, \"$_id\", null]}, \"_id\": \"$_id\"}}"),
+        result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, \"Total\": {\"$sum\": 1}}}"),
+                result.getAggregateOperations().get(4));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
+                result.getAggregateOperations().get(5));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
+                result.getAggregateOperations().get(6));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$sort\": {\"array.field\": 1}}"),
                 result.getAggregateOperations().get(7));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(8));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$addFields\": {\"renamed\": \"$array.field\"}}"),
+                result.getAggregateOperations().get(9));
     }
 
     @Test

@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
@@ -31,8 +32,11 @@ import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implementation of {@link Project}
@@ -79,7 +83,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
 
     @Override public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
             final RelMetadataQuery mq) {
-        return super.computeSelfCost(planner, mq).multiplyBy(0.1);
+        return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.PROJECT_COST_FACTOR);
     }
 
     @Override public void implement(final Implementor implementor) {
@@ -95,26 +99,38 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                         DocumentDbRules.mongoFieldNames(getInput().getRowType(),
                                 mongoImplementor.getMetadataTable()));
         final List<String> items = new ArrayList<>();
-        final List<String> inNames = DocumentDbRules.mongoFieldNames(getInput().getRowType(),
-                mongoImplementor.getMetadataTable());
+        final List<String> inNames = getInput().getRowType().getFieldNames();
 
         for (Pair<RexNode, String> pair : getNamedProjects()) {
-            String name = pair.right;
+            final String outName = pair.right;
             final String expr = pair.left.accept(translator);
 
-            // Do not rename fields, use the original name so path matches metadata.
+            // Check if we are projecting an existing field or generating a new expression.
             if (pair.left instanceof RexInputRef) {
                 final RexInputRef ref = (RexInputRef) pair.left;
-                name = inNames.get(ref.getIndex());
+                final String inName = inNames.get(ref.getIndex());
+
+                // If projecting an existing field as is, do nothing.
+                // If renaming, replace metadata column with new name but keep reference to original path.
+                if (!inName.equals(outName)) {
+                    final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
+                    columnMap.put(outName, columnMap.get(inName));
+                    columnMap.remove(inName);
+                    implementor.setMetadataTable(implementor.getMetadataTable()
+                            .toBuilder()
+                            .columns(ImmutableMap.copyOf(columnMap))
+                            .build());
+                }
+            } else {
+                items.add(DocumentDbRules.maybeQuote(outName) + ": " + expr);
             }
-            items.add(("'$" + name + "'").equals(expr)
-                    ? DocumentDbRules.maybeQuote(name) + ": 1"
-                    : DocumentDbRules.maybeQuote(name) + ": " + expr);
+        }
+        if (!items.isEmpty()) {
+            final String findString = Util.toString(items, "{", ", ", "}");
+            final String aggregateString = "{$addFields: " + findString + "}";
+            final Pair<String, String> op = Pair.of(findString, aggregateString);
+            implementor.add(op.left, op.right);
         }
         // DocumentDB: modified - end
-        final String findString = Util.toString(items, "{", ", ", "}");
-        final String aggregateString = "{$project: " + findString + "}";
-        final Pair<String, String> op = Pair.of(findString, aggregateString);
-        implementor.add(op.left, op.right);
     }
 }
