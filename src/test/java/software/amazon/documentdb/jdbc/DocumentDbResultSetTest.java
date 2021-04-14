@@ -348,6 +348,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
         Assertions.assertEquals("30", resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals("30", resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -369,6 +370,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(3, resultSetFlapdoodle.getInt(2));
         Assertions.assertEquals(3, resultSetFlapdoodle.getLong(2));
         Assertions.assertEquals(3, resultSetFlapdoodle.getShort(2));
+        Assertions.assertEquals(3, resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -391,6 +393,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(1, resultSetFlapdoodle.getLong(2));
         Assertions.assertEquals(1, resultSetFlapdoodle.getShort(2));
         Assertions.assertEquals("1.5", resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals(1.5, resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -414,6 +417,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(1000000000000L, resultSetFlapdoodle.getLong(2));
         Assertions.assertEquals(0, resultSetFlapdoodle.getShort(2)); // getShort returns default value 0 if result > max value
         Assertions.assertEquals("1000000000000", resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals(1000000000000L, resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -437,6 +441,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(0, resultSetFlapdoodle.getLong(2));
         Assertions.assertEquals(0, resultSetFlapdoodle.getShort(2));
         Assertions.assertNull(resultSetFlapdoodle.getString(2));
+        Assertions.assertNull(resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -480,6 +485,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
         Assertions.assertEquals(id.toString(), resultSetFlapdoodle.getString(1));
+        Assertions.assertEquals(id, resultSetFlapdoodle.getObject(1));
     }
 
     @Test
@@ -497,6 +503,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertTrue(resultSetFlapdoodle.next());
         Assertions.assertEquals("false", resultSetFlapdoodle.getString(2));
         Assertions.assertFalse(resultSetFlapdoodle.getBoolean(2));
+        Assertions.assertEquals(false, resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -517,6 +524,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(new Date(date.getValue()), resultSetFlapdoodle.getDate(2));
         Assertions.assertEquals(new Timestamp(date.getValue()), resultSetFlapdoodle.getTimestamp(2));
         Assertions.assertEquals(new Time(date.getValue()), resultSetFlapdoodle.getTime(2));
+        Assertions.assertEquals(new Date(date.getValue()), resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -535,6 +543,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
         Assertions.assertEquals(regex.toString(), resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals(regex, resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -574,6 +583,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
         Assertions.assertEquals(timestamp.toString(), resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals(timestamp, resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -593,6 +603,6 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertTrue(resultSetFlapdoodle.next());
         Assertions.assertArrayEquals(binary.getData(), resultSetFlapdoodle.getBytes(2));
         Assertions.assertArrayEquals(binary.getData(), resultSetFlapdoodle.getBlob(2).getBytes(1,6));
-
+        Assertions.assertArrayEquals(binary.getData(), (byte[]) resultSetFlapdoodle.getObject(2));
     }
 }
