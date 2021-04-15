@@ -5,6 +5,7 @@ plugins {
     id 'jacoco'
     id 'com.github.hierynomus.license' version '0.15.0'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
+    id "org.sonarqube" version "3.1.1"
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -253,4 +254,12 @@ dependencies {
     testRuntimeOnly    group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.0'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
+}
+
+sonarqube {
+    properties {
+        property "sonar.projectKey", "Bit-Quill_documentdb-jdbc"
+        property "sonar.organization", "bit-quill"
+        property "sonar.host.url", "https://sonarcloud.io"
+    }
 }
