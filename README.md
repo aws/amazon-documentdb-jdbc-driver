@@ -98,13 +98,13 @@ types, and their associated JDBC data types.
 | ObjectId | Yes | VARCHAR |
 | Date | Yes | TIMESTAMP |
 | Null | Yes | VARCHAR |
+| Regular Expression | Yes | VARCHAR |
 | Timestamp | Yes | VARCHAR |
 | MinKey | Yes | VARCHAR |
 | MaxKey | Yes | VARCHAR |
 | Object | Yes | _virtual table_ |
 | Array | Yes | _virtual table_ |
 | Decimal128 | No | DECIMAL |
-| Regular Expression | No | VARCHAR |
 | JavaScript | No | VARCHAR |
 | JavaScript (with scope) | No | VARCHAR |
 | Undefined | No | VARCHAR |
@@ -456,13 +456,18 @@ For the tables `customer_address` and `customer_subscriptions` we only need `cus
 
 These can be combined as long as the complete set of foreign keys are still present. 
 
-- `SELECT * FROM "customer_address" LEFT JOIN "customer_subscriptions" ON "customer_address"."customer__id" = "customer_subscriptions".customer__id"
+- ```
+  SELECT * FROM "customer_address" LEFT JOIN "customer_subscriptions" ON "customer_address"."customer__id" = "customer_subscriptions".customer__id"
     LEFT JOIN "customer_subscriptions_variants" ON "customer_subscriptions"."customer__id" = "Customer_subscriptions_variants".customer__id"
-    AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants.subscriptions_index_lvl_0"`
+    AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants.subscriptions_index_lvl_0"```
   
-- `SELECT * FROM "customer" LEFT JOIN "customer_subscriptions" ON "customers"."customer__id" = "customer_subscriptions".customer__id"
+- ```
+  SELECT * FROM "customer" LEFT JOIN "customer_subscriptions" ON "customers"."customer__id" = "customer_subscriptions".customer__id"
     LEFT JOIN "customer_subscriptions_variants" ON "customer_subscriptions"."customer__id" = "customer_subscriptions_variants".customer__id"
-    AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants"."subscriptions_index_lvl_0"`
+    AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants"."subscriptions_index_lvl_0"```
 
 This feature allows `INNER`, `LEFT (OUTER)`, `RIGHT (OUTER)` and `FULL (OUTER) JOINs`.
-  
+
+# Setup and Usage
+
+To setup and use the DocumentDB JDBC driver, follow [these directions](src/markdown/setup/setup.md).
