@@ -158,13 +158,14 @@ public class DocumentDbToEnumerableConverter
      * @param implementor the implementor.
      */
     private static void addVirtualTableOperations(final Implementor implementor) {
-        final DocumentDbMetadataTable tableMetadata  = implementor.getMetadataTable();
+        final DocumentDbMetadataTable tableMetadata = implementor.getMetadataTable();
         int index = 0;
 
         // Add an unwind operation for each embedded array to convert to separate rows.
         // Assumes that all queries will use aggregate and not find.
         // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
-        for (Entry<String, DocumentDbMetadataColumn> column : tableMetadata.getColumns().entrySet()) {
+        for (Entry<String, DocumentDbMetadataColumn> column : tableMetadata.getColumns()
+                .entrySet()) {
             if (column.getValue().getArrayIndexLevel() != null) {
                 final String indexName = column.getKey();
                 final UnwindOptions opts = new UnwindOptions();
@@ -176,9 +177,13 @@ public class DocumentDbToEnumerableConverter
         }
 
         // Add a match operation if it is a virtual table to remove null rows.
-        if (!tableMetadata.getPath().isEmpty()) {
-            final String path = DocumentDbRules.quote(tableMetadata.getPath());
-            implementor.add(index, null, "{ \"$match\" : {" + path + ": { \"$exists\": true } } }");
+        if (!implementor.isNullFiltered() && DocumentDbJoin.isTableVirtual(tableMetadata)) {
+            final String matchFilter = DocumentDbJoin
+                    .buildFieldsExistMatchFilter(DocumentDbJoin.getFilterColumns(tableMetadata));
+            if (matchFilter != null) {
+                implementor.add(index, null, matchFilter);
+                implementor.setNullFiltered(true);
+            }
         }
     }
 

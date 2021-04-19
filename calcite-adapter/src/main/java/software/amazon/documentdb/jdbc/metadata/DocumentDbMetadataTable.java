@@ -32,9 +32,6 @@ import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isN
 @Getter
 public class DocumentDbMetadataTable {
 
-    /** The original path to the collection (if the base table) or field (if a virtual table). */
-    private final String path;
-
     /** The columns the table is composed of indexed by their name. */
     private final ImmutableMap<String, DocumentDbMetadataColumn> columns;
 

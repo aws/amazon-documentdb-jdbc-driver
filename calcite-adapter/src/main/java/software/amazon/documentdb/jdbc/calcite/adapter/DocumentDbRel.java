@@ -50,6 +50,7 @@ public interface DocumentDbRel extends RelNode {
         // DocumentDB: modified - start
         private DocumentDbMetadataTable metadataTable;
         private DocumentDbTable documentDbTable;
+        private boolean nullFiltered = false;
         // DocumentDB: modified - end
 
         public List<Pair<String, String>> getList() {
@@ -95,6 +96,14 @@ public interface DocumentDbRel extends RelNode {
 
         public void add(final int index, final String findOp, final String aggOp) {
             list.add(index, Pair.of(findOp, aggOp));
+        }
+
+        public boolean isNullFiltered() {
+            return nullFiltered;
+        }
+
+        public void setNullFiltered(final boolean nullFiltered) {
+            this.nullFiltered = nullFiltered;
         }
         // DocumentDB: modified - end
 

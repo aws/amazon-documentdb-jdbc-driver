@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -37,6 +38,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -45,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
@@ -143,31 +146,37 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // If an inner join, eliminate any null rows from either table.
         // If a left outer join, eliminate the null rows of the left side.
         // If a right outer join, eliminate the null rows of the right side.
-        final String filterLeft =
-                Strings.isNullOrEmpty(left.getPath())
-                        ? null
-                        : "{ \"$match\" : {" + DocumentDbRules.maybeQuote(left.getPath()) + ": { \"$exists\": true } } }";
-        final String filterRight =
-                Strings.isNullOrEmpty(right.getPath())
-                        ? null
-                        : "{ \"$match\" : {" + DocumentDbRules.maybeQuote(right.getPath()) + ": { \"$exists\": true } } }";
+        final ImmutableCollection<DocumentDbMetadataColumn> leftFilterColumns = getFilterColumns(left);
+        final ImmutableCollection<DocumentDbMetadataColumn> rightFilterColumns = getFilterColumns(right);
+        final Supplier<String> leftFilter = () -> buildFieldsExistMatchFilter(leftFilterColumns);
+        final Supplier<String> rightFilter = () -> buildFieldsExistMatchFilter(rightFilterColumns);
+        final String filterLeft;
+        final String filterRight;
         switch (getJoinType()) {
             case INNER:
+                filterLeft = leftFilter.get();
+                filterRight = rightFilter.get();
                 if (filterLeft != null) {
                     implementor.add(null, filterLeft);
+                    implementor.setNullFiltered(true);
                 }
                 if (filterRight != null) {
                     implementor.add(null, filterRight);
+                    implementor.setNullFiltered(true);
                 }
                 break;
             case LEFT:
+                filterLeft = leftFilter.get();
                 if (filterLeft != null) {
                     implementor.add(null, filterLeft);
+                    implementor.setNullFiltered(true);
                 }
                 break;
             case RIGHT:
+                filterRight = rightFilter.get();
                 if (filterRight != null) {
                     implementor.add(null, filterRight);
+                    implementor.setNullFiltered(true);
                 }
                 break;
             case FULL:
@@ -175,8 +184,12 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                 break;
             default:
                 //TODO: Figure out if/how we will support semi-join and anti-join.
-                throw new IllegalArgumentException(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
+                throw new IllegalArgumentException(
+                        SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
         }
+
+        final boolean rightIsVirtual = isTableVirtual(right);
+        final boolean leftIsVirtual = isTableVirtual(left);
 
         // Create a new metadata table representing the denormalized form that will be used
         // in later parts of the query. Resolve column naming collisions from the right table.
@@ -200,19 +213,11 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                             .build();
                     columnMap.put(newKey, newRightColumn);
 
-                    // Set the fields to be their original value unless their parent table is null for this row.
-                    final String newRightPath = !Strings.isNullOrEmpty(right.getPath()) ?
-                            "{ $cond : [ {" + "$ifNull : [" + DocumentDbRules.maybeQuote("$" + right.getPath()) + ", false ] }, "
-                                    + DocumentDbRules.maybeQuote("$" + entry.getValue().getPath()) + ", "
-                                    + "null ] }"
-                            : DocumentDbRules.maybeQuote("$" + entry.getValue().getPath());
-                    final String newLeftPath = !Strings.isNullOrEmpty(left.getPath()) ?
-                            "{ $cond : [ {" + "$ifNull : [" + DocumentDbRules.maybeQuote("$" + left.getPath()) + ", false ] }, "
-                                    + DocumentDbRules.maybeQuote("$" + leftColumn.getPath()) + ", "
-                                    + "null ] }"
-                            : DocumentDbRules.maybeQuote("$" + entry.getValue().getPath());
-                    renames.add(DocumentDbRules.maybeQuote(newKey) + ": " + newRightPath);
-                    renames.add(DocumentDbRules.maybeQuote(leftColumn.getPath()) + ": " + newLeftPath);
+                    // Handle any column renames
+                    handleColumnRename(renames, newKey, entry.getValue().getPath(),
+                            rightIsVirtual, rightFilterColumns);
+                    handleColumnRename(renames, leftColumn.getPath(), leftColumn.getPath(),
+                            leftIsVirtual, leftFilterColumns);
                 } else {
                     columnMap.put(newKey, entry.getValue());
                 }
@@ -236,7 +241,6 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
 
         final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
                 .builder()
-                .path("")
                 .name(left.getName())
                 .columns(ImmutableMap.copyOf(columnMap))
                 .build();
@@ -244,6 +248,128 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         final DocumentDbTable joinedTable = new DocumentDbTable(collectionName, metadata);
         implementor.setDocumentDbTable(joinedTable);
         implementor.setMetadataTable(metadata);
+    }
+
+    /**
+     * Gets whether the given table is virtual - whether it contains foreign key columns.
+     *
+     * @param table the table to test.
+     * @return {@code true} if table contains foreign key columns, {@code false}, otherwise.
+     */
+    static boolean isTableVirtual(final DocumentDbMetadataTable table) {
+        return table.getColumns().values().stream()
+                .anyMatch(c -> c.getForeignKey() > 0);
+    }
+
+    /**
+     * Renames columns appropriately for the join. Adds a condition on whether the fields of
+     * a virtual table are not null.
+     *
+     * @param renames the collection of renamed columns.
+     * @param newKey the new key (column name) for the column.
+     * @param originalPath the original path.
+     * @param tableIsVirtual indicator of whether table is virtual.
+     * @param filterColumns list of columns to filter.
+     */
+    private void handleColumnRename(
+            final List<String> renames,
+            final String newKey,
+            final String originalPath,
+            final boolean tableIsVirtual,
+            final ImmutableCollection<DocumentDbMetadataColumn> filterColumns) {
+        // Set the fields to be their original value unless their parent table is null for this row.
+        final StringBuilder ifNullBuilder = new StringBuilder();
+        final String newPath = (tableIsVirtual && tryBuildIfNullFieldsCondition(
+                filterColumns, ifNullBuilder))
+                ? "{ $cond : [ " + ifNullBuilder + ", "
+                + DocumentDbRules.maybeQuote("$" + originalPath) + ", null ] }"
+                : DocumentDbRules.maybeQuote("$" + originalPath);
+
+        renames.add(DocumentDbRules.maybeQuote(newKey) + ": " + newPath);
+    }
+
+    /**
+     * Gets the list of columns to add to the filter.
+     * @param table the table to get the complete list of columns.
+     * @return a collection of columns to filter. Can return an empty list.
+     */
+    static ImmutableList<DocumentDbMetadataColumn> getFilterColumns(
+            final DocumentDbMetadataTable table) {
+        // We don't need to check for
+        // 1. primary keys,
+        // 2. foreign keys (from another table)
+        // 3. columns that are "virtual" (i.e. arrays, structures)
+        return table.getColumns().values().stream()
+                .filter(c -> c.getPrimaryKey() == 0
+                        && c.getForeignKey() == 0
+                        && Strings.isNullOrEmpty(c.getVirtualTableName()))
+                .collect(ImmutableList.toImmutableList());
+    }
+
+    /**
+     * Creates the aggregate step for matching all provided fields.
+     * @param columns the columns that represents a field.
+     * @return an aggregate step in JSON format if any field exist, otherwise, null.
+     */
+    static String buildFieldsExistMatchFilter(
+            final ImmutableCollection<DocumentDbMetadataColumn> columns) {
+        final StringBuilder builder = new StringBuilder();
+        if (!tryBuildFieldsExists(columns, builder)) {
+            return null;
+        }
+        builder.insert(0, "{ \"$match\": ");
+        builder.append(" }");
+        return builder.toString();
+    }
+
+    private static boolean tryBuildFieldsExists(
+            final ImmutableCollection<DocumentDbMetadataColumn> columns,
+            final StringBuilder builder) {
+        int columnCount = 0;
+        for (DocumentDbMetadataColumn column : columns) {
+            if (columnCount != 0) {
+                builder.append(", ");
+            }
+            builder.append("{ ");
+            builder.append(DocumentDbRules.maybeQuote(column.getPath()));
+            builder.append(": { \"$exists\": true } }");
+            columnCount++;
+        }
+
+        if (columnCount == 0) {
+            return false;
+        }
+
+        if (columnCount > 1) {
+            builder.insert(0, "{ \"$or\": [ ");
+            builder.append(" ] }");
+        }
+        return true;
+    }
+
+    private static boolean tryBuildIfNullFieldsCondition(
+            final ImmutableCollection<DocumentDbMetadataColumn> columns,
+            final StringBuilder builder) {
+        int columnCount = 0;
+        for (DocumentDbMetadataColumn column : columns) {
+            if (columnCount != 0) {
+                builder.append(", ");
+            }
+            builder.append("{ $ifNull: [ ");
+            builder.append(DocumentDbRules.maybeQuote("$" + column.getPath()));
+            builder.append(", false ] }");
+            columnCount++;
+        }
+
+        if (columnCount == 0) {
+            return false;
+        }
+
+        if (columnCount > 1) {
+            builder.insert(0, "{ \"$or\": [ ");
+            builder.append(" ] }");
+        }
+        return true;
     }
 
     /**

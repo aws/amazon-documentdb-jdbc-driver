@@ -389,7 +389,6 @@ public class DocumentDbCollectionMetadata {
         // Add virtual table.
         final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
                 .builder()
-                .path(path)
                 .name(tableName)
                 .columns(ImmutableMap.copyOf(columnMap))
                 .build();
@@ -577,7 +576,6 @@ public class DocumentDbCollectionMetadata {
         // Add virtual table.
         final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
                 .builder()
-                .path(path)
                 .name(tableName)
                 .columns(ImmutableMap.copyOf(columnMap))
                 .build();
