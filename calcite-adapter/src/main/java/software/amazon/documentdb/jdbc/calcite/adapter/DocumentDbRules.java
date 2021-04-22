@@ -372,10 +372,10 @@ public final class DocumentDbRules {
 
         @Override public RelNode convert(final RelNode rel) {
             final LogicalJoin join = (LogicalJoin) rel;
-            final RelTraitSet traitSet = join.getTraitSet().replace(DocumentDbRel.CONVENTION);
+            final RelTraitSet traitSet = join.getTraitSet().replace(out);
             return new DocumentDbJoin(join.getCluster(), traitSet,
-                    convert(join.getLeft(), DocumentDbRel.CONVENTION),
-                    convert(join.getRight(), DocumentDbRel.CONVENTION),
+                    convert(join.getLeft(), out),
+                    convert(join.getRight(), out),
                     join.getCondition(), join.getJoinType());
         }
     }

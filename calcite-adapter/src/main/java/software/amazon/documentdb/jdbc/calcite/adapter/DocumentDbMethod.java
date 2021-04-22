@@ -28,7 +28,7 @@ public enum DocumentDbMethod {
     MONGO_QUERYABLE_FIND(DocumentDbTable.DocumentDbQueryable.class, "find", String.class,
             String.class, List.class),
     MONGO_QUERYABLE_AGGREGATE(DocumentDbTable.DocumentDbQueryable.class, "aggregate",
-            List.class, List.class);
+            List.class, List.class, List.class);
 
     @SuppressWarnings("ImmutableEnumChecker")
     private final Method method;

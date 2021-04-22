@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCursor;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -45,7 +44,6 @@ import org.mockito.MockitoAnnotations;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -75,8 +73,6 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
     @Mock
     private MongoCursor<Document> iterator;
 
-    // Used for tests not involving getters.
-    private static DocumentDbDatabaseSchemaMetadata emptyMetadata;
 
     private DocumentDbResultSet resultSet;
 
@@ -86,8 +82,6 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         // Add a valid users to the local MongoDB instance.
         client = createMongoClient("admin", "admin", "admin");
         createUser(DATABASE_NAME, TEST_USER, TEST_PASSWORD);
-
-        emptyMetadata = new DocumentDbDatabaseSchemaMetadata(null, 0, ImmutableMap.of());
     }
 
     @BeforeEach
@@ -113,7 +107,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), ImmutableList.of("_id"));
 
         // Test cursor before first row.
         Mockito.when(iterator.hasNext()).thenReturn(true);
@@ -172,7 +166,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), ImmutableList.of("_id"));
 
         // Test going to negative row number. (0 -> -1)
         Mockito.when(iterator.hasNext()).thenReturn(true);
@@ -211,7 +205,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), ImmutableList.of("_id"));
 
         // Test going to valid row number. (0 -> 2)
         Mockito.when(iterator.hasNext()).thenReturn(true);
@@ -244,7 +238,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), ImmutableList.of("_id"));
 
         // Test close.
         Assertions.assertDoesNotThrow(() -> resultSet.close());
@@ -273,7 +267,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData =
                 ImmutableList.of(column1, column2, column3);
-        resultSet = new DocumentDbResultSet(mockStatement, iterator, columnMetaData, emptyMetadata);
+        resultSet = new DocumentDbResultSet(mockStatement, iterator, columnMetaData, ImmutableList.of("_id"));
 
         Assertions.assertEquals(2, resultSet.findColumn("value"));
         Assertions.assertEquals(3, resultSet.findColumn("Value"));
@@ -289,13 +283,14 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList.of(column);
-        resultSet = new DocumentDbResultSet(mockStatement, iterator, columnMetaData, emptyMetadata);
+        resultSet = new DocumentDbResultSet(mockStatement, iterator, columnMetaData, ImmutableList.of("_id"));
 
         Assertions.assertEquals(MOCK_FETCH_SIZE, resultSet.getFetchSize());
         Assertions.assertDoesNotThrow(() -> resultSet.setFetchSize(10));
         Assertions.assertEquals(10, resultSet.getFetchSize());
     }
 
+    @Test
     @DisplayName("Test verifyRow and verifyColumnIndex")
     void testVerifyRowVerifyColumnIndex() throws SQLException {
         final Document doc1 = Document.parse("{\"_id\": null }");
@@ -303,7 +298,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final JdbcColumnMetaData column =
                 JdbcColumnMetaData.builder().columnLabel("_id").ordinal(0).build();
         resultSet =
-                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), emptyMetadata);
+                new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), ImmutableList.of("_id"));
 
         // Try access before first row.
         Assertions.assertEquals("Result set before first row.",

@@ -33,6 +33,7 @@ import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -100,7 +101,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                                 mongoImplementor.getMetadataTable()));
         final List<String> items = new ArrayList<>();
         final List<String> inNames = getInput().getRowType().getFieldNames();
-
+        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String outName = pair.right;
             final String expr = pair.left.accept(translator);
@@ -113,16 +114,17 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                 // If projecting an existing field as is, do nothing.
                 // If renaming, replace metadata column with new name but keep reference to original path.
                 if (!inName.equals(outName)) {
-                    final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
-                    columnMap.put(outName, columnMap.get(inName));
+                    columnMap.put(outName, implementor.getMetadataTable().getColumns().get(inName));
                     columnMap.remove(inName);
-                    implementor.setMetadataTable(implementor.getMetadataTable()
-                            .toBuilder()
-                            .columns(ImmutableMap.copyOf(columnMap))
-                            .build());
                 }
             } else {
                 items.add(DocumentDbRules.maybeQuote(outName) + ": " + expr);
+                columnMap.put(outName,
+                        DocumentDbMetadataColumn.builder()
+                                .isGenerated(true)
+                                .path(outName)
+                                .name(outName)
+                                .build());
             }
         }
         if (!items.isEmpty()) {
@@ -131,6 +133,14 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
             final Pair<String, String> op = Pair.of(findString, aggregateString);
             implementor.add(op.left, op.right);
         }
+
+        // Set the metadata table with the updated column map.
+        final DocumentDbMetadataTable metadata = implementor.getMetadataTable().toBuilder()
+                .columns(ImmutableMap.copyOf(columnMap))
+                .build();
+        implementor.setMetadataTable(metadata);
+        implementor.setDocumentDbTable(
+                new DocumentDbTable(implementor.getDocumentDbTable().getCollectionName(), metadata));
         // DocumentDB: modified - end
     }
 }

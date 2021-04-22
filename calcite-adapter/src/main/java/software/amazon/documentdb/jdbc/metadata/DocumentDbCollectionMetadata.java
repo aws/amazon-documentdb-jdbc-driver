@@ -645,8 +645,7 @@ public class DocumentDbCollectionMetadata {
      * @param fieldName the field name to append to the path.
      * @return a new path with the fieldName append to the root path separated by a period.
      */
-    @VisibleForTesting
-    static String combinePath(final String path, final String fieldName) {
+    public static String combinePath(final String path, final String fieldName) {
         final String pathSeparator = !isNullOrWhitespace(path) && !isNullOrWhitespace(fieldName)
                 ? PATH_SEPARATOR : EMPTY_STRING;
         final String newPath = !isNullOrWhitespace(path)

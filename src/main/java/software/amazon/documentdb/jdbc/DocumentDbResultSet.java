@@ -25,18 +25,12 @@ import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
@@ -49,7 +43,8 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
     private int rowIndex = -1;
     private final MongoCursor<Document> iterator;
     private Document current;
-    private final Map<String, DocumentDbMetadataTable> tableMap;
+    private final List<String> paths;
+
     /**
      * DocumentDbResultSet constructor, initializes super class.
      */
@@ -57,15 +52,13 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
             final Statement statement,
             final MongoCursor<Document> iterator,
             final ImmutableList<JdbcColumnMetaData> columnMetaData,
-            final DocumentDbDatabaseSchemaMetadata databaseMetadata) throws SQLException {
+            final List<String> paths) throws SQLException {
         super(statement, columnMetaData, true);
         this.iterator = iterator;
 
         // Set fetch size to be fetch size of statement if it exists. Otherwise, use default.
         this.fetchSize = statement != null ? statement.getFetchSize() : DEFAULT_FETCH_SIZE;
-        this.tableMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-
-        createTableMap(databaseMetadata);
+        this.paths = paths;
     }
 
     @Override
@@ -131,24 +124,11 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
     @Override
     protected Object getValue(final int columnIndex) throws SQLException {
         final ResultSetMetaData metadata = getMetaData();
-        final String columnLabel = metadata.getColumnLabel(columnIndex);
-        final String columnName = metadata.getColumnName(columnIndex);
-        final String tableName = metadata.getTableName(columnIndex);
-
-        final String path;
-        // Check if the column has been renamed or has no underlying table.
-        // Field will be available at root level.
-        if (!columnLabel.equals(columnName) || tableName == null) {
-            path = columnLabel;
-        } else {
-            final DocumentDbMetadataTable table = tableMap.get(metadata.getTableName(columnIndex));
-            final DocumentDbMetadataColumn column = table != null ? table.getColumns().get(columnName) : null;
-            path = column != null ? column.getPath() : null;
-        }
+        final String path = paths.get(columnIndex - 1);
 
         if (path == null || path.isEmpty()) {
             throw SqlError.createSQLException(LOGGER, SqlState.DATA_EXCEPTION,
-                    SqlError.CANNOT_RETRIEVE_COLUMN, columnName);
+                    SqlError.CANNOT_RETRIEVE_COLUMN, metadata.getColumnName(columnIndex));
         }
 
         final String[] segmentedPath = path.split("\\.");
@@ -171,12 +151,5 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
             return modifiedList.toString();
         }
         return segmentValue;
-    }
-
-    private void createTableMap(final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
-        for (DocumentDbCollectionMetadata collectionMetadata: databaseMetadata.getCollectionMetadataMap().values()) {
-            collectionMetadata.getTables().values().forEach(
-                    table -> tableMap.putIfAbsent(table.getName(), table));
-        }
     }
 }

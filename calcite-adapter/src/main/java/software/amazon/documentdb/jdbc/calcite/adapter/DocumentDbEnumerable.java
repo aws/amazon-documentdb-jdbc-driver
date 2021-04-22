@@ -25,10 +25,8 @@ import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.util.Util;
 import org.bson.Document;
 import org.bson.conversions.Bson;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map.Entry;
 
 /**
  * Initially, aggregate and find returned anonymous classes as the enumerable in CalciteSignature.
@@ -39,12 +37,10 @@ import java.util.Map.Entry;
 public class DocumentDbEnumerable extends AbstractEnumerable<Object> {
 
     private final MongoDatabase mongoDb;
-    private final DocumentDbMetadataTable metadataTable;
     private final String collectionName;
     private final List<Bson> list;
-    private final List<String> operations;
-    private final List<Entry<String, Class>> fields;
     private final Function1<Document, Object> getter;
+    private final List<String> paths;
 
     @Override
     public Enumerator<Object> enumerator() {
@@ -54,7 +50,7 @@ public class DocumentDbEnumerable extends AbstractEnumerable<Object> {
                     .aggregate(list).iterator();
         } catch (Exception e) {
             throw new RuntimeException("While running MongoDB query "
-                    + Util.toString(operations, "[", ",\n", "]"), e);
+                    + Util.toString(list, "[", ",\n", "]"), e);
         }
         return new DocumentDbEnumerator(resultIterator, getter);
     }

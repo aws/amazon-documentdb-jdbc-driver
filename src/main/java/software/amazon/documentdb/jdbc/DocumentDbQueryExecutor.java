@@ -103,7 +103,7 @@ public class DocumentDbQueryExecutor {
                     this.statement,
                     iterator,
                     columnMetaData,
-                    connection.getDatabaseMetadata());
+                    queryContext.getPaths());
         }
     }
 

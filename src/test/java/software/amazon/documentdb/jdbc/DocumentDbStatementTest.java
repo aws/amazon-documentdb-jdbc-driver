@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -945,7 +946,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
-     * "Tests that different join types produce the correct result for tables from same collection.
+     * Tests that different join types produce the correct result for tables from same collection.
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @DisplayName("Tests that different join types produce the correct result for tables from same collection.")
@@ -984,43 +985,167 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertNull(resultSet2.getString(collection + "__id0"));
         Assertions.assertEquals(0, resultSet2.getInt("field0"));
         Assertions.assertFalse(resultSet2.next());
+    }
 
-        // Verify that a right outer join will return 1 row.
+    @Disabled("Incorrect behaviour for right or full joins involving more than 2 virtual tables.")
+    @DisplayName("Tests behaviour of right join for tables from the same collection.")
+    @Test
+    void testRightJoinForTablesFromSameCollection() throws SQLException {
+        final String collection = "testSameCollectionRightJoin";
+        final BsonDocument document1 =
+            BsonDocument.parse(
+                "{ \"_id\" : \"key0\", \"doc1\": { \"field\" : 1 }, \"doc2\": { \"field\": 2 }}");
+        final BsonDocument document2 = BsonDocument.parse("{ \"_id\" : \"key1\", \"doc2\": { \"field\": 2 } }");
+        insertBsonDocuments(
+                collection, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1, document2});
+        final Statement statement = getDocumentDbStatement();
+
+        // Verify that a right outer join will return 1 rows.
         statement.execute(String.format(
                 "SELECT * FROM \"%s\".\"%s\" RIGHT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                DATABASE_NAME, collection,
                 DATABASE_NAME, collection + "_doc1",
-                DATABASE_NAME, collection + "_doc2",
-                collection + "_doc1", collection + "__id",
-                collection + "_doc2", collection + "__id"));
-        final ResultSet resultSet3 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertTrue(resultSet3.next());
-        Assertions.assertEquals("key1", resultSet3.getString(collection + "__id0"));
-        Assertions.assertEquals(2, resultSet3.getInt("field0"));
-        Assertions.assertNull(resultSet3.getString(collection + "__id"));
-        Assertions.assertEquals(0, resultSet3.getInt("field"));
-        Assertions.assertFalse(resultSet3.next());
+                collection, collection + "__id",
+                collection + "_doc1", collection + "__id"));
+        final ResultSet resultSet = statement.getResultSet();
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.next());
 
-        // Verify that a full outer join will return 2 rows.
+        // Verify that an inner join combined with a right outer join will return 2 rows.
+        statement.execute(
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" "
+                                + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                                + "RIGHT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                        DATABASE_NAME,
+                        collection,
+                        DATABASE_NAME,
+                        collection + "_doc1",
+                        collection,
+                        collection + "__id",
+                        collection + "_doc1",
+                        collection + "__id",
+                        DATABASE_NAME,
+                        collection + "_doc2",
+                        collection + "_doc1",
+                        collection + "__id",
+                        collection + "_doc2",
+                        collection + "__id"));
+        final ResultSet resultSet2 = statement.getResultSet();
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertFalse(resultSet2.next());
+    }
+
+    /**
+     * Tests that a statement with project, where, group by, having, order, and limit works with same collection joins.
+     * @throws SQLException occurs if executing the statement or retrieving a value fails.
+     */
+    @DisplayName("Tests that a statement with project, where, group by, having, order, and limit works with a different collection join.")
+    @Test
+    void testComplexQueryWithDifferentCollectionJoin() throws SQLException {
+        final String collection1 = "testComplexQueryDifferentCollectionJoin1";
+        final String collection2 = "testComplexQueryDifferentCollectionJoin2";
+        final BsonDocument document1 =
+                BsonDocument.parse("{ \"_id\" : \"key0\",  \"array\": [1, 2, 3, 4, 5] }");
+        final BsonDocument document2 =
+                BsonDocument.parse("{ \"_id\" : \"key1\",  \"array\": [1, 2, 3, 4] }");
+        final BsonDocument document3 =
+                BsonDocument.parse("{ \"_id\" : \"key2\",  \"array\": [1, 2, 3] }");
+        final BsonDocument document4 =
+                BsonDocument.parse("{ \"_id\" : \"key3\", \"array\": [1, 2, 3, 4 ] }");
+        final BsonDocument document5 =
+                BsonDocument.parse("{ \"_id\" : \"key0\", \"field\": 1, \"field2\" : 0 }");
+        final BsonDocument document6 =
+                BsonDocument.parse("{ \"_id\" : \"key1\", \"field\": 0, \"field2\" : 1 }");
+        final BsonDocument document7 =
+                BsonDocument.parse("{ \"_id\" : \"key2\", \"field\": 0,  \"field2\": 0 }");
+        insertBsonDocuments(
+                collection1, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1, document2, document3, document4});
+        insertBsonDocuments(
+                collection2, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document5, document6, document7});
+        final Statement statement = getDocumentDbStatement();
+
+        // Verify that result set has correct values. Expecting query to single out document3.
         statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\" FULL JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                DATABASE_NAME, collection + "_doc1",
-                DATABASE_NAME, collection + "_doc2",
-                collection + "_doc1", collection + "__id",
-                collection + "_doc2", collection + "__id"));
-        final ResultSet resultSet4 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet4);
-        Assertions.assertTrue(resultSet4.next());
-        Assertions.assertEquals("key0", resultSet4.getString(collection + "__id"));
-        Assertions.assertEquals(1, resultSet4.getInt("field"));
-        Assertions.assertNull(resultSet4.getString(collection + "__id0"));
-        Assertions.assertEquals(0, resultSet4.getInt("field0"));
-        Assertions.assertTrue(resultSet4.next());
-        Assertions.assertEquals("key1", resultSet4.getString(collection + "__id0"));
-        Assertions.assertEquals(2, resultSet4.getInt("field0"));
-        Assertions.assertNull(resultSet4.getString(collection + "__id"));
-        Assertions.assertEquals(0, resultSet4.getInt("field"));
-        Assertions.assertFalse(resultSet4.next());
+                "SELECT \"%s\", SUM(\"%s\") as \"Sum\", COUNT(*) AS \"Count\" FROM \"%s\".\"%s\""
+                        + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                        + "WHERE \"%s\" <> 1 "
+                        + "GROUP BY \"%s\".\"%s\" HAVING COUNT(*) < 5"
+                        + "ORDER BY \"Count\" DESC LIMIT 1",
+                collection2 + "__id",
+                "field",
+                DATABASE_NAME, collection1 + "_array",
+                DATABASE_NAME, collection2,
+                collection1 + "_array", collection1 + "__id",
+                collection2, collection2 + "__id",
+                "field2",
+                collection2, collection2 + "__id"));
+        final ResultSet resultSet1 = statement.getResultSet();
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("key2", resultSet1.getString(collection2 + "__id"));
+        Assertions.assertEquals(0, resultSet1.getInt("Sum"));
+        Assertions.assertEquals(3, resultSet1.getInt("Count"));
+        Assertions.assertFalse(resultSet1.next());
+    }
+
+    /**
+     * "Tests that different join types produce the correct result for tables from different collections.
+     * @throws SQLException occurs if executing the statement or retrieving a value fails.
+     */
+    @DisplayName("Tests that different join types produce the correct result for tables from different collections.")
+    @Test
+    void testJoinTypesForTablesFromDifferentCollection() throws SQLException {
+        final String collection1 = "testDifferentCollectionJoin1";
+        final String collection2 = "testDifferentCollectionJoin2";
+        final BsonDocument document1 =
+            BsonDocument.parse(
+                "{ \"_id\" : \"key0\", \"array\": [ {\"field\": 1, \"field2\": \"value\"}, {\"field\": 2, \"field2\": \"value2\"}] }");
+        final BsonDocument document2 = BsonDocument.parse(
+                "{ \"_id\" : \"key1\", \"doc\": { \"field\": 1, field3: \"value3\"} }");
+        insertBsonDocuments(
+                collection1, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1});
+        insertBsonDocuments(
+                collection2, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document2});
+        final Statement statement = getDocumentDbStatement();
+
+        // Verify that an inner join will return 1 row where field0 = field.
+        statement.execute(String.format(
+                "SELECT * FROM \"%s\".\"%s\" INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                DATABASE_NAME, collection1 + "_array",
+                DATABASE_NAME, collection2 + "_doc",
+                collection1 + "_array", "field",
+                collection2 + "_doc", "field"));
+        final ResultSet resultSet1 = statement.getResultSet();
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals(resultSet1.getInt("field"), resultSet1.getInt("field0"));
+        Assertions.assertEquals("key0", resultSet1.getString(collection1 + "__id"));
+        Assertions.assertEquals("key1", resultSet1.getString(collection2 + "__id"));
+        Assertions.assertFalse(resultSet1.next());
+
+        // Verify that a left outer join will return 2 rows but only 1 match from the right.
+        statement.execute(String.format(
+                "SELECT * FROM \"%s\".\"%s\" LEFT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                DATABASE_NAME, collection1 + "_array",
+                DATABASE_NAME, collection2 + "_doc",
+                collection1 + "_array", "field",
+                collection2 + "_doc", "field"));
+        final ResultSet resultSet2 = statement.getResultSet();
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals(resultSet2.getInt("field"), resultSet2.getInt("field0"));
+        Assertions.assertEquals("key0", resultSet2.getString(collection1 + "__id"));
+        Assertions.assertEquals("key1", resultSet2.getString(collection2 + "__id"));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("key0", resultSet2.getString(collection1 + "__id"));
+        Assertions.assertNull(resultSet2.getString(collection2 + "__id"));
+        Assertions.assertEquals(2, resultSet2.getInt("field"));
+        Assertions.assertEquals(0, resultSet2.getInt("field0"));
+        Assertions.assertFalse(resultSet2.next());
     }
 
   /**

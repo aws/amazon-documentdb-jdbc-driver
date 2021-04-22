@@ -17,6 +17,8 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableList;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.UnwindOptions;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -28,9 +30,11 @@ import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 
 import java.util.List;
+import java.util.Map.Entry;
 
 /**
  * Relational expression representing a scan of a MongoDB collection.
@@ -92,5 +96,20 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         implementor.setTable(table);
         implementor.setDocumentDbTable(mongoTable);
         implementor.setMetadataTable(metadataTable);
+
+        // Add an unwind operation for each embedded array to convert to separate rows.
+        // Assumes that all queries will use aggregate and not find.
+        // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
+        for (Entry<String, DocumentDbMetadataColumn> column : metadataTable.getColumns().entrySet()) {
+            if (column.getValue().getArrayIndexLevel() != null) {
+                final String indexName = column.getKey();
+                final UnwindOptions opts = new UnwindOptions();
+                String arrayPath = column.getValue().getArrayPath();
+                arrayPath = "$" + arrayPath;
+                opts.includeArrayIndex(indexName);
+                opts.preserveNullAndEmptyArrays(true);
+                implementor.add(null, String.valueOf(Aggregates.unwind(arrayPath, opts)));
+            }
+        }
     }
 }

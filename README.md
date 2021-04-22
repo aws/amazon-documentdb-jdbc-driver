@@ -390,6 +390,13 @@ So the resulting data in the table would look like this...
 a no-op since this is already the default direction.
 
 ## Join Limitations 
+
+### Cross Collection Joins 
+Currently, the driver only supports `JOINs` across tables from different collections as long as the join 
+condition is a single equality (`=`) condition and the join type is either `INNER` or 
+`LEFT (OUTER)`. 
+
+### Same Collection Joins
 Currently, the driver only supports `JOINs` across tables from the same collection as long as we 
 are only joining on foreign keys. This is equivalent to presenting the data in its denormalized 
 form. For such `JOINs`, the complete set of foreign keys for a table must be used. 
@@ -466,7 +473,7 @@ These can be combined as long as the complete set of foreign keys are still pres
     LEFT JOIN "customer_subscriptions_variants" ON "customer_subscriptions"."customer__id" = "customer_subscriptions_variants".customer__id"
     AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants"."subscriptions_index_lvl_0"```
 
-This feature allows `INNER`, `LEFT (OUTER)`, `RIGHT (OUTER)` and `FULL (OUTER) JOINs`.
+This feature allows `INNER` and `LEFT (OUTER) JOINs` .
 
 # Setup and Usage
 

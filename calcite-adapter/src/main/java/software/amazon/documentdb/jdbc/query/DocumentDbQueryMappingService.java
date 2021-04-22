@@ -95,13 +95,14 @@ public class DocumentDbQueryMappingService {
                         .columnMetaData(DocumentDbJdbcMetaDataConverter.fromCalciteColumnMetaData(signature.columns))
                         .aggregateOperations(documentDbEnumerable.getList())
                         .collectionName(documentDbEnumerable.getCollectionName())
+                        .paths(documentDbEnumerable.getPaths())
                         .build();
             }
         } catch (Exception e) {
             throw SqlError.createSQLException(
                     LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql);
         }
-        // Query could be parsed but cannot be executed in pure MQL (likely involves joins or subqueries).
+        // Query could be parsed but cannot be executed in pure MQL (likely involves nested queries).
         throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.UNSUPPORTED_SQL, sql);
     }
 

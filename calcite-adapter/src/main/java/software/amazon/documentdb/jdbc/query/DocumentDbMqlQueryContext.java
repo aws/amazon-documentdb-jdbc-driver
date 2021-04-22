@@ -36,4 +36,6 @@ public class DocumentDbMqlQueryContext {
     private final List<Bson> aggregateOperations;
     /** The collection name to use in the aggregation. */
     private final String collectionName;
+    /** The path information for the output documents. Maps column names to field paths.*/
+    private final List<String> paths;
 }

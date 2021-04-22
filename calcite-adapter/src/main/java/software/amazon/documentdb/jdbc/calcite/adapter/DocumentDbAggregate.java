@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.InvalidRelException;
@@ -29,9 +30,14 @@ import org.apache.calcite.sql.fun.SqlSumAggFunction;
 import org.apache.calcite.sql.fun.SqlSumEmptyIsZeroAggFunction;
 import org.apache.calcite.util.ImmutableBitSet;
 import org.apache.calcite.util.Util;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implementation of
@@ -125,6 +131,7 @@ public class DocumentDbAggregate
         final List<String> outNames =
                 DocumentDbRules.mongoFieldNames(getRowType(),
                         mongoImplementor.getMetadataTable());
+        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
         int i = 0;
         if (groupSet.cardinality() == 1) {
             final String inName = inNames.get(groupSet.nth(0));
@@ -142,9 +149,17 @@ public class DocumentDbAggregate
         }
         // DocumentDB: modified - end
         for (AggregateCall aggCall : aggCalls) {
+            final String outName = outNames.get(i++);
             list.add(
-                    DocumentDbRules.maybeQuote(outNames.get(i++)) + ": "
+                    DocumentDbRules.maybeQuote(outName) + ": "
                             + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList()));
+            columnMap.put(outName,
+                    DocumentDbMetadataColumn.builder()
+                            .path(outName)
+                            .isGenerated(true)
+                            .name(outName)
+                            .build());
+
         }
         implementor.add(null,
                 "{$group: " + Util.toString(list, "{", ", ", "}") + "}");
@@ -186,6 +201,14 @@ public class DocumentDbAggregate
             implementor.add(null,
                     "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
         }
+
+        // Set the metadata table with the updated column map.
+        final DocumentDbMetadataTable metadata = implementor.getMetadataTable().toBuilder()
+                .columns(ImmutableMap.copyOf(columnMap))
+                .build();
+        implementor.setMetadataTable(metadata);
+        implementor.setDocumentDbTable(
+                new DocumentDbTable(implementor.getDocumentDbTable().getCollectionName(), metadata));
     }
 
     private static String toMongo(final SqlAggFunction aggregation, final List<String> inNames,

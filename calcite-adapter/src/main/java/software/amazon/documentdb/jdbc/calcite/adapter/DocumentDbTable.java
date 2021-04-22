@@ -173,16 +173,18 @@ public class DocumentDbTable extends AbstractQueryableTable
      */
     Enumerable<Object> aggregate(final MongoDatabase mongoDb,
             final List<Entry<String, Class>> fields,
+            final List<String> paths,
             final List<String> operations) {
         final List<Bson> list = new ArrayList<>();
 
         for (String operation : operations) {
             list.add(BsonDocument.parse(operation));
         }
+
         final Function1<Document, Object> getter =
                 DocumentDbEnumerator.getter(fields, tableMetadata);
         // Return this instead of the anonymous class to get more information from CalciteSignature.
-        return new DocumentDbEnumerable(mongoDb, tableMetadata, collectionName, list, operations, fields, getter);
+        return new DocumentDbEnumerable(mongoDb, collectionName, list, getter, paths);
     }
 
     /** Implementation of {@link org.apache.calcite.linq4j.Queryable} based on
@@ -218,8 +220,9 @@ public class DocumentDbTable extends AbstractQueryableTable
          */
         @SuppressWarnings("UnusedDeclaration")
         public Enumerable<Object> aggregate(final List<Entry<String, Class>> fields,
+                final List<String> paths,
                 final List<String> operations) {
-            return getTable().aggregate(getMongoDb(), fields, operations);
+            return getTable().aggregate(getMongoDb(), fields, paths, operations);
         }
 
         /** Called via code-generation.

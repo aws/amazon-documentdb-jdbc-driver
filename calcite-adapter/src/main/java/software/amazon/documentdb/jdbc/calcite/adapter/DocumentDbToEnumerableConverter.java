@@ -16,8 +16,6 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import com.mongodb.client.model.Aggregates;
-import com.mongodb.client.model.UnwindOptions;
 import org.apache.calcite.adapter.enumerable.EnumerableRel;
 import org.apache.calcite.adapter.enumerable.EnumerableRelImplementor;
 import org.apache.calcite.adapter.enumerable.JavaRowFormat;
@@ -43,12 +41,9 @@ import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRel.Implementor;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import java.util.AbstractList;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map.Entry;
 
 /**
  * Relational expression representing a scan of a table in a Mongo data source.
@@ -108,13 +103,17 @@ public class DocumentDbToEnumerableConverter
                                             }
                                         }),
                                 Pair.class));
+        final Expression paths =
+                list.append("paths",
+                    constantArrayList(
+                            DocumentDbRules.mongoFieldNames(rowType, mongoImplementor.getMetadataTable()),
+                            String.class));
         final Expression table =
                 list.append("table",
                         mongoImplementor.getTable().getExpression(
                                 DocumentDbTable.DocumentDbQueryable.class));
         // DocumentDB: modified - start
-        addVirtualTableOperations(mongoImplementor);
-        resolveRenamedFields(mongoImplementor, rowType);
+        handleVirtualTable(mongoImplementor);
         // DocumentDB: modified - end
         final List<String> opList = Pair.right(mongoImplementor.getList());
         final Expression ops =
@@ -123,7 +122,7 @@ public class DocumentDbToEnumerableConverter
         final Expression enumerable =
                 list.append("enumerable",
                         Expressions.call(table,
-                                DocumentDbMethod.MONGO_QUERYABLE_AGGREGATE.getMethod(), fields, ops));
+                                DocumentDbMethod.MONGO_QUERYABLE_AGGREGATE.getMethod(), fields, paths, ops));
         if (CalciteSystemProperty.DEBUG.value()) {
             System.out.println("Mongo: " + opList);
         }
@@ -154,62 +153,19 @@ public class DocumentDbToEnumerableConverter
     }
 
     /**
-     * Adds aggregation stages to handle arrays and virtual tables that may be null.
+     * Adds aggregation stage to handle virtual tables that may be null.
      * @param implementor the implementor.
      */
-    private static void addVirtualTableOperations(final Implementor implementor) {
+    public static void handleVirtualTable(final Implementor implementor) {
         final DocumentDbMetadataTable tableMetadata = implementor.getMetadataTable();
-        int index = 0;
-
-        // Add an unwind operation for each embedded array to convert to separate rows.
-        // Assumes that all queries will use aggregate and not find.
-        // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
-        for (Entry<String, DocumentDbMetadataColumn> column : tableMetadata.getColumns()
-                .entrySet()) {
-            if (column.getValue().getArrayIndexLevel() != null) {
-                final String indexName = column.getKey();
-                final UnwindOptions opts = new UnwindOptions();
-                String arrayPath = column.getValue().getArrayPath();
-                arrayPath = "$" + arrayPath;
-                opts.includeArrayIndex(indexName);
-                implementor.add(index++, null, String.valueOf(Aggregates.unwind(arrayPath, opts)));
-            }
-        }
-
         // Add a match operation if it is a virtual table to remove null rows.
         if (!implementor.isNullFiltered() && DocumentDbJoin.isTableVirtual(tableMetadata)) {
             final String matchFilter = DocumentDbJoin
                     .buildFieldsExistMatchFilter(DocumentDbJoin.getFilterColumns(tableMetadata));
             if (matchFilter != null) {
-                implementor.add(index, null, matchFilter);
-                implementor.setNullFiltered(true);
+                implementor.add(0, null, matchFilter);
             }
         }
-    }
-
-    /**
-     * Renames any fields that were explicitly renamed or renamed as a result of naming collisions.
-     * @param implementor the implementor.
-     * @param rowType the output row type.
-     */
-    private static void resolveRenamedFields(final Implementor implementor, final RelDataType rowType) {
-        final List<String> renames = new ArrayList<>();
-        final DocumentDbMetadataTable metadataTable = implementor.getMetadataTable();
-        rowType.getFieldList().forEach( field -> {
-                final String name = field.getName();
-                final DocumentDbMetadataColumn column = metadataTable.getColumns().get(name);
-
-                if (column != null && !name.equals(column.getName())) {
-                    final String newPath = DocumentDbRules.maybeQuote("$" + column.getPath());
-                    renames.add(DocumentDbRules.maybeQuote(name) + ": " + newPath);;
-                }
-            }
-        );
-
-        if (!renames.isEmpty()) {
-            final String newFields = Util.toString(renames, "{", ", ", "}");
-            final String aggregateString = "{ $addFields : " + newFields + "}";
-            implementor.add(null, aggregateString);
-        }
+        implementor.setNullFiltered(true);
     }
 }

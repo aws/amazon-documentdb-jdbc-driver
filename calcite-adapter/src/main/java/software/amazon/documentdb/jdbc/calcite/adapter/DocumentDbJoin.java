@@ -16,12 +16,18 @@
 
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Streams;
+import com.mongodb.client.model.Aggregates;
+import com.mongodb.client.model.UnwindOptions;
+import lombok.SneakyThrows;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -31,11 +37,19 @@ import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.Join;
 import org.apache.calcite.rel.core.JoinRelType;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
+import org.apache.calcite.rex.RexBuilder;
+import org.apache.calcite.rex.RexCall;
+import org.apache.calcite.rex.RexInputRef;
+import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.rex.RexUtil;
 import org.apache.calcite.sql.validate.SqlValidatorUtil;
+import org.apache.calcite.util.JsonBuilder;
+import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 
@@ -49,6 +63,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Implementation of {@link Join} in DocumentDb.
@@ -110,12 +125,20 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         final DocumentDbMetadataTable rightMetadata =  rightImplementor.getMetadataTable();
 
         if (leftTable.getCollectionName().equals(rightTable.getCollectionName())) {
-            joinSameCollection(implementor, rightImplementor, leftTable.getCollectionName(), leftMetadata, rightMetadata);
+            joinSameCollection(
+                    implementor,
+                    rightImplementor,
+                    leftTable.getCollectionName(),
+                    leftMetadata,
+                    rightMetadata);
         } else {
-            //TODO: Will need to join tables from different collections through $lookup. Joining
-            // on the same collection with arbitrary keys could also be potentially supported with lookup.
-            throw new IllegalArgumentException(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, "join on different collections"));
-
+            joinDifferentCollections(
+                    implementor,
+                    rightImplementor,
+                    leftTable.getCollectionName(),
+                    rightTable.getCollectionName(),
+                    leftMetadata,
+                    rightMetadata);
         }
     }
 
@@ -126,18 +149,18 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
      * on foreign keys.
      * @param implementor the implementor from the left side of the join. Operations are
      *                    added to the left.
-     * @param rightImplementor the implementor from the rifht side of the join.
+     * @param rightImplementor the implementor from the right side of the join.
      * @param collectionName The collection both tables are from.
-     * @param left the metadata of the left side of the join.
-     * @param right the metadata of the right side of the join.
+     * @param leftTable the metadata of the left side of the join.
+     * @param rightTable the metadata of the right side of the join.
      */
     private void joinSameCollection(
             final Implementor implementor,
             final Implementor rightImplementor,
             final String collectionName,
-            final DocumentDbMetadataTable left,
-            final DocumentDbMetadataTable right) {
-        validateSameCollectionJoin(left, right);
+            final DocumentDbMetadataTable leftTable,
+            final DocumentDbMetadataTable rightTable) {
+        validateSameCollectionJoin(leftTable, rightTable);
 
         // Add remaining operations from the right.
         rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));
@@ -145,9 +168,8 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // Eliminate null (i.e. "unmatched") rows from any virtual tables based on join type.
         // If an inner join, eliminate any null rows from either table.
         // If a left outer join, eliminate the null rows of the left side.
-        // If a right outer join, eliminate the null rows of the right side.
-        final ImmutableCollection<DocumentDbMetadataColumn> leftFilterColumns = getFilterColumns(left);
-        final ImmutableCollection<DocumentDbMetadataColumn> rightFilterColumns = getFilterColumns(right);
+        final ImmutableCollection<DocumentDbMetadataColumn> leftFilterColumns = getFilterColumns(leftTable);
+        final ImmutableCollection<DocumentDbMetadataColumn> rightFilterColumns = getFilterColumns(rightTable);
         final Supplier<String> leftFilter = () -> buildFieldsExistMatchFilter(leftFilterColumns);
         final Supplier<String> rightFilter = () -> buildFieldsExistMatchFilter(rightFilterColumns);
         final String filterLeft;
@@ -158,45 +180,37 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                 filterRight = rightFilter.get();
                 if (filterLeft != null) {
                     implementor.add(null, filterLeft);
-                    implementor.setNullFiltered(true);
                 }
                 if (filterRight != null) {
                     implementor.add(null, filterRight);
-                    implementor.setNullFiltered(true);
                 }
+                implementor.setNullFiltered(true);
                 break;
             case LEFT:
                 filterLeft = leftFilter.get();
                 if (filterLeft != null) {
                     implementor.add(null, filterLeft);
-                    implementor.setNullFiltered(true);
                 }
-                break;
-            case RIGHT:
-                filterRight = rightFilter.get();
-                if (filterRight != null) {
-                    implementor.add(null, filterRight);
-                    implementor.setNullFiltered(true);
-                }
-                break;
-            case FULL:
-                // Full join will retain null rows from either side.
+                implementor.setNullFiltered(true);
                 break;
             default:
-                //TODO: Figure out if/how we will support semi-join and anti-join.
                 throw new IllegalArgumentException(
                         SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
         }
 
-        final boolean rightIsVirtual = isTableVirtual(right);
-        final boolean leftIsVirtual = isTableVirtual(left);
+        final boolean rightIsVirtual = isTableVirtual(rightTable);
+        final boolean leftIsVirtual = isTableVirtual(leftTable);
+
+        // Filter out unneeded columns from the left and right sides.
+        final Map<String, DocumentDbMetadataColumn> leftColumns = getRequiredColumns(leftTable, this::getLeft);
+        final Map<String, DocumentDbMetadataColumn> rightColumns = getRequiredColumns(rightTable, this::getRight);
 
         // Create a new metadata table representing the denormalized form that will be used
         // in later parts of the query. Resolve column naming collisions from the right table.
-        Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(left.getColumns());
+        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(leftColumns);
         final List<String> renames = new ArrayList<>();
         final Set<String> usedKeys = new LinkedHashSet<>(columnMap.keySet());
-        for (Entry<String, DocumentDbMetadataColumn> entry : right.getColumns().entrySet()) {
+        for (Entry<String, DocumentDbMetadataColumn> entry : rightColumns.entrySet()) {
             final String key = entry.getKey();
             if (columnMap.containsKey(key)) {
                 final String newKey = SqlValidatorUtil.uniquify(key, usedKeys, SqlValidatorUtil.EXPR_SUGGESTER);
@@ -232,16 +246,9 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             implementor.add(null, aggregateString);
         }
 
-        // Remove virtual tables.
-        columnMap = columnMap
-                .entrySet()
-                .stream()
-                .filter(entry -> Strings.isNullOrEmpty(entry.getValue().getVirtualTableName()))
-                .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
-
         final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
                 .builder()
-                .name(left.getName())
+                .name(leftTable.getName())
                 .columns(ImmutableMap.copyOf(columnMap))
                 .build();
 
@@ -302,7 +309,8 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         return table.getColumns().values().stream()
                 .filter(c -> c.getPrimaryKey() == 0
                         && c.getForeignKey() == 0
-                        && Strings.isNullOrEmpty(c.getVirtualTableName()))
+                        && Strings.isNullOrEmpty(c.getVirtualTableName())
+                        && !c.isGenerated())
                 .collect(ImmutableList.toImmutableList());
     }
 
@@ -415,6 +423,272 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         Collections.sort(leftKeyNames);
         if (!(leftKeyNames).equals(requiredKeys)) {
             throw new IllegalArgumentException(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY));
+        }
+    }
+
+    /**
+     * Performs a "join" on tables from the different collections using a $lookup stage.
+     * @param implementor the implementor from the left side of the join. Operations are
+     *                    added to the left.
+     * @param rightImplementor the implementor from the right side of the join.
+     * @param leftCollectionName the name of the collection of the left table.
+     * @param rightCollectionName the name of the collection of the right table.
+     * @param leftTable the metadata of the left side of the join.
+     * @param rightTable the metadata of the right side of the join.
+     */
+    @SneakyThrows
+    private void joinDifferentCollections(
+            final Implementor implementor,
+            final Implementor rightImplementor,
+            final String leftCollectionName,
+            final String rightCollectionName,
+            final DocumentDbMetadataTable leftTable,
+            final DocumentDbMetadataTable rightTable)  {
+        // Remove null rows from the left and right, if any.
+        DocumentDbToEnumerableConverter.handleVirtualTable(implementor);
+        DocumentDbToEnumerableConverter.handleVirtualTable(rightImplementor);
+
+        // Validate that this is a simple equality join.
+        validateDifferentCollectionJoin();
+
+        // Determine the new field in the joined documents that will hold the matched rows from the right.
+        final String rightMatches = rightTable.getName();
+
+        // Filter out unneeded columns from the left and right sides.
+        final Map<String, DocumentDbMetadataColumn> leftColumns = getRequiredColumns(leftTable, this::getLeft);
+        final Map<String, DocumentDbMetadataColumn> rightColumns = getRequiredColumns(rightTable, this::getRight);
+
+        // Determine the new metadata. Handle any naming collisions from the right side. Columns
+        // from the right will now be nested under field specified by rightMatches.
+        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(leftColumns);
+        final Set<String> usedKeys = new LinkedHashSet<>(columnMap.keySet());
+        for (Entry<String, DocumentDbMetadataColumn> entry : rightColumns.entrySet()) {
+            final String key = SqlValidatorUtil.uniquify(entry.getKey(), usedKeys, SqlValidatorUtil.EXPR_SUGGESTER);
+            final DocumentDbMetadataColumn newColumn = entry.getValue().toBuilder()
+                    .resolvedPath(DocumentDbCollectionMetadata.combinePath(rightMatches,entry.getValue().getPath()))
+                    .build();
+            columnMap.put(key, newColumn);
+        }
+        final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
+                .builder()
+                .name(leftCollectionName)
+                .columns(ImmutableMap.copyOf(columnMap))
+                .build();
+        final DocumentDbTable joinedTable = new DocumentDbTable(leftCollectionName, metadata);
+        implementor.setDocumentDbTable(joinedTable);
+        implementor.setMetadataTable(metadata);
+
+        // Add the lookup stage. This is the stage that "joins" the 2 collections.
+        final JsonBuilder jsonBuilder = new JsonBuilder();
+        final Map<String, Object> lookupMap = jsonBuilder.map();
+        final Map<String, Object> lookupFields = new LinkedHashMap<>();
+
+        // 1. Add collection to join.
+        lookupFields.put("from", rightCollectionName);
+
+        // 2. Fields from the left need to be in let so they can be used in $match.
+        final Map<String, String> letExpressions =
+                leftColumns.values().stream()
+                        .collect(
+                                Collectors.toMap(
+                                        DocumentDbMetadataColumn::getName,
+                                        column -> "$" + column.getPath()));
+        lookupFields.put("let", letExpressions);
+
+        // 3. Add any stages from the right implementor. Convert the json strings
+        // into objects so they can be added as a list to the lookup pipeline.
+        final List<Map<String, Object>> stages = new ArrayList<>();
+        final ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
+        for (Pair<String, String> operations : rightImplementor.getList()) {
+            final String stage = operations.right;
+            final Map<String, Object> map = mapper.readValue(stage, new TypeReference<LinkedHashMap<String, Object>>() { });
+            stages.add(map);
+        }
+
+        // 4. Determine the $match stage for the pipeline. This is the join condition.
+        final JoinTranslator translator = new JoinTranslator(implementor.getRexBuilder(), leftColumns, rightColumns);
+        stages.add(translator.translateMatch(getCondition()));
+
+        // 5. Add all stages in order to the pipeline.
+        lookupFields.put("pipeline", stages);
+
+        // 6. Add the new field where the matches will be placed.
+        lookupFields.put("as", rightMatches);
+
+        lookupMap.put("$lookup", lookupFields);
+        implementor.add(null, jsonBuilder.toJsonString(lookupMap));
+
+        // Unwind the matched rows. Preserve null/empty arrays (unmatched rows) depending on join type.
+        final UnwindOptions opts = new UnwindOptions();
+        switch (getJoinType()) {
+            case INNER:
+                // Remove rows for which there were no matches.
+                opts.preserveNullAndEmptyArrays(false);
+                break;
+            case LEFT:
+                // Keep rows for which there were no matches.
+                opts.preserveNullAndEmptyArrays(true);
+                break;
+            default:
+                throw new IllegalArgumentException(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
+        }
+        implementor.add(null, String.valueOf(Aggregates.unwind("$" + rightMatches, opts)));
+    }
+
+    /**
+     * Temporary check to reject joins the translator may not handle correctly.
+     */
+    private void validateDifferentCollectionJoin() {
+        // Extract the join keys.
+        final List<Integer> leftKeys = new ArrayList<>();
+        final List<Integer> rightKeys = new ArrayList<>();
+        final List<RexNode> nonEquiList = new ArrayList<>();
+        final List<Boolean> filterNulls = new ArrayList<>();
+        RelOptUtil.splitJoinCondition(
+                getLeft(), getRight(), getCondition(), leftKeys, rightKeys, filterNulls, nonEquiList);
+
+        // Check that there is only a single equality condition and no non equality conditions.
+        if (!nonEquiList.isEmpty() || leftKeys.size() != 1 || rightKeys.size() != 1) {
+            throw new IllegalArgumentException(SqlError.lookup(SqlError.SINGLE_EQUIJOIN_ONLY));
+        }
+    }
+
+    private LinkedHashMap<String, DocumentDbMetadataColumn> getRequiredColumns(
+            final DocumentDbMetadataTable table,
+            final Supplier<RelNode> getNode) {
+        final List<String> fieldNames = getNode.get().getRowType().getFieldNames();
+        return table.getColumns().entrySet().stream()
+                .filter(entry -> fieldNames.contains(entry.getKey()))
+                .collect(Collectors.toMap(
+                        Entry::getKey, Entry::getValue,
+                        (u, v) -> u, LinkedHashMap::new));
+    }
+
+    /**
+     * POC of a translator for the join condition.
+     * Based on Translator class in DocumentDbFilter. For $lookup, we need to put
+     * the match conditions inside $expr so we can reference fields from the left.
+     * We also specify the conditions as $gte: [ $field, $$field2 ] rather than field : { $gte: $field2 }
+     */
+    private static class JoinTranslator {
+        private final JsonBuilder builder = new JsonBuilder();
+        private final RexBuilder rexBuilder;
+        private final List<String> fieldNames;
+
+        JoinTranslator(
+                final RexBuilder rexBuilder,
+                final Map<String, DocumentDbMetadataColumn> leftColumns,
+                final Map<String, DocumentDbMetadataColumn> rightColumns) {
+            this.rexBuilder = rexBuilder;
+
+            // The indexes used by RexInputRef nodes follows the order in
+            // the output row (getRowType()) which is a concatenation of the 2
+            // input row types (getLeft.getRowType() and getRight.getRowType()).
+            // But we cannot just use mongoFieldNames with the merged metadata table
+            // because the left fields will be referenced by their names as specified in "let"
+            // while the right fields will be referenced by their original paths.
+
+            // Left field names use their names as specified in the let field and need "$$"
+            final List<String> leftFieldNames =
+                    leftColumns.values().stream()
+                            .map(column -> "$$" + column.getName())
+                            .collect(Collectors.toList());
+            // Right field names use their path combined with "$".
+            final List<String> rightFieldNames =
+                    rightColumns.values().stream()
+                            .map(column -> "$" + column.getPath())
+                            .collect(Collectors.toList());
+            this.fieldNames =
+                    Stream.concat(leftFieldNames.stream(), rightFieldNames.stream())
+                            .collect(Collectors.toList());
+        }
+
+        private Map<String, Object> translateMatch(final RexNode condition) {
+            final Map<String, Object> matchMap = builder.map();
+            final Map<String, Object> exprMap = builder.map();
+            exprMap.put("$expr", translateOr(condition));
+            matchMap.put("$match", exprMap);
+            return matchMap;
+        }
+
+        /** Translates a condition that may be an OR of other conditions. */
+        private Object translateOr(final RexNode condition) {
+            final RexNode condition2 =
+                    RexUtil.expandSearch(rexBuilder, null, condition);
+
+            // Breaks down the condition by ORs.
+            final List<Object> list = new ArrayList<>();
+            for (RexNode node : RelOptUtil.disjunctions(condition2)) {
+                list.add(translateAnd(node));
+            }
+            if (list.size() == 1) {
+                return list.get(0);
+            }
+            final Map<String, Object> map = builder.map();
+            map.put("$or", list);
+            return map;
+        }
+
+        /** Translates a condition that may be an AND of other conditions. */
+        private Object translateAnd(final RexNode node0) {
+            // Breaks down the condition by ANDs. But the ANDs may have nested ORs!
+            // These will break it.
+            final List<Map<String, Object>> list = new ArrayList<>();
+            for (RexNode node : RelOptUtil.conjunctions(node0)) {
+                list.add(translateMatch2(node));
+            }
+
+            if (list.size() == 1) {
+                return list.get(0);
+            }
+            final Map<String, Object> map = builder.map();
+            map.put("$and", list);
+            return map;
+        }
+
+        private Object getValue(final RexNode node) {
+            switch (node.getKind()) {
+                case INPUT_REF:
+                    return fieldNames.get(((RexInputRef) node).getIndex());
+                case LITERAL:
+                    return ((RexLiteral) node).getValue2();
+                default:
+                    // Does not handle a node that is CAST or ITEM yet.
+                    throw new AssertionError("cannot translate " + node);
+            }
+        }
+
+        private Map<String, Object> translateMatch2(final RexNode node) {
+            switch (node.getKind()) {
+                case EQUALS:
+                    return translateBinary("$eq", (RexCall) node);
+                case LESS_THAN:
+                    return translateBinary("$lt", (RexCall) node);
+                case LESS_THAN_OR_EQUAL:
+                    return translateBinary("$lte", (RexCall) node);
+                case NOT_EQUALS:
+                    return translateBinary("$ne", (RexCall) node);
+                case GREATER_THAN:
+                    return translateBinary("$gt", (RexCall) node);
+                case GREATER_THAN_OR_EQUAL:
+                    return translateBinary("$gte", (RexCall) node);
+                default:
+                    // Does not handle that the node may be a nested OR node.
+                    throw new AssertionError("cannot translate " + node);
+            }
+        }
+
+        /** Translates a call to a binary operator. */
+        private Map<String, Object> translateBinary(final String op, final RexCall call) {
+            final Map<String, Object> map = builder.map();
+            final Object left = getValue(call.operands.get(0));
+            final Object right = getValue(call.operands.get(1));
+            final List<Object> items = new ArrayList<>();
+            items.add(left);
+            items.add(right);
+            map.put(op, items);
+            return map;
         }
     }
 }
