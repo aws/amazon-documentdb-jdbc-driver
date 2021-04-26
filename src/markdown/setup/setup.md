@@ -10,6 +10,7 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
 - [Getting Started](#getting-started)
     - [Prerequisites](#prerequisites)
     - [JRE or JDK Installation](#jre-or-jdk-installation)
+    - [Adding Amazon RDS Certificate Authority Bundle](add-amazon-ca-certs.md) 
     - [Using an SSH Tunnel to Connect to Amazon DocumentDB](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb)
     - [Download the DocumentDB JDBC Driver](#download-the-documentdb-jdbc-driver)
     

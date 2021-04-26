@@ -392,9 +392,7 @@ a no-op since this is already the default direction.
 ## Join Limitations 
 
 ### Cross Collection Joins 
-Currently, the driver only supports `JOINs` across tables from different collections as long as the join 
-condition is a single equality (`=`) condition and the join type is either `INNER` or 
-`LEFT (OUTER)`. 
+Currently, cross collection joins are not supported. 
 
 ### Same Collection Joins
 Currently, the driver only supports `JOINs` across tables from the same collection as long as we 
