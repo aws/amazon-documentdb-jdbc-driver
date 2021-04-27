@@ -30,8 +30,8 @@ import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.util.List;
 import java.util.Map.Entry;
@@ -45,7 +45,7 @@ import java.util.Map.Entry;
 public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
     private final DocumentDbTable mongoTable;
     private final RelDataType projectRowType;
-    private final DocumentDbMetadataTable metadataTable;
+    private final DocumentDbSchemaTable metadataTable;
 
     /**
      * Creates a DocumentDbTableScan.
@@ -58,7 +58,7 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
      */
     protected DocumentDbTableScan(final RelOptCluster cluster, final RelTraitSet traitSet,
             final RelOptTable table, final DocumentDbTable mongoTable, final RelDataType projectRowType,
-            final DocumentDbMetadataTable metadataTable) {
+            final DocumentDbSchemaTable metadataTable) {
         super(cluster, traitSet, ImmutableList.of(), table);
         this.mongoTable = mongoTable;
         this.projectRowType = projectRowType;
@@ -100,11 +100,11 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         // Add an unwind operation for each embedded array to convert to separate rows.
         // Assumes that all queries will use aggregate and not find.
         // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
-        for (Entry<String, DocumentDbMetadataColumn> column : metadataTable.getColumns().entrySet()) {
-            if (column.getValue().getArrayIndexLevel() != null) {
+        for (Entry<String, DocumentDbSchemaColumn> column : metadataTable.getColumns().entrySet()) {
+            if (column.getValue().isIndex()) {
                 final String indexName = column.getKey();
                 final UnwindOptions opts = new UnwindOptions();
-                String arrayPath = column.getValue().getArrayPath();
+                String arrayPath = column.getValue().getFieldPath();
                 arrayPath = "$" + arrayPath;
                 opts.includeArrayIndex(indexName);
                 opts.preserveNullAndEmptyArrays(true);

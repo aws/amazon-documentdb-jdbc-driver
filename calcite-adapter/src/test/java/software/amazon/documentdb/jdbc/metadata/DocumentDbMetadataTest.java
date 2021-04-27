@@ -91,10 +91,10 @@ class DocumentDbMetadataTest {
         Assertions.assertEquals(2, databaseMetadata1.getVersion());
         Assertions.assertTrue(databaseMetadata1.getCollectionMetadataMap()
                 .containsKey(collectionName));
-        final DocumentDbCollectionMetadata collectionMetadata = databaseMetadata1.getCollectionMetadataMap()
+        final DocumentDbSchemaCollection collectionMetadata = databaseMetadata1.getCollectionMetadataMap()
                 .get(collectionName);
         Assertions.assertNotNull(collectionMetadata);
-        final DocumentDbMetadataTable metadataTable = collectionMetadata.getTables().get(collectionName);
+        final DocumentDbSchemaTable metadataTable = collectionMetadata.getTables().get(collectionName);
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(13, metadataTable.getColumns().size());
 
@@ -139,10 +139,10 @@ class DocumentDbMetadataTest {
         Assertions.assertEquals(2, databaseMetadata1.getVersion());
         Assertions.assertTrue(databaseMetadata1.getCollectionMetadataMap()
                 .containsKey(collectionName));
-        final DocumentDbCollectionMetadata collectionMetadata = databaseMetadata1.getCollectionMetadataMap()
+        final DocumentDbSchemaCollection collectionMetadata = databaseMetadata1.getCollectionMetadataMap()
                 .get(collectionName);
         Assertions.assertNotNull(collectionMetadata);
-        final DocumentDbMetadataTable metadataTable = collectionMetadata.getTables().get(collectionName);
+        final DocumentDbSchemaTable metadataTable = collectionMetadata.getTables().get(collectionName);
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(13, metadataTable.getColumns().size());
 

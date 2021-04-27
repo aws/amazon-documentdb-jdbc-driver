@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
-import lombok.Builder;
 import lombok.Getter;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
@@ -30,26 +29,23 @@ import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 
 import java.sql.Types;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
-
 /**
  * Represents the fields in a collection and their data types. A collection can be broken up into
  * one (the base table) or more tables (virtual tables from embedded documents or arrays).
  */
-@Builder
 @Getter
-public class DocumentDbCollectionMetadata {
+public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbCollectionMetadata.class);
     private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper()
             .setSerializationInclusion(Include.NON_NULL)
@@ -62,10 +58,12 @@ public class DocumentDbCollectionMetadata {
     private static final String ID_FIELD_NAME = "_id";
     private static final int ID_PRIMARY_KEY_COLUMN = 1;
     private static final int KEY_COLUMN_NONE = 0;
+
     /**
      * The map of data type promotions.
+     *
      * @see <a href="https://docs.mongodb.com/bi-connector/current/schema/type-conflicts#scalar-scalar-conflicts">
-     *     Map Relational Schemas to MongoDB - Scalar-Scalar Conflicts</a>
+     * Map Relational Schemas to MongoDB - Scalar-Scalar Conflicts</a>
      */
     private static final ImmutableMap<Entry<Integer, BsonType>, Integer> PROMOTION_MAP =
             new ImmutableMap.Builder<Entry<Integer, BsonType>, Integer>()
@@ -225,34 +223,17 @@ public class DocumentDbCollectionMetadata {
                     .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DOCUMENT), Types.VARCHAR)
                     .build();
 
-    /** The name of the collection in the database. */
-    private final String path;
-
-    /** The tables the collection is composed of indexed by their path. */
-    private final ImmutableMap<String, DocumentDbMetadataTable> tables;
-
     /**
-     * Creates new collection metadata for a given collection from the provided data.
+     * All args constructor for collection metadata.
      *
-     * @param collectionName the name of the collection this model should refer.
-     * @param cursor the cursor for the data from which to create a model.
-     * @return a new {@link DocumentDbCollectionMetadata} built from the data.
+     * @param name       Name of the collection.
+     * @param version    Version of this metadata.
+     * @param tables     Tables contained within this collection, indexed by name. Uses LinkedHashMap to preserve order.
      */
-    public static DocumentDbCollectionMetadata create(
-            final String collectionName,
-            final Iterator<BsonDocument> cursor) {
-
-        final Map<String, DocumentDbMetadataTable> tableMap = new HashMap<>();
-        while (cursor.hasNext()) {
-            final BsonDocument document = cursor.next();
-            processDocument(document, tableMap, new ArrayList<>(),
-                    EMPTY_STRING, collectionName, true);
-        }
-
-        return DocumentDbCollectionMetadata.builder()
-                .path(collectionName)
-                .tables(ImmutableMap.copyOf(tableMap))
-                .build();
+    public DocumentDbCollectionMetadata(final String name,
+                                        final int version,
+                                        final LinkedHashMap<String, DocumentDbSchemaTable> tables) {
+        super(name, version, tables);
     }
 
     @Override
@@ -260,28 +241,50 @@ public class DocumentDbCollectionMetadata {
         try {
             return JSON_OBJECT_MAPPER.writeValueAsString(this);
         } catch (JsonProcessingException e) {
-            LOGGER.error("Error converting object to JSON.", e);
+            DocumentDbCollectionMetadata.LOGGER.error("Error converting object to JSON.", e);
         }
-        return EMPTY_STRING;
+        return DocumentDbCollectionMetadata.EMPTY_STRING;
+    }
+
+    /**
+     * Creates new collection metadata for a given collection from the provided data.
+     *
+     * @param collectionName the name of the collection this model should refer.
+     * @param cursor         the cursor for the data from which to create a model.
+     * @return a new {@link DocumentDbCollectionMetadata} built from the data.
+     */
+    public static DocumentDbSchemaCollection create(
+            final String databaseName,
+            final String collectionName,
+            final Iterator<BsonDocument> cursor) {
+        final LinkedHashMap<String, DocumentDbSchemaTable> tableMap = new LinkedHashMap<>();
+        while (cursor.hasNext()) {
+            final BsonDocument document = cursor.next();
+            processDocument(document, tableMap, new ArrayList<>(),
+                    EMPTY_STRING, collectionName, true);
+        }
+
+        return new DocumentDbSchemaCollection(databaseName, 1, tableMap);
     }
 
     /**
      * Process a document including fields, sub-documents and arrays.
-     * @param document the document to process.
-     * @param tableMap the map of virtual tables
+     *
+     * @param document    the document to process.
+     * @param tableMap    the map of virtual tables
      * @param foreignKeys the list of foreign keys.
-     * @param path the path for this field.
+     * @param path        the path for this field.
      */
-    private static void processDocument(
+    static void processDocument(
             final BsonDocument document,
-            final Map<String, DocumentDbMetadataTable> tableMap,
+            final Map<String, DocumentDbSchemaTable> tableMap,
             final List<DocumentDbMetadataColumn> foreignKeys,
             final String path,
             final String collectionName,
             final boolean isRootDocument) {
 
         // Need to preserve order of fields.
-        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>();
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>();
 
         final String tableName = toName(combinePath(collectionName, path));
         if (tableMap.containsKey(tableName)) {
@@ -303,22 +306,7 @@ public class DocumentDbCollectionMetadata {
             int primaryKeyColumn = KEY_COLUMN_NONE;
             for (DocumentDbMetadataColumn column : foreignKeys) {
                 primaryKeyColumn++;
-                final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
-                        .builder()
-                        .index(columnMap.size())
-                        .path(column.getPath())
-                        .arrayPath(column.getArrayPath())
-                        .name(column.getName())
-                        .isGenerated(column.isGenerated())
-                        .sqlType(column.getSqlType())
-                        .tableName(column.getTableName())
-                        .primaryKey(primaryKeyColumn)
-                        .foreignKey(column.getTableName().equals(tableName)
-                                ? KEY_COLUMN_NONE
-                                : primaryKeyColumn)
-                        .arrayIndexLevel(column.getArrayIndexLevel())
-                        .build();
-                columnMap.put(metadataColumn.getName(), metadataColumn);
+                buildForeignKeysFromDocument(columnMap, tableName, primaryKeyColumn, column);
             }
         }
 
@@ -331,7 +319,7 @@ public class DocumentDbCollectionMetadata {
             final boolean isPrimaryKey = isRootDocument && isIdField(fieldName);
             final String columnName = getFieldNameIfIsPrimaryKey(
                     collectionName, fieldName, isPrimaryKey);
-            final DocumentDbMetadataColumn prevMetadataColumn = columnMap.getOrDefault(
+            final DocumentDbMetadataColumn prevMetadataColumn = (DocumentDbMetadataColumn) columnMap.getOrDefault(
                     columnName, null);
 
             // ASSUMPTION: relying on the behaviour that the "_id" field will ALWAYS be first
@@ -339,82 +327,61 @@ public class DocumentDbCollectionMetadata {
             final int prevSqlType = getPrevSqlTypeOrDefault(prevMetadataColumn);
             final int nextSqlType = getSqlTypeIfIsPrimaryKey(bsonType, prevSqlType, isPrimaryKey);
 
-            if (nextSqlType == Types.JAVA_OBJECT && bsonType != BsonType.NULL) {
-                // This will create/update virtual table.
-                processDocument(entry.getValue().asDocument(),
-                        tableMap, foreignKeys, fieldPath, collectionName, false);
-
-            } else if (nextSqlType == Types.ARRAY && bsonType != BsonType.NULL) {
-                // This will create/update virtual table.
-                processArray(entry.getValue().asArray(),
-                        tableMap, foreignKeys, fieldPath, 0, collectionName);
-            } else {
-                // Process a scalar data type.
-                if (prevMetadataColumn != null && prevMetadataColumn.getVirtualTableName() != null) {
-                    // This column has been promoted to a scalar type from a complex type.
-                    // Remove the previously defined virtual table.
-                    tableMap.remove(prevMetadataColumn.getVirtualTableName());
-                }
-            }
-
+            processComplexTypes(tableMap, foreignKeys, collectionName, entry, fieldPath, bsonType, prevMetadataColumn, nextSqlType);
             final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
                     .builder()
-                    .index(getPrevIndexOrDefault(prevMetadataColumn, columnMap.size()))
-                    .path(fieldPath)
-                    .name(columnName)
-                    .isGenerated(false)
+                    .fieldPath(fieldPath)
+                    .sqlName(columnName)
                     .sqlType(nextSqlType)
+                    .dbType(bsonType.getValue())
+                    .isIndex(false)
+                    .isPrimaryKey(isPrimaryKey)
+                    .index(getPrevIndexOrDefault(prevMetadataColumn, columnMap.size() + 1))
                     .tableName(tableName)
-                    .primaryKey(getPrimaryKeyColumn(isPrimaryKey))
-                    .foreignKey(KEY_COLUMN_NONE)
+                    .primaryKeyIndex(getPrimaryKeyColumn(isPrimaryKey))
+                    .foreignKeyIndex(KEY_COLUMN_NONE)
+                    .isGenerated(false)
                     .virtualTableName(getVirtualTableNameIfIsPrimaryKey(
                             fieldPath, nextSqlType, isPrimaryKey, collectionName))
                     .build();
-            columnMap.put(metadataColumn.getName(), metadataColumn);
+            columnMap.put(metadataColumn.getSqlName(), metadataColumn);
             addToForeignKeysIfIsPrimary(foreignKeys, isPrimaryKey, metadataColumn);
         }
 
         // Ensure virtual table primary key column data types are consistent.
         if (isRootDocument) {
-            final String primaryKeyColumnName = toName(combinePath(path, ID_FIELD_NAME));
-            final DocumentDbMetadataColumn primaryKeyColumn = columnMap.get(primaryKeyColumnName);
-            for (DocumentDbMetadataTable table : tableMap.values()) {
-                final DocumentDbMetadataColumn column = table.getColumns().get(primaryKeyColumnName);
-                if (column != null) {
-                    column.setSqlType(primaryKeyColumn.getSqlType());
-                }
-            }
+            checkVirtualTablePrimaryKeys(tableMap, path, columnMap);
         }
-
         // Add virtual table.
         final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
                 .builder()
-                .name(tableName)
-                .columns(ImmutableMap.copyOf(columnMap))
+                .sqlName(tableName)
+                .collectionName(collectionName)
+                .columns(columnMap)
                 .build();
-        tableMap.put(metadataTable.getName(), metadataTable);
+        tableMap.put(metadataTable.getSqlName(), metadataTable);
     }
 
     /**
      * Processes an array field, including sub-documents, and sub-arrays.
      *
-     * @param array the array value to process.
-     * @param tableMap the map of virtual tables
-     * @param foreignKeys the list of foreign keys.
-     * @param path the path for this field.
-     * @param arrayLevel the zero-indexed level of the array.
+     * @param array          the array value to process.
+     * @param tableMap       the map of virtual tables
+     * @param foreignKeys    the list of foreign keys.
+     * @param path           the path for this field.
+     * @param arrayLevel     the zero-indexed level of the array.
      * @param collectionName the name of the collection.
      */
     private static void processArray(
             final BsonArray array,
-            final Map<String, DocumentDbMetadataTable> tableMap,
+            final Map<String, DocumentDbSchemaTable> tableMap,
             final List<DocumentDbMetadataColumn> foreignKeys,
             final String path,
             final int arrayLevel,
             final String collectionName) {
 
         // Need to preserve order of fields.
-        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>();
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>();
 
         int primaryKeyColumn = KEY_COLUMN_NONE;
         int level = arrayLevel;
@@ -469,21 +436,29 @@ public class DocumentDbCollectionMetadata {
                 primaryKeyColumn++;
                 metadataColumn = DocumentDbMetadataColumn
                         .builder()
-                        .index(column.getIndex())
-                        .path(column.getPath())
-                        .arrayPath(column.getArrayPath())
-                        .name(column.getName())
-                        .isGenerated(column.isGenerated())
+                        .fieldPath(column.getFieldPath())
+                        .sqlName(column.getSqlName())
                         .sqlType(column.getSqlType())
-                        .tableName(column.getTableName())
-                        .primaryKey(primaryKeyColumn)
-                        .foreignKey(column.getTableName().equals(tableName)
+                        .dbType(column.getDbType())
+                        .isIndex(column.isIndex())
+                        .isPrimaryKey(primaryKeyColumn != 0)
+                        .foreignKeyTableName(column.getTableName().equals(tableName)
+                                ? null
+                                : column.getTableName())
+                        .index(column.getIndex())
+                        .tableName(tableName)
+                        .primaryKeyIndex(primaryKeyColumn)
+                        .foreignKeyIndex(column.getTableName().equals(tableName)
                                 ? KEY_COLUMN_NONE
                                 : primaryKeyColumn)
                         .virtualTableName(column.getVirtualTableName())
                         .arrayIndexLevel(column.getArrayIndexLevel())
+                        .isGenerated(column.isGenerated())
                         .build();
-                columnMap.put(metadataColumn.getName(), metadataColumn);
+                metadataColumn.setForeignKeyColumnName(metadataColumn.getForeignKeyTableName() != null
+                        ? column.getSqlName()
+                        : null);
+                columnMap.put(metadataColumn.getSqlName(), metadataColumn);
             }
 
             final String indexColumnName = toName(combinePath(path, INDEX_COLUMN_NAME_PREFIX + level));
@@ -493,18 +468,19 @@ public class DocumentDbCollectionMetadata {
                 primaryKeyColumn++;
                 metadataColumn = DocumentDbMetadataColumn
                         .builder()
-                        .index(columnMap.size())
-                        .path(indexColumnName) // Once unwound, the index will be at root level so path = name.
-                        .arrayPath(path)
-                        .name(toName(indexColumnName))
-                        .isGenerated(true)
+                        .sqlName(toName(indexColumnName))
+                        .fieldPath(path)  // Once unwound, the index will be at root level so path = name.
                         .sqlType(Types.BIGINT)
+                        .isIndex(true)
+                        .isPrimaryKey(true)
+                        .index(columnMap.size() + 1)
                         .tableName(tableName)
-                        .primaryKey(primaryKeyColumn)
-                        .foreignKey(KEY_COLUMN_NONE)
+                        .primaryKeyIndex(primaryKeyColumn)
+                        .foreignKeyIndex(KEY_COLUMN_NONE)
                         .arrayIndexLevel(level)
+                        .isGenerated(true)
                         .build();
-                columnMap.put(metadataColumn.getName(), metadataColumn);
+                columnMap.put(metadataColumn.getSqlName(), metadataColumn);
                 foreignKeys.add(metadataColumn);
             }
         }
@@ -543,61 +519,62 @@ public class DocumentDbCollectionMetadata {
     /**
      * Processes value elements as a value column.
      *
-     * @param tableMap the table map of virtual tables.
-     * @param path the path to this array
+     * @param tableMap       the table map of virtual tables.
+     * @param path           the path to this array
      * @param collectionName the name of the collection.
-     * @param columnMap the map of columns for this virtual table.
-     * @param sqlType the promoted SQL data type to use for this array.
+     * @param columnMap      the map of columns for this virtual table.
+     * @param sqlType        the promoted SQL data type to use for this array.
      */
     private static void processValuesInArray(
-            final Map<String, DocumentDbMetadataTable> tableMap,
+            final Map<String, DocumentDbSchemaTable> tableMap,
             final String path,
             final String collectionName,
-            final Map<String, DocumentDbMetadataColumn> columnMap,
+            final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap,
             final int sqlType) {
 
         final String tableName = toName(combinePath(collectionName, path));
         // Get column if it already exists so we can preserve index order.
-        final DocumentDbMetadataColumn prevMetadataColumn = columnMap.get(toName(VALUE_COLUMN_NAME));
+        final DocumentDbMetadataColumn prevMetadataColumn = (DocumentDbMetadataColumn) columnMap.get(toName(VALUE_COLUMN_NAME));
         // Add value column
         final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
                 .builder()
-                .index(getPrevIndexOrDefault(prevMetadataColumn, columnMap.size()))
-                .path(path)
-                .name(toName(VALUE_COLUMN_NAME))
-                .isGenerated(false)
+                .fieldPath(path)
+                .sqlName(toName(VALUE_COLUMN_NAME))
                 .sqlType(sqlType)
+                .isIndex(false)
+                .isPrimaryKey(false)
+                .index(getPrevIndexOrDefault(prevMetadataColumn, columnMap.size() + 1))
                 .tableName(tableName)
-                .primaryKey(KEY_COLUMN_NONE)
-                .foreignKey(KEY_COLUMN_NONE)
+                .primaryKeyIndex(KEY_COLUMN_NONE)
+                .foreignKeyIndex(KEY_COLUMN_NONE)
+                .isGenerated(false)
                 .build();
-        columnMap.put(metadataColumn.getName(), metadataColumn);
-
-        // Add virtual table.
+        columnMap.put(metadataColumn.getSqlName(), metadataColumn);
         final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
                 .builder()
-                .name(tableName)
-                .columns(ImmutableMap.copyOf(columnMap))
+                .sqlName(tableName)
+                .collectionName(collectionName)
+                .columns(columnMap)
                 .build();
-        tableMap.put(metadataTable.getName(), metadataTable);
+        tableMap.put(metadataTable.getSqlName(), metadataTable);
     }
 
     /**
      * Processes array elements within an array.
      *
-     * @param array the array elements to scan.
-     * @param tableMap the table map of virtual tables.
-     * @param foreignKeys the list of foreign keys.
-     * @param path the path to this array
+     * @param array          the array elements to scan.
+     * @param tableMap       the table map of virtual tables.
+     * @param foreignKeys    the list of foreign keys.
+     * @param path           the path to this array
      * @param collectionName the name of the collection.
-     * @param level the current level of this array.
+     * @param level          the current level of this array.
      */
     private static void processArrayInArray(final BsonArray array,
-            final Map<String, DocumentDbMetadataTable> tableMap,
-            final List<DocumentDbMetadataColumn> foreignKeys,
-            final String path,
-            final String collectionName,
-            final int level) {
+                                            final Map<String, DocumentDbSchemaTable> tableMap,
+                                            final List<DocumentDbMetadataColumn> foreignKeys,
+                                            final String path,
+                                            final String collectionName,
+                                            final int level) {
 
         for (BsonValue element : array) {
             processArray(element.asArray(),
@@ -608,18 +585,18 @@ public class DocumentDbCollectionMetadata {
     /**
      * Processes document elements in an array.
      *
-     * @param array the array elements to scan.
-     * @param tableMap the table map of virtual tables.
-     * @param foreignKeys the list of foreign keys.
-     * @param path the path to this array
+     * @param array          the array elements to scan.
+     * @param tableMap       the table map of virtual tables.
+     * @param foreignKeys    the list of foreign keys.
+     * @param path           the path to this array
      * @param collectionName the name of the collection.
-     * encountered.
+     *                       encountered.
      */
     private static void processDocumentsInArray(final BsonArray array,
-            final Map<String, DocumentDbMetadataTable> tableMap,
-            final List<DocumentDbMetadataColumn> foreignKeys,
-            final String path,
-            final String collectionName) {
+                                                final Map<String, DocumentDbSchemaTable> tableMap,
+                                                final List<DocumentDbMetadataColumn> foreignKeys,
+                                                final String path,
+                                                final String collectionName) {
 
         // This will make the document fields part of this array.
         for (BsonValue element : array) {
@@ -641,16 +618,17 @@ public class DocumentDbCollectionMetadata {
     /**
      * Combines two paths to form a new path.
      *
-     * @param path the root/parent path.
+     * @param path      the root/parent path.
      * @param fieldName the field name to append to the path.
      * @return a new path with the fieldName append to the root path separated by a period.
      */
     public static String combinePath(final String path, final String fieldName) {
-        final String pathSeparator = !isNullOrWhitespace(path) && !isNullOrWhitespace(fieldName)
+        final String pathSeparator = !DocumentDbConnectionProperties.isNullOrWhitespace(path) &&
+                !DocumentDbConnectionProperties.isNullOrWhitespace(fieldName)
                 ? PATH_SEPARATOR : EMPTY_STRING;
-        final String newPath = !isNullOrWhitespace(path)
+        final String newPath = !DocumentDbConnectionProperties.isNullOrWhitespace(path)
                 ? path : EMPTY_STRING;
-        final String newFieldName = !isNullOrWhitespace(fieldName)
+        final String newFieldName = !DocumentDbConnectionProperties.isNullOrWhitespace(fieldName)
                 ? fieldName : EMPTY_STRING;
 
         return String.format("%s%s%s", newPath, pathSeparator, newFieldName);
@@ -659,7 +637,7 @@ public class DocumentDbCollectionMetadata {
     /**
      * Gets the promoted SQL data type from previous SQL data type and the current BSON data type.
      *
-     * @param bsonType the current BSON data type.
+     * @param bsonType    the current BSON data type.
      * @param prevSqlType the previous SQL data type.
      * @return returns the promoted SQL data type.
      */
@@ -694,14 +672,14 @@ public class DocumentDbCollectionMetadata {
      * Handles a complex to scalar conflict by removing the previous table map and clearing
      * existing column map.
      *
-     * @param tableMap the table map.
-     * @param path the path to the table.
+     * @param tableMap  the table map.
+     * @param path      the path to the table.
      * @param columnMap the column map.
      */
     private static void handleComplexToScalarConflict(
-            final Map<String, DocumentDbMetadataTable> tableMap,
+            final Map<String, DocumentDbSchemaTable> tableMap,
             final String path,
-            final Map<String, DocumentDbMetadataColumn> columnMap) {
+            final Map<String, DocumentDbSchemaColumn> columnMap) {
         tableMap.remove(path);
         columnMap.clear();
     }
@@ -712,12 +690,12 @@ public class DocumentDbCollectionMetadata {
      * It ensures the SQL type is set to VARCHAR.
      *
      * @param columnMap the column map to modify.
-     * @param level the current array level.
-     * @param sqlType the previous SQL type.
+     * @param level     the current array level.
+     * @param sqlType   the previous SQL type.
      * @return if a conflict is detected, returns VARCHAR, otherwise, the original SQL type.
      */
     private static int handleArrayLevelConflict(
-            final Map<String, DocumentDbMetadataColumn> columnMap,
+            final Map<String, DocumentDbSchemaColumn> columnMap,
             final int level,
             final int sqlType) {
 
@@ -725,9 +703,9 @@ public class DocumentDbCollectionMetadata {
 
         // Remove previously detect index columns at higher index level,
         // if we now have scalars at a lower index level.
-        final Map<String, DocumentDbMetadataColumn> origColumns = new LinkedHashMap<>(columnMap);
-        for (Entry<String, DocumentDbMetadataColumn> entry : origColumns.entrySet()) {
-            final DocumentDbMetadataColumn column = entry.getValue();
+        final Map<String, DocumentDbSchemaColumn> origColumns = new LinkedHashMap<>(columnMap);
+        for (Entry<String, DocumentDbSchemaColumn> entry : origColumns.entrySet()) {
+            final DocumentDbMetadataColumn column = (DocumentDbMetadataColumn) entry.getValue();
             if (column.getArrayIndexLevel() != null && column.getArrayIndexLevel() > level) {
                 columnMap.remove(entry.getKey());
                 // We're collapsing an array level, so revert to VARCHAR/VARBINARY this and for the higher
@@ -745,7 +723,7 @@ public class DocumentDbCollectionMetadata {
     }
 
     private static String getFieldNameIfIsPrimaryKey(final String path, final String fieldName,
-            final boolean isPrimaryKey) {
+                                                     final boolean isPrimaryKey) {
         return isPrimaryKey
                 // For the primary key, qualify it with the parent name.
                 ? toName(combinePath(getParentName(path), fieldName))
@@ -792,9 +770,79 @@ public class DocumentDbCollectionMetadata {
     }
 
     private static int getPrevIndexOrDefault(final DocumentDbMetadataColumn prevMetadataColumn,
-            final int defaultValue) {
+                                             final int defaultValue) {
         return prevMetadataColumn != null
                 ? prevMetadataColumn.getIndex()
                 : defaultValue;
+    }
+
+    private static void processComplexTypes(final Map<String, DocumentDbSchemaTable> tableMap,
+                                            final List<DocumentDbMetadataColumn> foreignKeys,
+                                            final String collectionName,
+                                            final Entry<String, BsonValue> entry,
+                                            final String fieldPath,
+                                            final BsonType bsonType,
+                                            final DocumentDbMetadataColumn prevMetadataColumn,
+                                            final int nextSqlType) {
+        if (nextSqlType == Types.JAVA_OBJECT && bsonType != BsonType.NULL) {
+            // This will create/update virtual table.
+            processDocument(entry.getValue().asDocument(),
+                    tableMap, foreignKeys, fieldPath, collectionName, false);
+
+        } else if (nextSqlType == Types.ARRAY && bsonType != BsonType.NULL) {
+            // This will create/update virtual table.
+            processArray(entry.getValue().asArray(),
+                    tableMap, foreignKeys, fieldPath, 0, collectionName);
+        } else {
+            // Process a scalar data type.
+            if (prevMetadataColumn != null && prevMetadataColumn.getVirtualTableName() != null) {
+                // This column has been promoted to a scalar type from a complex type.
+                // Remove the previously defined virtual table.
+                tableMap.remove(prevMetadataColumn.getVirtualTableName());
+            }
+        }
+    }
+
+    private static void checkVirtualTablePrimaryKeys(final Map<String, DocumentDbSchemaTable> tableMap,
+                                                     final String path,
+                                                     final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap) {
+        final String primaryKeyColumnName = toName(combinePath(path, ID_FIELD_NAME));
+        final DocumentDbMetadataColumn primaryKeyColumn = (DocumentDbMetadataColumn) columnMap.get(primaryKeyColumnName);
+        for (DocumentDbSchemaTable table : tableMap.values()) {
+            final DocumentDbMetadataColumn column = (DocumentDbMetadataColumn) table.getColumns().get(primaryKeyColumnName);
+            if (column != null) {
+                column.setSqlType(primaryKeyColumn.getSqlType());
+            }
+        }
+    }
+
+    private static void buildForeignKeysFromDocument(final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap,
+                                                     final String tableName,
+                                                     final int primaryKeyColumn,
+                                                     final DocumentDbMetadataColumn column) {
+        final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
+                .builder()
+                .fieldPath(column.getFieldPath())
+                .sqlName(column.getSqlName())
+                .sqlType(column.getSqlType())
+                .dbType(column.getDbType())
+                .isIndex(column.isIndex())
+                .isPrimaryKey(column.isPrimaryKey())
+                .foreignKeyTableName(column.getTableName().equals(tableName)
+                        ? null
+                        : column.getTableName())
+                .foreignKeyColumnName(column.getTableName().equals(tableName)
+                        ? null
+                        : column.getSqlName())
+                .index(columnMap.size() + 1)
+                .tableName(column.getTableName())
+                .primaryKeyIndex(primaryKeyColumn)
+                .foreignKeyIndex(column.getTableName().equals(tableName)
+                        ? KEY_COLUMN_NONE
+                        : primaryKeyColumn)
+                .arrayIndexLevel(column.getArrayIndexLevel())
+                .isGenerated(column.isGenerated())
+                .build();
+        columnMap.put(metadataColumn.getSqlName(), metadataColumn);
     }
 }

@@ -122,10 +122,10 @@ public class DocumentDbMetadataService {
      *
      * @return a map of the collection metadata.
      */
-    private static ImmutableMap<String, DocumentDbCollectionMetadata> getCollectionMetadataMapDirect(
+    private static ImmutableMap<String, DocumentDbSchemaCollection> getCollectionMetadataMapDirect(
             final DocumentDbConnectionProperties properties) throws SQLException {
 
-        final ImmutableMap.Builder<String, DocumentDbCollectionMetadata> builder =
+        final ImmutableMap.Builder<String, DocumentDbSchemaCollection> builder =
                 ImmutableMap.builder();
         final MongoClientSettings settings = properties.buildMongoClientSettings();
         try (MongoClient client = MongoClients.create(settings)) {
@@ -138,8 +138,8 @@ public class DocumentDbMetadataService {
                         .getIterator(properties, collection);
 
                 // Create the schema metadata.
-                final DocumentDbCollectionMetadata collectionMetadata =
-                        DocumentDbCollectionMetadata.create(collectionName, cursor);
+                final DocumentDbSchemaCollection collectionMetadata =
+                        DocumentDbCollectionMetadata.create(properties.getDatabase(), collectionName, cursor);
                 builder.put(collectionName, collectionMetadata);
             }
         }

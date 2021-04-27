@@ -18,63 +18,59 @@ package software.amazon.documentdb.jdbc.metadata;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
-import java.util.Comparator;
+
+import java.util.LinkedHashMap;
 import java.util.Map.Entry;
-import java.util.stream.Collectors;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
 /** Represents the fields in a document, embedded document or array. */
-@Builder(toBuilder = true)
 @Getter
-public class DocumentDbMetadataTable {
+public class DocumentDbMetadataTable extends DocumentDbSchemaTable {
 
-    /** The columns the table is composed of indexed by their name. */
-    private final ImmutableMap<String, DocumentDbMetadataColumn> columns;
+    private ImmutableMap<String, DocumentDbSchemaColumn> columnsByPath;
 
-    /** The display name of the table. */
-    @Setter private String name;
+    @Getter(AccessLevel.NONE)
+    private final ImmutableList<DocumentDbSchemaColumn> foreignKeys;
 
-    private ImmutableMap<String, DocumentDbMetadataColumn> columnsByPath;
-
-    private ImmutableList<DocumentDbMetadataColumn> foreignKeys;
+    /**
+     * Builder for DocumentDbMetadataTable
+     * @param sqlName The name of the table.
+     * @param collectionName The name of the collection to which this table belongs.
+     * @param columns The columns in this table, indexed by name. Uses LinkedHashMap to preserve order.
+     * @param columnsByPath A map of columns indexed by path.
+     * @param foreignKeys The foreign keys within the table.
+     */
+    @Builder
+    public DocumentDbMetadataTable(final String sqlName,
+                                   final String collectionName,
+                                   final LinkedHashMap<String, DocumentDbSchemaColumn> columns,
+                                   final ImmutableMap<String, DocumentDbMetadataColumn> columnsByPath,
+                                   final ImmutableList<DocumentDbSchemaColumn> foreignKeys) {
+        super(sqlName, collectionName, columns);
+        this.foreignKeys = foreignKeys;
+    }
 
     /**
      * The columns mapped by (non-empty) path.
      *
      * @return the map of path to {@link DocumentDbMetadataColumn}.
      */
-    public ImmutableMap<String, DocumentDbMetadataColumn> getColumnsByPath() {
+    public ImmutableMap<String, DocumentDbSchemaColumn> getColumnsByPath() {
         if (columnsByPath == null) {
-            final ImmutableMap.Builder<String, DocumentDbMetadataColumn> builder =
+            final ImmutableMap.Builder<String, DocumentDbSchemaColumn> builder =
                     ImmutableMap.builder();
-            for (Entry<String, DocumentDbMetadataColumn> entry : columns.entrySet()) {
-                final DocumentDbMetadataColumn column = entry.getValue();
-                if (!isNullOrWhitespace(column.getPath())) {
-                    builder.put(entry.getValue().getPath(), entry.getValue());
+            for (Entry<String, DocumentDbSchemaColumn> entry : getColumns().entrySet()) {
+                final DocumentDbSchemaColumn column = entry.getValue();
+                if (!isNullOrWhitespace(column.getFieldPath())) {
+                    builder.put(entry.getValue().getFieldPath(), entry.getValue());
                 }
             }
             columnsByPath = builder.build();
         }
         return columnsByPath;
-    }
-
-    /**
-     * The columns that are foreign keys.
-     * @return the foreign keys as a list of {@link DocumentDbMetadataColumn}.
-     */
-    public ImmutableList<DocumentDbMetadataColumn> getForeignKeys() {
-        if (foreignKeys == null) {
-            foreignKeys = ImmutableList.copyOf(columns.entrySet()
-                    .stream()
-                    .filter(entry -> entry.getValue().getForeignKey() != 0)
-                    .map(entry -> entry.getValue())
-                    .sorted(Comparator.comparingInt(DocumentDbMetadataColumn::getForeignKey))
-                    .collect(Collectors.toList()));
-        }
-        return foreignKeys;
     }
 }

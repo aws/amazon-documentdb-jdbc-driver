@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.InvalidRelException;
@@ -32,12 +31,13 @@ import org.apache.calcite.util.ImmutableBitSet;
 import org.apache.calcite.util.Util;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Implementation of
@@ -131,7 +131,7 @@ public class DocumentDbAggregate
         final List<String> outNames =
                 DocumentDbRules.mongoFieldNames(getRowType(),
                         mongoImplementor.getMetadataTable());
-        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
         int i = 0;
         if (groupSet.cardinality() == 1) {
             final String inName = inNames.get(groupSet.nth(0));
@@ -155,9 +155,9 @@ public class DocumentDbAggregate
                             + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList()));
             columnMap.put(outName,
                     DocumentDbMetadataColumn.builder()
-                            .path(outName)
+                            .fieldPath(outName)
                             .isGenerated(true)
-                            .name(outName)
+                            .sqlName(outName)
                             .build());
 
         }
@@ -203,8 +203,11 @@ public class DocumentDbAggregate
         }
 
         // Set the metadata table with the updated column map.
-        final DocumentDbMetadataTable metadata = implementor.getMetadataTable().toBuilder()
-                .columns(ImmutableMap.copyOf(columnMap))
+        final DocumentDbSchemaTable oldMetadata = implementor.getMetadataTable();
+        final DocumentDbSchemaTable metadata = DocumentDbMetadataTable.builder()
+                .sqlName(oldMetadata.getSqlName())
+                .collectionName(oldMetadata.getCollectionName())
+                .columns(columnMap)
                 .build();
         implementor.setMetadataTable(metadata);
         implementor.setDocumentDbTable(

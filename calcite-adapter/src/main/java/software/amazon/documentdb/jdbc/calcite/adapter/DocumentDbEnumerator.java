@@ -22,7 +22,7 @@ import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.linq4j.tree.Primitive;
 import org.bson.Document;
 import org.bson.types.Binary;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.util.Date;
 import java.util.Iterator;
@@ -86,7 +86,7 @@ class DocumentDbEnumerator implements Enumerator<Object> {
     /** Returns a function that projects a single field. */
     static Function1<Document, Object> singletonGetter(final String fieldPath,
             final Class fieldClass,
-            final DocumentDbMetadataTable tableMetadata) {
+            final DocumentDbSchemaTable tableMetadata) {
         // DocumentDB: modified - start
         return a0 -> getField(a0, fieldPath, fieldClass);
         // DocumentDB: modified - end
@@ -98,7 +98,7 @@ class DocumentDbEnumerator implements Enumerator<Object> {
      */
     static Function1<Document, Object[]> listGetter(
             final List<Entry<String, Class>> fields,
-            final DocumentDbMetadataTable tableMetadata) {
+            final DocumentDbSchemaTable tableMetadata) {
         return a0 -> {
             // DocumentDB: modified - start
             return fields
@@ -115,7 +115,7 @@ class DocumentDbEnumerator implements Enumerator<Object> {
     @SuppressWarnings("unchecked")
     static Function1<Document, Object> getter(
             final List<Entry<String, Class>> fields,
-            final DocumentDbMetadataTable tableMetadata) {
+            final DocumentDbSchemaTable tableMetadata) {
         //noinspection unchecked
         // DocumentDB: modified - start
         return fields == null

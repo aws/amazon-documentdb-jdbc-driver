@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
@@ -34,10 +33,12 @@ import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
+
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Implementation of {@link Project}
@@ -101,7 +102,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                                 mongoImplementor.getMetadataTable()));
         final List<String> items = new ArrayList<>();
         final List<String> inNames = getInput().getRowType().getFieldNames();
-        final Map<String, DocumentDbMetadataColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String outName = pair.right;
             final String expr = pair.left.accept(translator);
@@ -122,8 +123,8 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                 columnMap.put(outName,
                         DocumentDbMetadataColumn.builder()
                                 .isGenerated(true)
-                                .path(outName)
-                                .name(outName)
+                                .fieldPath(outName)
+                                .sqlName(outName)
                                 .build());
             }
         }
@@ -135,8 +136,10 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
         }
 
         // Set the metadata table with the updated column map.
-        final DocumentDbMetadataTable metadata = implementor.getMetadataTable().toBuilder()
-                .columns(ImmutableMap.copyOf(columnMap))
+        final DocumentDbSchemaTable metadata = DocumentDbMetadataTable.builder()
+                .sqlName(implementor.getMetadataTable().getSqlName())
+                .collectionName(implementor.getMetadataTable().getCollectionName())
+                .columns(columnMap)
                 .build();
         implementor.setMetadataTable(metadata);
         implementor.setDocumentDbTable(

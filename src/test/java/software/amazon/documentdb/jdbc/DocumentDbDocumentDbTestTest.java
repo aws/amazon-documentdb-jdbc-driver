@@ -48,9 +48,7 @@ public class DocumentDbDocumentDbTestTest extends DocumentDbDocumentDbTest {
         try (MongoClient client = createMongoClient(AUTH_DATABASE, getDocDbUserName(), getDocDbPassword(),
                 "?tls=true&tlsAllowInvalidHostnames=true")) {
             final MongoDatabase database = client.getDatabase("integration");
-            Assertions.assertNotNull(database);
             final Document result = database.runCommand(new Document("ping", 1));
-            Assertions.assertNotNull(result);
             Assertions.assertTrue(result.containsKey("ok"));
             Assertions.assertEquals(1.0, result.getDouble("ok"));
             Assertions.assertTrue(result.containsKey("operationTime"));

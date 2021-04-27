@@ -44,8 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.sql.Types;
 import java.util.AbstractMap.SimpleEntry;
@@ -61,18 +61,18 @@ public class DocumentDbTable extends AbstractQueryableTable
     private static volatile Map<Integer, RelDataType> jdbcTypeToRelDataType = null;
 
     private final String collectionName;
-    private final DocumentDbMetadataTable tableMetadata;
+    private final DocumentDbSchemaTable tableMetadata;
 
     protected DocumentDbTable(
             final String collectionName,
-            final DocumentDbMetadataTable tableMetadata) {
+            final DocumentDbSchemaTable tableMetadata) {
         super(Object[].class);
         this.collectionName = collectionName;
         this.tableMetadata = tableMetadata;
     }
 
     @Override public String toString() {
-        return "DocumentDbTable {" + tableMetadata.getName() + "}";
+        return "DocumentDbTable {" + tableMetadata.getSqlName() + "}";
     }
 
     public String getCollectionName() {
@@ -91,7 +91,7 @@ public class DocumentDbTable extends AbstractQueryableTable
             initializeRelDataTypeMap(typeFactory);
         }
 
-        for (Entry<String, DocumentDbMetadataColumn> entry :
+        for (Entry<String, DocumentDbSchemaColumn> entry :
                 tableMetadata.getColumns().entrySet()) {
 
             sqlType = entry.getValue().getSqlType();
@@ -107,7 +107,7 @@ public class DocumentDbTable extends AbstractQueryableTable
                         SqlError.UNSUPPORTED_TYPE, sqlType);
             }
 
-            nullable = entry.getValue().getPrimaryKey() == 0;
+            nullable = !entry.getValue().isPrimaryKey();
             field = new SimpleEntry<>(entry.getKey(),
                     typeFactory.createTypeWithNullability(relDataType, nullable));
             fieldList.add(field);

@@ -41,7 +41,7 @@ import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRel.Implementor;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 import java.util.AbstractList;
 import java.util.List;
 
@@ -157,7 +157,7 @@ public class DocumentDbToEnumerableConverter
      * @param implementor the implementor.
      */
     public static void handleVirtualTable(final Implementor implementor) {
-        final DocumentDbMetadataTable tableMetadata = implementor.getMetadataTable();
+        final DocumentDbSchemaTable tableMetadata = implementor.getMetadataTable();
         // Add a match operation if it is a virtual table to remove null rows.
         if (!implementor.isNullFiltered() && DocumentDbJoin.isTableVirtual(tableMetadata)) {
             final String matchFilter = DocumentDbJoin

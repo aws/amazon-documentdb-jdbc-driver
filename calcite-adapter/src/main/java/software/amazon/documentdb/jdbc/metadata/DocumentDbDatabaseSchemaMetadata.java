@@ -35,7 +35,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
     private static final Map<StoreEntryKey, DocumentDbDatabaseSchemaMetadata> DOCUMENT_DB_DATABASE_METADATA_STORE =
             new ConcurrentHashMap<>();
 
-    private final ImmutableMap<String, DocumentDbCollectionMetadata> collectionMetadataMap;
+    private final ImmutableMap<String, DocumentDbSchemaCollection> collectionMetadataMap;
     private final String clientId;
     private final int version;
 
@@ -62,7 +62,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
      *
      * @return a map of {@link DocumentDbCollectionMetadata} keyed by collection name.
      */
-    public ImmutableMap<String, DocumentDbCollectionMetadata> getCollectionMetadataMap() {
+    public ImmutableMap<String, DocumentDbSchemaCollection> getCollectionMetadataMap() {
         return collectionMetadataMap;
     }
 
@@ -77,7 +77,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
     protected DocumentDbDatabaseSchemaMetadata(
             final String clientId,
             final int version,
-            final ImmutableMap<String, DocumentDbCollectionMetadata> collectionMetadataMap) {
+            final ImmutableMap<String, DocumentDbSchemaCollection> collectionMetadataMap) {
         this.clientId = clientId;
         this.version = version;
         this.collectionMetadataMap = collectionMetadataMap;

@@ -21,7 +21,7 @@ import org.apache.calcite.plan.RelOptTable;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.util.Pair;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,7 +48,7 @@ public interface DocumentDbRel extends RelNode {
         private final RexBuilder rexBuilder;
         private RelOptTable table;
         // DocumentDB: modified - start
-        private DocumentDbMetadataTable metadataTable;
+        private DocumentDbSchemaTable metadataTable;
         private DocumentDbTable documentDbTable;
         private boolean nullFiltered = false;
         // DocumentDB: modified - end
@@ -78,11 +78,11 @@ public interface DocumentDbRel extends RelNode {
             return documentDbTable;
         }
 
-        public DocumentDbMetadataTable getMetadataTable() {
+        public DocumentDbSchemaTable getMetadataTable() {
             return metadataTable;
         }
 
-        public void setMetadataTable(final DocumentDbMetadataTable metadataTable) {
+        public void setMetadataTable(final DocumentDbSchemaTable metadataTable) {
             this.metadataTable = metadataTable;
         }
 

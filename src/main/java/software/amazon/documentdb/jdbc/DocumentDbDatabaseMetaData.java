@@ -18,10 +18,10 @@ package software.amazon.documentdb.jdbc;
 
 import software.amazon.documentdb.jdbc.common.DatabaseMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaCollection;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -219,12 +219,11 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addTablesForSchema(final String tableNamePattern,
             final List<List<Object>> metaData) {
-        for (Entry<String, DocumentDbCollectionMetadata> collection : databaseMetadata
+        for (Entry<String, DocumentDbSchemaCollection> collection : databaseMetadata
                 .getCollectionMetadataMap().entrySet()) {
-            for (DocumentDbMetadataTable table : collection.getValue().getTables()
-                    .values()) {
+            for (DocumentDbSchemaTable table : collection.getValue().getTables().values()) {
                 if (isNullOrWhitespace(tableNamePattern)
-                        || table.getName().matches(convertPatternToRegex(tableNamePattern))) {
+                        || table.getSqlName().matches(convertPatternToRegex(tableNamePattern))) {
                     addTableEntry(metaData, table);
                 }
             }
@@ -232,7 +231,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     }
 
     private void addTableEntry(final List<List<Object>> metaData,
-            final DocumentDbMetadataTable table) {
+            final DocumentDbSchemaTable table) {
         // 1. TABLE_CAT String => table catalog (may be null)
         // 2. TABLE_SCHEM String => table schema (may be null)
         // 3. TABLE_NAME String => table name
@@ -246,7 +245,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         final List<Object> row = new ArrayList<>(Arrays.asList(
                 null,
                 properties.getDatabase(),
-                table.getName(),
+                table.getSqlName(),
                 "TABLE",
                 null,
                 null,
@@ -306,12 +305,11 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addColumnsForSchema(final String tableNamePattern, final String columnNamePattern,
             final List<List<Object>> metaData) {
-        for (Entry<String, DocumentDbCollectionMetadata> collection : databaseMetadata
+        for (Entry<String, DocumentDbSchemaCollection> collection : databaseMetadata
                 .getCollectionMetadataMap().entrySet()) {
-            for (DocumentDbMetadataTable table : collection.getValue().getTables()
-                    .values()) {
+            for (DocumentDbSchemaTable table : collection.getValue().getTables().values()) {
                 if (isNullOrWhitespace(tableNamePattern)
-                        || table.getName().matches(convertPatternToRegex(tableNamePattern))) {
+                        || table.getSqlName().matches(convertPatternToRegex(tableNamePattern))) {
                     addColumnsForTable(columnNamePattern, metaData, table);
                 }
             }
@@ -320,18 +318,18 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addColumnsForTable(final String columnNamePattern,
             final List<List<Object>> metaData,
-            final DocumentDbMetadataTable table) {
-        for (DocumentDbMetadataColumn column : table.getColumns().values()) {
+            final DocumentDbSchemaTable table) {
+        for (DocumentDbSchemaColumn column : table.getColumns().values()) {
             if (isNullOrWhitespace(columnNamePattern)
-                    || column.getName().matches(convertPatternToRegex(columnNamePattern))) {
+                    || column.getSqlName().matches(convertPatternToRegex(columnNamePattern))) {
                 addColumnEntry(metaData, table, column);
             }
         }
     }
 
     private void addColumnEntry(final List<List<Object>> metaData,
-            final DocumentDbMetadataTable table,
-            final DocumentDbMetadataColumn column) {
+            final DocumentDbSchemaTable table,
+            final DocumentDbSchemaColumn column) {
         //  1. TABLE_CAT String => table catalog (may be null)
         //  2. TABLE_SCHEM String => table schema (may be null)
         //  3. TABLE_NAME String => table name
@@ -375,8 +373,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         final List<Object> row = new ArrayList<>(Arrays.asList(
                 null, // TABLE_CAT
                 properties.getDatabase(), // TABLE_SCHEM
-                table.getName(), // TABLE_NAME
-                column.getName(), // COLUMN_NAME
+                table.getSqlName(), // TABLE_NAME
+                column.getSqlName(), // COLUMN_NAME
                 column.getSqlType(), //DATA_TYPE
                 jdbcType.name(), // TYPE_NAME
                 TYPE_COLUMN_SIZE_MAP.get(column.getSqlType()),
@@ -384,7 +382,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                 null, // DECIMAL_DIGITS
                 null, // NUM_PREC_RADIX
                 null, // BUFFER_LENGTH
-                column.getPrimaryKey() > 0 // NULLABLE
+                column.isPrimaryKey()// NULLABLE
                         ? ResultSetMetaData.columnNoNulls
                         : ResultSetMetaData.columnNullable,
                 null, // REMARKS
@@ -392,20 +390,20 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                 null, // SQL_DATA_TYPE
                 null, // SQL_DATETIME_SUB
                 getCharOctetLength(column), // CHAR_OCTET_LENGTH
-                column.getIndex() + 1, // ORDINAL_POSITION (one-based)
-                column.getPrimaryKey() > 0 ? "NO" : "YES",
+                column.getIndex(table).orElse(null), // ORDINAL_POSITION (one-based)
+                column.isPrimaryKey() ? "NO" : "YES",
                 // IS_NULLABLE
                 null, // SCOPE_CATALOG
                 null, // SCOPE_SCHEMA
                 null, // SCOPE_TABLE
                 null, // SOURCE_DATA_TYPE
                 "NO", // IS_AUTOINCREMENT
-                column.isGenerated() ? "YES" : "NO" // IS_GENERATEDCOLUMN
+                column.isIndex() ? "YES" : "NO" // IS_GENERATEDCOLUMN
         ));
         metaData.add(row);
     }
 
-    private static Integer getCharOctetLength(final DocumentDbMetadataColumn column) {
+    private static Integer getCharOctetLength(final DocumentDbSchemaColumn column) {
         switch (column.getSqlType()) {
             case Types.CHAR:
             case Types.NCHAR:
@@ -460,12 +458,12 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         // 6. PK_NAME String => primary key name (may be null)
         final List<List<Object>> metaData = new ArrayList<>();
         if (schema == null || properties.getDatabase().matches(convertPatternToRegex(schema))) {
-            for (Entry<String, DocumentDbCollectionMetadata> collection : databaseMetadata
+            for (Entry<String, DocumentDbSchemaCollection> collection : databaseMetadata
                     .getCollectionMetadataMap().entrySet()) {
-                for (DocumentDbMetadataTable metadataTable : collection.getValue().getTables().values()) {
-                    if (table == null || metadataTable.getName().matches(convertPatternToRegex(table))) {
-                        for (DocumentDbMetadataColumn column : metadataTable.getColumns()
-                                .values()) {
+                for (DocumentDbSchemaTable metadataTable : collection.getValue().getTables().values()) {
+                    if (table == null ||
+                            metadataTable.getSqlName().matches(convertPatternToRegex(table))) {
+                        for (DocumentDbSchemaColumn column : metadataTable.getColumns().values()) {
                             // 1. TABLE_CAT String => table catalog (may be null)
                             // 2. TABLE_SCHEM String => table schema (may be null)
                             // 3. TABLE_NAME String => table name
@@ -474,13 +472,13 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                             //    (a value of 1 represents the first column of the primary key, a
                             //    value of 2 would represent the second column within the primary key).
                             // 6. PK_NAME String => primary key name (may be null)
-                            if (column.getPrimaryKey() > 0) {
+                            if (column.isPrimaryKey()) {
                                 final List<Object> row = new ArrayList<>(Arrays.asList(
                                         null, // TABLE_CAT
                                         properties.getDatabase(), // TABLE_SCHEM
-                                        metadataTable.getName(), // TABLE_NAME
-                                        column.getName(), // COLUMN_NAME
-                                        column.getPrimaryKey(), // KEY_SEQ
+                                        metadataTable.getSqlName(), // TABLE_NAME
+                                        column.getSqlName(), // COLUMN_NAME
+                                        column.getPrimaryKeyIndex(metadataTable).orElse(0), // KEY_SEQ
                                         null // PK_NAME
                                 ));
                                 metaData.add(row);
@@ -515,32 +513,31 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addImportedKeysForSchema(final String table,
             final List<List<Object>> metaData) {
-        for (DocumentDbCollectionMetadata collection : databaseMetadata
+        for (DocumentDbSchemaCollection collection : databaseMetadata
                 .getCollectionMetadataMap().values()) {
-            // Get the base table by matching the collection path to the name of table.
-            final DocumentDbMetadataTable baseMetadataTable = collection.getTables()
-                    .get(collection.getPath());
-            for (DocumentDbMetadataTable metadataTable : collection.getTables().values()) {
-                if (table == null || metadataTable.getName().matches(convertPatternToRegex(table))) {
-                    addImportedKeysForTable(metaData, baseMetadataTable, metadataTable);
+            // Get the base table by matching the collection path to the name of table, with check for empty table list.
+            if (collection.getTables().isEmpty()) {
+                continue;
+            }
+            for (DocumentDbSchemaTable schemaTable : collection.getTables().values()) {
+                if (table == null || schemaTable.getSqlName().matches(convertPatternToRegex(table))) {
+                    addImportedKeysForTable(metaData, schemaTable, schemaTable);
                 }
             }
         }
     }
 
     private void addImportedKeysForTable(final List<List<Object>> metaData,
-            final DocumentDbMetadataTable baseMetadataTable,
-            final DocumentDbMetadataTable metadataTable) {
-        for (DocumentDbMetadataColumn column : metadataTable.getColumns()
-                .values()) {
-            addImportedKey(metaData, baseMetadataTable, metadataTable, column);
+            final DocumentDbSchemaTable schemaTable,
+            final DocumentDbSchemaTable metadataTable) {
+        for (DocumentDbSchemaColumn column : metadataTable.getColumns().values()) {
+            addImportedKey(metaData, schemaTable, column);
         }
     }
 
     private void addImportedKey(final List<List<Object>> metaData,
-            final DocumentDbMetadataTable baseMetadataTable,
-            final DocumentDbMetadataTable metadataTable,
-            final DocumentDbMetadataColumn column) {
+            final DocumentDbSchemaTable schemaTable,
+            final DocumentDbSchemaColumn column) {
         //  1. PKTABLE_CAT String => primary key table catalog being imported (may be null)
         //  2. PKTABLE_SCHEM String => primary key table schema being imported (may be null)
         //  3. PKTABLE_NAME String => primary key table name being imported
@@ -570,19 +567,19 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         //        importedKeyInitiallyDeferred - see SQL92 for definition
         //        importedKeyInitiallyImmediate - see SQL92 for definition
         //        importedKeyNotDeferrable - see SQL92 for definition
-        if (column.getForeignKey() > 0 && baseMetadataTable != null) {
+        if (column.getForeignKeyTableName() != null && schemaTable != null) {
             // ASSUMPTION: This can only be done because we only reference
             // the base table in a foreign key relationship.
             final List<Object> row = new ArrayList<>(Arrays.asList(
                     null, // PKTABLE_CAT
                     properties.getDatabase(), // PKTABLE_SCHEM
-                    baseMetadataTable.getName(), // PKTABLE_NAME
-                    column.getName(), // PKCOLUMN_NAME
+                    column.getForeignKeyTableName(), // PKTABLE_NAME
+                    column.getForeignKeyColumnName(), // PKCOLUMN_NAME
                     null, // FKTABLE_CAT
                     properties.getDatabase(), // FKTABLE_SCHEM
-                    metadataTable.getName(), // FKTABLE_NAME
-                    column.getName(), // FKCOLUMN_NAME
-                    column.getForeignKey(), // KEY_SEQ
+                    schemaTable.getSqlName(), // FKTABLE_NAME
+                    column.getSqlName(), // FKCOLUMN_NAME
+                    metaData.size() + 1, // KEY_SEQ
                     importedKeyNoAction, // UPDATE_RULE
                     importedKeyNoAction, // DELETE_RULE
                     null, // FK_NAME

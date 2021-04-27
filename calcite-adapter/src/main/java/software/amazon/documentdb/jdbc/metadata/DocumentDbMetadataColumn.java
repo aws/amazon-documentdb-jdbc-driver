@@ -16,20 +16,38 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
 
 /** Represents a field in a document, embedded document or array as a column in a table. */
-@Builder(toBuilder = true)
 @Getter
-public class DocumentDbMetadataColumn {
+public class DocumentDbMetadataColumn extends DocumentDbSchemaColumn {
 
-    /** Original path to the field in the collection. */
-    private final String path;
+    /** The (one-indexed) index of the column in the table. */
+    private int index;
 
-    /** Path to the array field an array index column is indexing. */
-    private final String arrayPath;
+    /**
+     * Indicates the position of the column in the primary key of the table; 0 if not part of the key.
+     */
+    private int primaryKeyIndex;
+
+    /**
+     * Indicates the position of the column in the foreign key of the table; 0 if not part of the key.
+     */
+    private int foreignKeyIndex;
+
+    /** If this column is an array index, returns the zero-indexed level of the array. Null, otherwise. */
+    private final Integer arrayIndexLevel;
+
+    /** The name of the table this column belongs. */
+    @Getter(AccessLevel.PACKAGE)
+    private final String tableName;
+
+    private final String virtualTableName;
+
+    /** The new path of a column that was renamed due to a path collision. Only used in query processing. **/
+    private final String resolvedPath;
 
     /**
      * {@code true} if the column was generated rather than taken directly from the collection;
@@ -38,33 +56,52 @@ public class DocumentDbMetadataColumn {
     private final boolean isGenerated;
 
     /**
-     * Indicates the position of the column in the primary key of the table; 0 if not part of the key.
+     * Builder for DocumentDbMetadataColumn
+     *
+     * @param index The index of the column within the table (one-indexed).
+     * @param primaryKeyIndex If this key is part of primary key, the index within the primary key; else zero.
+     * @param foreignKeyIndex If this key is part of a foreign key, the index within the foreign key; else zero.
+     * @param arrayIndexLevel The level of the array if column is the index column of an array.
+     * @param virtualTableName The name of the virtual table this column belongs to.
+     * @param tableName The name of the table this column belongs to.
+     * @param resolvedPath The modified path if this column is renamed due to a collision in joins.
+     * @param isGenerated Whether this column was generated.
+     * @param fieldPath The path to this field.
+     * @param sqlName The name of the column.
+     * @param sqlType The SQL/JDBC type, see {@link java.sql.Types}.
+     * @param dbType The DocumentDB type, see {@link org.bson.BsonType}
+     * @param isIndex Whether this column is an array index column.
+     * @param isPrimaryKey Whether this column is part of the primary key.
+     * @param foreignKeyTableName The name of the table referred to if this column is part of a
+     *                            foreign key.
+     * @param foreignKeyColumnName The name of the column referred to if this column is part of a
+     *                             foreign key.
      */
-    private final int primaryKey;
-
-    /**
-     * Indicates the position of the column in the foreign key of the table; 0 if not part of the key.
-     */
-    private final int foreignKey;
-
-    /** Display name of the field. */
-    @Setter private String name;
-
-    /** SQL/JDBC type of the field. Refer to the types in {@link java.sql.Types} */
-    @Setter private int sqlType;
-
-    /** Name of the virtual table, if present. Null, otherwise. */
-    private final String virtualTableName;
-
-    /** If this column is an array index, returns the zero-indexed level of the array. Null, otherwise. */
-    private final Integer arrayIndexLevel;
-
-    /** The (zero-indexed) index of the column in the table. */
-    private final Integer index;
-
-    /** The name of the table this column belongs. */
-    private final String tableName;
-
-    /** The new path of a column that was renamed due to a path collision. Only used in query processing. **/
-    private final String resolvedPath;
+    @Builder()
+    public DocumentDbMetadataColumn(final int index,
+                                    final int primaryKeyIndex,
+                                    final int foreignKeyIndex,
+                                    final Integer arrayIndexLevel,
+                                    final String virtualTableName,
+                                    final String tableName,
+                                    final String resolvedPath,
+                                    final boolean isGenerated,
+                                    final String fieldPath,
+                                    final String sqlName,
+                                    final int sqlType,
+                                    final int dbType,
+                                    final boolean isIndex,
+                                    final boolean isPrimaryKey,
+                                    final String foreignKeyTableName,
+                                    final String foreignKeyColumnName) {
+        super(fieldPath, sqlName, sqlType, dbType, isIndex, isPrimaryKey, foreignKeyTableName, foreignKeyColumnName);
+        this.index = index;
+        this.primaryKeyIndex = primaryKeyIndex;
+        this.foreignKeyIndex = foreignKeyIndex;
+        this.arrayIndexLevel = arrayIndexLevel;
+        this.tableName = tableName;
+        this.virtualTableName = virtualTableName;
+        this.resolvedPath = resolvedPath;
+        this.isGenerated = isGenerated;
+    }
 }

@@ -24,9 +24,9 @@ import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaCollection;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.util.Map;
 import java.util.Map.Entry;
@@ -61,11 +61,11 @@ public class DocumentDbSchema extends AbstractSchema {
     protected Map<String, Table> getTableMap() {
         if (tables == null) {
             final ImmutableMap.Builder<String, Table> builder = ImmutableMap.builder();
-            final ImmutableSet<Entry<String, DocumentDbCollectionMetadata>> entries =
+            final ImmutableSet<Entry<String, DocumentDbSchemaCollection>> entries =
                     databaseMetadata.getCollectionMetadataMap().entrySet();
-            for (Entry<String, DocumentDbCollectionMetadata> collectionEntry : entries) {
+            for (Entry<String, DocumentDbSchemaCollection> collectionEntry : entries) {
                 final String collectionName = collectionEntry.getKey();
-                final DocumentDbCollectionMetadata metadata = collectionEntry.getValue();
+                final DocumentDbSchemaCollection metadata = collectionEntry.getValue();
                 putTable(builder, collectionName, metadata);
             }
             tables = builder.build();
@@ -76,11 +76,11 @@ public class DocumentDbSchema extends AbstractSchema {
 
     private static void putTable(final ImmutableMap.Builder<String, Table> builder,
             final String collectionName,
-            final DocumentDbCollectionMetadata metadata) {
-        for (Entry<String, DocumentDbMetadataTable> entry : metadata.getTables()
+            final DocumentDbSchemaCollection metadata) {
+        for (Entry<String, DocumentDbSchemaTable> entry : metadata.getTables()
                 .entrySet()) {
-            final DocumentDbMetadataTable metadataTable = entry.getValue();
-            builder.put(metadataTable.getName(), new DocumentDbTable(
+            final DocumentDbSchemaTable metadataTable = entry.getValue();
+            builder.put(metadataTable.getSqlName(), new DocumentDbTable(
                     collectionName, metadataTable));
         }
     }
