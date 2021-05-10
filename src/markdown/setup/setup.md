@@ -55,18 +55,19 @@ directories according to your operating system:
 - **_Mac_**: `~/Library/Tableau/Drivers`
 - **_Linux_**: `/opt/tableau/tableau_driver/jdbc`
 
-For more information, consult the 
-[Tableau documentation](https://help.tableau.com/current/pro/desktop/en-us/examples_otherdatabases_jdbc.htm).
+Download the DocumentDB Tableau connector (TACO file) and copy it to your `My Tableau Repository/Connectors`
+directory. For more information, consult the [Tableau documentation](https://tableau.github.io/connector-plugin-sdk/docs/run-taco). 
 
 #### Connecting to Amazon DocumentDB Using Tableau
 
 1. Launch the Tableau Desktop application and navigate to 
-   **Tableau > Connect > Other Databases (JDBC)**.
-1. For the **URL:** field, enter your [JDBC connection string](connection-string.md).
-   For example, `jdbc:documentdb://localhost:27017/database?tlsAllowInvalidHostnames=true`
-1. For the **Dialect:** field, enter **SQL92**
-1. For the **Username:** field, enter your Amazon DocumentDB user ID.
-1. For the **Password:** field, enter the corresponding password for the user ID.
+   **Tableau > Connect > Amazon DocumentDB by Amazon DocumentDB**.
+1. Enter the parameters. **Hostname**, **Port**, **Database**, **Username** and **Password** 
+   are required while the others are optional. Descriptions for each parameter can be found in 
+   the [JDBC connection string](connection-string.md) documentation. As an example, the image below 
+   is equivalent to the connection string: 
+   `jdbc:documentdb://localhost:27019/test?tls=true&tlsAllowInvalidHostnames=true&scanMethod=random&scanLimit=1000&loginTimeoutSec=0&readPreference=primary&retryReads=false` 
+   with username and password passed separately in a properties file.
 1. Click the **Sign In** button.
 
 ![Tableau login dialog](tableau-login.png)

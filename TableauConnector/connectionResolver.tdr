@@ -1,0 +1,32 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<tdr class='documentdbjdbc'>
+	<connection-resolver>
+    <connection-builder>
+      <script file='connectionBuilder.js'/>
+    </connection-builder>
+    <connection-normalizer>
+      <required-attributes>
+        <attribute-list>
+          <attr>server</attr>
+          <attr>port</attr>
+          <attr>authentication</attr>
+          <attr>username</attr>
+          <attr>password</attr>
+          <attr>sslmode</attr>
+          <attr>v-database</attr>
+          <attr>v-tls-allow-invalid-hostnames</attr>
+          <attr>v-read-preference</attr>
+          <attr>v-application-name</attr>
+          <attr>v-replica-set</attr> 
+          <attr>v-retry-reads</attr>
+          <attr>v-login-timeout</attr> 
+          <attr>v-scan-method</attr> 
+          <attr>v-scan-limit</attr>
+        </attribute-list>
+      </required-attributes>
+    </connection-normalizer>
+    <connection-properties>
+      <script file='connectionProperties.js'/>
+    </connection-properties>
+	</connection-resolver>
+</tdr>

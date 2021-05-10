@@ -1,0 +1,41 @@
+<?xml version='1.0' encoding='utf-8' ?>
+<connector-plugin class='documentdbjdbc' superclass='jdbc' plugin-version='1.13.0.0' name='Amazon DocumentDB' version='18.1' min-version-tableau='2020.1'>
+    <vendor-information>
+        <company name="Amazon DocumentDB"/>
+        <!-- TODO: Replace links later when repository moves. -->
+        <support-link url="https://github.com/Bit-Quill/documentdb-jdbc"/>
+        <driver-download-link url="https://github.com/Bit-Quill/documentdb-jdbc"/>
+    </vendor-information>
+    <connection-customization class="documentdbjdbc" enabled="true" version="10.0">
+        <vendor name="Amazon DocumentDB"/>
+        <driver name="DocumentDB JDBC"/>
+        <!-- TODO: Populate customizations correctly. -->
+        <customizations>
+            <customization name="CAP_SUPPORTS_INITIAL_SQL" value="no" />
+            <customization name="CAP_CREATE_TEMP_TABLES" value="no"/>
+            <customization name="CAP_SUPPRESS_DISCOVERY_QUERIES" value="yes" />
+            <customization name="CAP_SELECT_INTO" value="no"/>
+            <customization name="CAP_SELECT_TOP_INTO" value="no"/>
+            <customization name="CAP_QUERY_BOOLEXPR_TO_INTEXPR" value="no"/>
+            <customization name="CAP_QUERY_GROUP_BY_BOOL" value="no"/>
+            <customization name="CAP_QUERY_GROUP_BY_DEGREE" value="no"/>
+            <customization name="CAP_QUERY_SORT_BY" value="yes"/>
+            <customization name="CAP_QUERY_SUBQUERIES" value="yes"/>
+            <customization name="CAP_QUERY_TOP_N" value="yes"/>
+            <customization name="CAP_QUERY_TOP_SAMPLE" value="yes"/>
+            <customization name="CAP_QUERY_TOP_SAMPLE_PERCENT" value="yes"/>
+            <customization name="CAP_QUERY_WHERE_FALSE_METADATA" value="yes"/>
+            <customization name="CAP_QUERY_SUBQUERIES_WITH_TOP" value="yes"/>
+            <customization name="CAP_SUPPORTS_SPLIT_FROM_LEFT" value="no"/>
+            <customization name="CAP_SUPPORTS_SPLIT_FROM_RIGHT" value="no"/>
+            <customization name="CAP_QUERY_ALLOW_PARTIAL_AGGREGATION" value="no"/>
+            <customization name="CAP_QUERY_TIME_REQUIRES_CAST" value="yes"/>
+            <customization name="CAP_SUPPORTS_SPLIT_FROM_RIGHT" value="no"/>
+            <customization name="CAP_CONNECT_STORED_PROCEDURE" value="no"/>
+        </customizations>
+    </connection-customization>
+    <connection-fields file="connection-fields.xml"/>
+    <connection-metadata file="connection-metadata.xml"/>
+    <connection-resolver file="connectionResolver.tdr"/>
+    <dialect file='dialect.tdd'/>
+</connector-plugin>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<dialect name='DocumentDbDialect' class='documentdbjdbc' base='PostgreSQL90Dialect' version='18.1'>
+    <!-- TODO: Add proper customizations. May not need to inherit from a base dialect like postgres.-->
+    <supported-aggregations>
+        <aggregation value='AGG_COUNT'/>
+        <aggregation value='AGG_SUM'/>
+        <aggregation value='AGG_AVG'/>
+        <aggregation value='AGG_MIN'/>
+        <aggregation value='AGG_MAX'/>
+    </supported-aggregations>
+    <sql-format>
+        <supported-joins>
+          <part name='Inner' />
+          <part name='Left' />
+        </supported-joins>
+    </sql-format>
+</dialect>

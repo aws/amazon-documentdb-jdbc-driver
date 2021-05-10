@@ -1,0 +1,85 @@
+<connection-fields>
+
+    <field name="server" label="Hostname" category="endpoint" value-type="string">
+        <validation-rule reg-exp="^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$"/>
+    </field>
+
+    <field name="port" label="Port" category="endpoint" value-type="string" default-value="27017">
+        <!-- Validates that port range is from 0 to 65535. -->
+        <validation-rule reg-exp="^([0-9]{1,4}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5])$"/>
+    </field>
+
+    <!-- Use custom database param rather than the provided database param as we use the database as a schema not a catalog. -->
+    <field name="v-database" label="Database" category="general" value-type="string">
+        <!-- Validates that database name does not contain illegal characters and is between 1-64 characters long. https://docs.mongodb.com/manual/reference/limits/  -->
+        <validation-rule reg-exp="^[^\/\\ .&quot;\\\$]{1,64}$"/>
+    </field>
+
+    <field name="authentication" label="Authentication" category="authentication" value-type="string" editable="false" default-value="auth-user-pass" />
+
+    <field name="username" label="Username" category="authentication" value-type="string" />
+
+    <field name="password" label="Password" category="authentication" value-type="string" secure="true" />
+
+    <field name="sslmode" label="Enable TLS" value-type="boolean" category="general" default-value="require">
+        <boolean-options>
+            <false-value value="" />
+            <true-value value="require" />
+        </boolean-options>
+    </field>
+
+    <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames" value-type="boolean" category="general" default-value="false">
+        <boolean-options>
+            <false-value value="false" />
+            <true-value value="true" />
+        </boolean-options>
+    </field>
+
+    <field name="v-retry-reads" label="Enable Retry Reads" value-type="boolean" category="general" default-value="false">
+        <boolean-options>
+            <false-value value="false" />
+            <true-value value="true" />
+        </boolean-options>
+    </field>
+
+    <field name="v-replica-set" label="Enable Replica Set Mode" value-type="boolean" category="general" default-value="false">
+        <boolean-options>
+            <false-value value="false" />
+            <true-value value="true" />
+        </boolean-options>
+    </field>
+
+    <field name="v-read-preference" label="Read Preference" value-type="selection" category="general">
+        <selection-group>
+            <option value="primary" label="Primary"/>
+            <option value="primaryPreferred" label="Primary Preferred"/>
+            <option value="secondary" label="Secondary"/>
+            <option value="secondaryPreferred" label="Secondary Preferred"/>
+            <option value="nearest" label="Nearest"/>
+        </selection-group>
+    </field>
+
+    <field name="v-scan-method" label="Scan Method" value-type="selection" category="general">
+        <selection-group>
+            <option value="random" label="Random"/>
+            <option value="idForward" label="ID Forward"/>
+            <option value="idReverse" label="ID Reverse"/>
+            <option value="all" label="All"/>
+        </selection-group>
+    </field>
+
+    <field name="v-scan-limit" label="Scan Limit" value-type="string" category="general" default-value="1000">
+        <!-- Only display scan limit when a scan method that is not All is chosen. -->
+        <conditions>
+            <condition field="v-scan-method" value="random" />
+            <condition field="v-scan-method" value="idForward" />
+            <condition field="v-scan-method" value="idReverse" />
+        </conditions>
+        <validation-rule reg-exp="^\+?(0|[1-9]\d*)$"/>
+    </field>
+
+    <field name="v-login-timeout" label="Login Timeout" value-type="string" category="general" default-value="0" >
+        <validation-rule reg-exp="^\+?(0|[1-9]\d*)$"/>
+    </field>
+
+</connection-fields>
