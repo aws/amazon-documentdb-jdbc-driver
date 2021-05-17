@@ -18,6 +18,7 @@ package software.amazon.documentdb.jdbc.query;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.bson.BsonDocument;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -27,6 +28,10 @@ import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+
 import java.sql.SQLException;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
@@ -34,14 +39,14 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     private static final String DATABASE_NAME = "database";
     private static final String COLLECTION_NAME = "testCollection";
     private static final String OTHER_COLLECTION_NAME = "otherTestCollection";
-    private DocumentDbQueryMappingService queryMapper;
+    private static DocumentDbQueryMappingService queryMapper;
+    private static DocumentDbConnectionProperties connectionProperties;
 
     @BeforeAll
     @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
-    void initialize() throws SQLException {
+    static void initialize() throws SQLException, DocumentDbSchemaException {
         // Add a valid users to the local MongoDB instance.
-        final DocumentDbConnectionProperties connectionProperties =
-                new DocumentDbConnectionProperties();
+        connectionProperties = new DocumentDbConnectionProperties();
         createUser(DATABASE_NAME, "user", "password");
         connectionProperties.setUser("user");
         connectionProperties.setPassword("password");
@@ -62,6 +67,12 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
                 DocumentDbDatabaseSchemaMetadata.get("id", connectionProperties, true);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
+    }
+
+    @AfterAll
+    static void afterAll() throws SQLException {
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(connectionProperties);
+        schemaWriter.remove("id");
     }
 
     @Test

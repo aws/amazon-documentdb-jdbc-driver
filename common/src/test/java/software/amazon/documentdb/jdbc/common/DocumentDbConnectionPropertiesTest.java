@@ -173,7 +173,8 @@ public class DocumentDbConnectionPropertiesTest {
                 "&" + DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName() + "=" + "4" +
                 "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getName() + "=" + "random" +
-                "&" + DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName() + "=" + "1";
+                "&" + DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName() + "=" + "1" +
+                "&" + DocumentDbConnectionProperty.SCHEMA_PERSISTENCE_STORE.getName() + "=" + "file";
         properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, "jdbc:documentdb:");
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());

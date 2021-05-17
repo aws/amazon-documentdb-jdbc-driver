@@ -32,6 +32,7 @@ import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +45,9 @@ import org.mockito.MockitoAnnotations;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -88,6 +92,14 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
     void init() throws SQLException {
         MockitoAnnotations.initMocks(this);
         Mockito.when(mockStatement.getFetchSize()).thenReturn(MOCK_FETCH_SIZE);
+    }
+
+    @AfterEach
+    void afterEach() throws SQLException {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setDatabase(DATABASE_NAME);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 
     @AfterAll

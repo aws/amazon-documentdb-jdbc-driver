@@ -26,6 +26,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
@@ -33,6 +36,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.util.Properties;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
@@ -77,6 +81,12 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
 
     @AfterAll
     static void afterAll() throws SQLException {
+        final Properties info = connection.getClientInfo();
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info,
+                        "jdbc:documentdb:", "jdbc:documentdb:");
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         connection.close();
     }
 

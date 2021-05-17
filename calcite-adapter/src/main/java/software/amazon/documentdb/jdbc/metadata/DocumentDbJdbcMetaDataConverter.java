@@ -21,23 +21,24 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.calcite.avatica.ColumnMetaData;
 import org.apache.calcite.avatica.ColumnMetaData.Rep;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
-import java.sql.Types;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
+
 import java.util.List;
 
 public class DocumentDbJdbcMetaDataConverter {
-    private static final ImmutableMap<Integer, Rep> JDBC_TYPE_TO_REP;
+    private static final ImmutableMap<JdbcType, Rep> JDBC_TYPE_TO_REP;
 
     static {
-        JDBC_TYPE_TO_REP = ImmutableMap.<Integer, Rep>builder()
-                .put(Types.BIGINT, Rep.PRIMITIVE_LONG)
-                .put(Types.BOOLEAN, Rep.PRIMITIVE_BOOLEAN)
-                .put(Types.DECIMAL, Rep.NUMBER)
-                .put(Types.DOUBLE, Rep.PRIMITIVE_DOUBLE)
-                .put(Types.INTEGER, Rep.PRIMITIVE_INT)
-                .put(Types.NULL, Rep.STRING)
-                .put(Types.TIMESTAMP, Rep.JAVA_SQL_TIMESTAMP)
-                .put(Types.VARCHAR, Rep.STRING)
-                .put(Types.VARBINARY, Rep.BYTE_STRING)
+        JDBC_TYPE_TO_REP = ImmutableMap.<JdbcType, Rep>builder()
+                .put(JdbcType.BIGINT, Rep.PRIMITIVE_LONG)
+                .put(JdbcType.BOOLEAN, Rep.PRIMITIVE_BOOLEAN)
+                .put(JdbcType.DECIMAL, Rep.NUMBER)
+                .put(JdbcType.DOUBLE, Rep.PRIMITIVE_DOUBLE)
+                .put(JdbcType.INTEGER, Rep.PRIMITIVE_INT)
+                .put(JdbcType.NULL, Rep.STRING)
+                .put(JdbcType.TIMESTAMP, Rep.JAVA_SQL_TIMESTAMP)
+                .put(JdbcType.VARCHAR, Rep.STRING)
+                .put(JdbcType.VARBINARY, Rep.BYTE_STRING)
                 .build();
     }
 

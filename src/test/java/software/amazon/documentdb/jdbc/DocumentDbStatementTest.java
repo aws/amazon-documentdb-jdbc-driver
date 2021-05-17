@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc;
 
 import org.bson.BsonDocument;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
@@ -27,6 +28,9 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.io.IOException;
 import java.sql.Blob;
@@ -51,6 +55,14 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     static void initialize()  {
         // Add a valid users to the local MongoDB instance.
         createUser(DATABASE_NAME, USER, PASSWORD);
+    }
+
+    @AfterEach
+    void afterEach() throws SQLException {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setDatabase(DATABASE_NAME);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 
     /**

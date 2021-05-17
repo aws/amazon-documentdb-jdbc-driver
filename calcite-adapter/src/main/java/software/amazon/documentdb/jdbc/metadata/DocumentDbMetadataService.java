@@ -16,20 +16,28 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
-import com.google.common.collect.ImmutableMap;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import lombok.NonNull;
+import lombok.SneakyThrows;
 import org.bson.BsonDocument;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.StoreEntryKey;
+import software.amazon.documentdb.jdbc.persist.SchemaReader;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
+import javax.annotation.Nullable;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.util.Date;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * A service for retrieving DocumentDB database metadata.
@@ -38,81 +46,116 @@ public class DocumentDbMetadataService {
     public static final int VERSION_LATEST = 0;
     public static final int VERSION_NEW = -1;
 
-    private static final Map<StoreEntryKey, DocumentDbDatabaseSchemaMetadata> DOCUMENT_DB_DATABASE_METADATA_STORE =
-            new ConcurrentHashMap<>();
-
     /**
-     * Gets the latest or a new {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId
-     * and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST} for the
-     * version to indicate to get the latest or create a new instance if none exists.
+     * Gets the latest or a new {@link DocumentDbDatabaseSchemaMetadata} instance based on the
+     * schemaName and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST}
+     * for the version to indicate to get the latest or create a new instance if none exists.
      *
-     * @param clientId the client ID.
      * @param properties the connection properties.
+     * @param schemaName the client ID.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
-    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
-            final DocumentDbConnectionProperties properties) throws SQLException {
-        return get(clientId, properties, VERSION_LATEST);
+    public static DocumentDbSchema get(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName) throws SQLException {
+        return get(properties, schemaName, VERSION_LATEST);
     }
 
 
     /**
-     * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId and version.
+     * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId and
+     * version.
      *
-     * @param clientId the client ID.
      * @param properties the connection properties.
-     * @param version the version of the metadata. A version number of
+     * @param schemaName the client ID.
+     * @param schemaVersion the version of the metadata. A version number of
      *                {@link DocumentDbMetadataService#VERSION_LATEST} indicates to get the latest
      *                or create a new instance.
-     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the clientId and version exist, null,
-     * otherwise.
+     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the clientId and version exist,
+     * {@code null} otherwise.
      */
-    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
+    @Nullable
+    public static DocumentDbSchema get(
             final DocumentDbConnectionProperties properties,
-            final int version) throws SQLException {
-        if (version == VERSION_LATEST) {
-            final StoreEntryKey latestKey = DocumentDbDatabaseSchemaMetadata.findLatestKey(
-                    DOCUMENT_DB_DATABASE_METADATA_STORE,
-                    clientId, properties.getDatabase());
-
-            if (latestKey != null) {
-                return DOCUMENT_DB_DATABASE_METADATA_STORE.get(latestKey);
+            final String schemaName,
+            final int schemaVersion) throws SQLException {
+        final SchemaReader schemaReader = getSchemaReader(properties);
+        final DocumentDbSchema schema;
+        if (schemaVersion == VERSION_LATEST) {
+            // Get the latest version
+            schema = schemaReader.read(schemaName);
+            if (schema != null) {
+                return schema;
             }
-
             // A previous version doesn't exist, create one.
             final int newVersion = 1;
-            return getNewDatabaseMetadata(clientId, properties, newVersion);
-        } else if (version == VERSION_NEW) {
-            final StoreEntryKey latestKey = DocumentDbDatabaseSchemaMetadata.findLatestKey(
-                    DOCUMENT_DB_DATABASE_METADATA_STORE,
-                    clientId, properties.getDatabase());
-            final int newVersion = latestKey != null ? latestKey.getVersion() + 1 : 1;
-            return getNewDatabaseMetadata(clientId, properties, newVersion);
+            return getNewDatabaseMetadata(properties, schemaName, newVersion);
+        } else if (schemaVersion == VERSION_NEW) {
+            // Get a new version.
+            schema = schemaReader.read(schemaName);
+            final int newVersion = schema != null ? schema.getSchemaVersion() + 1 : 1;
+            return getNewDatabaseMetadata(properties, schemaName, newVersion);
         }
 
-        // Find an existing one by key, if it exists.
-        final StoreEntryKey key = StoreEntryKey.builder()
-                .clientId(clientId)
-                .databaseName(properties.getDatabase())
-                .version(version)
-                .build();
-        return DOCUMENT_DB_DATABASE_METADATA_STORE.get(key);
+        // Get a specific version - might not exist.
+        return getSchemaMetadata(properties, schemaName, schemaVersion);
     }
 
-    private static DocumentDbDatabaseSchemaMetadata getNewDatabaseMetadata(final String clientId,
-            final DocumentDbConnectionProperties properties, final int newVersion)
+    /**
+     * Gets the table schema associated with the given table ID.
+     *
+     * @param properties the connection properties.
+     * @param schemaName the name of the schema.
+     * @param schemaVersion the version of the schema.
+     * @param tableId the table ID of the table.
+     *
+     * @return a {@link DocumentDbSchemaTable} that matches the table if it exists,
+     * {@code null} if the table ID does not exist.
+     */
+    @NonNull
+    @SneakyThrows
+    public static DocumentDbSchemaTable getTable(
+            final @NonNull DocumentDbConnectionProperties properties,
+            final @NonNull String schemaName,
+            final int schemaVersion,
+            final @NonNull String tableId) {
+
+        final SchemaReader schemaReader = getSchemaReader(properties);
+        return schemaReader.readTable(schemaName, schemaVersion, tableId);
+    }
+
+    private static DocumentDbSchema getSchemaMetadata(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final int schemaVersion) throws SQLException {
+        final SchemaReader schemaReader = getSchemaReader(properties);
+        return schemaReader.read(schemaName, schemaVersion);
+    }
+
+    private static DocumentDbSchema getNewDatabaseMetadata(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final int schemaVersion) throws SQLException {
+        final Map<String, DocumentDbSchemaTable> tableMap = new LinkedHashMap<>();
+        final DocumentDbSchema schema = getCollectionMetadataDirect(
+                schemaName,
+                schemaVersion,
+                properties.getDatabase(),
+                properties,
+                tableMap);
+        final SchemaWriter schemaWriter = getSchemaWriter(properties);
+        schemaWriter.write(schema, tableMap.values());
+        return schema;
+    }
+
+    private static SchemaWriter getSchemaWriter(final DocumentDbConnectionProperties properties)
             throws SQLException {
-        final StoreEntryKey newKey = StoreEntryKey.builder()
-                .clientId(clientId)
-                .databaseName(properties.getDatabase())
-                .version(newVersion)
-                .build();
-        final DocumentDbDatabaseSchemaMetadata databaseMetadata = new DocumentDbDatabaseSchemaMetadata(
-                newKey.getClientId(),
-                newKey.getVersion(),
-                getCollectionMetadataMapDirect(properties));
-        DOCUMENT_DB_DATABASE_METADATA_STORE.put(newKey, databaseMetadata);
-        return databaseMetadata;
+        return SchemaStoreFactory.createWriter(properties);
+    }
+
+    private static SchemaReader getSchemaReader(
+            final DocumentDbConnectionProperties properties) throws SQLException {
+        return SchemaStoreFactory.createReader(properties);
     }
 
     /**
@@ -122,14 +165,16 @@ public class DocumentDbMetadataService {
      *
      * @return a map of the collection metadata.
      */
-    private static ImmutableMap<String, DocumentDbSchemaCollection> getCollectionMetadataMapDirect(
-            final DocumentDbConnectionProperties properties) throws SQLException {
+    private static DocumentDbSchema getCollectionMetadataDirect(
+            final String schemaName,
+            final int schemaVersion,
+            final String databaseName,
+            final DocumentDbConnectionProperties properties,
+            final Map<String, DocumentDbSchemaTable> tableMap) throws SQLException {
 
-        final ImmutableMap.Builder<String, DocumentDbSchemaCollection> builder =
-                ImmutableMap.builder();
         final MongoClientSettings settings = properties.buildMongoClientSettings();
         try (MongoClient client = MongoClients.create(settings)) {
-            final MongoDatabase database = client.getDatabase(properties.getDatabase());
+            final MongoDatabase database = client.getDatabase(databaseName);
 
             for (String collectionName : database.listCollectionNames()) {
                 final MongoCollection<BsonDocument> collection = database
@@ -138,13 +183,18 @@ public class DocumentDbMetadataService {
                         .getIterator(properties, collection);
 
                 // Create the schema metadata.
-                final DocumentDbSchemaCollection collectionMetadata =
-                        DocumentDbCollectionMetadata.create(properties.getDatabase(), collectionName, cursor);
-                builder.put(collectionName, collectionMetadata);
+                final Map<String, DocumentDbSchemaTable> tableSchemaMap =
+                        DocumentDbTableSchemaGenerator.generate(
+                                collectionName, cursor);
+                tableMap.putAll(tableSchemaMap);
             }
-        }
 
-        return builder.build();
+            final Set<String> tableReferences = tableMap.values().stream()
+                    .map(t -> t.getId())
+                    .collect(Collectors.toSet());
+            return new DocumentDbSchema(schemaName, schemaVersion, databaseName,
+                    new Date(Instant.now().toEpochMilli()), tableReferences);
+        }
     }
 
 }

@@ -16,10 +16,6 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import lombok.Getter;
@@ -30,8 +26,8 @@ import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 
-import java.sql.Types;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -39,18 +35,15 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 /**
  * Represents the fields in a collection and their data types. A collection can be broken up into
  * one (the base table) or more tables (virtual tables from embedded documents or arrays).
  */
 @Getter
-public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbCollectionMetadata.class);
-    private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper()
-            .setSerializationInclusion(Include.NON_NULL)
-            .setSerializationInclusion(Include.NON_EMPTY)
-            .enable(SerializationFeature.INDENT_OUTPUT);
+public class DocumentDbTableSchemaGenerator {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbTableSchemaGenerator.class);
     private static final String EMPTY_STRING = "";
     private static final String INDEX_COLUMN_NAME_PREFIX = "index_lvl_";
     private static final String VALUE_COLUMN_NAME = "value";
@@ -65,196 +58,172 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
      * @see <a href="https://docs.mongodb.com/bi-connector/current/schema/type-conflicts#scalar-scalar-conflicts">
      * Map Relational Schemas to MongoDB - Scalar-Scalar Conflicts</a>
      */
-    private static final ImmutableMap<Entry<Integer, BsonType>, Integer> PROMOTION_MAP =
-            new ImmutableMap.Builder<Entry<Integer, BsonType>, Integer>()
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.BOOLEAN), Types.BOOLEAN)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.DATE_TIME), Types.TIMESTAMP)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.DECIMAL128), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.DOUBLE), Types.DOUBLE)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.INT32), Types.INTEGER)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.INT64), Types.BIGINT)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.NULL), Types.NULL)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.ARRAY), Types.ARRAY)
-                    .put(new SimpleEntry<>(Types.NULL, BsonType.DOCUMENT), Types.JAVA_OBJECT)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.BOOLEAN), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.DECIMAL128), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.DOUBLE), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.INT32), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.INT64), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.NULL), Types.ARRAY)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.ARRAY), Types.ARRAY)
-                    .put(new SimpleEntry<>(Types.ARRAY, BsonType.DOCUMENT), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.BOOLEAN), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DECIMAL128), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DOUBLE), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.INT32), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.INT64), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.NULL), Types.JAVA_OBJECT)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.ARRAY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.JAVA_OBJECT, BsonType.DOCUMENT), Types.JAVA_OBJECT)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.BOOLEAN), Types.BOOLEAN)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DECIMAL128), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DOUBLE), Types.DOUBLE)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.INT32), Types.INTEGER)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.INT64), Types.BIGINT)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.NULL), Types.BOOLEAN)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.ARRAY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BOOLEAN, BsonType.DOCUMENT), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.BOOLEAN), Types.BIGINT)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DECIMAL128), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DOUBLE), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.INT32), Types.BIGINT)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.INT64), Types.BIGINT)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.NULL), Types.BIGINT)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.ARRAY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.BIGINT, BsonType.DOCUMENT), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.BOOLEAN), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.DECIMAL128), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.DOUBLE), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.INT32), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.INT64), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.NULL), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.ARRAY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DECIMAL, BsonType.DOCUMENT), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.BOOLEAN), Types.DOUBLE)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DECIMAL128), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DOUBLE), Types.DOUBLE)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.INT32), Types.DOUBLE)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.INT64), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.NULL), Types.DOUBLE)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.ARRAY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.DOUBLE, BsonType.DOCUMENT), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.BOOLEAN), Types.INTEGER)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DECIMAL128), Types.DECIMAL)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DOUBLE), Types.DOUBLE)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.INT32), Types.INTEGER)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.INT64), Types.BIGINT)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.NULL), Types.INTEGER)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.ARRAY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.INTEGER, BsonType.DOCUMENT), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.BOOLEAN), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DATE_TIME), Types.TIMESTAMP)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DECIMAL128), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DOUBLE), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.INT32), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.INT64), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.NULL), Types.TIMESTAMP)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.ARRAY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.TIMESTAMP, BsonType.DOCUMENT), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.BOOLEAN), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DATE_TIME), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DECIMAL128), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DOUBLE), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.INT32), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.INT64), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.MAX_KEY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.MIN_KEY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.NULL), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.OBJECT_ID), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.STRING), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.ARRAY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARBINARY, BsonType.DOCUMENT), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.BOOLEAN), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.BINARY), Types.VARBINARY)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DATE_TIME), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DECIMAL128), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DOUBLE), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.INT32), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.INT64), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.MAX_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.MIN_KEY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.NULL), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.OBJECT_ID), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.STRING), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.ARRAY), Types.VARCHAR)
-                    .put(new SimpleEntry<>(Types.VARCHAR, BsonType.DOCUMENT), Types.VARCHAR)
+    private static final ImmutableMap<Entry<JdbcType, BsonType>, JdbcType> PROMOTION_MAP =
+            new ImmutableMap.Builder<Entry<JdbcType, BsonType>, JdbcType>()
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.BOOLEAN), JdbcType.BOOLEAN)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.DATE_TIME), JdbcType.TIMESTAMP)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.DECIMAL128), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.DOUBLE), JdbcType.DOUBLE)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.INT32), JdbcType.INTEGER)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.INT64), JdbcType.BIGINT)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.NULL), JdbcType.NULL)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.ARRAY), JdbcType.ARRAY)
+                    .put(new SimpleEntry<>(JdbcType.NULL, BsonType.DOCUMENT), JdbcType.JAVA_OBJECT)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.BOOLEAN), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.DATE_TIME), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.DECIMAL128), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.DOUBLE), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.INT32), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.INT64), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.NULL), JdbcType.ARRAY)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.ARRAY), JdbcType.ARRAY)
+                    .put(new SimpleEntry<>(JdbcType.ARRAY, BsonType.DOCUMENT), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.BOOLEAN), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.DATE_TIME), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.DECIMAL128), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.DOUBLE), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.INT32), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.INT64), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.NULL), JdbcType.JAVA_OBJECT)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.ARRAY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.JAVA_OBJECT, BsonType.DOCUMENT), JdbcType.JAVA_OBJECT)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.BOOLEAN), JdbcType.BOOLEAN)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.DATE_TIME), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.DECIMAL128), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.DOUBLE), JdbcType.DOUBLE)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.INT32), JdbcType.INTEGER)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.INT64), JdbcType.BIGINT)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.NULL), JdbcType.BOOLEAN)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.ARRAY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BOOLEAN, BsonType.DOCUMENT), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.BOOLEAN), JdbcType.BIGINT)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.DATE_TIME), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.DECIMAL128), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.DOUBLE), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.INT32), JdbcType.BIGINT)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.INT64), JdbcType.BIGINT)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.NULL), JdbcType.BIGINT)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.ARRAY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.BIGINT, BsonType.DOCUMENT), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.BOOLEAN), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.DATE_TIME), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.DECIMAL128), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.DOUBLE), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.INT32), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.INT64), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.NULL), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.ARRAY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DECIMAL, BsonType.DOCUMENT), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.BOOLEAN), JdbcType.DOUBLE)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.DATE_TIME), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.DECIMAL128), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.DOUBLE), JdbcType.DOUBLE)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.INT32), JdbcType.DOUBLE)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.INT64), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.NULL), JdbcType.DOUBLE)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.ARRAY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.DOUBLE, BsonType.DOCUMENT), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.BOOLEAN), JdbcType.INTEGER)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.DATE_TIME), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.DECIMAL128), JdbcType.DECIMAL)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.DOUBLE), JdbcType.DOUBLE)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.INT32), JdbcType.INTEGER)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.INT64), JdbcType.BIGINT)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.NULL), JdbcType.INTEGER)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.ARRAY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.INTEGER, BsonType.DOCUMENT), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.BOOLEAN), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.DATE_TIME), JdbcType.TIMESTAMP)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.DECIMAL128), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.DOUBLE), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.INT32), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.INT64), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.NULL), JdbcType.TIMESTAMP)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.ARRAY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.TIMESTAMP, BsonType.DOCUMENT), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.BOOLEAN), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.DATE_TIME), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.DECIMAL128), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.DOUBLE), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.INT32), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.INT64), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.MAX_KEY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.MIN_KEY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.NULL), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.OBJECT_ID), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.STRING), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.ARRAY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARBINARY, BsonType.DOCUMENT), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.BOOLEAN), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.BINARY), JdbcType.VARBINARY)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.DATE_TIME), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.DECIMAL128), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.DOUBLE), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.INT32), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.INT64), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.MAX_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.MIN_KEY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.NULL), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.OBJECT_ID), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.STRING), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.ARRAY), JdbcType.VARCHAR)
+                    .put(new SimpleEntry<>(JdbcType.VARCHAR, BsonType.DOCUMENT), JdbcType.VARCHAR)
                     .build();
-
-    /**
-     * All args constructor for collection metadata.
-     *
-     * @param name       Name of the collection.
-     * @param version    Version of this metadata.
-     * @param tables     Tables contained within this collection, indexed by name. Uses LinkedHashMap to preserve order.
-     */
-    public DocumentDbCollectionMetadata(final String name,
-                                        final int version,
-                                        final LinkedHashMap<String, DocumentDbSchemaTable> tables) {
-        super(name, version, tables);
-    }
-
-    @Override
-    public String toString() {
-        try {
-            return JSON_OBJECT_MAPPER.writeValueAsString(this);
-        } catch (JsonProcessingException e) {
-            DocumentDbCollectionMetadata.LOGGER.error("Error converting object to JSON.", e);
-        }
-        return DocumentDbCollectionMetadata.EMPTY_STRING;
-    }
 
     /**
      * Creates new collection metadata for a given collection from the provided data.
      *
      * @param collectionName the name of the collection this model should refer.
      * @param cursor         the cursor for the data from which to create a model.
-     * @return a new {@link DocumentDbCollectionMetadata} built from the data.
+     * @return a new {@link DocumentDbTableSchemaGenerator} built from the data.
      */
-    public static DocumentDbSchemaCollection create(
-            final String databaseName,
+    public static Map<String, DocumentDbSchemaTable> generate(
             final String collectionName,
             final Iterator<BsonDocument> cursor) {
         final LinkedHashMap<String, DocumentDbSchemaTable> tableMap = new LinkedHashMap<>();
@@ -264,7 +233,32 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
                     EMPTY_STRING, collectionName, true);
         }
 
-        return new DocumentDbSchemaCollection(databaseName, 1, tableMap);
+        // Remove array and document columns that are used for interim processing.
+        filterArrayAndDocumentColumns(tableMap);
+
+        return tableMap;
+    }
+
+    private static void filterArrayAndDocumentColumns(final LinkedHashMap<String, DocumentDbSchemaTable> tableMap) {
+        for (DocumentDbSchemaTable table : tableMap.values()) {
+            final boolean needsUpdate = table.getColumns().values().stream()
+                    .anyMatch(c -> c.getSqlType() == JdbcType.ARRAY || c.getSqlType() == JdbcType.JAVA_OBJECT);
+            if (needsUpdate) {
+                final LinkedHashMap<String, DocumentDbSchemaColumn> columns = table
+                        .getColumns().values().stream()
+                        .filter(c -> c.getSqlType() != JdbcType.ARRAY && c.getSqlType() != JdbcType.JAVA_OBJECT)
+                        .collect(Collectors.toMap(
+                                DocumentDbSchemaColumn::getSqlName,
+                                c -> c,
+                                (o, d) -> o,
+                                LinkedHashMap::new));
+                tableMap.put(table.getSqlName(), DocumentDbMetadataTable.builder()
+                        .sqlName(table.getSqlName())
+                        .collectionName(table.getCollectionName())
+                        .columns(columns)
+                        .build());
+            }
+        }
     }
 
     /**
@@ -275,7 +269,7 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
      * @param foreignKeys the list of foreign keys.
      * @param path        the path for this field.
      */
-    static void processDocument(
+    private static void processDocument(
             final BsonDocument document,
             final Map<String, DocumentDbSchemaTable> tableMap,
             final List<DocumentDbMetadataColumn> foreignKeys,
@@ -324,8 +318,8 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
 
             // ASSUMPTION: relying on the behaviour that the "_id" field will ALWAYS be first
             // in the root document.
-            final int prevSqlType = getPrevSqlTypeOrDefault(prevMetadataColumn);
-            final int nextSqlType = getSqlTypeIfIsPrimaryKey(bsonType, prevSqlType, isPrimaryKey);
+            final JdbcType prevSqlType = getPrevSqlTypeOrDefault(prevMetadataColumn);
+            final JdbcType nextSqlType = getSqlTypeIfIsPrimaryKey(bsonType, prevSqlType, isPrimaryKey);
 
             processComplexTypes(tableMap, foreignKeys, collectionName, entry, fieldPath, bsonType, prevMetadataColumn, nextSqlType);
             final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
@@ -333,7 +327,7 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
                     .fieldPath(fieldPath)
                     .sqlName(columnName)
                     .sqlType(nextSqlType)
-                    .dbType(bsonType.getValue())
+                    .dbType(bsonType)
                     .isIndex(false)
                     .isPrimaryKey(isPrimaryKey)
                     .index(getPrevIndexOrDefault(prevMetadataColumn, columnMap.size() + 1))
@@ -352,6 +346,7 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
         if (isRootDocument) {
             checkVirtualTablePrimaryKeys(tableMap, path, columnMap);
         }
+
         // Add virtual table.
         final DocumentDbMetadataTable metadataTable = DocumentDbMetadataTable
                 .builder()
@@ -387,8 +382,8 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
         int level = arrayLevel;
         DocumentDbMetadataColumn metadataColumn;
 
-        int prevSqlType = Types.NULL;
-        int sqlType;
+        JdbcType prevSqlType = JdbcType.NULL;
+        JdbcType sqlType;
         final String tableName = toName(combinePath(collectionName, path));
 
         if (tableMap.containsKey(tableName)) {
@@ -401,7 +396,7 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
             if (columnMap.containsKey(toName(valueColumnPath))) {
                 prevSqlType = columnMap.get(toName(valueColumnPath)).getSqlType();
             } else {
-                prevSqlType = Types.JAVA_OBJECT;
+                prevSqlType = JdbcType.JAVA_OBJECT;
             }
         }
 
@@ -470,7 +465,7 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
                         .builder()
                         .sqlName(toName(indexColumnName))
                         .fieldPath(path)  // Once unwound, the index will be at root level so path = name.
-                        .sqlType(Types.BIGINT)
+                        .sqlType(JdbcType.BIGINT)
                         .isIndex(true)
                         .isPrimaryKey(true)
                         .index(columnMap.size() + 1)
@@ -488,14 +483,14 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
 
         // Add documents, arrays or just the scalar value.
         switch (sqlType) {
-            case Types.JAVA_OBJECT:
+            case JAVA_OBJECT:
                 processDocumentsInArray(array,
                         tableMap,
                         foreignKeys,
                         path,
                         collectionName);
                 break;
-            case Types.ARRAY:
+            case ARRAY:
                 // This will add another level to the array.
                 level++;
                 processArrayInArray(array,
@@ -530,7 +525,7 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
             final String path,
             final String collectionName,
             final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap,
-            final int sqlType) {
+            final JdbcType sqlType) {
 
         final String tableName = toName(combinePath(collectionName, path));
         // Get column if it already exists so we can preserve index order.
@@ -642,9 +637,9 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
      * @return returns the promoted SQL data type.
      */
     @VisibleForTesting
-    static Integer getPromotedSqlType(final BsonType bsonType, final int prevSqlType) {
-        final Entry<Integer, BsonType> key = new SimpleEntry<>(prevSqlType, bsonType);
-        return PROMOTION_MAP.getOrDefault(key, Types.VARCHAR);
+    static JdbcType getPromotedSqlType(final BsonType bsonType, final JdbcType prevSqlType) {
+        final Entry<JdbcType, BsonType> key = new SimpleEntry<>(prevSqlType, bsonType);
+        return PROMOTION_MAP.getOrDefault(key, JdbcType.VARCHAR);
     }
 
     /**
@@ -694,12 +689,12 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
      * @param sqlType   the previous SQL type.
      * @return if a conflict is detected, returns VARCHAR, otherwise, the original SQL type.
      */
-    private static int handleArrayLevelConflict(
+    private static JdbcType handleArrayLevelConflict(
             final Map<String, DocumentDbSchemaColumn> columnMap,
             final int level,
-            final int sqlType) {
+            final JdbcType sqlType) {
 
-        int newSqlType = sqlType;
+        JdbcType newSqlType = sqlType;
 
         // Remove previously detect index columns at higher index level,
         // if we now have scalars at a lower index level.
@@ -732,31 +727,31 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
 
     private static String getVirtualTableNameIfIsPrimaryKey(
             final String fieldPath,
-            final int nextSqlType,
+            final JdbcType nextSqlType,
             final boolean isPrimaryKey,
             final String collectionName) {
-        return !isPrimaryKey && (nextSqlType == Types.ARRAY || nextSqlType == Types.JAVA_OBJECT)
+        return !isPrimaryKey && (nextSqlType == JdbcType.ARRAY || nextSqlType == JdbcType.JAVA_OBJECT)
                 ? toName(combinePath(collectionName, fieldPath))
                 : null;
     }
 
-    private static int getSqlTypeIfIsPrimaryKey(
+    private static JdbcType getSqlTypeIfIsPrimaryKey(
             final BsonType bsonType,
-            final int prevSqlType,
+            final JdbcType prevSqlType,
             final boolean isPrimaryKey) {
         return isPrimaryKey && bsonType == BsonType.DOCUMENT
-                ? Types.VARCHAR
+                ? JdbcType.VARCHAR
                 : getPromotedSqlType(bsonType, prevSqlType);
     }
 
-    private static int getPrevSqlTypeOrDefault(final DocumentDbMetadataColumn prevMetadataColumn) {
+    private static JdbcType getPrevSqlTypeOrDefault(final DocumentDbMetadataColumn prevMetadataColumn) {
         return prevMetadataColumn != null
                 ? prevMetadataColumn.getSqlType()
-                : Types.NULL;
+                : JdbcType.NULL;
     }
 
-    private static boolean isComplexType(final int sqlType) {
-        return sqlType == Types.JAVA_OBJECT || sqlType == Types.ARRAY;
+    private static boolean isComplexType(final JdbcType sqlType) {
+        return sqlType == JdbcType.JAVA_OBJECT || sqlType == JdbcType.ARRAY;
     }
 
     private static void addToForeignKeysIfIsPrimary(
@@ -783,19 +778,20 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
                                             final String fieldPath,
                                             final BsonType bsonType,
                                             final DocumentDbMetadataColumn prevMetadataColumn,
-                                            final int nextSqlType) {
-        if (nextSqlType == Types.JAVA_OBJECT && bsonType != BsonType.NULL) {
+                                            final JdbcType nextSqlType) {
+        if (nextSqlType == JdbcType.JAVA_OBJECT && bsonType != BsonType.NULL) {
             // This will create/update virtual table.
             processDocument(entry.getValue().asDocument(),
                     tableMap, foreignKeys, fieldPath, collectionName, false);
 
-        } else if (nextSqlType == Types.ARRAY && bsonType != BsonType.NULL) {
+        } else if (nextSqlType == JdbcType.ARRAY && bsonType != BsonType.NULL) {
             // This will create/update virtual table.
             processArray(entry.getValue().asArray(),
                     tableMap, foreignKeys, fieldPath, 0, collectionName);
         } else {
             // Process a scalar data type.
-            if (prevMetadataColumn != null && prevMetadataColumn.getVirtualTableName() != null) {
+            if (prevMetadataColumn != null && prevMetadataColumn.getVirtualTableName() != null
+                    && bsonType != BsonType.NULL) {
                 // This column has been promoted to a scalar type from a complex type.
                 // Remove the previously defined virtual table.
                 tableMap.remove(prevMetadataColumn.getVirtualTableName());
@@ -814,6 +810,16 @@ public class DocumentDbCollectionMetadata extends DocumentDbSchemaCollection {
                 column.setSqlType(primaryKeyColumn.getSqlType());
             }
         }
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
     }
 
     private static void buildForeignKeysFromDocument(final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap,

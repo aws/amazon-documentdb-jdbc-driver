@@ -48,7 +48,9 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
     METADATA_SCAN_METHOD("scanMethod", "random",
             "Method of scanning for metadata."),
     METADATA_SCAN_LIMIT("scanLimit", "1000",
-            "Number of records to scan for metadata");
+            "Number of records to scan for metadata"),
+    SCHEMA_PERSISTENCE_STORE("persistedSchemaStore", "file",
+            "Determines which persisted schema storage to use. Supported: 'file'.");
 
     // Unsupported MongoDB connection properties that will be ignored but should have warnings.
     private static final String[] UNSUPPORTED_MONGO_DB_PROPERTIES = {

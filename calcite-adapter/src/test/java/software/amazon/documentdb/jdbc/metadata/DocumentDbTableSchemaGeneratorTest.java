@@ -37,22 +37,24 @@ import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import java.sql.Types;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
+
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata.combinePath;
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata.toName;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGenerator.combinePath;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGenerator.toName;
 
-class DocumentDbCollectionMetadataTest {
-    private static final String COLLECTION_NAME = DocumentDbCollectionMetadataTest.class.getSimpleName();
-    private static final boolean DEMO_MODE = false;
+class DocumentDbTableSchemaGeneratorTest {
+    private static final String COLLECTION_NAME = DocumentDbTableSchemaGeneratorTest.class.getSimpleName();
+    private static final boolean DEMO_MODE = true;
 
     /**
      * Tests a collection where all the fields are consistent.
@@ -86,36 +88,33 @@ class DocumentDbCollectionMetadataTest {
         }
 
         // Discover the collection metadata.
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, documentList.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator.generate(
+                COLLECTION_NAME, documentList.iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(1, metadata.getTables().size());
-        Assertions.assertEquals(COLLECTION_NAME,
-                metadata.getTables().get(COLLECTION_NAME).getSqlName());
-        final Map<String, DocumentDbSchemaTable> metadataTableMap = metadata.getTables();
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadataTableMap.get(COLLECTION_NAME);
+        Assertions.assertEquals(1, metadata.size());
+        Assertions.assertEquals(COLLECTION_NAME, metadata.get(COLLECTION_NAME).getSqlName());
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata
+                .get(COLLECTION_NAME);
         Assertions.assertEquals(13, metadataTable.getColumns().size());
-        final Set<Integer> integerSet = metadataTable.getColumns().values().stream().collect(
+        final Set<JdbcType> integerSet = metadataTable.getColumns().values().stream().collect(
                 Collectors.groupingBy(DocumentDbSchemaColumn::getSqlType)).keySet();
         Assertions.assertEquals(9, integerSet.size());
-        final Set<Integer> expectedTypes = ImmutableSet.of(
-                Types.BIGINT,
-                Types.VARBINARY,
-                Types.BOOLEAN,
-                Types.DECIMAL,
-                Types.DOUBLE,
-                Types.INTEGER,
-                Types.NULL,
-                Types.TIMESTAMP,
-                Types.VARBINARY,
-                Types.VARCHAR
+        final Set<JdbcType> expectedTypes = ImmutableSet.of(
+                JdbcType.BIGINT,
+                JdbcType.VARBINARY,
+                JdbcType.BOOLEAN,
+                JdbcType.DECIMAL,
+                JdbcType.DOUBLE,
+                JdbcType.INTEGER,
+                JdbcType.NULL,
+                JdbcType.TIMESTAMP,
+                JdbcType.VARBINARY,
+                JdbcType.VARCHAR
         );
         Assertions.assertTrue(expectedTypes.containsAll(integerSet));
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -163,7 +162,8 @@ class DocumentDbCollectionMetadataTest {
         for (int outerIndex = 0; outerIndex < supportedBsonTypeSet.length; outerIndex++) {
             final BsonType bsonType = supportedBsonTypeSet[outerIndex];
             final BsonValue bsonValue = supportedBsonValueSet[outerIndex];
-            final Integer initSqlType = DocumentDbCollectionMetadata.getPromotedSqlType(bsonType, Types.NULL);
+            final JdbcType initSqlType = DocumentDbTableSchemaGenerator
+                    .getPromotedSqlType(bsonType, JdbcType.NULL);
 
             final BsonDocument initDocument = new BsonDocument()
                     .append("_id", new BsonObjectId())
@@ -173,7 +173,7 @@ class DocumentDbCollectionMetadataTest {
 
                 final BsonValue nextBsonValue = supportedBsonValueSet[innerIndex];
                 final BsonType nextBsonType = supportedBsonTypeSet[innerIndex];
-                final Integer nextSqlType = DocumentDbCollectionMetadata.getPromotedSqlType(
+                final JdbcType nextSqlType = DocumentDbTableSchemaGenerator.getPromotedSqlType(
                         nextBsonType, initSqlType);
                 final BsonDocument nextDocument = new BsonDocument()
                         .append("_id", new BsonObjectId())
@@ -182,24 +182,27 @@ class DocumentDbCollectionMetadataTest {
                 documentList.add(nextDocument);
 
                 // discover the collection metadata
-                final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                        "testDb",
-                        COLLECTION_NAME,
-                        documentList.iterator());
+                final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                        .generate(COLLECTION_NAME, documentList.iterator());
 
                 Assertions.assertNotNull(metadata);
                 Assertions.assertEquals(producesVirtualTable(bsonType, nextBsonType) ? 2 : 1,
-                        metadata.getTables().size());
-                Assertions.assertEquals(COLLECTION_NAME,metadata.getTables().get(
+                        metadata.size(), String.format("%s:%s", bsonType, nextBsonType));
+                Assertions.assertEquals(COLLECTION_NAME, metadata.get(
                         COLLECTION_NAME).getSqlName());
-                final Map<String, DocumentDbSchemaTable> metadataTableMap = metadata.getTables();
-                final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadataTableMap.get(
-                        COLLECTION_NAME);
-                Assertions.assertEquals(2, metadataTable.getColumns().size());
+                final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata
+                        .get(COLLECTION_NAME);
+                Assertions.assertEquals(producesVirtualTable(bsonType, nextBsonType) ? 1 : 2,
+                        metadataTable.getColumns().size(), String.format("%s:%s", bsonType, nextBsonType));
                 final DocumentDbSchemaColumn metadataColumn = metadataTable.getColumns().get(
                         "field");
-                Assertions.assertNotNull(metadataColumn);
-                Assertions.assertEquals(nextSqlType, metadataColumn.getSqlType());
+                if (!producesVirtualTable(bsonType, nextBsonType)) {
+                    Assertions.assertNotNull(metadataColumn);
+                    Assertions.assertEquals(nextSqlType, metadataColumn.getSqlType());
+                } else {
+                    Assertions.assertNull(metadataColumn);
+                }
+
             }
         }
     }
@@ -223,8 +226,8 @@ class DocumentDbCollectionMetadataTest {
         // Unsupported types promote to VARCHAR.
         for (final BsonType bsonType : unsupportedBsonTypeSet) {
             Assertions.assertEquals(
-                    Types.VARCHAR,
-                    DocumentDbCollectionMetadata.getPromotedSqlType(bsonType, Types.NULL));
+                    JdbcType.VARCHAR,
+                    DocumentDbTableSchemaGenerator.getPromotedSqlType(bsonType, JdbcType.NULL));
         }
     }
 
@@ -279,31 +282,30 @@ class DocumentDbCollectionMetadataTest {
         }
 
         // Discover the collection metadata.
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, documentList.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, documentList.iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(1, metadata.getTables().size());
+        Assertions.assertEquals(1, metadata.size());
         Assertions.assertEquals(COLLECTION_NAME,
-                metadata.getTables().get(COLLECTION_NAME).getSqlName());
-        final Map<String, DocumentDbSchemaTable> metadataTableMap = metadata.getTables();
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadataTableMap.get(COLLECTION_NAME);
+                metadata.get(COLLECTION_NAME).getSqlName());
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(13, metadataTable.getColumns().size());
-        final Set<Integer> integerSet = metadataTable.getColumns().values().stream().collect(
+        final Set<JdbcType> integerSet = metadataTable.getColumns().values().stream().collect(
                 Collectors.groupingBy(DocumentDbSchemaColumn::getSqlType)).keySet();
         Assertions.assertEquals(9, integerSet.size());
-        final Set<Integer> expectedTypes = ImmutableSet.of(
-                Types.BIGINT,
-                Types.VARBINARY,
-                Types.BOOLEAN,
-                Types.DECIMAL,
-                Types.DOUBLE,
-                Types.INTEGER,
-                Types.NULL,
-                Types.TIMESTAMP,
-                Types.VARBINARY,
-                Types.VARCHAR
+        final Set<JdbcType> expectedTypes = ImmutableSet.of(
+                JdbcType.BIGINT,
+                JdbcType.VARBINARY,
+                JdbcType.BOOLEAN,
+                JdbcType.DECIMAL,
+                JdbcType.DOUBLE,
+                JdbcType.INTEGER,
+                JdbcType.NULL,
+                JdbcType.TIMESTAMP,
+                JdbcType.VARBINARY,
+                JdbcType.VARCHAR
         );
         Assertions.assertTrue(expectedTypes.containsAll(integerSet));
 
@@ -328,9 +330,7 @@ class DocumentDbCollectionMetadataTest {
             columnIndex++;
         }
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -341,15 +341,14 @@ class DocumentDbCollectionMetadataTest {
     void testComplexTwoLevelDocument() {
         final BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1 } }");
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb",
-                COLLECTION_NAME,
-                Arrays.stream((new BsonDocument[]{document})).iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(2, metadata.getTables().size());
-        final DocumentDbMetadataTable baseTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertEquals(2, metadata.size());
+        final DocumentDbMetadataTable baseTable = (DocumentDbMetadataTable) metadata
+                .get(COLLECTION_NAME);
         Assertions.assertNotNull(baseTable);
-        Assertions.assertEquals(2, baseTable.getColumns().size());
+        Assertions.assertEquals(1, baseTable.getColumns().size());
         DocumentDbSchemaColumn schemaColumn = baseTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertEquals(1, schemaColumn.getIndex(baseTable).orElse(null));
@@ -357,7 +356,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertNull(schemaColumn.getForeignKeyIndex(baseTable).orElse(null));
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) schemaColumn;
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(toName(combinePath(COLLECTION_NAME, "_id")),
                 metadataColumn.getSqlName());
@@ -369,7 +368,8 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertFalse(metadataColumn.isGenerated());
 
         // Virtual table for document with name "doc"
-        final DocumentDbMetadataTable virtualTable = (DocumentDbMetadataTable) metadata.getTables().get(toName(combinePath(COLLECTION_NAME, "doc")));
+        final DocumentDbMetadataTable virtualTable = (DocumentDbMetadataTable) metadata
+                .get(toName(combinePath(COLLECTION_NAME, "doc")));
         Assertions.assertEquals(2, virtualTable.getColumns().size());
 
         // _id foreign key column
@@ -380,7 +380,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertEquals(1, schemaColumn.getForeignKeyIndex(baseTable).orElse(null));
         metadataColumn = (DocumentDbMetadataColumn) schemaColumn;
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -398,7 +398,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertNull(schemaColumn.getForeignKeyIndex(baseTable).orElse(null));
         metadataColumn = (DocumentDbMetadataColumn) schemaColumn;
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.INTEGER, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.INTEGER, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("doc", "field"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("field", metadataColumn.getSqlName());
@@ -410,9 +410,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertNull(metadataColumn.getForeignKeyColumnName());
         Assertions.assertFalse(metadataColumn.isGenerated());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
 
@@ -424,19 +422,17 @@ class DocumentDbCollectionMetadataTest {
     void testComplexThreeLevelDocument() {
         final BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"doc2\" : { \"field2\" : \"value\" } } }");
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb",
-                COLLECTION_NAME,
-                Arrays.stream((new BsonDocument[]{document})).iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(3, metadata.getTables().size());
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertEquals(3, metadata.size());
+        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(2, metadataTable.getColumns().size());
+        Assertions.assertEquals(1, metadataTable.getColumns().size());
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(toName(combinePath(COLLECTION_NAME, "_id")),
                 metadataColumn.getSqlName());
@@ -446,14 +442,14 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertFalse(metadataColumn.isGenerated());
 
         // Virtual table for document with name "doc"
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(toName(combinePath(COLLECTION_NAME, "doc")));
-        Assertions.assertEquals(3, metadataTable.getColumns().size());
+        metadataTable = (DocumentDbMetadataTable) metadata.get(toName(combinePath(COLLECTION_NAME, "doc")));
+        Assertions.assertEquals(2, metadataTable.getColumns().size());
 
         // _id foreign key column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -467,7 +463,7 @@ class DocumentDbCollectionMetadataTest {
 
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.INTEGER, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.INTEGER, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("doc", "field"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("field", metadataColumn.getSqlName());
@@ -482,7 +478,7 @@ class DocumentDbCollectionMetadataTest {
 
         // Virtual table for document with name "doc2"
         final String parentPath = "doc";
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
+        metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(combinePath(COLLECTION_NAME, parentPath), "doc2")));
         Assertions.assertEquals(2, metadataTable.getColumns().size());
 
@@ -490,7 +486,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -504,7 +500,7 @@ class DocumentDbCollectionMetadataTest {
 
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field2");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals(
                 combinePath(combinePath(parentPath, "doc2"), "field2"),
                 metadataColumn.getFieldPath());
@@ -513,9 +509,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertEquals(0, metadataColumn.getForeignKeyIndex());
         Assertions.assertFalse(metadataColumn.isGenerated());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -526,20 +520,18 @@ class DocumentDbCollectionMetadataTest {
     void testComplexSingleLevelArray() {
         final BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key\", \"array\" : [ 1, 2, 3 ] }");
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb",
-                COLLECTION_NAME,
-                Arrays.stream((new BsonDocument[]{document})).iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(2, metadata.getTables().size());
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertEquals(2, metadata.size());
+        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(2, metadataTable.getColumns().size());
+        Assertions.assertEquals(1, metadataTable.getColumns().size());
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(toName(combinePath(COLLECTION_NAME, "_id")),
                 metadataColumn.getSqlName());
@@ -549,7 +541,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertFalse(metadataColumn.isGenerated());
 
         // Virtual table for document with name "doc"
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
+        metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(COLLECTION_NAME, "array")));
         Assertions.assertEquals(3, metadataTable.getColumns().size());
 
@@ -557,7 +549,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -574,7 +566,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath("array", "index_lvl_0")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.BIGINT, metadataColumn.getSqlType());
         Assertions.assertEquals("array",
                 metadataColumn.getFieldPath());
         Assertions.assertEquals(
@@ -590,7 +582,7 @@ class DocumentDbCollectionMetadataTest {
         // value key column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("value");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.INTEGER, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.INTEGER, metadataColumn.getSqlType());
         Assertions.assertEquals("array", metadataColumn.getFieldPath());
         Assertions.assertEquals("value", metadataColumn.getSqlName());
         Assertions.assertEquals(0, metadataColumn.getPrimaryKeyIndex());
@@ -600,9 +592,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertNull(metadataColumn.getForeignKeyTableName());
         Assertions.assertFalse(metadataColumn.isGenerated());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -613,20 +603,18 @@ class DocumentDbCollectionMetadataTest {
     void testComplexTwoLevelArray() {
         final BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key\", \"array\" : [ [1, 2, 3 ], [ 4, 5, 6 ] ]}");
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb",
-                COLLECTION_NAME,
-                Arrays.stream((new BsonDocument[]{document})).iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(2, metadata.getTables().size());
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertEquals(2, metadata.size());
+        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(2, metadataTable.getColumns().size());
+        Assertions.assertEquals(1, metadataTable.getColumns().size());
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id",metadataColumn.getFieldPath());
         Assertions.assertEquals(toName(combinePath(COLLECTION_NAME, "_id")),
                 metadataColumn.getSqlName());
@@ -636,7 +624,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertFalse(metadataColumn.isGenerated());
 
         // Virtual table for document with name "doc"
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(toName(combinePath(
+        metadataTable = (DocumentDbMetadataTable) metadata.get(toName(combinePath(
                 COLLECTION_NAME, "array")));
         Assertions.assertEquals(4, metadataTable.getColumns().size());
 
@@ -644,7 +632,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -660,7 +648,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath("array", "index_lvl_0")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.BIGINT, metadataColumn.getSqlType());
         Assertions.assertEquals("array", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath("array", "index_lvl_0")),
@@ -676,7 +664,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath("array", "index_lvl_1")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.BIGINT, metadataColumn.getSqlType());
         Assertions.assertEquals("array", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath("array", "index_lvl_1")),
@@ -691,7 +679,7 @@ class DocumentDbCollectionMetadataTest {
         // value key column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("value");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.INTEGER, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.INTEGER, metadataColumn.getSqlType());
         Assertions.assertEquals("array", metadataColumn.getFieldPath());
         Assertions.assertEquals("value", metadataColumn.getSqlName());
         Assertions.assertEquals(0, metadataColumn.getPrimaryKeyIndex());
@@ -701,29 +689,25 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertNull(metadataColumn.getForeignKeyTableName());
         Assertions.assertFalse(metadataColumn.isGenerated());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     @Test
     void testComplexSingleLevelWithDocumentsWithArray() {
         final BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"array2\" : [ \"a\", \"b\", \"c\" ] } ]}");
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb",
-                COLLECTION_NAME,
-                Arrays.stream((new BsonDocument[]{document})).iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(3, metadata.getTables().size());
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertEquals(3, metadata.size());
+        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(2, metadataTable.getColumns().size());
+        Assertions.assertEquals(1, metadataTable.getColumns().size());
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns()
                 .get(toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(toName(combinePath(COLLECTION_NAME, "_id")),
                 metadataColumn.getSqlName());
@@ -733,15 +717,15 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertFalse(metadataColumn.isGenerated());
 
         // Virtual table for array with name "array"
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(toName(combinePath(
+        metadataTable = (DocumentDbMetadataTable) metadata.get(toName(combinePath(
                 COLLECTION_NAME, "array")));
-        Assertions.assertEquals(5, metadataTable.getColumns().size());
+        Assertions.assertEquals(4, metadataTable.getColumns().size());
 
         // _id foreign key column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id",metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -755,7 +739,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath("array", "index_lvl_0")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.BIGINT, metadataColumn.getSqlType());
         Assertions.assertEquals("array", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath("array", "index_lvl_0")),
@@ -769,7 +753,7 @@ class DocumentDbCollectionMetadataTest {
         // document column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.INTEGER, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.INTEGER, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("array", "field"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("field", metadataColumn.getSqlName());
@@ -781,7 +765,7 @@ class DocumentDbCollectionMetadataTest {
         // document column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field1");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("array", "field1"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("field1", metadataColumn.getSqlName());
@@ -792,7 +776,7 @@ class DocumentDbCollectionMetadataTest {
 
 
         // Virtual table for array in array
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(toName(combinePath(combinePath(
+        metadataTable = (DocumentDbMetadataTable) metadata.get(toName(combinePath(combinePath(
                 COLLECTION_NAME, "array"), "array2")));
         Assertions.assertEquals(4, metadataTable.getColumns().size());
 
@@ -800,7 +784,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id",metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -813,7 +797,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath("array", "index_lvl_0")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.BIGINT, metadataColumn.getSqlType());
         Assertions.assertEquals("array", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath("array", "index_lvl_0")),
@@ -826,7 +810,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath("array_array2", "index_lvl_0")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.BIGINT, metadataColumn.getSqlType());
         Assertions.assertEquals("array.array2", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath("array_array2", "index_lvl_0")),
@@ -838,7 +822,7 @@ class DocumentDbCollectionMetadataTest {
         // value column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("value");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("array", "array2"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("value", metadataColumn.getSqlName());
@@ -846,9 +830,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertEquals(0, metadataColumn.getForeignKeyIndex());
         Assertions.assertFalse(metadataColumn.isGenerated());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -859,20 +841,19 @@ class DocumentDbCollectionMetadataTest {
     void testComplexSingleLevelArrayWithDocuments() {
         final BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb",
-                COLLECTION_NAME,
-                Arrays.stream((new BsonDocument[]{document})).iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(2, metadata.getTables().size());
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertEquals(2, metadata.size());
+        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata
+                .get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(2, metadataTable.getColumns().size());
+        Assertions.assertEquals(1, metadataTable.getColumns().size());
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns()
                 .get(toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(toName(combinePath(COLLECTION_NAME, "_id")),
                 metadataColumn.getSqlName());
@@ -881,7 +862,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertFalse(metadataColumn.isGenerated());
 
         // Virtual table for document with name "doc"
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(toName(combinePath(
+        metadataTable = (DocumentDbMetadataTable) metadata.get(toName(combinePath(
                 COLLECTION_NAME, "array")));
         Assertions.assertEquals(5, metadataTable.getColumns().size());
 
@@ -889,7 +870,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id",metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -902,7 +883,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath("array", "index_lvl_0")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.BIGINT, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.BIGINT, metadataColumn.getSqlType());
         Assertions.assertEquals("array", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath("array", "index_lvl_0")),
@@ -914,7 +895,7 @@ class DocumentDbCollectionMetadataTest {
         // document column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.INTEGER, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.INTEGER, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("array", "field"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("field", metadataColumn.getSqlName());
@@ -925,7 +906,7 @@ class DocumentDbCollectionMetadataTest {
         // document column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field1");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("array", "field1"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("field1", metadataColumn.getSqlName());
@@ -936,7 +917,7 @@ class DocumentDbCollectionMetadataTest {
         // document column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field2");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("array", "field2"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("field2", metadataColumn.getSqlName());
@@ -944,9 +925,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertEquals(0, metadataColumn.getForeignKeyIndex());
         Assertions.assertFalse(metadataColumn.isGenerated());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -979,19 +958,19 @@ class DocumentDbCollectionMetadataTest {
         );
         documents.add(document);
 
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb",
-                COLLECTION_NAME, documents.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, documents.iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(3, metadata.getTables().size());
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertEquals(3, metadata.size());
+        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata
+                .get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(2, metadataTable.getColumns().size());
+        Assertions.assertEquals(1, metadataTable.getColumns().size());
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(toName(combinePath(COLLECTION_NAME, "_id")),
                 metadataColumn.getSqlName());
@@ -1000,15 +979,15 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertFalse(metadataColumn.isGenerated());
 
         // Virtual table for document with name "doc"
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
+        metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(COLLECTION_NAME, "doc")));
-        Assertions.assertEquals(3, metadataTable.getColumns().size());
+        Assertions.assertEquals(2, metadataTable.getColumns().size());
 
         // _id foreign key column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -1019,7 +998,7 @@ class DocumentDbCollectionMetadataTest {
 
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.INTEGER, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.INTEGER, metadataColumn.getSqlType());
         Assertions.assertEquals(combinePath("doc", "field"),
                 metadataColumn.getFieldPath());
         Assertions.assertEquals("field", metadataColumn.getSqlName());
@@ -1029,7 +1008,7 @@ class DocumentDbCollectionMetadataTest {
 
         // Virtual table for document with name "doc2"
         final String parentPath = "doc";
-        metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
+        metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(combinePath(COLLECTION_NAME, parentPath), "doc2")));
         Assertions.assertEquals(3, metadataTable.getColumns().size());
 
@@ -1037,7 +1016,7 @@ class DocumentDbCollectionMetadataTest {
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals("_id", metadataColumn.getFieldPath());
         Assertions.assertEquals(
                 toName(combinePath(COLLECTION_NAME, "_id")),
@@ -1048,7 +1027,7 @@ class DocumentDbCollectionMetadataTest {
 
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field1");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals(
                 combinePath(combinePath(parentPath, "doc2"), "field1"),
                 metadataColumn.getFieldPath());
@@ -1059,7 +1038,7 @@ class DocumentDbCollectionMetadataTest {
 
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("field2");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals(
                 combinePath(combinePath(parentPath, "doc2"), "field2"),
                 metadataColumn.getFieldPath());
@@ -1068,9 +1047,7 @@ class DocumentDbCollectionMetadataTest {
         Assertions.assertEquals(0, metadataColumn.getForeignKeyIndex());
         Assertions.assertFalse(metadataColumn.isGenerated());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -1095,12 +1072,10 @@ class DocumentDbCollectionMetadataTest {
         };
 
         for (BsonDocument document : tests) {
-            final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata
-                    .create("testDb",
-                            COLLECTION_NAME,
-                            Arrays.stream((new BsonDocument[]{document})).iterator());
-            Assertions.assertEquals(2, metadata.getTables().size());
-            final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables()
+            final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                    .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
+            Assertions.assertEquals(2, metadata.size());
+            final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata
                     .get(toName(combinePath(COLLECTION_NAME, "array")));
             Assertions.assertNotNull(metadataTable);
             Assertions.assertEquals(3, metadataTable.getColumns().size());
@@ -1121,11 +1096,9 @@ class DocumentDbCollectionMetadataTest {
             Assertions.assertNotNull(metadataColumn);
             Assertions.assertEquals(0, metadataColumn.getForeignKeyIndex());
             Assertions.assertEquals(0, metadataColumn.getPrimaryKeyIndex());
-            Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+            Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
 
-            final String methodName = new Object() {
-            }.getClass().getEnclosingMethod().getName();
-            printMetadataOutput(metadata, methodName);
+            printMetadataOutput(metadata, getMethodName());
         }
     }
 
@@ -1137,22 +1110,21 @@ class DocumentDbCollectionMetadataTest {
     void testIdFieldIsDocument() {
         final BsonDocument document = BsonDocument
                 .parse("{ \"_id\" : { \"field\" : 1 }, \"field2\" : 2 }");
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, Arrays.asList(document).iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Collections.singletonList(document).iterator());
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(1, metadata.getTables().size());
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        Assertions.assertEquals(1, metadata.size());
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata
+                .get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(2, metadataTable.getColumns().size());
         final DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         Assertions.assertEquals(1, metadataColumn.getPrimaryKeyIndex());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -1179,22 +1151,20 @@ class DocumentDbCollectionMetadataTest {
         );
         documents.add(document);
 
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, documents.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, documents.iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(2, metadata.getTables().size());
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
+        Assertions.assertEquals(2, metadata.size());
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(COLLECTION_NAME, "array")));
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(3, metadataTable.getColumns().size());
         final DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("value");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -1218,22 +1188,20 @@ class DocumentDbCollectionMetadataTest {
         );
         documents.add(document);
 
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, documents.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, documents.iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(2, metadata.getTables().size());
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
+        Assertions.assertEquals(2, metadata.size());
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(COLLECTION_NAME, "array")));
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(3, metadataTable.getColumns().size());
         final DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("value");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -1256,23 +1224,21 @@ class DocumentDbCollectionMetadataTest {
         );
         documents.add(document);
 
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, documents.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, documents.iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(2, metadata.getTables().size());
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
+        Assertions.assertEquals(2, metadata.size());
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(COLLECTION_NAME, "doc")));
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(1, metadataTable.getColumns().size());
         final DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns()
                 .get(toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -1295,27 +1261,24 @@ class DocumentDbCollectionMetadataTest {
         );
         documents.add(document);
 
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, documents.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, documents.iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(1, metadata.getTables().size());
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
-                COLLECTION_NAME);
+        Assertions.assertEquals(1, metadata.size());
+        final DocumentDbSchemaTable metadataTable = metadata.get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(2, metadataTable.getColumns().size());
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns()
                 .get(toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns()
                 .get("field");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.NULL, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.NULL, metadataColumn.getSqlType());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -1338,26 +1301,24 @@ class DocumentDbCollectionMetadataTest {
         );
         documents.add(document);
 
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, documents.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, documents.iterator());
 
         Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(2, metadata.getTables().size());
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(
+        Assertions.assertEquals(2, metadata.size());
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(COLLECTION_NAME, "array")));
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(3, metadataTable.getColumns().size());
         DocumentDbMetadataColumn metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns()
                 .get(toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.VARCHAR, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.VARCHAR, metadataColumn.getSqlType());
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumns().get("value");
         Assertions.assertNotNull(metadataColumn);
-        Assertions.assertEquals(Types.NULL, metadataColumn.getSqlType());
+        Assertions.assertEquals(JdbcType.NULL, metadataColumn.getSqlType());
 
-        final String methodName = new Object() {
-        }.getClass().getEnclosingMethod().getName();
-        printMetadataOutput(metadata, methodName);
+        printMetadataOutput(metadata, getMethodName());
     }
 
     /**
@@ -1380,38 +1341,41 @@ class DocumentDbCollectionMetadataTest {
         );
 
         documents.add(document);
-        final DocumentDbSchemaCollection metadata = DocumentDbCollectionMetadata.create(
-                "testDb", COLLECTION_NAME, documents.iterator());
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, documents.iterator());
         Assertions.assertNotNull(metadata);
-        final DocumentDbMetadataTable metadataArrayTable = (DocumentDbMetadataTable) metadata.getTables().get(
-                toName(combinePath(COLLECTION_NAME, "array")));
+        final DocumentDbMetadataTable metadataArrayTable = (DocumentDbMetadataTable) metadata
+                .get(toName(combinePath(COLLECTION_NAME, "array")));
         Assertions.assertNotNull(metadataArrayTable);
         final DocumentDbMetadataColumn metadataColumnArrayId = (DocumentDbMetadataColumn) metadataArrayTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumnArrayId);
 
-        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.getTables().get(COLLECTION_NAME);
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata
+                .get(COLLECTION_NAME);
         Assertions.assertNotNull(metadataTable);
         final DocumentDbMetadataColumn metadataColumnId = (DocumentDbMetadataColumn) metadataTable.getColumns().get(
                 toName(combinePath(COLLECTION_NAME, "_id")));
         Assertions.assertNotNull(metadataColumnId);
 
         Assertions.assertEquals(metadataColumnId.getSqlType(), metadataColumnArrayId.getSqlType(),
-                "Type of _id columns (DocumentDbCollectionMetadataTest._id and " +
+                "Type of _id columns (DocumentDbTableSchemaGeneratorTest._id and " +
                         "DocumentDbCollectionMetadataTest_array._id) should match");
-        Assertions.assertEquals(metadataColumnArrayId.getSqlType(), Types.DOUBLE,
-                "Type of ID columns (DocumentDbCollectionMetadataTest._id and " +
-                        "DocumentDbCollectionMetadataTest_array._id) should be DOUBLE (" + Types.DOUBLE + ")");
+        Assertions.assertEquals(metadataColumnArrayId.getSqlType(), JdbcType.DOUBLE,
+                "Type of ID columns (DocumentDbTableSchemaGeneratorTest._id and " +
+                        "DocumentDbCollectionMetadataTest_array._id) should be DOUBLE (" + JdbcType.DOUBLE + ")");
     }
 
     private boolean producesVirtualTable(final BsonType bsonType, final BsonType nextBsonType) {
         return (bsonType == BsonType.ARRAY && nextBsonType == BsonType.ARRAY)
                 || (bsonType == BsonType.DOCUMENT && nextBsonType == BsonType.DOCUMENT)
                 || (bsonType == BsonType.NULL
-                && (nextBsonType == BsonType.ARRAY || nextBsonType == BsonType.DOCUMENT));
+                && (nextBsonType == BsonType.ARRAY || nextBsonType == BsonType.DOCUMENT))
+                || (nextBsonType == BsonType.NULL
+                && (bsonType == BsonType.ARRAY || bsonType == BsonType.DOCUMENT));
     }
 
-    private void printMetadataOutput(final DocumentDbSchemaCollection model,
+    private void printMetadataOutput(final Map<String, DocumentDbSchemaTable> model,
                                      final String testName) {
         if (DEMO_MODE) {
             final String nameOfTest = testName != null ? testName : "TEST";
@@ -1419,5 +1383,17 @@ class DocumentDbCollectionMetadataTest {
             System.out.println(model.toString());
             System.out.printf("End of %s%n", nameOfTest);
         }
+    }
+
+    private static String getMethodName() {
+        final StackTraceElement[] stackTraceElements = Thread.currentThread().getStackTrace();
+        final String methodName;
+        final int stackDepth = 2;
+        if (stackDepth < stackTraceElements.length) {
+            methodName = stackTraceElements[stackDepth].getMethodName();
+        } else {
+            methodName = "";
+        }
+        return methodName;
     }
 }

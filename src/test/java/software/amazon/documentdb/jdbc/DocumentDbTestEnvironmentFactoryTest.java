@@ -22,6 +22,7 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -29,6 +30,10 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -44,6 +49,17 @@ class DocumentDbTestEnvironmentFactoryTest {
         for (DocumentDbTestEnvironment testEnvironment :
                 DocumentDbTestEnvironmentFactory.getConfiguredEnvironments()) {
             testEnvironment.start();
+        }
+    }
+
+    @AfterEach
+    void afterEach() throws SQLException {
+        for (DocumentDbTestEnvironment testEnvironment :
+                DocumentDbTestEnvironmentFactory.getConfiguredEnvironments()) {
+            final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+            properties.setDatabase(testEnvironment.getDatabaseName());
+            final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         }
     }
 

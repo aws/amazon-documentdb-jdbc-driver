@@ -73,7 +73,7 @@ class DocumentDbEnumerator implements Enumerator<Object> {
 
     @Override public void close() {
         if (cursor instanceof MongoCursor) {
-            ((MongoCursor) cursor).close();
+            ((MongoCursor<Document>) cursor).close();
         }
         // AggregationOutput implements Iterator but not DBCursor. There is no
         // available close() method -- apparently there is no open resource.
@@ -97,7 +97,7 @@ class DocumentDbEnumerator implements Enumerator<Object> {
      * @param fields List of fields to project; or null to return map
      */
     static Function1<Document, Object[]> listGetter(
-            final List<Entry<String, Class>> fields,
+            final List<Entry<String, Class<?>>> fields,
             final DocumentDbSchemaTable tableMetadata) {
         return a0 -> {
             // DocumentDB: modified - start
@@ -114,7 +114,7 @@ class DocumentDbEnumerator implements Enumerator<Object> {
 
     @SuppressWarnings("unchecked")
     static Function1<Document, Object> getter(
-            final List<Entry<String, Class>> fields,
+            final List<Entry<String, Class<?>>> fields,
             final DocumentDbSchemaTable tableMetadata) {
         //noinspection unchecked
         // DocumentDB: modified - start

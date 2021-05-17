@@ -19,7 +19,6 @@ package software.amazon.documentdb.jdbc;
 import software.amazon.documentdb.jdbc.common.DatabaseMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaCollection;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
@@ -27,14 +26,12 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.regex.Pattern;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
@@ -53,41 +50,41 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
  * DocumentDb implementation of DatabaseMetaData.
  */
 public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java.sql.DatabaseMetaData {
-    private static final Map<Integer, Integer> TYPE_COLUMN_SIZE_MAP;
+    private static final Map<JdbcType, Integer> TYPE_COLUMN_SIZE_MAP;
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private final DocumentDbConnectionProperties properties;
 
     static {
         TYPE_COLUMN_SIZE_MAP = new HashMap<>();
         for (JdbcType jdbcType : JdbcType.values()) {
-            switch (jdbcType.getJdbcType()) {
-                case Types.DECIMAL:
-                case Types.NUMERIC:
-                    TYPE_COLUMN_SIZE_MAP.put(jdbcType.getJdbcType(), 646456995); // precision + "-.".length()}
+            switch (jdbcType) {
+                case DECIMAL:
+                case NUMERIC:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, 646456995); // precision + "-.".length()}
                     break;
-                case Types.FLOAT:
-                case Types.REAL:
-                case Types.DOUBLE:
-                    TYPE_COLUMN_SIZE_MAP.put(jdbcType.getJdbcType(), 23); // String.valueOf(-Double.MAX_VALUE).length();
+                case FLOAT:
+                case REAL:
+                case DOUBLE:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, 23); // String.valueOf(-Double.MAX_VALUE).length();
                     break;
-                case Types.BIGINT:
-                    TYPE_COLUMN_SIZE_MAP.put(jdbcType.getJdbcType(), 20); // decimal precision + "-".length();
+                case BIGINT:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, 20); // decimal precision + "-".length();
                     break;
-                case Types.INTEGER:
-                    TYPE_COLUMN_SIZE_MAP.put(jdbcType.getJdbcType(), 11); // decimal precision + "-".length();
+                case INTEGER:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, 11); // decimal precision + "-".length();
                     break;
-                case Types.SMALLINT :
-                    TYPE_COLUMN_SIZE_MAP.put(jdbcType.getJdbcType(),  6); // decimal precision + "-".length();
+                case SMALLINT :
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType,  6); // decimal precision + "-".length();
                     break;
-                case Types.TINYINT :
-                    TYPE_COLUMN_SIZE_MAP.put(jdbcType.getJdbcType(), 4);
+                case TINYINT :
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, 4);
                     break;
-                case Types.VARBINARY:
-                case Types.VARCHAR:
-                    TYPE_COLUMN_SIZE_MAP.put(jdbcType.getJdbcType(), 65536);
+                case VARBINARY:
+                case VARCHAR:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, 65536);
                     break;
                 default:
-                    TYPE_COLUMN_SIZE_MAP.put(jdbcType.getJdbcType(), 0);
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, 0);
                     break;
             }
         }
@@ -219,13 +216,11 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addTablesForSchema(final String tableNamePattern,
             final List<List<Object>> metaData) {
-        for (Entry<String, DocumentDbSchemaCollection> collection : databaseMetadata
-                .getCollectionMetadataMap().entrySet()) {
-            for (DocumentDbSchemaTable table : collection.getValue().getTables().values()) {
-                if (isNullOrWhitespace(tableNamePattern)
-                        || table.getSqlName().matches(convertPatternToRegex(tableNamePattern))) {
-                    addTableEntry(metaData, table);
-                }
+        for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
+            final DocumentDbSchemaTable table = databaseMetadata.getTableSchemaMap().get(tableName);
+            if (isNullOrWhitespace(tableNamePattern)
+                    || table.getSqlName().matches(convertPatternToRegex(tableNamePattern))) {
+                addTableEntry(metaData, table);
             }
         }
     }
@@ -305,13 +300,11 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addColumnsForSchema(final String tableNamePattern, final String columnNamePattern,
             final List<List<Object>> metaData) {
-        for (Entry<String, DocumentDbSchemaCollection> collection : databaseMetadata
-                .getCollectionMetadataMap().entrySet()) {
-            for (DocumentDbSchemaTable table : collection.getValue().getTables().values()) {
-                if (isNullOrWhitespace(tableNamePattern)
-                        || table.getSqlName().matches(convertPatternToRegex(tableNamePattern))) {
-                    addColumnsForTable(columnNamePattern, metaData, table);
-                }
+        for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
+            final DocumentDbSchemaTable table = databaseMetadata.getTableSchemaMap().get(tableName);
+            if (isNullOrWhitespace(tableNamePattern)
+                    || table.getSqlName().matches(convertPatternToRegex(tableNamePattern))) {
+                addColumnsForTable(columnNamePattern, metaData, table);
             }
         }
     }
@@ -366,17 +359,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         //        YES --- if this a generated column
         //        NO --- if this not a generated column
         //        empty string --- if it cannot be determined whether this is a generated column
-        if (column.getSqlType() == Types.JAVA_OBJECT || column.getSqlType() == Types.ARRAY) {
+        if (column.getSqlType() == JdbcType.JAVA_OBJECT || column.getSqlType() == JdbcType.ARRAY) {
             return;
         }
-        final JdbcType jdbcType = JdbcType.fromType(column.getSqlType());
         final List<Object> row = new ArrayList<>(Arrays.asList(
                 null, // TABLE_CAT
                 properties.getDatabase(), // TABLE_SCHEM
                 table.getSqlName(), // TABLE_NAME
                 column.getSqlName(), // COLUMN_NAME
-                column.getSqlType(), //DATA_TYPE
-                jdbcType.name(), // TYPE_NAME
+                column.getSqlType().getJdbcType(), //DATA_TYPE
+                column.getSqlType().name(), // TYPE_NAME
                 TYPE_COLUMN_SIZE_MAP.get(column.getSqlType()),
                 // COLUMN_SIZE
                 null, // DECIMAL_DIGITS
@@ -405,16 +397,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private static Integer getCharOctetLength(final DocumentDbSchemaColumn column) {
         switch (column.getSqlType()) {
-            case Types.CHAR:
-            case Types.NCHAR:
-            case Types.VARCHAR:
-            case Types.NVARCHAR:
-            case Types.LONGVARCHAR:
-            case Types.LONGNVARCHAR:
+            case CHAR:
+            case NCHAR:
+            case VARCHAR:
+            case NVARCHAR:
+            case LONGVARCHAR:
+            case LONGNVARCHAR:
                 return TYPE_COLUMN_SIZE_MAP.get(column.getSqlType()) * 4;
-            case Types.BINARY:
-            case Types.VARBINARY:
-            case Types.LONGVARBINARY:
+            case BINARY:
+            case VARBINARY:
+            case LONGVARBINARY:
                 return TYPE_COLUMN_SIZE_MAP.get(column.getSqlType());
             default:
                 return null;
@@ -458,31 +450,29 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         // 6. PK_NAME String => primary key name (may be null)
         final List<List<Object>> metaData = new ArrayList<>();
         if (schema == null || properties.getDatabase().matches(convertPatternToRegex(schema))) {
-            for (Entry<String, DocumentDbSchemaCollection> collection : databaseMetadata
-                    .getCollectionMetadataMap().entrySet()) {
-                for (DocumentDbSchemaTable metadataTable : collection.getValue().getTables().values()) {
-                    if (table == null ||
-                            metadataTable.getSqlName().matches(convertPatternToRegex(table))) {
-                        for (DocumentDbSchemaColumn column : metadataTable.getColumns().values()) {
-                            // 1. TABLE_CAT String => table catalog (may be null)
-                            // 2. TABLE_SCHEM String => table schema (may be null)
-                            // 3. TABLE_NAME String => table name
-                            // 4. COLUMN_NAME String => column name
-                            // 5. KEY_SEQ short => sequence number within primary key
-                            //    (a value of 1 represents the first column of the primary key, a
-                            //    value of 2 would represent the second column within the primary key).
-                            // 6. PK_NAME String => primary key name (may be null)
-                            if (column.isPrimaryKey()) {
-                                final List<Object> row = new ArrayList<>(Arrays.asList(
-                                        null, // TABLE_CAT
-                                        properties.getDatabase(), // TABLE_SCHEM
-                                        metadataTable.getSqlName(), // TABLE_NAME
-                                        column.getSqlName(), // COLUMN_NAME
-                                        column.getPrimaryKeyIndex(metadataTable).orElse(0), // KEY_SEQ
-                                        null // PK_NAME
-                                ));
-                                metaData.add(row);
-                            }
+            for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
+                final DocumentDbSchemaTable metadataTable = databaseMetadata.getTableSchemaMap().get(tableName);
+                if (table == null ||
+                        metadataTable.getSqlName().matches(convertPatternToRegex(table))) {
+                    for (DocumentDbSchemaColumn column : metadataTable.getColumns().values()) {
+                        // 1. TABLE_CAT String => table catalog (may be null)
+                        // 2. TABLE_SCHEM String => table schema (may be null)
+                        // 3. TABLE_NAME String => table name
+                        // 4. COLUMN_NAME String => column name
+                        // 5. KEY_SEQ short => sequence number within primary key
+                        //    (a value of 1 represents the first column of the primary key, a
+                        //    value of 2 would represent the second column within the primary key).
+                        // 6. PK_NAME String => primary key name (may be null)
+                        if (column.isPrimaryKey()) {
+                            final List<Object> row = new ArrayList<>(Arrays.asList(
+                                    null, // TABLE_CAT
+                                    properties.getDatabase(), // TABLE_SCHEM
+                                    metadataTable.getSqlName(), // TABLE_NAME
+                                    column.getSqlName(), // COLUMN_NAME
+                                    column.getPrimaryKeyIndex(metadataTable).orElse(0), // KEY_SEQ
+                                    null // PK_NAME
+                            ));
+                            metaData.add(row);
                         }
                     }
                 }
@@ -513,16 +503,11 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addImportedKeysForSchema(final String table,
             final List<List<Object>> metaData) {
-        for (DocumentDbSchemaCollection collection : databaseMetadata
-                .getCollectionMetadataMap().values()) {
-            // Get the base table by matching the collection path to the name of table, with check for empty table list.
-            if (collection.getTables().isEmpty()) {
-                continue;
-            }
-            for (DocumentDbSchemaTable schemaTable : collection.getTables().values()) {
-                if (table == null || schemaTable.getSqlName().matches(convertPatternToRegex(table))) {
-                    addImportedKeysForTable(metaData, schemaTable, schemaTable);
-                }
+        for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
+            final DocumentDbSchemaTable schemaTable = databaseMetadata.getTableSchemaMap()
+                    .get(tableName);
+            if (table == null || schemaTable.getSqlName().matches(convertPatternToRegex(table))) {
+                addImportedKeysForTable(metaData, schemaTable, schemaTable);
             }
         }
     }

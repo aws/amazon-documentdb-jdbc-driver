@@ -25,6 +25,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -32,8 +33,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
-import java.io.IOException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
@@ -53,10 +56,17 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
 
     /** Initializes the test class. */
     @BeforeAll
-    void initialize() throws IOException {
+    void initialize() throws SQLException {
         // Add 1 valid user so we can successfully authenticate.
         createUser(DATABASE, USERNAME, PASSWORD);
+    }
 
+    @AfterEach
+    void afterEach() throws SQLException {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setDatabase(DATABASE);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 
     /**
@@ -166,7 +176,7 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
                                         COLLECTION_COMPLEX + "_innerDocument_levelTwoDocument"));
                 final ResultSet arrayTable =
                         statement.executeQuery(
-                                String.format("SELECT * FROM \"%s\"", COLLECTION_COMPLEX + "_array")); ) {
+                                String.format("SELECT * FROM \"%s\"", COLLECTION_COMPLEX + "_array"))) {
             Assertions.assertNotNull(outerTableResultSet);
             final ResultSetMetaData outerMetadata = outerTableResultSet.getMetaData();
             Assertions.assertEquals(2, outerMetadata.getColumnCount());

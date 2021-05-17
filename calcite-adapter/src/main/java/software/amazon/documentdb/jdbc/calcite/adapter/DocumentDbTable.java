@@ -42,12 +42,12 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.sql.Types;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +58,7 @@ public class DocumentDbTable extends AbstractQueryableTable
         implements TranslatableTable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbTable.class);
-    private static volatile Map<Integer, RelDataType> jdbcTypeToRelDataType = null;
+    private static volatile Map<JdbcType, RelDataType> jdbcTypeToRelDataType = null;
 
     private final String collectionName;
     private final DocumentDbSchemaTable tableMetadata;
@@ -83,7 +83,7 @@ public class DocumentDbTable extends AbstractQueryableTable
     @Override public RelDataType getRowType(final RelDataTypeFactory typeFactory) {
         final List<Map.Entry<String, RelDataType>> fieldList = new ArrayList<>();
         SimpleEntry<String, RelDataType> field;
-        int sqlType;
+        JdbcType sqlType;
         RelDataType relDataType;
         boolean nullable;
 
@@ -95,7 +95,7 @@ public class DocumentDbTable extends AbstractQueryableTable
                 tableMetadata.getColumns().entrySet()) {
 
             sqlType = entry.getValue().getSqlType();
-            if (sqlType == Types.ARRAY || sqlType == Types.JAVA_OBJECT) {
+            if (sqlType == JdbcType.ARRAY || sqlType == JdbcType.JAVA_OBJECT) {
                 continue;
             }
 
@@ -118,7 +118,7 @@ public class DocumentDbTable extends AbstractQueryableTable
 
     @Override public <T> Queryable<T> asQueryable(final QueryProvider queryProvider,
             final SchemaPlus schema, final String tableName) {
-        return new DocumentDbQueryable<T>(queryProvider, schema, this, tableName);
+        return new DocumentDbQueryable<>(queryProvider, schema, this, tableName);
     }
 
     @Override public RelNode toRel(
@@ -141,17 +141,18 @@ public class DocumentDbTable extends AbstractQueryableTable
      * @return Enumerator of results
      */
     private Enumerable<Object> find(final MongoDatabase mongoDb, final String filterJson,
-            final String projectJson, final List<Entry<String, Class>> fields) {
-        final MongoCollection collection =
+            final String projectJson, final List<Entry<String, Class<?>>> fields) {
+        final MongoCollection<Document> collection =
                 mongoDb.getCollection(collectionName);
-        final Bson filter =
-                filterJson == null ? null : BsonDocument.parse(filterJson);
+        final Bson filter = filterJson == null
+                ? BsonDocument.parse("{}")
+                : BsonDocument.parse(filterJson);
         final Bson project =
                 projectJson == null ? null : BsonDocument.parse(projectJson);
         final Function1<Document, Object> getter = DocumentDbEnumerator.getter(fields, tableMetadata);
         return new AbstractEnumerable<Object>() {
             @Override public Enumerator<Object> enumerator() {
-                @SuppressWarnings("unchecked") final FindIterable<Document> cursor =
+                final FindIterable<Document> cursor =
                         collection.find(filter).projection(project);
                 return new DocumentDbEnumerator(cursor.iterator(), getter);
             }
@@ -172,7 +173,7 @@ public class DocumentDbTable extends AbstractQueryableTable
      * @return Enumerator of results
      */
     Enumerable<Object> aggregate(final MongoDatabase mongoDb,
-            final List<Entry<String, Class>> fields,
+            final List<Entry<String, Class<?>>> fields,
             final List<String> paths,
             final List<String> operations) {
         final List<Bson> list = new ArrayList<>();
@@ -219,7 +220,7 @@ public class DocumentDbTable extends AbstractQueryableTable
          * @return an enumerable of the aggregate pipeline
          */
         @SuppressWarnings("UnusedDeclaration")
-        public Enumerable<Object> aggregate(final List<Entry<String, Class>> fields,
+        public Enumerable<Object> aggregate(final List<Entry<String, Class<?>>> fields,
                 final List<String> paths,
                 final List<String> operations) {
             return getTable().aggregate(getMongoDb(), fields, paths, operations);
@@ -236,7 +237,7 @@ public class DocumentDbTable extends AbstractQueryableTable
          */
         @SuppressWarnings("UnusedDeclaration")
         public Enumerable<Object> find(final String filterJson,
-                final String projectJson, final List<Entry<String, Class>> fields) {
+                final String projectJson, final List<Entry<String, Class<?>>> fields) {
             return getTable().find(getMongoDb(), filterJson, projectJson, fields);
         }
     }
@@ -244,26 +245,26 @@ public class DocumentDbTable extends AbstractQueryableTable
     private static synchronized void initializeRelDataTypeMap(final RelDataTypeFactory typeFactory) {
         if (jdbcTypeToRelDataType == null) {
             jdbcTypeToRelDataType =
-                    ImmutableMap.<Integer, RelDataType>builder()
-                            .put(Types.BIGINT, typeFactory.createSqlType(SqlTypeName.BIGINT))
-                            .put(Types.BOOLEAN, typeFactory.createSqlType(SqlTypeName.BOOLEAN))
+                    ImmutableMap.<JdbcType, RelDataType>builder()
+                            .put(JdbcType.BIGINT, typeFactory.createSqlType(SqlTypeName.BIGINT))
+                            .put(JdbcType.BOOLEAN, typeFactory.createSqlType(SqlTypeName.BOOLEAN))
                             .put(
-                                    Types.DECIMAL,
+                                    JdbcType.DECIMAL,
                                     typeFactory.createSqlType(
                                             SqlTypeName.DECIMAL,
                                             typeFactory.getTypeSystem().getMaxPrecision(SqlTypeName.DECIMAL),
                                             typeFactory.getTypeSystem().getMaxScale(SqlTypeName.DECIMAL)))
-                            .put(Types.DOUBLE, typeFactory.createSqlType(SqlTypeName.DOUBLE))
-                            .put(Types.INTEGER, typeFactory.createSqlType(SqlTypeName.INTEGER))
-                            .put(Types.NULL, typeFactory.createSqlType(SqlTypeName.VARCHAR))
-                            .put(Types.TIMESTAMP, typeFactory.createSqlType(SqlTypeName.TIMESTAMP))
+                            .put(JdbcType.DOUBLE, typeFactory.createSqlType(SqlTypeName.DOUBLE))
+                            .put(JdbcType.INTEGER, typeFactory.createSqlType(SqlTypeName.INTEGER))
+                            .put(JdbcType.NULL, typeFactory.createSqlType(SqlTypeName.VARCHAR))
+                            .put(JdbcType.TIMESTAMP, typeFactory.createSqlType(SqlTypeName.TIMESTAMP))
                             .put(
-                                    Types.VARCHAR,
+                                    JdbcType.VARCHAR,
                                     typeFactory.createSqlType(
                                             SqlTypeName.VARCHAR,
                                             typeFactory.getTypeSystem().getMaxPrecision(SqlTypeName.VARCHAR)))
                             .put(
-                                    Types.VARBINARY,
+                                    JdbcType.VARBINARY,
                                     typeFactory.createSqlType(
                                             SqlTypeName.VARBINARY,
                                             typeFactory.getTypeSystem().getMaxPrecision(SqlTypeName.VARBINARY)))

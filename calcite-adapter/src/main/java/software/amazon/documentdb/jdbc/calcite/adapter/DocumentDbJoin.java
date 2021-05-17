@@ -46,14 +46,13 @@ import org.apache.calcite.util.JsonBuilder;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbCollectionMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -65,6 +64,8 @@ import java.util.Set;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGenerator.combinePath;
 
 /**
  * Implementation of {@link Join} in DocumentDb.
@@ -322,9 +323,12 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         return table.getColumns().values().stream()
                 .filter(c -> !c.isPrimaryKey()
                         && c.getForeignKeyTableName() == null
-                        && !(c.getSqlType() == Types.ARRAY ||
-                        c.getSqlType() == Types.JAVA_OBJECT ||
-                        c.getSqlType() == Types.NULL))
+                        && !(c instanceof DocumentDbMetadataColumn &&
+                                ((DocumentDbMetadataColumn)c).isGenerated())
+                        && !(c.getSqlType() == null ||
+                             c.getSqlType() == JdbcType.ARRAY ||
+                             c.getSqlType() == JdbcType.JAVA_OBJECT ||
+                             c.getSqlType() == JdbcType.NULL))
                 .collect(ImmutableList.toImmutableList());
     }
 
@@ -492,7 +496,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                     .isIndex(oldColumn.isIndex())
                     .foreignKeyColumnName(oldColumn.getForeignKeyColumnName())
                     .foreignKeyTableName(oldColumn.getForeignKeyTableName())
-                    .resolvedPath(DocumentDbCollectionMetadata.combinePath(rightMatches, entry.getValue().getFieldPath()))
+                    .resolvedPath(combinePath(rightMatches, entry.getValue().getFieldPath()))
                     .build();
             columnMap.put(key, newColumn);
         }

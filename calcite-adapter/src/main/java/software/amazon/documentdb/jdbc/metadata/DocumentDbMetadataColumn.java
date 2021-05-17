@@ -16,12 +16,18 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
+import org.bson.BsonType;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
+
+import java.util.Objects;
 
 /** Represents a field in a document, embedded document or array as a column in a table. */
 @Getter
+@JsonSerialize(as = DocumentDbSchemaColumn.class)
 public class DocumentDbMetadataColumn extends DocumentDbSchemaColumn {
 
     /** The (one-indexed) index of the column in the table. */
@@ -88,8 +94,8 @@ public class DocumentDbMetadataColumn extends DocumentDbSchemaColumn {
                                     final boolean isGenerated,
                                     final String fieldPath,
                                     final String sqlName,
-                                    final int sqlType,
-                                    final int dbType,
+                                    final JdbcType sqlType,
+                                    final BsonType dbType,
                                     final boolean isIndex,
                                     final boolean isPrimaryKey,
                                     final String foreignKeyTableName,
@@ -103,5 +109,34 @@ public class DocumentDbMetadataColumn extends DocumentDbSchemaColumn {
         this.virtualTableName = virtualTableName;
         this.resolvedPath = resolvedPath;
         this.isGenerated = isGenerated;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof DocumentDbMetadataColumn)) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        final DocumentDbMetadataColumn that = (DocumentDbMetadataColumn) o;
+        return index == that.index
+                && primaryKeyIndex == that.primaryKeyIndex
+                && foreignKeyIndex == that.foreignKeyIndex
+                && isGenerated == that.isGenerated
+                && Objects.equals(arrayIndexLevel, that.arrayIndexLevel)
+                && Objects .equals(tableName, that.tableName)
+                && Objects.equals(virtualTableName, that.virtualTableName)
+                && Objects.equals(resolvedPath, that.resolvedPath);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects
+                .hash(super.hashCode(), index, primaryKeyIndex, foreignKeyIndex, arrayIndexLevel,
+                        tableName, virtualTableName, resolvedPath, isGenerated);
     }
 }

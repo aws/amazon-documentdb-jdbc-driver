@@ -77,7 +77,6 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
         properties.setHostname(HOST + ":" + getMongoPort());
         documents = new ArrayList<>();
         ids = new ArrayList<>();
-
     }
 
     /**

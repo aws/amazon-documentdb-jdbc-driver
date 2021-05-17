@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import lombok.SneakyThrows;
 import software.amazon.documentdb.jdbc.common.Statement;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
@@ -51,6 +52,7 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
         return  Integer.MAX_VALUE;
     }
 
+    @SneakyThrows
     @Override
     public java.sql.ResultSet executeQuery(final String sql) throws SQLException {
         verifyOpen();

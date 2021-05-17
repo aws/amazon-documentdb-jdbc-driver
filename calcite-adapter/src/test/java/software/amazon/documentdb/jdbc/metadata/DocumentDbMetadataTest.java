@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.SQLException;
 import java.util.Properties;
@@ -53,107 +55,98 @@ class DocumentDbMetadataTest {
 
     @DisplayName("Test to get database metadata for initial or latest version.")
     @Test
-    void testGetInitialWithRefresh() throws SQLException {
+    void testGetInitialWithRefresh() throws SQLException, DocumentDbSchemaException {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
                 .getMongoDb40Environment();
 
-        final String id = UUID.randomUUID().toString();
+        final String schemaName = UUID.randomUUID().toString();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(
                         new Properties(),
                         testEnvironment.getJdbcConnectionString(),
                         "jdbc:documentdb:");
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
-                .get(id, properties);
-        Assertions.assertEquals(0,
-                databaseMetadata0.getCollectionMetadataMap().keySet().stream().count());
-        Assertions.assertEquals(1, databaseMetadata0.getVersion());
+                .get(schemaName, properties);
+        Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
+        Assertions.assertEquals(0, databaseMetadata0.getTableSchemaMap().size());
 
         // Prepare some data.
         final String collectionName = testEnvironment.newCollectionName(true);
-        prepareTestData(testEnvironment, collectionName, collection -> {
-            testEnvironment.prepareSimpleConsistentData(collection, 10);
-        });
+        prepareTestData(testEnvironment, collectionName, collection -> testEnvironment
+                .prepareSimpleConsistentData(collection, 10));
 
         // Even though we've added data, we're not refreshing, so expecting 0.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata00 = DocumentDbDatabaseSchemaMetadata
-                .get(id, properties, false);
-        Assertions.assertEquals(0,
-                databaseMetadata00.getCollectionMetadataMap().keySet().stream().count());
-        Assertions.assertEquals(1, databaseMetadata0.getVersion());
+                .get(schemaName, properties, false);
+        Assertions.assertEquals(0, databaseMetadata00.getTableSchemaMap().size());
+        Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
+        Assertions.assertEquals(0, databaseMetadata0.getTableSchemaMap().size());
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(id, properties, true);
+                .get(schemaName, properties, true);
 
         Assertions.assertEquals(1,
-                databaseMetadata1.getCollectionMetadataMap().keySet().stream().count());
-        Assertions.assertEquals(2, databaseMetadata1.getVersion());
-        Assertions.assertTrue(databaseMetadata1.getCollectionMetadataMap()
-                .containsKey(collectionName));
-        final DocumentDbSchemaCollection collectionMetadata = databaseMetadata1.getCollectionMetadataMap()
-                .get(collectionName);
-        Assertions.assertNotNull(collectionMetadata);
-        final DocumentDbSchemaTable metadataTable = collectionMetadata.getTables().get(collectionName);
+                databaseMetadata1.getTableSchemaMap().size());
+        Assertions.assertEquals(2, databaseMetadata1.getSchemaVersion());
+        final DocumentDbSchemaTable metadataTable = databaseMetadata1.getTableSchemaMap().get(collectionName);
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(13, metadataTable.getColumns().size());
 
         // Without a refresh we'll get the same metadata.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
-                .get(id, properties);
+                .get(schemaName, properties);
         // This is exactly the same as it is cached.
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
-        Assertions.assertEquals(2, databaseMetadata2.getVersion());
+        Assertions.assertEquals(2, databaseMetadata2.getSchemaVersion());
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(schemaName);
     }
 
     @DisplayName("Test to get database metadata for specific version.")
     @Test
-    void testGetSpecific() throws SQLException {
+    void testGetSpecific() throws SQLException, DocumentDbSchemaException {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
                 .getMongoDb40Environment();
 
-        final String id = UUID.randomUUID().toString();
+        final String schemaName = UUID.randomUUID().toString();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(
                         new Properties(),
                         testEnvironment.getJdbcConnectionString(),
                         "jdbc:documentdb:");
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
-                .get(id, properties);
+                .get(schemaName, properties);
         Assertions.assertEquals(0,
-                databaseMetadata0.getCollectionMetadataMap().keySet().stream().count());
-        Assertions.assertEquals(1, databaseMetadata0.getVersion());
+                databaseMetadata0.getTableSchemaMap().size());
+        Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
 
         // Prepare some data.
         final String collectionName = testEnvironment.newCollectionName(true);
-        prepareTestData(testEnvironment, collectionName, collection -> {
-            testEnvironment.prepareSimpleConsistentData(collection, 10);
-        });
+        prepareTestData(testEnvironment, collectionName, collection -> testEnvironment
+                .prepareSimpleConsistentData(collection, 10));
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(id, properties, true);
+                .get(schemaName, properties, true);
 
         Assertions.assertEquals(1,
-                databaseMetadata1.getCollectionMetadataMap().keySet().stream().count());
-        Assertions.assertEquals(2, databaseMetadata1.getVersion());
-        Assertions.assertTrue(databaseMetadata1.getCollectionMetadataMap()
-                .containsKey(collectionName));
-        final DocumentDbSchemaCollection collectionMetadata = databaseMetadata1.getCollectionMetadataMap()
-                .get(collectionName);
-        Assertions.assertNotNull(collectionMetadata);
-        final DocumentDbSchemaTable metadataTable = collectionMetadata.getTables().get(collectionName);
+                databaseMetadata1.getTableSchemaMap().size());
+        Assertions.assertEquals(2, databaseMetadata1.getSchemaVersion());
+        final DocumentDbSchemaTable metadataTable = databaseMetadata1.getTableSchemaMap().get(collectionName);
         Assertions.assertNotNull(metadataTable);
         Assertions.assertEquals(13, metadataTable.getColumns().size());
 
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
-                .get(id, properties, databaseMetadata1.getVersion());
+                .get(properties, schemaName, databaseMetadata1.getSchemaVersion());
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
 
         // Check that specifying an unknown version results in no associated metadata.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata3 = DocumentDbDatabaseSchemaMetadata
-                .get(id, properties, databaseMetadata1.getVersion() + 1);
+                .get(properties, schemaName, databaseMetadata1.getSchemaVersion() + 1);
         Assertions.assertNull(databaseMetadata3);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(schemaName);
     }
 
     private static void prepareTestData(

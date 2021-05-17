@@ -21,6 +21,7 @@ import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import lombok.SneakyThrows;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +29,7 @@ import software.amazon.documentdb.jdbc.common.Connection;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
 
 import java.sql.DatabaseMetaData;
 import java.sql.ResultSet;
@@ -95,22 +97,22 @@ public class DocumentDbConnection extends Connection
         }
     }
 
+    @SneakyThrows
     @Override
     public DatabaseMetaData getMetaData() throws SQLException {
         ensureDatabaseMetadata();
         return metadata;
     }
 
-    private void ensureDatabaseMetadata() throws SQLException {
+    private void ensureDatabaseMetadata() throws SQLException, DocumentDbSchemaException {
         if (metadata == null) {
-            databaseMetadata = DocumentDbDatabaseSchemaMetadata
-                            .get(connectionId, connectionProperties, true);
+            databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(connectionProperties, false);
             metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
         }
     }
 
     DocumentDbDatabaseSchemaMetadata getDatabaseMetadata()
-            throws SQLException {
+            throws SQLException, DocumentDbSchemaException {
         ensureDatabaseMetadata();
         return databaseMetadata;
     }

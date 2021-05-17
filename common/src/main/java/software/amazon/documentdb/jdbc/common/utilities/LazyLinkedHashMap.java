@@ -18,6 +18,7 @@ package software.amazon.documentdb.jdbc.common.utilities;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
+import lombok.NonNull;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -47,7 +48,9 @@ public class LazyLinkedHashMap<K,V> implements Map<K,V> {
      * @param keySet the keySet to use.
      * @param factory the factory method to retrieve the instance at the map.
      */
-    public LazyLinkedHashMap(final LinkedHashSet<K> keySet, final Function<K,V> factory) {
+    public LazyLinkedHashMap(
+            @NonNull final LinkedHashSet<K> keySet,
+            @NonNull final Function<K,V> factory) {
         this.keySet = ImmutableSet.copyOf(keySet);
         this.factory = factory;
         this.map = new LinkedHashMap<>();

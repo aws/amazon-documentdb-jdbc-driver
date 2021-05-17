@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.ResultSet;
@@ -52,19 +56,23 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         VALID_CONNECTION_PROPERTIES.setHostname("localhost:" + getMongoPort());
     }
 
+    @AfterEach
+    void afterEach() throws SQLException {
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(VALID_CONNECTION_PROPERTIES);
+        schemaWriter.remove("id");
+    }
+
     /**
      * Lifted from DocumentDbResultSetTest but uses the DocumentDbQueryExecutor to get a result.
      * Shows that we are getting the correct result set metadata without the Avatica driver.
      */
     @Test
-    void testGetResultSetMetadataSimple() throws SQLException {
+    void testGetResultSetMetadataSimple() throws SQLException, DocumentDbSchemaException {
         final String collectionSimple = "collectionSimple";
         prepareSimpleConsistentData(DATABASE_NAME, collectionSimple,
                 5, TEST_USER, TEST_PASSWORD);
-        final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
-                "id",
-                VALID_CONNECTION_PROPERTIES,
-                true);
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbDatabaseSchemaMetadata
+                .get("id", VALID_CONNECTION_PROPERTIES, true);
         final DocumentDbQueryMappingService queryMapper = new DocumentDbQueryMappingService(
                 VALID_CONNECTION_PROPERTIES, databaseMetadata);
         final DocumentDbStatement statement = getDocumentDbStatement();

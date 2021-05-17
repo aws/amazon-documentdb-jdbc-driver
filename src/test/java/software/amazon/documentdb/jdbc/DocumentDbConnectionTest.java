@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -23,6 +24,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
+import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -58,6 +62,12 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         final String connectionString = String.format(
                 "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false", USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
         basicConnection = DriverManager.getConnection(connectionString);
+    }
+
+    @AfterAll
+    static void afterAll() throws SQLException {
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(VALID_CONNECTION_PROPERTIES);
+        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 
     /**

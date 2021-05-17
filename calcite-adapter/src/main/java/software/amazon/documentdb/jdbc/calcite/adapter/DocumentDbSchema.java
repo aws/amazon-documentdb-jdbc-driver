@@ -16,28 +16,23 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.mongodb.client.MongoDatabase;
 import lombok.SneakyThrows;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.common.utilities.LazyLinkedHashMap;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaCollection;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.util.LinkedHashSet;
 import java.util.Map;
-import java.util.Map.Entry;
 
 /**
  * Provides a schema for DocumentDB
  */
 public class DocumentDbSchema extends AbstractSchema {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchema.class);
     private final MongoDatabase mongoDatabase;
-    private ImmutableMap<String, Table> tables;
+    private Map<String, Table> tables;
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
 
     /**
@@ -60,28 +55,14 @@ public class DocumentDbSchema extends AbstractSchema {
     @Override
     protected Map<String, Table> getTableMap() {
         if (tables == null) {
-            final ImmutableMap.Builder<String, Table> builder = ImmutableMap.builder();
-            final ImmutableSet<Entry<String, DocumentDbSchemaCollection>> entries =
-                    databaseMetadata.getCollectionMetadataMap().entrySet();
-            for (Entry<String, DocumentDbSchemaCollection> collectionEntry : entries) {
-                final String collectionName = collectionEntry.getKey();
-                final DocumentDbSchemaCollection metadata = collectionEntry.getValue();
-                putTable(builder, collectionName, metadata);
-            }
-            tables = builder.build();
+            tables = new LazyLinkedHashMap<>(
+                    new LinkedHashSet<>(databaseMetadata.getTableSchemaMap().keySet()),
+                    tableName -> {
+                        final DocumentDbSchemaTable schemaTable = databaseMetadata
+                                .getTableSchemaMap().get(tableName);
+                        return new DocumentDbTable(schemaTable.getCollectionName(), schemaTable);
+                    });
         }
-
         return tables;
-    }
-
-    private static void putTable(final ImmutableMap.Builder<String, Table> builder,
-            final String collectionName,
-            final DocumentDbSchemaCollection metadata) {
-        for (Entry<String, DocumentDbSchemaTable> entry : metadata.getTables()
-                .entrySet()) {
-            final DocumentDbSchemaTable metadataTable = entry.getValue();
-            builder.put(metadataTable.getSqlName(), new DocumentDbTable(
-                    collectionName, metadataTable));
-        }
     }
 }

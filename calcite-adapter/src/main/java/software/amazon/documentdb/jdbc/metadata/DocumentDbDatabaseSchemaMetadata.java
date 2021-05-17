@@ -16,36 +16,26 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
-import com.google.common.collect.ImmutableMap;
-import lombok.Builder;
-import lombok.Getter;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 
 import java.sql.SQLException;
-import java.util.Comparator;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Contains the metadata for a DocumentDB database including all of the collection and any
  * virtual tables.
  */
 public final class DocumentDbDatabaseSchemaMetadata {
-    private static final Map<StoreEntryKey, DocumentDbDatabaseSchemaMetadata> DOCUMENT_DB_DATABASE_METADATA_STORE =
-            new ConcurrentHashMap<>();
-
-    private final ImmutableMap<String, DocumentDbSchemaCollection> collectionMetadataMap;
-    private final String clientId;
-    private final int version;
+    private final DocumentDbSchema schema;
 
     /**
-     * Gets the client ID for this database metadata.
+     * Gets the schema name for this database metadata.
      *
-     * @return a String representing the client ID.
+     * @return a String representing the schema name.
      */
-    public String getClientId() {
-        return clientId;
+    public String getSchemaName() {
+        return schema.getSchemaName();
     }
 
     /**
@@ -53,175 +43,134 @@ public final class DocumentDbDatabaseSchemaMetadata {
      *
      * @return a number representing the version of the database metadata.
      */
-    public int getVersion() {
-        return version;
+    public int getSchemaVersion() {
+        return schema.getSchemaVersion();
     }
 
-    /**
-     * Gets the map of collection metadata for the database.
-     *
-     * @return a map of {@link DocumentDbCollectionMetadata} keyed by collection name.
-     */
-    public ImmutableMap<String, DocumentDbSchemaCollection> getCollectionMetadataMap() {
-        return collectionMetadataMap;
+    public Map<String, DocumentDbSchemaTable> getTableSchemaMap() {
+        return schema.getTableMap();
     }
 
     /**
      * Constructs a {@link DocumentDbDatabaseSchemaMetadata} instance from properties.
      *
-     * @param clientId the client ID for this database
-     * @param version the version of the metadata.
-     * @param collectionMetadataMap the map of {@link DocumentDbCollectionMetadata} keyed by
-     *                              collection name for this database.
+     * @param schema the database schema.
      */
     protected DocumentDbDatabaseSchemaMetadata(
-            final String clientId,
-            final int version,
-            final ImmutableMap<String, DocumentDbSchemaCollection> collectionMetadataMap) {
-        this.clientId = clientId;
-        this.version = version;
-        this.collectionMetadataMap = collectionMetadataMap;
+            final DocumentDbSchema schema) {
+        this.schema = schema;
     }
 
     /**
-     * Gets the latest or a new {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId
-     * and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST} for the
-     * version to indicate to get the latest or create a new instance if none exists.
+     * Constructs a {@link DocumentDbDatabaseSchemaMetadata} instance using the default schema name
+     * with an option to refresh all the table schema.
      *
-     * @param clientId the client ID of the caller.
+     * @param properties the connection properties.
+     * @param refreshAll an indicator of whether to refresh all the table schema.
+     * @return a new {@link DocumentDbDatabaseSchemaMetadata} instance.
+     *
+     * @throws SQLException if a SQL exception occurs.
+     * @throws DocumentDbSchemaException if the schema cannot be retrieved for some reason.
+     */
+    public static DocumentDbDatabaseSchemaMetadata get(
+            final DocumentDbConnectionProperties properties,
+            final boolean refreshAll)
+            throws SQLException, DocumentDbSchemaException {
+        return get(DocumentDbSchema.DEFAULT_SCHEMA_NAME, properties, refreshAll);
+    }
+
+
+    /**
+     * Gets the latest or a new {@link DocumentDbDatabaseSchemaMetadata} instance based on the
+     * schemaName and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST}
+     * for the version to indicate to get the latest or create a new instance if none exists.
+     *
+     * @param schemaName the schema name.
      * @param properties the connection properties.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
-    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
-            final DocumentDbConnectionProperties properties) throws SQLException {
-        return get(clientId, properties, false);
+    public static DocumentDbDatabaseSchemaMetadata get(final String schemaName,
+            final DocumentDbConnectionProperties properties)
+            throws SQLException, DocumentDbSchemaException {
+        return get(schemaName, properties, false);
     }
 
     /**
-     * Gets the {@link DocumentDbDatabaseSchemaMetadata} by given client ID, connection properties
+     * Gets the {@link DocumentDbDatabaseSchemaMetadata} by given schema name, connection properties
      * and an indicator of whether to refresh the metadata from the cached version.
      *
-     * @param clientId the client ID.
+     * @param schemaName the schema name.
      * @param properties the connection properties.
      * @param refreshAll an indicator of whether to get refreshed metadata and ignore the cached
      *                   version.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
-    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
+    public static DocumentDbDatabaseSchemaMetadata get(
+            final String schemaName,
             final DocumentDbConnectionProperties properties,
-            final boolean refreshAll) throws SQLException {
+            final boolean refreshAll) throws SQLException, DocumentDbSchemaException {
 
-        if (refreshAll) {
-            final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbMetadataService
-                    .get(clientId, properties, DocumentDbMetadataService.VERSION_NEW);
-            if (databaseMetadata != null) {
-                final StoreEntryKey key = StoreEntryKey.builder()
-                        .clientId(clientId)
-                        .databaseName(properties.getDatabase())
-                        .version(databaseMetadata.version)
-                        .build();
-                DOCUMENT_DB_DATABASE_METADATA_STORE.put(key, databaseMetadata);
-            }
-            return databaseMetadata;
+        final DocumentDbDatabaseSchemaMetadata metadata;
+        final DocumentDbSchema schema = DocumentDbMetadataService
+                .get(properties, schemaName,
+                        refreshAll
+                                ? DocumentDbMetadataService.VERSION_NEW
+                                : DocumentDbMetadataService.VERSION_LATEST);
+        if (schema != null) {
+            schema.setGetTableFunction(tableId -> DocumentDbMetadataService
+                    .getTable(properties, schemaName, schema.getSchemaVersion(), tableId));
+            metadata = new DocumentDbDatabaseSchemaMetadata(schema);
+        } else {
+            metadata = null;
         }
-
-        StoreEntryKey key = findLatestKey(
-                DOCUMENT_DB_DATABASE_METADATA_STORE, clientId, properties.getDatabase());
-        if (key != null) {
-            return DOCUMENT_DB_DATABASE_METADATA_STORE.get(key);
-        }
-
-        final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbMetadataService
-                .get(clientId, properties);
-        if (databaseMetadata != null) {
-            key = StoreEntryKey.builder()
-                    .clientId(clientId)
-                    .databaseName(properties.getDatabase())
-                    .version(databaseMetadata.version)
-                    .build();
-            DOCUMENT_DB_DATABASE_METADATA_STORE.put(key, databaseMetadata);
-        }
-        return databaseMetadata;
+        return metadata;
     }
 
     /**
-     * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId and version.
-     * @param clientId the clientId of the metadata.
+     * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the schema name
+     * and version.
+     *
      * @param properties the properties of the connection.
-     * @param version the version of the metadata. A version number of
+     * @param schemaName the name of the schema.
+     * @param schemaVersion the version of the schema. A version number of
      *                {@link DocumentDbMetadataService#VERSION_LATEST} indicates to get the latest
      *                or create a new instance.
-     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the clientId and version exist, null,
-     * otherwise.
+     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the schema and version exist,
+     * null otherwise.
      */
-    public static DocumentDbDatabaseSchemaMetadata get(final String clientId,
-            final DocumentDbConnectionProperties properties,
-            final int version) throws SQLException {
-        final StoreEntryKey key = StoreEntryKey.builder()
-                .clientId(clientId)
-                .databaseName(properties.getDatabase())
-                .version(version)
-                .build();
-
-        // Try to get it from the local cache.
-        DocumentDbDatabaseSchemaMetadata databaseMetadata = DOCUMENT_DB_DATABASE_METADATA_STORE
-                .get(key);
-        if (databaseMetadata != null) {
-            return databaseMetadata;
-        }
+    public static DocumentDbDatabaseSchemaMetadata get(
+            final DocumentDbConnectionProperties properties, final String schemaName,
+            final int schemaVersion) throws SQLException, DocumentDbSchemaException {
 
         // Try to get it from the service.
-        databaseMetadata = DocumentDbMetadataService.get(clientId, properties, version);
-        if (databaseMetadata != null) {
-            DOCUMENT_DB_DATABASE_METADATA_STORE.put(key, databaseMetadata);
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata;
+        final DocumentDbSchema schema = DocumentDbMetadataService
+                .get(properties, schemaName, schemaVersion);
+        if (schema != null) {
+            // Setup lazy load based on table ID.
+            schema.setGetTableFunction(tableId -> DocumentDbMetadataService
+                    .getTable(properties, schemaName, schemaVersion, tableId));
+            databaseMetadata = new DocumentDbDatabaseSchemaMetadata(schema);
+        } else {
+            databaseMetadata = null;
         }
         return databaseMetadata;
     }
 
-    /**
-     * Finds the key for the latest version of the the database metadata, if it exists.
-     *
-     * @param store the store (map) to search.
-     * @param clientId the client ID in the store.
-     * @param databaseName the database name of the metadata.
-     * @return a non-null {@link StoreEntryKey} entry if an entry exists, null, otherwise.
-     */
-    static StoreEntryKey findLatestKey(
-            final Map<StoreEntryKey, DocumentDbDatabaseSchemaMetadata> store,
-            final String clientId,
-            final String databaseName) {
-        return store.keySet().stream()
-                .filter(entry -> entry.getClientId().equals(clientId)
-                        && entry.getDatabaseName().equals(databaseName))
-                .max(Comparator.comparing(StoreEntryKey::getVersion))
-                .orElse(null);
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof DocumentDbDatabaseSchemaMetadata)) {
+            return false;
+        }
+        final DocumentDbDatabaseSchemaMetadata metadata = (DocumentDbDatabaseSchemaMetadata) o;
+        return schema.equals(metadata.schema);
     }
 
-    /**
-     * The key for storing database metadata.
-     */
-    @Getter
-    @Builder
-    static class StoreEntryKey {
-        /** Gets the client ID for the entry key. */
-        private final String clientId;
-        /** Gets the name of the database for the entry key. */
-        private final String databaseName;
-        /** Gets the version of the entry key. */
-        private final int version;
-
-        @Override
-        public boolean equals(final Object obj) {
-            return obj == this
-                    || obj instanceof StoreEntryKey
-                    && clientId.equals(((StoreEntryKey) obj).clientId)
-                    && databaseName.equals(((StoreEntryKey) obj).databaseName)
-                    && version == ((StoreEntryKey) obj).version;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(clientId, databaseName, version);
-        }
+    @Override
+    public int hashCode() {
+        return Objects.hash(schema);
     }
 }

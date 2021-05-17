@@ -16,11 +16,14 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
+import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 import java.util.LinkedHashMap;
 import java.util.Map.Entry;
@@ -29,11 +32,16 @@ import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isN
 
 /** Represents the fields in a document, embedded document or array. */
 @Getter
+@JsonSerialize(as = DocumentDbSchemaTable.class)
 public class DocumentDbMetadataTable extends DocumentDbSchemaTable {
 
+    @BsonIgnore
+    @JsonIgnore
     private ImmutableMap<String, DocumentDbSchemaColumn> columnsByPath;
 
     @Getter(AccessLevel.NONE)
+    @BsonIgnore
+    @JsonIgnore
     private final ImmutableList<DocumentDbSchemaColumn> foreignKeys;
 
     /**
@@ -59,6 +67,8 @@ public class DocumentDbMetadataTable extends DocumentDbSchemaTable {
      *
      * @return the map of path to {@link DocumentDbMetadataColumn}.
      */
+    @BsonIgnore
+    @JsonIgnore
     public ImmutableMap<String, DocumentDbSchemaColumn> getColumnsByPath() {
         if (columnsByPath == null) {
             final ImmutableMap.Builder<String, DocumentDbSchemaColumn> builder =
@@ -72,5 +82,15 @@ public class DocumentDbMetadataTable extends DocumentDbSchemaTable {
             columnsByPath = builder.build();
         }
         return columnsByPath;
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        return super.equals(o);
+    }
+
+    @Override
+    public int hashCode() {
+        return super.hashCode();
     }
 }
