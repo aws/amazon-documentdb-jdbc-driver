@@ -37,7 +37,9 @@ To install a custom certificate on a Mac, follow these steps to import the certi
 "System" keychain.
 
 1. [Download the root CA certificate](https://s3.amazonaws.com/rds-downloads/rds-ca-2019-root.pem) 
-   and any required [intermediate certificates](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html).
+   and one of the [intermediate certificates](https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/UsingWithRDS.SSL.html). 
+   The intermediate certificate to download is dependent on the AWS region your cluster is deployed in. 
+   For example, for a cluster in **US East(N. Virginia)**, the certificate to download would be `rds-ca-2019-us-east-1.pem`.
 1. [Open](https://support.apple.com/guide/keychain-access/add-certificates-to-a-keychain-kyca2431/mac)
    the **Keychain Access** app on your Mac.
 1. Select the **System** keychain. 

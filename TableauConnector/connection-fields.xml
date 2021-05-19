@@ -35,7 +35,7 @@
         </boolean-options>
     </field>
 
-    <field name="v-retry-reads" label="Enable Retry Reads" value-type="boolean" category="general" default-value="false">
+    <field name="v-retry-reads" label="Enable Retry Reads" value-type="boolean" category="general" default-value="true">
         <boolean-options>
             <false-value value="false" />
             <true-value value="true" />
