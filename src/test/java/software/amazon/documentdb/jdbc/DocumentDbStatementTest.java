@@ -1230,6 +1230,31 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(1, rowCount);
     }
 
+    /**
+     * Tests COUNT(columnName) doesn't count null or missing values.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests count('column') works ensuring null/undefined values are not counted")
+    void testCountColumnName() throws SQLException {
+        final String tableName = "testCountColumn";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abc\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": null}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103\n}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT COUNT(\"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(1, resultSet.getInt(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
     protected static DocumentDbStatement getDocumentDbStatement() throws SQLException {
         return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);
     }

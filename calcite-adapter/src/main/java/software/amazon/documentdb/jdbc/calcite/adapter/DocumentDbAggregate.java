@@ -199,9 +199,8 @@ public class DocumentDbAggregate
                 return "{$sum: 1}";
             } else {
                 final String inName = inNames.get(args.get(0));
-                return "{$sum: {$cond: [ {$eq: ["
-                        + DocumentDbRules.quote(inName)
-                        + ", null]}, 0, 1]}}";
+                return "{$sum: {$cond: [ {$ifNull: " +
+                        "[" + DocumentDbRules.quote("$" + inName) + ", false]}, 1, 0]}}";
             }
         } else if (aggregation instanceof SqlSumAggFunction
                 || aggregation instanceof SqlSumEmptyIsZeroAggFunction) {

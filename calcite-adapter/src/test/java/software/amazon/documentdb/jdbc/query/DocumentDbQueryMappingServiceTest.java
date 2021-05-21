@@ -443,7 +443,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": {\"$cond\": [{\"$eq\": [\"array.field1\", null]}, 0, 1]}}}}"),
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": {\"$cond\": [{\"$ifNull\": [\"$array.field1\", false]}, 1, 0]}}}}"),
                 result.getAggregateOperations().get(2));
 
         final String queryWithDistinctCount =
@@ -677,7 +677,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {}, \"_0\": {\"$sum\": \"$array.field\"}, \"_1\": {\"$sum\": {\"$cond\": [{\"$eq\": [\"array.field\", null]}, 0, 1]}}}}"),
+                        "{\"$group\": {\"_id\": {}, \"_0\": {\"$sum\": \"$array.field\"}, \"_1\": {\"$sum\": {\"$cond\": [{\"$ifNull\": [\"$array.field\", false]}, 1, 0]}}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
