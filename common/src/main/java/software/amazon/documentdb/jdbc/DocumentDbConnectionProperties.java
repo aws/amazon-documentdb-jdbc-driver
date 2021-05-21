@@ -41,6 +41,7 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Logger LOGGER =
             LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
+    private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$", 0);
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -790,6 +791,6 @@ public class DocumentDbConnectionProperties extends Properties {
      * otherwise.
      */
     public static boolean isNullOrWhitespace(@Nullable final String value) {
-        return value == null || Pattern.matches("^\\s*$", value);
+        return value == null || WHITE_SPACE_PATTERN.matcher(value).matches();
     }
 }

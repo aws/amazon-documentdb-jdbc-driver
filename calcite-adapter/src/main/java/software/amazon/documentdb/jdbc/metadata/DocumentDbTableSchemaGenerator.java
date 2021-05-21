@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.metadata;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import lombok.Getter;
 import org.bson.BsonArray;
@@ -25,7 +26,6 @@ import org.bson.BsonType;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 
 import java.util.AbstractMap.SimpleEntry;
@@ -321,7 +321,7 @@ public class DocumentDbTableSchemaGenerator {
             final JdbcType prevSqlType = getPrevSqlTypeOrDefault(prevMetadataColumn);
             final JdbcType nextSqlType = getSqlTypeIfIsPrimaryKey(bsonType, prevSqlType, isPrimaryKey);
 
-            processComplexTypes(tableMap, foreignKeys, collectionName, entry, fieldPath, bsonType, prevMetadataColumn, nextSqlType);
+            processComplexTypes(tableMap, new ArrayList<>(foreignKeys), collectionName, entry, fieldPath, bsonType, prevMetadataColumn, nextSqlType);
             final DocumentDbMetadataColumn metadataColumn = DocumentDbMetadataColumn
                     .builder()
                     .fieldPath(fieldPath)
@@ -618,14 +618,11 @@ public class DocumentDbTableSchemaGenerator {
      * @return a new path with the fieldName append to the root path separated by a period.
      */
     public static String combinePath(final String path, final String fieldName) {
-        final String pathSeparator = !DocumentDbConnectionProperties.isNullOrWhitespace(path) &&
-                !DocumentDbConnectionProperties.isNullOrWhitespace(fieldName)
-                ? PATH_SEPARATOR : EMPTY_STRING;
-        final String newPath = !DocumentDbConnectionProperties.isNullOrWhitespace(path)
-                ? path : EMPTY_STRING;
-        final String newFieldName = !DocumentDbConnectionProperties.isNullOrWhitespace(fieldName)
-                ? fieldName : EMPTY_STRING;
-
+        final boolean isPathEmpty = Strings.isNullOrEmpty(path);
+        final boolean isFieldNameEmpty = Strings.isNullOrEmpty(fieldName);
+        final String pathSeparator = !isPathEmpty && !isFieldNameEmpty ? PATH_SEPARATOR : EMPTY_STRING;
+        final String newPath = !isPathEmpty ? path : EMPTY_STRING;
+        final String newFieldName = !isFieldNameEmpty ? fieldName : EMPTY_STRING;
         return String.format("%s%s%s", newPath, pathSeparator, newFieldName);
     }
 

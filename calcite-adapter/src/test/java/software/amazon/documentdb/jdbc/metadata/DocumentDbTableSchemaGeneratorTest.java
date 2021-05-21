@@ -1366,6 +1366,126 @@ class DocumentDbTableSchemaGeneratorTest {
                         "DocumentDbCollectionMetadataTest_array._id) should be DOUBLE (" + JdbcType.DOUBLE + ")");
     }
 
+    @Test
+    void testDeepStructuredData() {
+        final String json = "{\n"
+                + "    \"_id\" : \"60a2c0c65be86c8f6a007514\",\n"
+                + "    \"field\" : \"string\",\n"
+                + "    \"count\" : 19,\n"
+                + "    \"timestamp\" : \"2021-05-17T19:15:18.316Z\",\n"
+                + "    \"subDocument\" : {\n"
+                + "        \"field\" : \"ABC\",\n"
+                + "        \"field2\" : [\n"
+                + "            \"A\",\n"
+                + "            \"B\",\n"
+                + "            \"C\"\n"
+                + "        ]\n"
+                + "    },\n"
+                + "    \"twoLevelArray\" : [\n"
+                + "        [\n"
+                + "            1,\n"
+                + "            2\n"
+                + "        ],\n"
+                + "        [\n"
+                + "            3,\n"
+                + "            4\n"
+                + "        ],\n"
+                + "        [\n"
+                + "            5,\n"
+                + "            6\n"
+                + "        ]\n"
+                + "    ],\n"
+                + "    \"nestedArray\" : [\n"
+                + "        {\n"
+                + "            \"document\" : 0,\n"
+                + "            \"innerArray\" : [\n"
+                + "                1,\n"
+                + "                2,\n"
+                + "                3\n"
+                + "            ]\n"
+                + "        },\n"
+                + "        {\n"
+                + "            \"document\" : 1,\n"
+                + "            \"innerArray\" : [\n"
+                + "                1,\n"
+                + "                2,\n"
+                + "                3\n"
+                + "            ]\n"
+                + "        },\n"
+                + "        {\n"
+                + "            \"document\" : 2,\n"
+                + "            \"innerArray\" : [\n"
+                + "                1,\n"
+                + "                2,\n"
+                + "                3\n"
+                + "            ]\n"
+                + "        }\n"
+                + "    ],\n"
+                + "    \"nestedSubDocument\" : {\n"
+                + "        \"field\" : 0,\n"
+                + "        \"subDoc0\" : {\n"
+                + "            \"field\" : 1,\n"
+                + "            \"subDoc1\" : {\n"
+                + "                \"field\" : 2\n"
+                + "            }\n"
+                + "        }\n"
+                + "    }\n"
+                + "}\n";
+        final BsonDocument document = BsonDocument.parse(json);
+
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Collections.singleton(document).iterator());
+        Assertions.assertNotNull(metadata);
+        Assertions.assertEquals(9, metadata.size());
+
+        final DocumentDbSchemaTable baseTable = metadata.get(COLLECTION_NAME);
+        Assertions.assertNotNull(baseTable);
+        Assertions.assertEquals(4, baseTable.getColumns().size());
+
+        final DocumentDbSchemaTable subDocument = metadata
+                .get(toName(combinePath(COLLECTION_NAME, "subDocument")));
+        Assertions.assertNotNull(subDocument);
+        Assertions.assertEquals(2, subDocument.getColumns().size());
+
+        final DocumentDbSchemaTable subDocumentField2 = metadata
+                .get(toName(combinePath(combinePath(
+                        COLLECTION_NAME, "subDocument"), "field2")));
+        Assertions.assertNotNull(subDocumentField2);
+        Assertions.assertEquals(3, subDocumentField2.getColumns().size());
+
+        final DocumentDbSchemaTable twoLevelArray = metadata
+                .get(toName(combinePath(
+                        COLLECTION_NAME, "twoLevelArray")));
+        Assertions.assertNotNull(twoLevelArray);
+        Assertions.assertEquals(4, twoLevelArray.getColumns().size());
+
+        final DocumentDbSchemaTable nestedArray = metadata
+                .get(toName(combinePath(
+                        COLLECTION_NAME, "nestedArray")));
+        Assertions.assertNotNull(nestedArray);
+        Assertions.assertEquals(3, nestedArray.getColumns().size());
+
+        final DocumentDbSchemaTable nestedArrayInnerArray = metadata
+                .get(toName(combinePath(combinePath(
+                        COLLECTION_NAME, "nestedArray"), "innerArray")));
+        Assertions.assertNotNull(nestedArrayInnerArray);
+        Assertions.assertEquals(4, nestedArrayInnerArray.getColumns().size());
+
+        final DocumentDbSchemaTable nestedSubDocument = metadata
+                .get(toName(combinePath(
+                        COLLECTION_NAME, "nestedSubDocument")));
+        Assertions.assertNotNull(nestedSubDocument);
+        Assertions.assertEquals(2, nestedSubDocument.getColumns().size());
+        final DocumentDbSchemaTable subDoc0 = metadata
+                .get(toName(combinePath(combinePath(
+                        COLLECTION_NAME, "nestedSubDocument"), "subDoc0")));
+        Assertions.assertNotNull(subDoc0);
+        final DocumentDbSchemaTable subDoc1 = metadata
+                .get(toName(combinePath(combinePath(combinePath(
+                        COLLECTION_NAME, "nestedSubDocument"), "subDoc0"), "subDoc1")));
+        Assertions.assertNotNull(subDoc1);
+    }
+
     private boolean producesVirtualTable(final BsonType bsonType, final BsonType nextBsonType) {
         return (bsonType == BsonType.ARRAY && nextBsonType == BsonType.ARRAY)
                 || (bsonType == BsonType.DOCUMENT && nextBsonType == BsonType.DOCUMENT)
