@@ -39,6 +39,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import static software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.maybeQuote;
+
 /**
  * Implementation of
  * {@link Aggregate} relational expression
@@ -70,12 +72,6 @@ public class DocumentDbAggregate
         assert getConvention() == CONVENTION;
         assert getConvention() == input.getConvention();
 
-        for (AggregateCall aggCall : aggCalls) {
-            if (aggCall.isDistinct()) {
-                throw new InvalidRelException(
-                        "distinct aggregation not supported");
-            }
-        }
         switch (getGroupType()) {
             case SIMPLE:
                 break;
@@ -135,7 +131,7 @@ public class DocumentDbAggregate
         int i = 0;
         if (groupSet.cardinality() == 1) {
             final String inName = inNames.get(groupSet.nth(0));
-            list.add("_id: " + DocumentDbRules.maybeQuote("$" + inName));
+            list.add("_id: " + maybeQuote("$" + inName));
             ++i;
         } else {
             final List<String> keys = new ArrayList<>();
@@ -147,12 +143,12 @@ public class DocumentDbAggregate
             }
             list.add("_id: " + Util.toString(keys, "{", ", ", "}"));
         }
-        // DocumentDB: modified - end
+
         for (AggregateCall aggCall : aggCalls) {
             final String outName = outNames.get(i++);
             list.add(
-                    DocumentDbRules.maybeQuote(outName) + ": "
-                            + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList()));
+                    maybeQuote(outName) + ": "
+                            + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), aggCall.isDistinct()));
             columnMap.put(outName,
                     DocumentDbMetadataColumn.builder()
                             .fieldPath(outName)
@@ -163,41 +159,9 @@ public class DocumentDbAggregate
         }
         implementor.add(null,
                 "{$group: " + Util.toString(list, "{", ", ", "}") + "}");
-        final List<String> fixups;
-        if (groupSet.cardinality() == 1) {
-            fixups = new AbstractList<String>() {
-                @Override public String get(final int index) {
-                    final String outName = outNames.get(index);
-                    return DocumentDbRules.maybeQuote(outName) + ": "
-                            + DocumentDbRules.maybeQuote("$" + (index == 0 ? "_id" : outName));
-                }
+        final List<String> fixups = getFixups(aggCalls, groupSet, inNames, outNames);
 
-                @Override public int size() {
-                    return outNames.size();
-                }
-            };
-        } else {
-            fixups = new ArrayList<>();
-            fixups.add("_id: 0");
-            i = 0;
-            // DocumentDB: modified - start
-            // We project the original field names (inNames) rather than any renames so the path matches the metadata.
-            for (int group : groupSet) {
-                fixups.add(
-                        DocumentDbRules.maybeQuote(inNames.get(group))
-                                + ": "
-                                + DocumentDbRules.maybeQuote("$_id." + acceptedMongoFieldName(inNames.get(group))));
-                ++i;
-            }
-            // DocumentDB: modified - end
-            for (AggregateCall ignored : aggCalls) {
-                final String outName = outNames.get(i++);
-                fixups.add(
-                        DocumentDbRules.maybeQuote(outName) + ": " + DocumentDbRules.maybeQuote(
-                                "$" + outName));
-            }
-        }
-        if (!groupSet.isEmpty()) {
+        if (!groupSet.isEmpty() || aggCalls.stream().anyMatch(AggregateCall::isDistinct)) {
             implementor.add(null,
                     "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
         }
@@ -212,15 +176,28 @@ public class DocumentDbAggregate
         implementor.setMetadataTable(metadata);
         implementor.setDocumentDbTable(
                 new DocumentDbTable(implementor.getDocumentDbTable().getCollectionName(), metadata));
+        // DocumentDB: modified - end
     }
 
     private static String toMongo(final SqlAggFunction aggregation, final List<String> inNames,
-            final List<Integer> args) {
+            final List<Integer> args, final boolean isDistinct) {
+
+        // Apart from COUNT(*) which has 0 arguments, supported aggregations should be a called with only 1 argument.
+        if (!(args.isEmpty() && aggregation == SqlStdOperatorTable.COUNT) && args.size() != 1) {
+            throw new AssertionError("aggregate with incorrect number of arguments: " + aggregation);
+        }
+
+        // For distinct calls, add to a set and get aggregate after.
+        if (isDistinct) {
+            assert args.size() == 1;
+            final String inName = inNames.get(args.get(0));
+            return "{$addToSet: " + DocumentDbRules.quote("$" + inName) + "}";
+        }
+
         if (aggregation == SqlStdOperatorTable.COUNT) {
-            if (args.size() == 0) {
+            if (args.isEmpty()) {
                 return "{$sum: 1}";
             } else {
-                assert args.size() == 1;
                 final String inName = inNames.get(args.get(0));
                 return "{$sum: {$cond: [ {$eq: ["
                         + DocumentDbRules.quote(inName)
@@ -228,21 +205,17 @@ public class DocumentDbAggregate
             }
         } else if (aggregation instanceof SqlSumAggFunction
                 || aggregation instanceof SqlSumEmptyIsZeroAggFunction) {
-            assert args.size() == 1;
             final String inName = inNames.get(args.get(0));
-            return "{$sum: " + DocumentDbRules.maybeQuote("$" + inName) + "}";
+            return "{$sum: " + maybeQuote("$" + inName) + "}";
         } else if (aggregation == SqlStdOperatorTable.MIN) {
-            assert args.size() == 1;
             final String inName = inNames.get(args.get(0));
-            return "{$min: " + DocumentDbRules.maybeQuote("$" + inName) + "}";
+            return "{$min: " + maybeQuote("$" + inName) + "}";
         } else if (aggregation == SqlStdOperatorTable.MAX) {
-            assert args.size() == 1;
             final String inName = inNames.get(args.get(0));
-            return "{$max: " + DocumentDbRules.maybeQuote("$" + inName) + "}";
+            return "{$max: " + maybeQuote("$" + inName) + "}";
         } else if (aggregation == SqlStdOperatorTable.AVG) {
-            assert args.size() == 1;
             final String inName = inNames.get(args.get(0));
-            return "{$avg: " + DocumentDbRules.maybeQuote("$" + inName) + "}";
+            return "{$avg: " + maybeQuote("$" + inName) + "}";
         } else {
             throw new AssertionError("unknown aggregate " + aggregation);
         }
@@ -250,5 +223,75 @@ public class DocumentDbAggregate
 
     private static String acceptedMongoFieldName(final String path) {
         return path.replace('.', '_');
+    }
+
+    private static String setToAggregate(final SqlAggFunction aggFunction, final String outName) {
+        if (aggFunction == SqlStdOperatorTable.COUNT) {
+            return "{$size: " + maybeQuote("$" + outName) + " }";
+        } else if (aggFunction == SqlStdOperatorTable.AVG) {
+            return "{$avg: " + maybeQuote("$" + outName) + " }";
+        } else if (aggFunction instanceof SqlSumAggFunction || aggFunction instanceof SqlSumEmptyIsZeroAggFunction) {
+            return "{$sum: " + maybeQuote("$" + outName) + " }";
+        } else {
+            throw new AssertionError("unknown distinct aggregate" + aggFunction);
+        }
+    }
+
+    /**
+     * Determines the $project stage after the $group stage. "Fixups" are needed
+     * when columns from the group set are selected or there are distinct aggregate calls.
+     * Logic was pulled out of original implementation of implement method.
+     * @param aggCalls the aggregate calls.
+     * @param groupSet the group set.
+     * @param inNames the names of the input row type.
+     * @param outNames the names of the output row type.
+     * @return list of fields that should be projected.
+     */
+    private static List<String> getFixups(
+            final List<AggregateCall> aggCalls,
+            final ImmutableBitSet groupSet,
+            final List<String> inNames,
+            final List<String> outNames) {
+        final List<String> fixups;
+        if (groupSet.cardinality() == 1) {
+            fixups = new AbstractList<String>() {
+                @Override public String get(final int index) {
+                    final String outName = outNames.get(index);
+                    return maybeQuote(outName) + ": "
+                            + maybeQuote("$" + (index == 0 ? "_id" : outName));
+                }
+
+                @Override public int size() {
+                    return outNames.size();
+                }
+            };
+        } else {
+            fixups = new ArrayList<>();
+            fixups.add("_id: 0");
+            int i = 0;
+            // DocumentDB: modified - start
+            // We project the original field names (inNames) rather than any renames so the path matches the metadata.
+            for (int group : groupSet) {
+                fixups.add(
+                        maybeQuote(inNames.get(group))
+                                + ": "
+                                + maybeQuote("$_id." + acceptedMongoFieldName(inNames.get(group))));
+                ++i;
+            }
+            for (AggregateCall aggCall : aggCalls) {
+                final String outName = outNames.get(i++);
+                // Get the aggregate for any sets made in $group stage.
+                if (aggCall.isDistinct()) {
+                    fixups.add(maybeQuote(outName) + ": " + setToAggregate(
+                            aggCall.getAggregation(), outName));
+                } else {
+                    fixups.add(
+                            maybeQuote(outName) + ": " + maybeQuote(
+                                    "$" + outName));
+                }
+            }
+            // DocumentDB: modified - end
+        }
+        return fixups;
     }
 }

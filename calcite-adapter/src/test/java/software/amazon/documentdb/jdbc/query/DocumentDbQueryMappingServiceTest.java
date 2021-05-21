@@ -139,6 +139,39 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     }
 
     @Test
+    @DisplayName("Tests that distinct keyword works when querying a single table.")
+    void testQueryWithDistinct() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT DISTINCT \"%s\" FROM \"%s\".\"%s\"",
+                        "field", DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"$or\": ["
+                        + "{\"array.field\": {\"$exists\": true}}, "
+                        + "{\"array.field1\": {\"$exists\": true}}, "
+                        + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$group\": {\"_id\": \"$array.field\"}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"array.field\": \"$_id\"}}"),
+                result.getAggregateOperations().get(3));
+    }
+
+    @Test
     @DisplayName("Tests that as works when querying a single table.")
     void testQueryWithAs() throws SQLException {
         final String query =
@@ -413,6 +446,37 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": {\"$cond\": [{\"$eq\": [\"array.field1\", null]}, 0, 1]}}}}"),
                 result.getAggregateOperations().get(2));
 
+        final String queryWithDistinctCount =
+                String.format(
+                        "SELECT COUNT(DISTINCT \"%s\") FROM \"%s\".\"%s\"",
+                        "field1", DATABASE_NAME, COLLECTION_NAME + "_array");
+        result = queryMapper.get(queryWithDistinctCount);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": ["
+                                + "{\"array.field\": {\"$exists\": true}}, "
+                                + "{\"array.field1\": {\"$exists\": true}}, "
+                                + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$addToSet\": \"$array.field1\"}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"_id\": 0, \"EXPR$0\": {\"$size\": \"$EXPR$0\"}}}"),
+                result.getAggregateOperations().get(3));
+
         final String queryWithAverage =
                 String.format(
                         "SELECT AVG(\"%s\") FROM \"%s\".\"%s\"",
@@ -440,6 +504,37 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$avg\": \"$array.field\"}}}"),
                 result.getAggregateOperations().get(2));
 
+        final String queryWithAverageDistinct =
+                String.format(
+                        "SELECT AVG(DISTINCT \"%s\") FROM \"%s\".\"%s\"",
+                        "field", DATABASE_NAME, COLLECTION_NAME + "_array");
+        result = queryMapper.get(queryWithAverageDistinct);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": ["
+                                + "{\"array.field\": {\"$exists\": true}}, "
+                                + "{\"array.field1\": {\"$exists\": true}}, "
+                                + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$addToSet\": \"$array.field\"}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"_id\": 0, \"EXPR$0\": {\"$avg\": \"$EXPR$0\"}}}"),
+                result.getAggregateOperations().get(3));
+
         final String queryWithSum =
                 String.format(
                         "SELECT SUM(\"%s\") FROM \"%s\".\"%s\"",
@@ -466,6 +561,38 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": \"$array.field\"}}}"),
                 result.getAggregateOperations().get(2));
+
+        final String queryWithSumDistinct =
+                String.format(
+                        "SELECT SUM(DISTINCT \"%s\") FROM \"%s\".\"%s\"",
+                        "field", DATABASE_NAME, COLLECTION_NAME + "_array");
+        result = queryMapper.get(queryWithSumDistinct);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(4, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": ["
+                                + "{\"array.field\": {\"$exists\": true}}, "
+                                + "{\"array.field1\": {\"$exists\": true}}, "
+                                + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$addToSet\": \"$array.field\"}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"_id\": 0, \"EXPR$0\": {\"$sum\": \"$EXPR$0\"}}}"),
+                result.getAggregateOperations().get(3));
+
 
         final String queryWithMin =
                 String.format(

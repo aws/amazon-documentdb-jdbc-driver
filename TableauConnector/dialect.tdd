@@ -102,7 +102,7 @@
       <formula>COALESCE(%1, %2)</formula>
       <argument type='date' />
       <argument type='date' />
-    </function> 
+    </function>
     <function group='logical' name='IIF' return-type='bool'>
       <formula>((%1 AND %2) OR ((NOT %1) AND %3))</formula>
       <argument type='bool' />
@@ -181,18 +181,42 @@
     </function>
     <function group='aggregate' name='COUNT' return-type='int'>
       <formula>COUNT(%1)</formula>
+      <unagg-formula>(CASE WHEN %1 IS NULL THEN 0 ELSE 1 END)</unagg-formula>
       <argument type='bool' />
     </function>
     <function group='aggregate' name='COUNT' return-type='int'>
       <formula>COUNT(%1)</formula>
+      <unagg-formula>(CASE WHEN %1 IS NULL THEN 0 ELSE 1 END)</unagg-formula>
       <argument type='real' />
     </function>
     <function group='aggregate' name='COUNT' return-type='int'>
       <formula>COUNT(%1)</formula>
+      <unagg-formula>(CASE WHEN %1 IS NULL THEN 0 ELSE 1 END)</unagg-formula>
       <argument type='str' />
     </function>
     <function group='aggregate' name='COUNT' return-type='int'>
       <formula>COUNT(%1)</formula>
+      <unagg-formula>(CASE WHEN %1 IS NULL THEN 0 ELSE 1 END)</unagg-formula>
+      <argument type='datetime' />
+    </function>
+    <function group='aggregate' name='COUNTD' return-type='int'>
+      <formula>COUNT(DISTINCT %1)</formula>
+      <unagg-formula>(CASE WHEN %1 IS NULL THEN 0 ELSE 1 END)</unagg-formula>
+      <argument type='bool' />
+    </function>
+    <function group='aggregate' name='COUNTD' return-type='int'>
+      <formula>COUNT(DISTINCT %1)</formula>
+      <unagg-formula>(CASE WHEN %1 IS NULL THEN 0 ELSE 1 END)</unagg-formula>
+      <argument type='real' />
+    </function>
+    <function group='aggregate' name='COUNTD' return-type='int'>
+      <formula>COUNT(DISTINCT %1)</formula>
+      <unagg-formula>(CASE WHEN %1 IS NULL THEN 0 ELSE 1 END)</unagg-formula>
+      <argument type='str' />
+    </function>
+    <function group='aggregate' name='COUNTD' return-type='int'>
+      <formula>COUNT(DISTINCT %1)</formula>
+      <unagg-formula>(CASE WHEN %1 IS NULL THEN 0 ELSE 1 END)</unagg-formula>
       <argument type='datetime' />
     </function>
     <function group='aggregate' name='MAX' return-type='bool'>
@@ -455,6 +479,7 @@
   </function-map>
   <supported-aggregations>
     <aggregation value='AGG_COUNT'/>
+    <aggregation value='AGG_COUNTD'/>
     <aggregation value='AGG_SUM'/>
     <aggregation value='AGG_AVG'/>
     <aggregation value='AGG_MIN'/>
