@@ -1,4 +1,6 @@
 (function propertiesbuilder(attr) {
+    logging.Log("attr=" + JSON.stringify(attr));
+
     // Set properties keys.
     const USER_KEY = "user";
     const PASSWORD_KEY = "password";
@@ -11,6 +13,7 @@
     const SCAN_LIMIT_KEY = "scanLimit";
     const RETRY_READS_KEY = "retryReads";
     const LOGIN_TIMEOUT_KEY= "loginTimeoutSec";
+    const TLS_CA_FILE_KEY="tlsCAFile"
 
     // Get optional parameters.
     var params = {};
@@ -20,6 +23,7 @@
     params[SCAN_METHOD_KEY] = attr["v-scan-method"];
     params[RETRY_READS_KEY] = attr["v-retry-reads"];
     params[LOGIN_TIMEOUT_KEY] = attr["v-login-timeout"];
+    params[TLS_CA_FILE_KEY] = attr["v-tls-ca-file"];
 
     // Use default (and only) replica set.
     if (attr["v-replica-set"] === "true") {

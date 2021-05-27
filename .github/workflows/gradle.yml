@@ -61,11 +61,6 @@ jobs:
       if: ${{ env.OMIT_DOCUMENTDB == '0' }}
       run: |
         ssh -f -N -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/certs/docdb-sshtunnel.pem -L $DOC_DB_LOCAL_PORT:${{secrets.DOC_DB_HOST}}:$DOC_DB_REMOTE_PORT ${{secrets.DOC_DB_USER}}
-    - name: Add Amazon CA certificates to global keystore
-      if: ${{ env.OMIT_DOCUMENTDB == '0' }}
-      run: |
-        chmod +x config/certs/import_aws_ca_certs.sh
-        config/certs/import_aws_ca_certs.sh
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build with Gradle with local and optional remote DocumentDB tests

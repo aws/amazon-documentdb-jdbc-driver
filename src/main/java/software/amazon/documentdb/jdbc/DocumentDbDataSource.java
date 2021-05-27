@@ -39,7 +39,7 @@ public class DocumentDbDataSource extends DataSource {
     @Override
     public java.sql.Connection getConnection() throws SQLException {
         properties.validateRequiredProperties();
-        return DriverManager.getConnection(DocumentDbDriver.DOCUMENT_DB_SCHEME, properties);
+        return DriverManager.getConnection(DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties);
     }
 
     @Override
@@ -47,7 +47,7 @@ public class DocumentDbDataSource extends DataSource {
         setUser(username);
         setPassword(password);
         properties.validateRequiredProperties();
-        return DriverManager.getConnection(DocumentDbDriver.DOCUMENT_DB_SCHEME, properties);
+        return DriverManager.getConnection(DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties);
     }
 
     /**

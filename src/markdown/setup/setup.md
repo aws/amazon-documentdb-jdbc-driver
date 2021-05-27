@@ -12,7 +12,7 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
         - [DocumentDB Cluster](#documentdb-cluster)
         - [JRE or JDK Installation](#jre-or-jdk-installation) 
         - [Download the DocumentDB JDBC Driver](#download-the-documentdb-jdbc-driver)
-    - [Adding Amazon RDS Certificate Authority Bundle](#adding-amazon-rds-certificate-bundle) 
+    - [Specifying the Amazon RDS Certificate Authority Certificate File](#adding-amazon-rds-certificate-bundle) 
     - [Using an SSH Tunnel to Connect to Amazon DocumentDB](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb)
     
 - [BI Tool Setup](#bi-tool-setup)
@@ -48,10 +48,10 @@ or later is installed on your computer. You can download the Java SE Runtime Env
 Download the DocumentDB JDBC driver here. The driver is packaged as a single JAR file
 (e.g., `documentdb-jdbc-1.0-SNAPSHOT-all.jar`).
 
-### Adding Amazon RDS Certificate Authority Bundle <a name='adding-amazon-rds-certificate-bundle' />
+### Specifying the Amazon RDS Certificate Authority Certificate File <a name='adding-amazon-rds-certificate-bundle' />
 
-If you are connecting to a TLS-enabled cluster, you will need to [install the Amazon RDS Certificate Authority 
-bundle](add-amazon-ca-certs.md) on your machine.
+If you are connecting to a TLS-enabled cluster, you may want to 
+[specify the Amazon RDS Certificate Authority certificate](amazon-ca-certs.md) on your connection string.
 
 To determine whether your cluster is TLS-enabled, you can 
 [check the value of your cluster's `tls` parameter](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect_programmatically.html#connect_programmatically-determine_tls_value).
@@ -99,7 +99,6 @@ For further information on SSH tunneling , please refer to the documentation on
 #### Connecting to Amazon DocumentDB Using Tableau
 
 1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
-1. If connecting to a TLS-enabled cluster, ensure you have [installed the Amazon RDS CA bundle](add-amazon-ca-certs.md).
 1. Launch the Tableau Desktop application.
     - If using a **signed** Tableau Connector, launch Tableau like a typical application on your machine.
     - If using an **unsigned** Tableau connector, Tableau must be launched from the command line with the flag
@@ -146,7 +145,6 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 #### Connecting to Amazon DocumentDB Using DbVisualizer
 
 1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
-1. If connecting to a TLS-enabled cluster, ensure you have [installed the Amazon RDS CA bundle](add-amazon-ca-certs.md).
 1. Navigate the menu path **Database > Create Database Connection**.
 1. For the **Name** field, enter a descriptive name for the connection.
 1. For the **Driver (JDBC)** field, choose the **DocumentDB** driver you created earlier.
@@ -163,7 +161,6 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 #### Adding the Amazon DocumentDB JDBC Driver
 
 1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
-1. If connecting to a TLS-enabled cluster, ensure you have [installed the Amazon RDS CA bundle](add-amazon-ca-certs.md).
 1. Launch the SQuirrel SQL Client application.
 1. Ensure the **Drivers** tab is selected.
 1. Navigate to menu path ***Drivers > New Driver ...***
@@ -181,7 +178,6 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 #### Connecting to Amazon DocumentDB Using SQuirreL SQL Client
 
 1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
-1. If connecting to a TLS-enabled cluster, ensure you have [installed the Amazon RDS CA bundle](add-amazon-ca-certs.md).
 1. Launch the SQuirrel SQL Client application.
 1. Ensure the **Aliases** table is selected.
 1. Navigate the menu path **Aliases > New Alias...**.

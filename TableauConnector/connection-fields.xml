@@ -28,6 +28,13 @@
         </boolean-options>
     </field>
 
+    <!-- Only display this field only when TLS enabled is true. Note: do not validate path. -->
+    <field name="v-tls-ca-file" label="TLS Certificate Authority File" value-type="file" category="general" optional="true" >
+        <conditions>
+            <condition field="sslmode" value="require" />
+        </conditions>
+    </field>
+
     <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames" value-type="boolean" category="general" default-value="false">
         <boolean-options>
             <false-value value="false" />

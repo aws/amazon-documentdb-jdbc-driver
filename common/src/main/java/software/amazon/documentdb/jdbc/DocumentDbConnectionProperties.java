@@ -16,32 +16,50 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
+import com.mongodb.connection.SslSettings;
 import com.mongodb.event.ServerMonitorListener;
+import lombok.SneakyThrows;
+import nl.altindag.ssl.SSLFactory;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
+
+import javax.net.ssl.SSLContext;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.security.cert.CertificateFactory;
+import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class DocumentDbConnectionProperties extends Properties {
 
+    public static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
+
     private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Logger LOGGER =
             LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
-    private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$", 0);
+    private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
+    private static final String USER_HOME_PROPERTY = "user.home";
+    private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -332,6 +350,24 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Sets the TLS CA file path.
+     *
+     * @param tlsCAFilePath the TLS CA file path.
+     */
+    public void setTlsCAFilePath(final String tlsCAFilePath) {
+        setProperty(DocumentDbConnectionProperty.TLS_CA_FILE.getName(), tlsCAFilePath);
+    }
+
+    /**
+     * Gets the TLS CA file path.
+     *
+     * @return a String representing the TLS CA file path, if set, null otherwise.
+     */
+    public String getTlsCAFilePath() {
+        return getProperty(DocumentDbConnectionProperty.TLS_CA_FILE.getName());
+    }
+
+    /**
      * Builds the MongoClientSettings from properties
      * @return a MongoClientSettings object.
      */
@@ -425,6 +461,9 @@ public class DocumentDbConnectionProperties extends Properties {
         if (getTlsAllowInvalidHostnames() != Boolean.parseBoolean(DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getDefaultValue())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES, getTlsAllowInvalidHostnames());
         }
+        if (getTlsCAFilePath() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_CA_FILE, getTlsCAFilePath());
+        }
         return String.format(connectionStringTemplate,
                 loginInfo,
                 hostInfo,
@@ -470,6 +509,20 @@ public class DocumentDbConnectionProperties extends Properties {
 
     /**
      * Gets the connection properties from the connection string.
+     *
+     * @param documentDbUrl the given properties.
+     * @return a {@link DocumentDbConnectionProperties} with the properties set.
+     * @throws SQLException if connection string is invalid.
+     */
+    public static DocumentDbConnectionProperties getPropertiesFromConnectionString(final String documentDbUrl)
+            throws SQLException {
+        return getPropertiesFromConnectionString(new Properties(), documentDbUrl, DOCUMENT_DB_SCHEME);
+    }
+
+
+    /**
+     * Gets the connection properties from the connection string.
+     *
      * @param info the given properties.
      * @param documentDbUrl the connection string.
      * @return a {@link DocumentDbConnectionProperties} with the properties set.
@@ -673,12 +726,71 @@ public class DocumentDbConnectionProperties extends Properties {
      * Applies the TLS/SSL-related connection properties to the given client settings builder.
      * @param clientSettingsBuilder The client settings builder to apply the properties to.
      */
-    private void applyTlsSettings(
-            final MongoClientSettings.Builder clientSettingsBuilder) {
+    private void applyTlsSettings(final MongoClientSettings.Builder clientSettingsBuilder) {
+        clientSettingsBuilder.applyToSslSettings(this::applyToSslSettings);
+    }
+
+    @SneakyThrows
+    private void applyToSslSettings(final SslSettings.Builder builder) {
+        // Handle tls and tlsAllowInvalidHostnames options.
         final boolean tlsEnabled = getTlsEnabled();
         final boolean tlsAllowInvalidHostnames = getTlsAllowInvalidHostnames();
-        clientSettingsBuilder.applyToSslSettings(
-                b -> b.enabled(tlsEnabled).invalidHostNameAllowed(tlsAllowInvalidHostnames));
+        builder
+                .enabled(tlsEnabled)
+                .invalidHostNameAllowed(tlsAllowInvalidHostnames);
+
+        if (!tlsEnabled) {
+            return;
+        }
+
+        // Handle the tlsCAFile option.
+        InputStream inputStream = null;
+        try {
+            inputStream = getTlsCAFileInputStream();
+            if (inputStream != null) {
+                final X509Certificate certificate = (X509Certificate) CertificateFactory
+                        .getInstance("X.509")
+                        .generateCertificate(inputStream);
+                final SSLContext sslContext = SSLFactory.builder()
+                        .withTrustMaterial(certificate)
+                        .build()
+                        .getSslContext();
+                builder.context(sslContext);
+            }
+        } finally {
+            if (inputStream != null) {
+                inputStream.close();
+            }
+        }
+    }
+
+    private @Nullable InputStream getTlsCAFileInputStream() throws FileNotFoundException, SQLException {
+        final InputStream inputStream;
+        if (Strings.isNullOrEmpty(getTlsCAFilePath())) {
+             inputStream = getClass().getResourceAsStream(ROOT_PEM_RESOURCE_FILE_NAME);
+        } else {
+            final String tlsCAFileName = getTlsCAFilePath();
+            final Path tlsCAFileNamePath;
+            if (tlsCAFileName.matches("^~[/\\\\].*$")) {
+                final String userHomePath = Matcher
+                        .quoteReplacement(System.getProperty(USER_HOME_PROPERTY));
+                tlsCAFileNamePath = Paths
+                        .get(tlsCAFileName.replaceFirst("~", userHomePath))
+                        .toAbsolutePath();
+            } else {
+                tlsCAFileNamePath = Paths.get(tlsCAFileName).toAbsolutePath();
+            }
+            if (tlsCAFileNamePath.toFile().exists()) {
+                inputStream = new FileInputStream(tlsCAFileNamePath.toFile());
+            } else {
+                throw SqlError.createSQLException(
+                        LOGGER,
+                        SqlState.CONNECTION_EXCEPTION,
+                        SqlError.TLS_CA_FILE_NOT_FOUND,
+                        tlsCAFileNamePath);
+            }
+        }
+        return inputStream;
     }
 
     /**

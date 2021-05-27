@@ -79,7 +79,7 @@ class DocumentDbTestEnvironmentFactoryTest {
     @DisplayName("Tests connectivity of the MongoClient returned from each test environment.")
     @ParameterizedTest(name = "testEnvironmentClientConnectivity - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
-    void testEnvironmentClientConnectivity(final DocumentDbTestEnvironment testEnvironment) {
+    void testEnvironmentClientConnectivity(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         try (MongoClient client = testEnvironment.createMongoClient()) {
             final MongoDatabase database = client.getDatabase(testEnvironment.getDatabaseName());
             final Document document = database.runCommand(new Document("ping", 1));
@@ -107,7 +107,8 @@ class DocumentDbTestEnvironmentFactoryTest {
     @DisplayName("Tests preparing simple consistent data from each test environment.")
     @ParameterizedTest(name = "testPrepareSimpleConsistentData - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
-    void testPrepareSimpleConsistentData(final DocumentDbTestEnvironment testEnvironment) {
+    void testPrepareSimpleConsistentData(final DocumentDbTestEnvironment testEnvironment)
+            throws SQLException {
         final String collectionName;
         final int recordCount = 10;
         try (MongoClient client = testEnvironment.createMongoClient()) {

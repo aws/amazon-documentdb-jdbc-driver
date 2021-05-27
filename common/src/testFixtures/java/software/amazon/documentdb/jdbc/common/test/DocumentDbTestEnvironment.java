@@ -20,6 +20,8 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import org.bson.BsonDocument;
 
+import java.sql.SQLException;
+
 public interface DocumentDbTestEnvironment {
 
     /**
@@ -65,7 +67,7 @@ public interface DocumentDbTestEnvironment {
      *
      * @return a new {@link MongoClient} object.
      */
-    MongoClient createMongoClient();
+    MongoClient createMongoClient() throws SQLException;
 
     /**
      * Prepares simple consistent data records for the given collections.

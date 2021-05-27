@@ -109,7 +109,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     // TODO: Go through and implement these functions
     @Override
     public String getURL() {
-        return DocumentDbDriver.DOCUMENT_DB_SCHEME + properties.buildSanitizedConnectionString();
+        return DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME + properties.buildSanitizedConnectionString();
     }
 
     @Override

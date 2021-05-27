@@ -78,7 +78,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @Test
     void testIsValidWhenConnectionIsValid() throws SQLException {
         final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbDriver.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
         // NOTE: Observed approximate 10 .. 11 seconds delay before first heartbeat is returned.
         final int timeoutSeconds = 15;
         Assertions.assertTrue(connection.isValid(timeoutSeconds));
@@ -92,7 +92,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @Test
     void testIsValidWhenTimeoutIsNegative() throws SQLException {
         final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbDriver.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
         Assertions.assertThrows(SQLException.class, () -> connection.isValid(-1));
     }
 
@@ -104,7 +104,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @Test
     void testClose() throws SQLException {
         final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbDriver.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
         Assertions.assertFalse(connection.isClosed());
         connection.close();
         Assertions.assertTrue(connection.isClosed());
@@ -124,7 +124,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setReadPreference(DocumentDbReadPreference.PRIMARY.getName());
 
         final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbDriver.DOCUMENT_DB_SCHEME, properties);
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties);
         Assertions.assertNotNull(connection);
     }
 
@@ -140,7 +140,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setTlsEnabled("invalidBoolean");
 
         final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbDriver.DOCUMENT_DB_SCHEME, properties);
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties);
         Assertions.assertNotNull(connection);
     }
 
@@ -151,7 +151,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setDatabase(" ");
 
         Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
-                DocumentDbDriver.DOCUMENT_DB_SCHEME, properties));
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties));
     }
 
     /** Tests constructor when passed invalid credentials. */
@@ -162,7 +162,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
         Assertions.assertTrue(
                 Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
-                        DocumentDbDriver.DOCUMENT_DB_SCHEME, properties))
+                        DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties))
                         .getMessage()
                         .contains("Security error detected:"));
     }

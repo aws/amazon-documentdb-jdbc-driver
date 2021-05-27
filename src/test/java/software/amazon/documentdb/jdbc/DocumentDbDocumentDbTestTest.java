@@ -22,6 +22,7 @@ import org.bson.Document;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbDocumentDbTest;
@@ -39,6 +40,7 @@ public class DocumentDbDocumentDbTestTest extends DocumentDbDocumentDbTest {
         restoreOriginalTesting();
     }
 
+    @Disabled("Doesn't support tlsCAFile option.")
     @Tag("remote-integration")
     @Test
     void testConnectivity() {

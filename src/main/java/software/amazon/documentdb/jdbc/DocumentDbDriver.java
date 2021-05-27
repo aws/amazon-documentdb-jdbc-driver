@@ -23,12 +23,13 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME;
+
 /**
  * Provides a JDBC driver for the Amazon DocumentDB database.
  */
 public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Driver {
     // Note: This class must be marked public for the registration/DeviceManager to work.
-    public static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
 
     // Registers the JDBC driver.
     static {

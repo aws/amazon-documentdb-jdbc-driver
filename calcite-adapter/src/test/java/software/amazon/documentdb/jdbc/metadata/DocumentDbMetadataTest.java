@@ -32,7 +32,6 @@ import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.SQLException;
-import java.util.Properties;
 import java.util.UUID;
 import java.util.function.Consumer;
 
@@ -61,10 +60,7 @@ class DocumentDbMetadataTest {
 
         final String schemaName = UUID.randomUUID().toString();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(
-                        new Properties(),
-                        testEnvironment.getJdbcConnectionString(),
-                        "jdbc:documentdb:");
+                .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
                 .get(schemaName, properties);
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
@@ -111,10 +107,7 @@ class DocumentDbMetadataTest {
 
         final String schemaName = UUID.randomUUID().toString();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(
-                        new Properties(),
-                        testEnvironment.getJdbcConnectionString(),
-                        "jdbc:documentdb:");
+                .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
                 .get(schemaName, properties);
         Assertions.assertEquals(0,
@@ -152,7 +145,7 @@ class DocumentDbMetadataTest {
     private static void prepareTestData(
             final DocumentDbTestEnvironment testEnvironment,
             final String collectionName,
-            final Consumer<MongoCollection<BsonDocument>> dataPreparer) {
+            final Consumer<MongoCollection<BsonDocument>> dataPreparer) throws SQLException {
         try (MongoClient client = testEnvironment.createMongoClient()) {
             final MongoDatabase database = client.getDatabase(testEnvironment.getDatabaseName());
             final MongoCollection<BsonDocument> collection = database.getCollection(collectionName, BsonDocument.class);

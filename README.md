@@ -50,6 +50,14 @@ SQL-relational interface for developers and BI tool users.
   Defaults to true.
 - `tlsAllowInvalidHostnames` (true|false) : If true, invalid host names for the TLS certificate
   are allowed. This is useful when using an SSH tunnel to a DocumentDB server. Defaults to false.
+- `tlsCAFile` (string) : The path to the trusted Certificate Authority (CA) `.pem` file. If the
+  path starts with the tilde character (`~`), it will be replaced with the user's home directory.
+  Ensure to use only forward slash characters (`/`) in the path or URL encode the path. Providing
+  the trusted Certificate Authority (CA) `.pem` file is optional as the current Amazon RDS root CA
+  is used by default when the `tls` option is set to `true`. This embedded certificate is set to
+  expire on 2024-08-22. For example, to provide a new trusted Certificate Authority (CA) `.pem`
+  file that is located in the current user's `Downloads` subdirectory of their home directory,
+  use the following: `tlsCAFile=~/Downloads/rds-ca-2019-root.pem`.
 - `scanMethod` (enum/string) : The scanning (sampling) method to use when discovering collection 
   metadata for determining table schema. Possible values include the following:
   - `random` - (default) The sample documents are returned in _random_ order.

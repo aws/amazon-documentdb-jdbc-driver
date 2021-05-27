@@ -38,10 +38,12 @@ import org.bson.BsonType;
 import org.bson.types.Decimal128;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.Assertions;
+import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
@@ -184,9 +186,10 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
     }
 
     @Override
-    public MongoClient createMongoClient() {
-        return MongoClients.create(String.format("mongodb://%s%s:%s/%s%s",
-                getCredentials(), getHost(), getPort(), ADMIN_DATABASE, getOptions()));
+    public MongoClient createMongoClient() throws SQLException {
+        return MongoClients.create(DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(getJdbcConnectionString())
+                .buildMongoClientSettings());
     }
 
     @Override

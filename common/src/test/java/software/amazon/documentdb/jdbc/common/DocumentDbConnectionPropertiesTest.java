@@ -25,9 +25,13 @@ import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
 import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
 import software.amazon.documentdb.jdbc.DocumentDbReadPreference;
+
 import java.sql.SQLException;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME;
 
 public class DocumentDbConnectionPropertiesTest {
 
@@ -51,6 +55,7 @@ public class DocumentDbConnectionPropertiesTest {
          properties.setTlsAllowInvalidHostnames("true");
          properties.setTlsEnabled("true");
          properties.setRetryReadsEnabled("true");
+         properties.setTlsCAFilePath("src/main/resources/rds-ca-2019-root.pem");
 
          // Get properties.
          Assertions.assertEquals("USER", properties.getUser());
@@ -64,10 +69,11 @@ public class DocumentDbConnectionPropertiesTest {
          Assertions.assertTrue(properties.getTlsEnabled());
          Assertions.assertTrue(properties.getTlsAllowInvalidHostnames());
          Assertions.assertTrue(properties.getRetryReadsEnabled());
+         Assertions.assertEquals("src/main/resources/rds-ca-2019-root.pem", properties.getTlsCAFilePath());
 
          // Build sanitized connection string.
          Assertions.assertEquals(
-                 "//USER@HOSTNAME/DATABASE?appName=APPNAME&loginTimeoutSec=100&scanLimit=100&replicaSet=rs0&tlsAllowInvalidHostnames=true",
+                 "//USER@HOSTNAME/DATABASE?appName=APPNAME&loginTimeoutSec=100&scanLimit=100&replicaSet=rs0&tlsAllowInvalidHostnames=true&tlsCAFile=src/main/resources/rds-ca-2019-root.pem",
                  properties.buildSanitizedConnectionString());
 
          // Build client settings.
@@ -82,6 +88,7 @@ public class DocumentDbConnectionPropertiesTest {
          Assertions.assertTrue(settings.getRetryReads());
          Assertions.assertTrue(settings.getSslSettings().isEnabled());
          Assertions.assertTrue(settings.getSslSettings().isInvalidHostNameAllowed());
+         Assertions.assertNotNull(settings.getSslSettings().getContext().getClientSessionContext());
     }
 
     /**
@@ -134,7 +141,7 @@ public class DocumentDbConnectionPropertiesTest {
         info.clear();
         String connectionString = "jdbc:documentdb://username:password@localhost/database";
         DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, "jdbc:documentdb:");
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("localhost", properties.getProperty("host"));
         Assertions.assertEquals("database", properties.getProperty("database"));
@@ -144,7 +151,7 @@ public class DocumentDbConnectionPropertiesTest {
         // Connection string does not override existing properties.
         connectionString = "jdbc:documentdb://username:password@127.0.0.1/newdatabase";
         properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, "jdbc:documentdb:");
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
         Assertions.assertEquals("newdatabase", properties.getProperty("database"));
@@ -155,7 +162,7 @@ public class DocumentDbConnectionPropertiesTest {
         info.clear();
         connectionString = "jdbc:documentdb://user%20name:pass%20word@127.0.0.1/newdatabase";
         properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, "jdbc:documentdb:");
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
         Assertions.assertEquals("newdatabase", properties.getProperty("database"));
@@ -170,22 +177,50 @@ public class DocumentDbConnectionPropertiesTest {
                 "&" + DocumentDbConnectionProperty.REPLICA_SET.getName() + "=" + "rs0" +
                 "&" + DocumentDbConnectionProperty.TLS_ENABLED.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getName() + "=" + "true" +
+                "&" + DocumentDbConnectionProperty.TLS_CA_FILE.getName() + "=" + "~/rds-ca-2019-root.pem" +
                 "&" + DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName() + "=" + "4" +
                 "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getName() + "=" + "random" +
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName() + "=" + "1" +
                 "&" + DocumentDbConnectionProperty.SCHEMA_PERSISTENCE_STORE.getName() + "=" + "file";
         properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, "jdbc:documentdb:");
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
 
         // Check that unsupported properties are ignored.
         connectionString = "jdbc:documentdb://user%20name:pass%20word@127.0.0.1/newdatabase" +
                 "?" + "maxStalenessSeconds" + "=" + "value";
         properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(info, connectionString, "jdbc:documentdb:");
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertNull(properties.getProperty("maxStalenessSeconds"));
     }
 
+    @DisplayName("Test that non-existent tlsCAfile is handled correctly.")
+    @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only.")
+    @Test
+    void testInvalidTlsCAFilePath() {
+        final DocumentDbConnectionProperties properties1 = new DocumentDbConnectionProperties();
+        properties1.setUser("USER");
+        properties1.setPassword("PASSWORD");
+        properties1.setDatabase("DATABASE");
+        properties1.setHostname("HOSTNAME");
+        properties1.setTlsEnabled("true");
+        properties1.setTlsCAFilePath("~/invalid-filename.pem");
+        final String pattern = Matcher.quoteReplacement("TLS Certificate Authority file '")
+                + ".*" + Matcher.quoteReplacement("invalid-filename.pem' not found.");
+        Assertions.assertTrue(
+                Assertions.assertThrows(SQLException.class, () -> properties1.buildMongoClientSettings())
+                .getMessage().matches(pattern));
+
+        final DocumentDbConnectionProperties properties2 = new DocumentDbConnectionProperties();
+        properties2.setUser("USER");
+        properties2.setPassword("PASSWORD");
+        properties2.setDatabase("DATABASE");
+        properties2.setHostname("HOSTNAME");
+        // tlsCAFile option is ignored if tls is false.
+        properties2.setTlsEnabled("false");
+        properties2.setTlsCAFilePath("~/invalid-filename.pem");
+        Assertions.assertDoesNotThrow(() -> properties2.buildMongoClientSettings());
+    }
 }
