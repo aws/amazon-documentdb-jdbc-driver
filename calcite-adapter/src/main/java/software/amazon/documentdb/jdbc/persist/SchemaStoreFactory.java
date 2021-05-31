@@ -55,6 +55,7 @@ public final class SchemaStoreFactory {
             case FILE:
                 return new FileSchemaReader(properties.getDatabase());
             case DATABASE:
+                return new DocumentDbSchemaReader(properties);
             default:
                 throw SqlError.createSQLException(
                         LOGGER,
@@ -79,6 +80,7 @@ public final class SchemaStoreFactory {
             case FILE:
                 return new FileSchemaWriter(properties.getDatabase());
             case DATABASE:
+                return new DocumentDbSchemaWriter(properties);
             default:
                 throw SqlError.createSQLException(
                         LOGGER,

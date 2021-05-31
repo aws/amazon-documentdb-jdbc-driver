@@ -127,7 +127,7 @@ public class DocumentDbAggregate
         final List<String> outNames =
                 DocumentDbRules.mongoFieldNames(getRowType(),
                         mongoImplementor.getMetadataTable());
-        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
         int i = 0;
         if (groupSet.cardinality() == 1) {
             final String inName = inNames.get(groupSet.nth(0));

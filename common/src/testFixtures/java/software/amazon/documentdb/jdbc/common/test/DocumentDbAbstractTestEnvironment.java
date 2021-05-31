@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc.common.test;
 
+import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
@@ -61,6 +62,7 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
     private final String username;
     private final String password;
     private final String options;
+    private final String restrictedUsername;
     private final List<Entry<String, String>> temporaryCollections;
 
     private boolean isStarted = false;
@@ -76,11 +78,13 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
             final String host,
             final String username,
             final String password,
+            final String restrictedUsername,
             @Nullable final String options) {
         this.host = host;
         this.username = username;
         this.password = password;
         this.options = options;
+        this.restrictedUsername = restrictedUsername;
         this.temporaryCollections = new ArrayList<>();
     }
 
@@ -131,6 +135,10 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
         return username;
     }
 
+    protected String getRestrictedUsername() {
+        return restrictedUsername;
+    }
+
     /**
      * Gets the password.
      *
@@ -145,6 +153,13 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
         final String jdbcTemplate = "jdbc:documentdb://%s%s:%s/%s%s";
         return String.format(jdbcTemplate,
                 getCredentials(), getHost(), getPort(), getDatabaseName(), getOptions());
+    }
+
+    @Override
+    public String getRestrictedUserConnectionString() {
+        final String jdbcTemplate = "jdbc:documentdb://%s%s:%s/%s%s";
+        return String.format(jdbcTemplate,
+                getCredentials(true), getHost(), getPort(), getDatabaseName(), getOptions());
     }
 
     @Override
@@ -165,7 +180,15 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
                     final MongoDatabase database = client.getDatabase(entry.getKey());
                     final MongoCollection<BsonDocument> collection = database
                             .getCollection(entry.getValue(), BsonDocument.class);
-                    collection.drop();
+                    try {
+                        collection.drop();
+                    } catch (MongoException e) {
+                        if (e.getCode() != 13) {
+                            throw e;
+                            // Ignore 'Authorization failure
+                        }
+
+                    }
                 }
                 temporaryCollections.clear();
             }
@@ -237,8 +260,12 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
     }
 
     private String getCredentials() {
+        return getCredentials(false);
+    }
+
+    private String getCredentials(final boolean isRestrictedUser) {
         return username != null && password != null
-                ? String.format("%s:%s@", encodeValue(username), encodeValue(password)) : "";
+                ? String.format("%s:%s@", encodeValue(isRestrictedUser ? restrictedUsername : username), encodeValue(password)) : "";
     }
 
     private static String encodeValue(final String value) {

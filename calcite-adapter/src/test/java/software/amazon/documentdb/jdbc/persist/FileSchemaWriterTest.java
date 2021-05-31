@@ -38,8 +38,10 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGenerator;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -56,7 +58,7 @@ class FileSchemaWriterTest {
 
     @DisplayName("Tests writing schema.")
     @Test
-    void testWriterWholeSchema() {
+    void testWriterWholeSchema() throws SQLException, DocumentDbSchemaSecurityException {
         final List<BsonDocument> documentList = new ArrayList<>();
         for (int count = 0; count < 3; count++) {
             final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
@@ -82,13 +84,13 @@ class FileSchemaWriterTest {
                 COLLECTION_NAME, documentList.iterator());
         final DocumentDbSchema schema = new DocumentDbSchema(DATABASE_NAME, 1, metadata);
 
-        final FileSchemaWriter writer = new FileSchemaWriter(DATABASE_NAME);
+        final SchemaWriter writer = new FileSchemaWriter(DATABASE_NAME);
         writer.write(schema, metadata.values());
     }
 
     @DisplayName("Tests updating table schema.")
     @Test
-    void testWriteTableSchema() {
+    void testWriteTableSchema() throws SQLException, DocumentDbSchemaSecurityException {
         final List<BsonDocument> documentList = new ArrayList<>();
         for (int count = 0; count < 3; count++) {
             final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
@@ -113,11 +115,11 @@ class FileSchemaWriterTest {
         final Map<String, DocumentDbSchemaTable>  metadata = DocumentDbTableSchemaGenerator.generate(
                 COLLECTION_NAME, documentList.iterator());
         final DocumentDbSchema schema = new DocumentDbSchema(DATABASE_NAME, 1, metadata);
-        final FileSchemaWriter writer = new FileSchemaWriter(DATABASE_NAME);
+        final SchemaWriter writer = new FileSchemaWriter(DATABASE_NAME);
         writer.write(schema, schema.getTableMap().values());
 
         final DocumentDbSchemaTable schemaTable = schema.getTableMap().get(COLLECTION_NAME);
         schemaTable.setUuid(UUID.randomUUID().toString());
-        writer.update(schema, schemaTable);
+        writer.update(schema, Collections.singletonList(schemaTable));
     }
 }

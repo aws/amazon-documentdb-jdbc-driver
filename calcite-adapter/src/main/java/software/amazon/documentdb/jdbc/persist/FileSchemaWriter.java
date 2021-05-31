@@ -21,15 +21,17 @@ import lombok.SneakyThrows;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLException;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -77,31 +79,39 @@ public class FileSchemaWriter implements SchemaWriter {
     }
 
     @Override
-    @SneakyThrows
     public void update(
             @NonNull final DocumentDbSchema schema,
-            @NonNull final DocumentDbSchemaTable tableSchema) {
+            final Collection<DocumentDbSchemaTable> tableSchemas) throws SQLException {
         final String schemaName = schema.getSchemaName();
         final File schemaFile = getSchemaFile(schemaName, sqlName, schemaFolder);
         final FileSchemaContainer schemaContainer;
         if (schemaFile.exists()) {
-            schemaContainer = OBJECT_MAPPER
-                    .readValue(schemaFile, FileSchemaContainer.class);
-            if (!schemaContainer.getSchema().getSchemaName().equals(schemaName)) {
-                throw new IllegalArgumentException(
-                        SqlError.lookup(SqlError.MISMATCH_SCHEMA_NAME,
-                        schemaName,
-                        schemaContainer.getSchema().getSchemaName()));
+            try {
+                schemaContainer = OBJECT_MAPPER
+                        .readValue(schemaFile, FileSchemaContainer.class);
+                if (!schemaContainer.getSchema().getSchemaName().equals(schemaName)) {
+                    throw new IllegalArgumentException(
+                            SqlError.lookup(SqlError.MISMATCH_SCHEMA_NAME,
+                                    schemaName,
+                                    schemaContainer.getSchema().getSchemaName()));
+                }
+            } catch (IOException e) {
+                throw SqlError.createSQLException(
+                        LOGGER,
+                        SqlState.DATA_EXCEPTION,
+                        e,
+                        SqlError.MISMATCH_SCHEMA_NAME);
             }
         } else {
-            schemaContainer = new FileSchemaContainer(schema, Collections.singletonList(tableSchema));
+            schemaContainer = new FileSchemaContainer(schema, tableSchemas);
         }
 
         // Restore the matching tables.
         final Map<String, DocumentDbSchemaTable> newTableMap = schemaContainer.getTableSchemas().stream()
                 .filter(t -> schemaContainer.getSchema().getTableReferences().contains(t.getId()))
                 .collect(Collectors.toMap(DocumentDbSchemaTable::getSqlName, t -> t, (t1, t2) -> t1));
-        newTableMap.put(tableSchema.getSqlName(), tableSchema);
+        newTableMap.putAll(tableSchemas.stream()
+                .collect(Collectors.toMap(DocumentDbSchemaTable::getSqlName, t -> t)));
         final DocumentDbSchema newSchema = new DocumentDbSchema(
                 schema.getSchemaName(),
                 schema.getSqlName(),

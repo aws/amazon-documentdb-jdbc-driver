@@ -20,6 +20,8 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import javax.annotation.Nullable;
+import java.util.Collection;
+import java.util.Set;
 
 public interface SchemaReader {
 
@@ -56,4 +58,18 @@ public interface SchemaReader {
      * @return a {@link DocumentDbSchemaTable} table schema.
      */
     DocumentDbSchemaTable readTable(final String schemaName, final int schemaVersion, final String tableId);
+
+    /**
+     * Reads the table schema for the given set of table ID.
+     *
+     * @param schemaName the name of the database schema.
+     * @param schemaVersion the version of the database schema.
+     * @param tableIds the set of table IDs to read.
+     *
+     * @return a collection of {@link DocumentDbSchemaTable} table schema.
+     */
+    Collection<DocumentDbSchemaTable> readTables(
+            final String schemaName,
+            final int schemaVersion,
+            final Set<String> tableIds);
 }

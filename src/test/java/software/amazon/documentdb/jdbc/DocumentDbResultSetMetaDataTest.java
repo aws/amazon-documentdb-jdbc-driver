@@ -43,6 +43,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.Properties;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
@@ -53,6 +54,7 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
     private static final String HOSTNAME = "localhost";
     private static final String COLLECTION_SIMPLE = "COLLECTION_SIMPLE";
     private static final String COLLECTION_COMPLEX = "COLLECTION_COMPLEX";
+    private static final String CONNECTION_STRING_TEMPLATE = "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false";
 
     /** Initializes the test class. */
     @BeforeAll
@@ -63,8 +65,10 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
 
     @AfterEach
     void afterEach() throws SQLException {
-        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
-        properties.setDatabase(DATABASE);
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(new Properties(),
+                        getJdbcConnectionString(),
+                "jdbc:documentdb:");
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
@@ -78,10 +82,7 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
     void testGetResultSetMetadataSimple() throws SQLException {
         prepareSimpleConsistentData(DATABASE, COLLECTION_SIMPLE, 5, USERNAME, PASSWORD);
 
-        final String connectionString =
-                String.format(
-                        "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false",
-                        USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
+        final String connectionString = getJdbcConnectionString();
 
         try (final Connection connection = DriverManager.getConnection(connectionString);
                 final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();
@@ -157,8 +158,7 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
     void testResultSetGetMetadataComplex() throws SQLException {
         addComplexData();
 
-        final String connectionString = String.format(
-                "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false", USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
+        final String connectionString = getJdbcConnectionString();
         try (final Connection connection = DriverManager.getConnection(connectionString);
                 final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();
                 final ResultSet outerTableResultSet =
@@ -221,6 +221,11 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
             Assertions.assertEquals("BIGINT", arrayMetadata.getColumnTypeName(2));
             Assertions.assertEquals("INTEGER", arrayMetadata.getColumnTypeName(3));
         }
+    }
+
+    private String getJdbcConnectionString() {
+        return String.format(
+                CONNECTION_STRING_TEMPLATE, USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
     }
 
     /**

@@ -20,7 +20,11 @@ import com.mongodb.client.MongoDatabase;
 import lombok.SneakyThrows;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.LazyLinkedHashMap;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
@@ -31,6 +35,7 @@ import java.util.Map;
  * Provides a schema for DocumentDB
  */
 public class DocumentDbSchema extends AbstractSchema {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchema.class);
     private final MongoDatabase mongoDatabase;
     private Map<String, Table> tables;
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
@@ -57,12 +62,24 @@ public class DocumentDbSchema extends AbstractSchema {
         if (tables == null) {
             tables = new LazyLinkedHashMap<>(
                     new LinkedHashSet<>(databaseMetadata.getTableSchemaMap().keySet()),
-                    tableName -> {
-                        final DocumentDbSchemaTable schemaTable = databaseMetadata
-                                .getTableSchemaMap().get(tableName);
-                        return new DocumentDbTable(schemaTable.getCollectionName(), schemaTable);
-                    });
+                    this::getDocumentDbTable);
         }
         return tables;
+    }
+
+    @SneakyThrows
+    private Table getDocumentDbTable(final String tableName) {
+        final DocumentDbSchemaTable schemaTable = databaseMetadata
+                .getTableSchemaMap().get(tableName);
+        if (schemaTable == null) {
+            // This will occur if the table schema is deleted after retrieving the
+            // database schema.
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.DATA_EXCEPTION,
+                    SqlError.INCONSISTENT_SCHEMA,
+                    tableName);
+        }
+        return new DocumentDbTable(schemaTable.getCollectionName(), schemaTable);
     }
 }

@@ -73,7 +73,7 @@ public class DocumentDbMetadataTable extends DocumentDbSchemaTable {
         if (columnsByPath == null) {
             final ImmutableMap.Builder<String, DocumentDbSchemaColumn> builder =
                     ImmutableMap.builder();
-            for (Entry<String, DocumentDbSchemaColumn> entry : getColumns().entrySet()) {
+            for (Entry<String, DocumentDbSchemaColumn> entry : getColumnMap().entrySet()) {
                 final DocumentDbSchemaColumn column = entry.getValue();
                 if (!isNullOrWhitespace(column.getFieldPath())) {
                     builder.put(entry.getValue().getFieldPath(), entry.getValue());

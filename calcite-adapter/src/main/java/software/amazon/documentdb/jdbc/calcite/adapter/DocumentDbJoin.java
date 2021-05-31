@@ -277,7 +277,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
      * @return {@code true} if table contains foreign key columns, {@code false}, otherwise.
      */
     static boolean isTableVirtual(final DocumentDbSchemaTable table) {
-        return table.getColumns().values().stream()
+        return table.getColumnMap().values().stream()
                 .anyMatch(c -> c.getForeignKeyTableName() != null && c.getForeignKeyColumnName() != null);
     }
 
@@ -320,7 +320,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // 1. primary keys,
         // 2. foreign keys (from another table)
         // 3. columns that are "virtual" (i.e. arrays, structures)
-        return table.getColumns().values().stream()
+        return table.getColumnMap().values().stream()
                 .filter(c -> !c.isPrimaryKey()
                         && c.getForeignKeyTableName() == null
                         && !(c instanceof DocumentDbMetadataColumn &&
@@ -590,7 +590,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             final DocumentDbSchemaTable table,
             final Supplier<RelNode> getNode) {
         final List<String> fieldNames = getNode.get().getRowType().getFieldNames();
-        return table.getColumns().entrySet().stream()
+        return table.getColumnMap().entrySet().stream()
                 .filter(entry -> fieldNames.contains(entry.getKey()))
                 .collect(Collectors.toMap(
                         Entry::getKey, Entry::getValue,

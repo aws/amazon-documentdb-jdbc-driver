@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.common.test;
 import org.bson.BsonType;
 
 public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestEnvironment {
+
     private static final int DEFAULT_PORT = 27019;
     private static final String DOC_DB_HOST_LOCAL = "localhost";
     private static final String DOC_DB_USER_NAME_PROPERTY = "DOC_DB_USER_NAME";
@@ -27,6 +28,7 @@ public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestE
 
     private static final String DOC_DB_CONNECTION_OPTIONS = "?tls=true&tlsAllowInvalidHostnames=true&scanMethod=random";
     private static final String DOC_DB_INTEGRATION_DATABASE = "integration";
+    private static final String RESTRICTED_USERNAME = "docDbRestricted";
 
     private final String databaseName;
     private final int port;
@@ -35,6 +37,7 @@ public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestE
         super(DOC_DB_HOST_LOCAL,
                 System.getenv(DOC_DB_USER_NAME_PROPERTY),
                 System.getenv(DOC_DB_PASSWORD_PROPERTY),
+                RESTRICTED_USERNAME,
                 DOC_DB_CONNECTION_OPTIONS);
         databaseName = DOC_DB_INTEGRATION_DATABASE;
         port = getInteger(System.getenv(DOC_DB_LOCAL_PORT_PROPERTY), DEFAULT_PORT);

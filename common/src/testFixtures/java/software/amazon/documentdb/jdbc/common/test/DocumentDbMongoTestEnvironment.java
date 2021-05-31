@@ -56,6 +56,7 @@ import static de.flapdoodle.embed.process.io.Processors.namedConsole;
 import static org.apache.logging.log4j.core.util.Assert.isEmpty;
 
 public class DocumentDbMongoTestEnvironment extends DocumentDbAbstractTestEnvironment {
+
     private static final long INIT_TIMEOUT_MS = 30000;
     private static final String USER_ADDED_TOKEN = "Successfully added user";
     private static final String INTEGRATION_DATABASE_NAME = "integration";
@@ -64,6 +65,7 @@ public class DocumentDbMongoTestEnvironment extends DocumentDbAbstractTestEnviro
     private static final boolean USE_AUTHENTICATION_DEFAULT = true;
     private static final String ADMIN_USERNAME = "admin";
     private static final String ADMIN_PASSWORD = "admin";
+    private static final String RESTRICTED_USERNAME = "restrictedUser";
     private final boolean enableAuthentication;
     private final String databaseName;
     private MongodConfig mongoConfig = null;
@@ -94,7 +96,7 @@ public class DocumentDbMongoTestEnvironment extends DocumentDbAbstractTestEnviro
             final String username,
             final String password,
             final boolean enableAuthentication) {
-        super(MONGO_LOCAL_HOST, username, password, "tls=false");
+        super(MONGO_LOCAL_HOST, username, password, RESTRICTED_USERNAME, "tls=false");
         this.enableAuthentication = enableAuthentication;
         this.databaseName = databaseName;
     }
@@ -119,7 +121,8 @@ public class DocumentDbMongoTestEnvironment extends DocumentDbAbstractTestEnviro
         mongoExecutable = starter.prepare(mongoConfig);
         mongoProcess = mongoExecutable.start();
         addAdmin();
-        createUser(databaseName, getUsername(), getPassword());
+        createUser(databaseName, "dbOwner", getUsername(), getPassword());
+        createUser(databaseName, "read", getRestrictedUsername(), getPassword());
         return true;
     }
 
@@ -172,11 +175,12 @@ public class DocumentDbMongoTestEnvironment extends DocumentDbAbstractTestEnviro
      */
     private void createUser(
             final String databaseName,
+            final String role,
             final String username,
             final String password) throws IOException {
-
-        final String[] roles = new String[] { "{\"db\":\"" + databaseName + "\",\"role\":\"dbOwner\"}" };
-        final String scriptText = StringUtils.join(String.format("db = db.getSiblingDB('%s'); " +
+        final String[] roles = new String[] { "{\"db\":\"" + databaseName + "\",\"role\":\"" + role + "\"}" };
+        final String scriptText = StringUtils.join(String.format(
+                "db = db.getSiblingDB('%s'); " +
                         "db.createUser({\"user\":\"%s\",\"pwd\":\"%s\",\"roles\":[%s]});%n" +
                         "db.getUser('%s');",
                 ADMIN_DATABASE, username, password, StringUtils.join(roles, ","), username), "");

@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.persist;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.sql.SQLException;
 import java.util.Collection;
 
 /**
@@ -35,17 +36,18 @@ public interface SchemaWriter {
      */
     void write(
             final DocumentDbSchema schema,
-            final Collection<DocumentDbSchemaTable> tablesSchema);
+            final Collection<DocumentDbSchemaTable> tablesSchema)
+            throws SQLException, DocumentDbSchemaSecurityException;
 
     /**
      * Writes only the specific table schemaName.
-     *
-     * @param schema the database schema.
-     * @param tableSchema the table schema to update.
+     *  @param schema the database schema.
+     * @param tableSchemas the table schema to update.
      */
     void update(
             final DocumentDbSchema schema,
-            final DocumentDbSchemaTable tableSchema);
+            final Collection<DocumentDbSchemaTable> tableSchemas)
+            throws SQLException, DocumentDbSchemaSecurityException;
 
     /**
      * Remove all versions of the schema associated with the given schema name.

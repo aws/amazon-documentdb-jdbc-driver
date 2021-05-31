@@ -49,7 +49,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
             "Method of scanning for metadata."),
     METADATA_SCAN_LIMIT("scanLimit", "1000",
             "Number of records to scan for metadata"),
-    SCHEMA_PERSISTENCE_STORE("persistedSchemaStore", "file",
+    SCHEMA_PERSISTENCE_STORE("persistedSchemaStore", "database",
             "Determines which persisted schema storage to use. Supported: 'file'."),
     TLS_CA_FILE("tlsCAFile", "", "The path to the Certificate Authority (CA) '.pem' file.");
 

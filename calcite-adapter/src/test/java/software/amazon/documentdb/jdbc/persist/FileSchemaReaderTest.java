@@ -140,8 +140,8 @@ class FileSchemaReaderTest {
         Assertions.assertEquals(tableId, schemaTable.getId());
         Assertions.assertEquals(COLLECTION_NAME, schemaTable.getSqlName());
         Assertions.assertEquals(COLLECTION_NAME, schemaTable.getCollectionName());
-        Assertions.assertNotNull(schemaTable.getColumns());
-        Assertions.assertEquals(13, schemaTable.getColumns().size());
+        Assertions.assertNotNull(schemaTable.getColumnMap());
+        Assertions.assertEquals(13, schemaTable.getColumnMap().size());
     }
 
     // Error handling ...

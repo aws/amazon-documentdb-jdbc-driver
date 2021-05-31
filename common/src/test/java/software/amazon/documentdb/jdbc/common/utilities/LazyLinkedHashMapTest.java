@@ -21,8 +21,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 class LazyLinkedHashMapTest {
     @DisplayName("Test the size of the map - which should be equal to the number in the keySet.")
@@ -181,5 +185,81 @@ class LazyLinkedHashMapTest {
         Assertions.assertThrows(UnsupportedOperationException.class,
                 () -> map.entrySet());
         Assertions.assertEquals(0, map.getLazyMapSize());
+    }
+
+    @DisplayName("Tests all values using the factory function.")
+    @Test
+    void testValuesWithAllValuesFactory() {
+        final LinkedHashSet<String> keySet = new LinkedHashSet<>(Arrays.asList("1", "2", "3"));
+        final LazyLinkedHashMap<String, Integer> map = new LazyLinkedHashMap<>(
+                keySet,
+                Integer::parseInt,
+                set -> set.stream().collect(Collectors.toMap(
+                                k -> k,
+                                k -> Integer.parseInt(k),
+                                (o, d) -> o,
+                                LinkedHashMap::new)));
+        Assertions.assertEquals(0, map.getLazyMapSize());
+        final Collection<Integer> values = map.values();
+        Assertions.assertEquals(keySet.size(), map.getLazyMapSize());
+        Assertions.assertEquals(keySet.size(), values.size());
+    }
+
+    @DisplayName("Tests using the partial remaining values factory function.")
+    @Test
+    void testValuesWithAllValuesFactoryPartial() {
+        final LinkedHashSet<String> keySet = new LinkedHashSet<>(Arrays.asList("1", "2", "3"));
+        final LazyLinkedHashMap<String, Integer> map = new LazyLinkedHashMap<>(
+                keySet,
+                Integer::parseInt,
+                set -> set.stream().collect(Collectors.toMap(
+                        k -> k,
+                        k -> Integer.parseInt(k),
+                        (o, d) -> o,
+                        LinkedHashMap::new)));
+        Assertions.assertEquals(0, map.getLazyMapSize());
+        Assertions.assertEquals(1, map.get("1"));
+        Assertions.assertEquals(1, map.getLazyMapSize());
+        final Collection<Integer> values = map.values();
+        Assertions.assertEquals(keySet.size(), map.getLazyMapSize());
+        Assertions.assertEquals(keySet.size(), values.size());
+    }
+
+    @DisplayName("Tests the entry set with all the remaining values factory function.")
+    @Test
+    void testEntrySetWithAllValuesFactory() {
+        final LinkedHashSet<String> keySet = new LinkedHashSet<>(Arrays.asList("1", "2", "3"));
+        final LazyLinkedHashMap<String, Integer> map = new LazyLinkedHashMap<>(
+                keySet,
+                Integer::parseInt,
+                set -> set.stream().collect(Collectors.toMap(
+                        k -> k,
+                        k -> Integer.parseInt(k),
+                        (o, d) -> o,
+                        LinkedHashMap::new)));
+        Assertions.assertEquals(0, map.getLazyMapSize());
+        final Set<Entry<String, Integer>> entries = map.entrySet();
+        Assertions.assertEquals(keySet.size(), map.getLazyMapSize());
+        Assertions.assertEquals(keySet.size(), entries.size());
+    }
+
+    @DisplayName("Tests the entry set with partial remaining values factory function.")
+    @Test
+    void testEntrySetWithAllValuesFactoryPartial() {
+        final LinkedHashSet<String> keySet = new LinkedHashSet<>(Arrays.asList("1", "2", "3"));
+        final LazyLinkedHashMap<String, Integer> map = new LazyLinkedHashMap<>(
+                keySet,
+                Integer::parseInt,
+                set -> set.stream().collect(Collectors.toMap(
+                        k -> k,
+                        k -> Integer.parseInt(k),
+                        (o, d) -> o,
+                        LinkedHashMap::new)));
+        Assertions.assertEquals(0, map.getLazyMapSize());
+        Assertions.assertEquals(1, map.get("1"));
+        Assertions.assertEquals(1, map.getLazyMapSize());
+        final Set<Entry<String, Integer>> entries = map.entrySet();
+        Assertions.assertEquals(keySet.size(), map.getLazyMapSize());
+        Assertions.assertEquals(keySet.size(), entries.size());
     }
 }

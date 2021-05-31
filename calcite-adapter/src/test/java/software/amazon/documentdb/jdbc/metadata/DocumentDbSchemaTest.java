@@ -51,8 +51,10 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.DEFAULT_SCHEMA_NAME;
 
@@ -126,8 +128,14 @@ class DocumentDbSchemaTest {
                 DocumentDbSchema.class);
         Assertions.assertNotNull(schema2);
         // Use the original collection to lazy load the tables.
-        schema2.setGetTableFunction(tableId ->
-                schema1.getTableMap().get(tableId.split("[:][:]")[0]));
+        schema2.setGetTableFunction(
+                tableId -> schema1.getTableMap().get(tableId.split("[:][:]")[0]),
+                remaining -> remaining.stream()
+                        .collect(Collectors.toMap(
+                                tableId -> tableId,
+                                tableId -> schema1.getTableMap().get(tableId),
+                                (a, b) -> b,
+                                LinkedHashMap::new)));
         Assertions.assertEquals(1, schema2.getTableMap().size());
         Assertions.assertEquals(schema1.getTableMap().get(COLLECTION_NAME), schema2.getTableMap().get(COLLECTION_NAME));
         Assertions.assertEquals(schema1, schema2); // Performs a member-wise check

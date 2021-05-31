@@ -26,6 +26,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Implements a lazy {@link LinkedHashMap} where the keySet is set in the constructor, but
@@ -38,6 +39,7 @@ public class LazyLinkedHashMap<K,V> implements Map<K,V> {
     private final ImmutableSet<K> keySet;
     private final Map<K,V> map;
     private final Function<K,V> factory;
+    private final Function<Set<K>, Map<K,V>> allValuesFactory;
 
     /**
      * Constructs a new {@link LazyLinkedHashMap} with a given keySet and a factory function.
@@ -49,10 +51,31 @@ public class LazyLinkedHashMap<K,V> implements Map<K,V> {
      * @param factory the factory method to retrieve the instance at the map.
      */
     public LazyLinkedHashMap(
-            @NonNull final LinkedHashSet<K> keySet,
+            @NonNull final Set<K> keySet,
             @NonNull final Function<K,V> factory) {
         this.keySet = ImmutableSet.copyOf(keySet);
         this.factory = factory;
+        this.allValuesFactory = null;
+        this.map = new LinkedHashMap<>();
+    }
+
+    /**
+     * Constructs a new {@link LazyLinkedHashMap} with a given keySet and a factory function.
+     * This map is a read-only map and does not support adding entries or updating existing entries.
+     * The keySet should provide the fixed set of keys for this map.
+     * The factory function will be invoked when the client calls the {@code get(key)} method.
+     *
+     * @param keySet the keySet to use.
+     * @param factory the factory method to retrieve the instance at the map.
+     * @param remainingValuesFactory the factory method to retrieve all remaining instances in the map.
+     */
+    public LazyLinkedHashMap(
+            @NonNull final Set<K> keySet,
+            @NonNull final Function<K,V> factory,
+            @NonNull final Function<Set<K>, Map<K,V>> remainingValuesFactory) {
+        this.keySet = ImmutableSet.copyOf(keySet);
+        this.factory = factory;
+        this.allValuesFactory = remainingValuesFactory;
         this.map = new LinkedHashMap<>();
     }
 
@@ -117,12 +140,24 @@ public class LazyLinkedHashMap<K,V> implements Map<K,V> {
 
     @Override
     public Collection<V> values() {
+        if (keySet.size() != map.size() && allValuesFactory != null) {
+            putAllRemaining();
+            return map.values();
+        } else if (keySet.size() == map.size()) {
+            return map.values();
+        }
         // This would defeat purpose of "lazy load".
         throw new UnsupportedOperationException();
     }
 
     @Override
     public Set<Entry<K, V>> entrySet() {
+        if (keySet.size() != map.size() && allValuesFactory != null) {
+            putAllRemaining();
+            return map.entrySet();
+        } else if (keySet.size() == map.size()) {
+            return map.entrySet();
+        }
         // This would defeat purpose of "lazy load".
         throw new UnsupportedOperationException();
     }
@@ -130,5 +165,12 @@ public class LazyLinkedHashMap<K,V> implements Map<K,V> {
     @VisibleForTesting
     int getLazyMapSize() {
         return map.size();
+    }
+
+    private void putAllRemaining() {
+        final LinkedHashSet<K> missingKeySet = keySet.stream()
+                .filter(key -> !map.containsKey(key))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        map.putAll(allValuesFactory.apply(missingKeySet));
     }
 }

@@ -92,7 +92,7 @@ public class DocumentDbTable extends AbstractQueryableTable
         }
 
         for (Entry<String, DocumentDbSchemaColumn> entry :
-                tableMetadata.getColumns().entrySet()) {
+                tableMetadata.getColumnMap().entrySet()) {
 
             sqlType = entry.getValue().getSqlType();
             if (sqlType == JdbcType.ARRAY || sqlType == JdbcType.JAVA_OBJECT) {

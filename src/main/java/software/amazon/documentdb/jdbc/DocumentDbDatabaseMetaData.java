@@ -16,8 +16,12 @@
 
 package software.amazon.documentdb.jdbc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.DatabaseMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
@@ -51,6 +55,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
  */
 public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java.sql.DatabaseMetaData {
     private static final Map<JdbcType, Integer> TYPE_COLUMN_SIZE_MAP;
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDatabaseMetaData.class);
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private final DocumentDbConnectionProperties properties;
 
@@ -217,16 +222,15 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     private void addTablesForSchema(final String tableNamePattern,
             final List<List<Object>> metaData) {
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            final DocumentDbSchemaTable table = databaseMetadata.getTableSchemaMap().get(tableName);
             if (isNullOrWhitespace(tableNamePattern)
-                    || table.getSqlName().matches(convertPatternToRegex(tableNamePattern))) {
-                addTableEntry(metaData, table);
+                    || tableName.matches(convertPatternToRegex(tableNamePattern))) {
+                addTableEntry(metaData, tableName);
             }
         }
     }
 
     private void addTableEntry(final List<List<Object>> metaData,
-            final DocumentDbSchemaTable table) {
+            final String tableName) {
         // 1. TABLE_CAT String => table catalog (may be null)
         // 2. TABLE_SCHEM String => table schema (may be null)
         // 3. TABLE_NAME String => table name
@@ -240,7 +244,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         final List<Object> row = new ArrayList<>(Arrays.asList(
                 null,
                 properties.getDatabase(),
-                table.getSqlName(),
+                tableName,
                 "TABLE",
                 null,
                 null,
@@ -283,7 +287,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     @Override
     public ResultSet getColumns(final String catalog, final String schemaPattern,
-            final String tableNamePattern, final String columnNamePattern) {
+            final String tableNamePattern, final String columnNamePattern) throws SQLException {
         final List<List<Object>> metaData = new ArrayList<>();
         if (isNullOrWhitespace(catalog)) {
             if (isNullOrWhitespace(schemaPattern)
@@ -299,12 +303,29 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     }
 
     private void addColumnsForSchema(final String tableNamePattern, final String columnNamePattern,
-            final List<List<Object>> metaData) {
-        for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            final DocumentDbSchemaTable table = databaseMetadata.getTableSchemaMap().get(tableName);
-            if (isNullOrWhitespace(tableNamePattern)
-                    || table.getSqlName().matches(convertPatternToRegex(tableNamePattern))) {
+            final List<List<Object>> metaData) throws SQLException {
+        if (tableNamePattern == null || "%".equals(tableNamePattern)) {
+            // Optimized to get the whole map at once.
+            for (DocumentDbSchemaTable table : databaseMetadata.getTableSchemaMap().values()) {
                 addColumnsForTable(columnNamePattern, metaData, table);
+            }
+        } else {
+            for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
+                if (isNullOrWhitespace(tableNamePattern)
+                        || tableName.matches(convertPatternToRegex(tableNamePattern))) {
+                    final DocumentDbSchemaTable table = databaseMetadata
+                            .getTableSchemaMap().get(tableName);
+                    if (table == null) {
+                        // This will occur if the table schema is deleted after retrieving the
+                        // database schema.
+                        throw SqlError.createSQLException(
+                                LOGGER,
+                                SqlState.DATA_EXCEPTION,
+                                SqlError.INCONSISTENT_SCHEMA,
+                                tableName);
+                    }
+                    addColumnsForTable(columnNamePattern, metaData, table);
+                }
             }
         }
     }
@@ -312,7 +333,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     private void addColumnsForTable(final String columnNamePattern,
             final List<List<Object>> metaData,
             final DocumentDbSchemaTable table) {
-        for (DocumentDbSchemaColumn column : table.getColumns().values()) {
+        for (DocumentDbSchemaColumn column : table.getColumnMap().values()) {
             if (isNullOrWhitespace(columnNamePattern)
                     || column.getSqlName().matches(convertPatternToRegex(columnNamePattern))) {
                 addColumnEntry(metaData, table, column);
@@ -441,7 +462,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     @Override
     public ResultSet getPrimaryKeys(final String catalog, final String schema,
-            final String table) {
+            final String table) throws SQLException {
         // 1. TABLE_CAT String => table catalog (may be null)
         // 2. TABLE_SCHEM String => table schema (may be null)
         // 3. TABLE_NAME String => table name
@@ -451,10 +472,20 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         final List<List<Object>> metaData = new ArrayList<>();
         if (schema == null || properties.getDatabase().matches(convertPatternToRegex(schema))) {
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-                final DocumentDbSchemaTable metadataTable = databaseMetadata.getTableSchemaMap().get(tableName);
                 if (table == null ||
-                        metadataTable.getSqlName().matches(convertPatternToRegex(table))) {
-                    for (DocumentDbSchemaColumn column : metadataTable.getColumns().values()) {
+                        tableName.matches(convertPatternToRegex(table))) {
+                    final DocumentDbSchemaTable metadataTable = databaseMetadata
+                            .getTableSchemaMap().get(tableName);
+                    if (metadataTable == null) {
+                        // This will occur if the table schema is deleted after retrieving the
+                        // database schema.
+                        throw SqlError.createSQLException(
+                                LOGGER,
+                                SqlState.DATA_EXCEPTION,
+                                SqlError.INCONSISTENT_SCHEMA,
+                                tableName);
+                    }
+                    for (DocumentDbSchemaColumn column : metadataTable.getColumnMap().values()) {
                         // 1. TABLE_CAT String => table catalog (may be null)
                         // 2. TABLE_SCHEM String => table schema (may be null)
                         // 3. TABLE_NAME String => table name
@@ -487,7 +518,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     @Override
     public ResultSet getImportedKeys(final String catalog, final String schema,
-            final String table) {
+            final String table) throws SQLException {
         final List<List<Object>> metaData = new ArrayList<>();
         if (isNullOrWhitespace(catalog)) {
             if (schema == null || properties.getDatabase().matches(convertPatternToRegex(schema))) {
@@ -502,11 +533,20 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     }
 
     private void addImportedKeysForSchema(final String table,
-            final List<List<Object>> metaData) {
+            final List<List<Object>> metaData) throws SQLException {
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            final DocumentDbSchemaTable schemaTable = databaseMetadata.getTableSchemaMap()
-                    .get(tableName);
-            if (table == null || schemaTable.getSqlName().matches(convertPatternToRegex(table))) {
+            if (table == null || tableName.matches(convertPatternToRegex(table))) {
+                final DocumentDbSchemaTable schemaTable = databaseMetadata
+                        .getTableSchemaMap().get(tableName);
+                if (schemaTable == null) {
+                    // This will occur if the table schema is deleted after retrieving the
+                    // database schema.
+                    throw SqlError.createSQLException(
+                            LOGGER,
+                            SqlState.DATA_EXCEPTION,
+                            SqlError.INCONSISTENT_SCHEMA,
+                            tableName);
+                }
                 addImportedKeysForTable(metaData, schemaTable, schemaTable);
             }
         }
@@ -515,7 +555,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     private void addImportedKeysForTable(final List<List<Object>> metaData,
             final DocumentDbSchemaTable schemaTable,
             final DocumentDbSchemaTable metadataTable) {
-        for (DocumentDbSchemaColumn column : metadataTable.getColumns().values()) {
+        for (DocumentDbSchemaColumn column : metadataTable.getColumnMap().values()) {
             addImportedKey(metaData, schemaTable, column);
         }
     }

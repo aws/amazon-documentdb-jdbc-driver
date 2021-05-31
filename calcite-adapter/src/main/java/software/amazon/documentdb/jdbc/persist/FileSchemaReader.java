@@ -40,6 +40,8 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collection;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 public class FileSchemaReader implements SchemaReader {
     public static final String DEFAULT_SCHEMA_NAME = DocumentDbSchema.DEFAULT_SCHEMA_NAME;
@@ -193,5 +195,21 @@ public class FileSchemaReader implements SchemaReader {
                     String.format("Given table ID '%s' is not found.", tableId));
         }
         return tableSchema;
+    }
+
+    @Override
+    @SneakyThrows
+    public Collection<DocumentDbSchemaTable> readTables(
+            final String schemaName,
+            final int schemaVersion,
+            final Set<String> tableIds) {
+        final FileSchemaContainer schemaContainer = getSchemaContainer(schemaName);
+        if (schemaContainer == null) {
+            throw new IllegalArgumentException(SqlError.lookup(SqlError.MISSING_SCHEMA, schemaName));
+        }
+        verifySchemaVersion(schemaVersion, schemaContainer.getSchema());
+        return schemaContainer.getTableSchemas().stream()
+                .filter(t -> tableIds.contains(t.getId()))
+                .collect(Collectors.toList());
     }
 }

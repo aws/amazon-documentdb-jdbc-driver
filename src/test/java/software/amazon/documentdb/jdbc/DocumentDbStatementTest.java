@@ -42,6 +42,7 @@ import java.sql.Statement;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.regex.Pattern;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
@@ -50,6 +51,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
     private static final String USER = "user";
     private static final String PASSWORD = "password";
+    private static final String CONNECTION_STRING_TEMPLATE = "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanLimit=1000&scanMethod=%s";
 
     @BeforeAll
     static void initialize()  {
@@ -59,8 +61,11 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
 
     @AfterEach
     void afterEach() throws SQLException {
-        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
-        properties.setDatabase(DATABASE_NAME);
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(
+                        new Properties(),
+                        getJdbcConnectionString(DocumentDbMetadataScanMethod.RANDOM),
+                        "jdbc:documentdb:");
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
@@ -1260,14 +1265,17 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     }
 
     private static DocumentDbStatement getDocumentDbStatement(final DocumentDbMetadataScanMethod method) throws SQLException {
-        final String connectionString =
-                String.format(
-                        "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanLimit=1000&scanMethod=%s",
-                        USER, PASSWORD, getMongoPort(), DATABASE_NAME, method.getName());
+        final String connectionString = getJdbcConnectionString(method);
         final Connection connection = DriverManager.getConnection(connectionString);
         Assertions.assertNotNull(connection);
         final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();
         Assertions.assertNotNull(statement);
         return statement;
+    }
+
+    private static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
+        return String.format(
+                CONNECTION_STRING_TEMPLATE,
+                USER, PASSWORD, getMongoPort(), DATABASE_NAME, method.getName());
     }
 }

@@ -43,6 +43,8 @@ import java.util.Properties;
 import java.util.stream.Stream;
 
 class DocumentDbTestEnvironmentFactoryTest {
+    private DocumentDbTestEnvironment testEnvironment;
+
     @BeforeAll
     static void setup() throws Exception {
         // Start the test environments.
@@ -54,13 +56,10 @@ class DocumentDbTestEnvironmentFactoryTest {
 
     @AfterEach
     void afterEach() throws SQLException {
-        for (DocumentDbTestEnvironment testEnvironment :
-                DocumentDbTestEnvironmentFactory.getConfiguredEnvironments()) {
-            final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
-            properties.setDatabase(testEnvironment.getDatabaseName());
-            final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
-            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
-        }
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 
     @AfterAll
@@ -80,6 +79,7 @@ class DocumentDbTestEnvironmentFactoryTest {
     @ParameterizedTest(name = "testEnvironmentClientConnectivity - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testEnvironmentClientConnectivity(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        this.testEnvironment = testEnvironment;
         try (MongoClient client = testEnvironment.createMongoClient()) {
             final MongoDatabase database = client.getDatabase(testEnvironment.getDatabaseName());
             final Document document = database.runCommand(new Document("ping", 1));
@@ -92,6 +92,7 @@ class DocumentDbTestEnvironmentFactoryTest {
     @MethodSource("getTestEnvironments")
     void testEnvironmentConnectionString(final DocumentDbTestEnvironment testEnvironment)
             throws SQLException {
+        this.testEnvironment = testEnvironment;
         final String connectionString = testEnvironment.getJdbcConnectionString();
 
         try (Connection connection = DriverManager.getConnection(connectionString, new Properties())) {
@@ -109,6 +110,7 @@ class DocumentDbTestEnvironmentFactoryTest {
     @MethodSource("getTestEnvironments")
     void testPrepareSimpleConsistentData(final DocumentDbTestEnvironment testEnvironment)
             throws SQLException {
+        this.testEnvironment = testEnvironment;
         final String collectionName;
         final int recordCount = 10;
         try (MongoClient client = testEnvironment.createMongoClient()) {

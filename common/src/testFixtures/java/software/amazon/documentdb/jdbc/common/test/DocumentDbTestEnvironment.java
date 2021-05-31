@@ -63,6 +63,13 @@ public interface DocumentDbTestEnvironment {
     String getJdbcConnectionString();
 
     /**
+     * Gets the JDBC connection string for the restricted user.
+     *
+     * @return the JDBC connection string.
+     */
+    String getRestrictedUserConnectionString();
+
+    /**
      * Creates a new {@link MongoClient} object with default username and password.
      *
      * @return a new {@link MongoClient} object.

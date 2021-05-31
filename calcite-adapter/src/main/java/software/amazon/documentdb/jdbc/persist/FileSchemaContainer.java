@@ -28,6 +28,9 @@ import java.util.Collection;
 
 @Getter
 class FileSchemaContainer {
+
+    public static final String SCHEMA_PROPERTY = "schema";
+    public static final String TABLE_SCHEMAS_PROPERTY = "tableSchemas";
     /**
      * The database schema.
      */
@@ -40,9 +43,9 @@ class FileSchemaContainer {
 
     @JsonCreator
     public FileSchemaContainer(
-            @JsonProperty("schema")
+            @JsonProperty(SCHEMA_PROPERTY)
             final @NonNull DocumentDbSchema schema,
-            @JsonProperty("tableSchemas")
+            @JsonProperty(TABLE_SCHEMAS_PROPERTY)
             final Collection<DocumentDbSchemaTable> tableSchemas) {
         this.schema = schema;
         this.tableSchemas = tableSchemas != null ? tableSchemas : new ArrayList<>();

@@ -100,7 +100,7 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         // Add an unwind operation for each embedded array to convert to separate rows.
         // Assumes that all queries will use aggregate and not find.
         // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
-        for (Entry<String, DocumentDbSchemaColumn> column : metadataTable.getColumns().entrySet()) {
+        for (Entry<String, DocumentDbSchemaColumn> column : metadataTable.getColumnMap().entrySet()) {
             if (column.getValue().isIndex()) {
                 final String indexName = column.getKey();
                 final UnwindOptions opts = new UnwindOptions();

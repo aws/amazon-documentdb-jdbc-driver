@@ -28,60 +28,69 @@ import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import java.util.Objects;
 import java.util.Optional;
 
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SQL_NAME_PROPERTY;
+
 @Getter
 @JsonSerialize(as = DocumentDbSchemaColumn.class)
 public class DocumentDbSchemaColumn {
 
+    public static final String SQL_TYPE_PROPERTY = "sqlType";
+    public static final String DB_TYPE_PROPERTY = "dbType";
+    public static final String IS_INDEX_PROPERTY = "isIndex";
+    public static final String IS_PRIMARY_KEY_PROPERTY = "isPrimaryKey";
+    public static final String FOREIGN_KEY_TABLE_NAME_PROPERTY = "foreignKeyTableName";
+    public static final String FOREIGN_KEY_COLUMN_NAME_PROPERTY = "foreignKeyColumnName";
+    public static final String FIELD_PATH_PROPERTY = "fieldPath";
     /** Original path to the field in the collection. */
     @NonNull
-    @BsonProperty("fieldPath")
-    @JsonProperty("fieldPath")
+    @BsonProperty(FIELD_PATH_PROPERTY)
+    @JsonProperty(FIELD_PATH_PROPERTY)
     private final String fieldPath;
 
     /** Display name of the field. */
     @Setter
     @NonNull
-    @BsonProperty("sqlName")
-    @JsonProperty("sqlName")
+    @BsonProperty(SQL_NAME_PROPERTY)
+    @JsonProperty(SQL_NAME_PROPERTY)
     private String sqlName;
 
     /** SQL/JDBC type of the field. Refer to the types in {@link java.sql.Types} */
     @Setter
-    @BsonProperty("sqlType")
-    @JsonProperty("sqlType")
+    @BsonProperty(SQL_TYPE_PROPERTY)
+    @JsonProperty(SQL_TYPE_PROPERTY)
     private JdbcType sqlType;
 
     /** The DocumentDB type of the field. Refer to the types in {@link org.bson.BsonType} */
-    @BsonProperty("dbType")
-    @JsonProperty("dbType")
+    @BsonProperty(DB_TYPE_PROPERTY)
+    @JsonProperty(DB_TYPE_PROPERTY)
     private final BsonType dbType;
 
     /**
      * {@code true} if this column is the index column in an array table;
      * {@code false} otherwise.
      */
-    @BsonProperty("isIndex")
-    @JsonProperty("isIndex")
+    @BsonProperty(IS_INDEX_PROPERTY)
+    @JsonProperty(IS_INDEX_PROPERTY)
     private final boolean index;
 
     /**
      * {@code true} if this column is part of the primary key;
      * {@code false} otherwise.
      */
-    @BsonProperty("isPrimaryKey")
-    @JsonProperty("isPrimaryKey")
+    @BsonProperty(IS_PRIMARY_KEY_PROPERTY)
+    @JsonProperty(IS_PRIMARY_KEY_PROPERTY)
     private final boolean primaryKey;
 
     /** If this column is a foreign key this contains the name of the table that it refers to, null otherwise. */
     @Setter
-    @BsonProperty("foreignKeyTableName")
-    @JsonProperty("foreignKeyTableName")
+    @BsonProperty(FOREIGN_KEY_TABLE_NAME_PROPERTY)
+    @JsonProperty(FOREIGN_KEY_TABLE_NAME_PROPERTY)
     private String foreignKeyTableName;
 
     /** If this column is a foreign key this contains the name of the column that it refers to, null otherwise. */
     @Setter
-    @BsonProperty("foreignKeyColumnName")
-    @JsonProperty("foreignKeyColumnName")
+    @BsonProperty(FOREIGN_KEY_COLUMN_NAME_PROPERTY)
+    @JsonProperty(FOREIGN_KEY_COLUMN_NAME_PROPERTY)
     private String foreignKeyColumnName;
 
     /**
@@ -91,34 +100,34 @@ public class DocumentDbSchemaColumn {
      * @param sqlName The name of this column.
      * @param sqlType The SQL/JDBC type of this column.
      * @param dbType The DocumentDB type of this column. (Optional)
-     * @param isIndex Whether this is an index column. (Optional)
+     * @param index Whether this is an index column. (Optional)
      * @param primaryKey Whether this is part of a primary key. (Optional)
      * @param foreignKeyTableName If this is a foreign key, the table that it refers to, null if not a foreign key.
      * @param foreignKeyColumnName If this is a foreign key, the column that it refers to, null if not a foreign key.
      */
     @BsonCreator
     public DocumentDbSchemaColumn(
-            @JsonProperty("fieldPath") @BsonProperty("fieldPath")
+            @JsonProperty(FIELD_PATH_PROPERTY) @BsonProperty(FIELD_PATH_PROPERTY)
             final String fieldPath,
-            @JsonProperty("sqlName") @BsonProperty("sqlName")
+            @JsonProperty(SQL_NAME_PROPERTY) @BsonProperty(SQL_NAME_PROPERTY)
             final String sqlName,
-            @JsonProperty("sqlType") @BsonProperty("sqlType")
+            @JsonProperty(SQL_TYPE_PROPERTY) @BsonProperty(SQL_TYPE_PROPERTY)
             final JdbcType sqlType,
-            @JsonProperty("dbType") @BsonProperty("dbType")
+            @JsonProperty(DB_TYPE_PROPERTY) @BsonProperty(DB_TYPE_PROPERTY)
             final BsonType dbType,
-            @JsonProperty("isIndex") @BsonProperty("isIndex")
-            final boolean isIndex,
-            @JsonProperty("isPrimaryKey") @BsonProperty("isPrimaryKey")
+            @JsonProperty(IS_INDEX_PROPERTY) @BsonProperty(IS_INDEX_PROPERTY)
+            final boolean index,
+            @JsonProperty(IS_PRIMARY_KEY_PROPERTY) @BsonProperty(IS_PRIMARY_KEY_PROPERTY)
             final boolean primaryKey,
-            @JsonProperty("foreignKeyTableName") @BsonProperty("foreignKeyTableName")
+            @JsonProperty(FOREIGN_KEY_TABLE_NAME_PROPERTY) @BsonProperty(FOREIGN_KEY_TABLE_NAME_PROPERTY)
             final String foreignKeyTableName,
-            @JsonProperty("foreignKeyColumnName") @BsonProperty("foreignKeyColumnName")
+            @JsonProperty(FOREIGN_KEY_COLUMN_NAME_PROPERTY) @BsonProperty(FOREIGN_KEY_COLUMN_NAME_PROPERTY)
             final String foreignKeyColumnName) {
         this.fieldPath = fieldPath;
         this.sqlName = sqlName;
         this.sqlType = sqlType;
         this.dbType = dbType;
-        this.index = isIndex;
+        this.index = index;
         this.primaryKey = primaryKey;
         this.foreignKeyTableName = foreignKeyTableName;
         this.foreignKeyColumnName = foreignKeyColumnName;
@@ -132,7 +141,7 @@ public class DocumentDbSchemaColumn {
      */
     public Optional<Integer> getIndex(final DocumentDbSchemaTable table) {
         Integer colIndex = 0;
-        for (DocumentDbSchemaColumn column: table.getColumns().values()) {
+        for (DocumentDbSchemaColumn column: table.getColumnMap().values()) {
             colIndex++;
             if (column.getSqlName().equals(this.getSqlName())) {
                 return Optional.of(colIndex);
@@ -150,7 +159,7 @@ public class DocumentDbSchemaColumn {
      */
     public Optional<Integer> getPrimaryKeyIndex(final DocumentDbSchemaTable table) {
         Integer keyIndex = 0;
-        for (DocumentDbSchemaColumn column: table.getColumns().values()) {
+        for (DocumentDbSchemaColumn column: table.getColumnMap().values()) {
             if (column.isPrimaryKey()) {
                 keyIndex++;
                 if (column.getSqlName().equals(this.getSqlName())) {
@@ -172,7 +181,7 @@ public class DocumentDbSchemaColumn {
     public Optional<Integer> getForeignKeyIndex(final DocumentDbSchemaTable table) {
         if (table.getSqlName().equals(getForeignKeyTableName())) {
             Integer keyIndex = 0;
-            for (DocumentDbSchemaColumn column : table.getColumns().values()) {
+            for (DocumentDbSchemaColumn column : table.getColumnMap().values()) {
                 if (column.isPrimaryKey()) {
                     keyIndex++;
                     if (column.getSqlName().equals(this.getForeignKeyColumnName())) {

@@ -418,6 +418,9 @@ public class DocumentDbConnectionProperties extends Properties {
         clientSettingsBuilder
                 .applicationName(getApplicationName())
                 .retryReads(retryReads)
+                // NOTE: DocumentDB does not support retryWrites option. (2020-05-13)
+                // https://docs.aws.amazon.com/documentdb/latest/developerguide/functional-differences.html#functional-differences.retryable-writes
+                .retryWrites(false)
                 .build();
 
         return clientSettingsBuilder.build();

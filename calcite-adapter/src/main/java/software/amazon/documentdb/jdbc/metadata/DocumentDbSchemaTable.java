@@ -16,6 +16,7 @@
 package software.amazon.documentdb.jdbc.metadata;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.Strings;
@@ -30,16 +31,27 @@ import org.bson.codecs.pojo.annotations.BsonIgnore;
 import org.bson.codecs.pojo.annotations.BsonProperty;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.ID_PROPERTY;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.MODIFY_DATE_PROPERTY;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SCHEMA_TABLE_ID_SEPARATOR;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SQL_NAME_PROPERTY;
+
 @Getter
 @JsonSerialize(as = DocumentDbSchemaTable.class)
 public class DocumentDbSchemaTable {
+
+    public static final String UUID_PROPERTY = "uuid";
+    public static final String COLLECTION_NAME_PROPERTY = "collectionName";
+    public static final String COLUMNS_PROPERTY = "columns";
 
     /**
      * The unique ID for the table schema.
@@ -48,13 +60,13 @@ public class DocumentDbSchemaTable {
      * {@link #getUuid}.
      */
     @BsonId
-    @JsonProperty("_id")
+    @JsonProperty(ID_PROPERTY)
     public String getId() {
         return getSchemaId(sqlName, uuid);
     }
 
     private static String getSchemaId(final String sqlName, final String uuid) {
-        return sqlName + "::" + uuid;
+        return sqlName + SCHEMA_TABLE_ID_SEPARATOR + uuid;
     }
 
     /**
@@ -86,13 +98,12 @@ public class DocumentDbSchemaTable {
      */
     @NonNull
     @BsonIgnore
-    private final ImmutableMap<String, DocumentDbSchemaColumn> columns;
+    @JsonIgnore
+    private final ImmutableMap<String, DocumentDbSchemaColumn> columnMap;
 
-    @BsonProperty("columns")
-    @JsonProperty("columns")
-    private List<DocumentDbSchemaColumn> getColumnList() {
-        return columns.values().asList();
-    }
+    @JsonProperty(COLUMNS_PROPERTY)
+    @BsonProperty(COLUMNS_PROPERTY)
+    private final List<DocumentDbSchemaColumn> columns;
 
     /**
      * Creates an instance from deserializing a document.
@@ -106,30 +117,31 @@ public class DocumentDbSchemaTable {
     @BsonCreator
     @JsonCreator
     public DocumentDbSchemaTable(
-            @JsonProperty("_id") @BsonId
+            @JsonProperty(ID_PROPERTY) @BsonId
             final String id,
-            @JsonProperty("uuid") @BsonProperty("uuid")
+            @JsonProperty(UUID_PROPERTY) @BsonProperty(UUID_PROPERTY)
             final String uuid,
-            @JsonProperty("modifyDate") @BsonProperty("modifyDate")
+            @JsonProperty(MODIFY_DATE_PROPERTY) @BsonProperty(MODIFY_DATE_PROPERTY)
             final Date modifyDate,
-            @JsonProperty("sqlName") @BsonProperty("sqlName")
+            @JsonProperty(SQL_NAME_PROPERTY) @BsonProperty(SQL_NAME_PROPERTY)
             final String sqlName,
-            @JsonProperty("collectionName") @BsonProperty("collectionName")
+            @JsonProperty(COLLECTION_NAME_PROPERTY) @BsonProperty(COLLECTION_NAME_PROPERTY)
             final String collectionName,
-            @JsonProperty("columns")@BsonProperty("columns")
+            @JsonProperty(COLUMNS_PROPERTY) @BsonProperty(COLUMNS_PROPERTY)
             final List<DocumentDbSchemaColumn> columns) {
 
         this.uuid = !Strings.isNullOrEmpty(uuid) ? uuid : UUID.randomUUID().toString();
         this.modifyDate = new Date(modifyDate.getTime());
         this.sqlName = sqlName;
         this.collectionName = collectionName;
+        this.columns = columns;
         final LinkedHashMap<String, DocumentDbSchemaColumn> map = columns.stream()
                 .collect(Collectors.toMap(
                         DocumentDbSchemaColumn::getSqlName,
                         documentDbSchemaColumn -> documentDbSchemaColumn,
                         (original, duplicate) -> original, // Ignore duplicates
                         LinkedHashMap::new));
-        this.columns = ImmutableMap.copyOf(map);
+        this.columnMap = ImmutableMap.copyOf(map);
     }
 
     /**
@@ -137,17 +149,18 @@ public class DocumentDbSchemaTable {
      *
      * @param sqlName        The name of the table.
      * @param collectionName The DocumentDB collection name.
-     * @param columns        The columns contained in the table indexed by name. Uses LinkedHashMap to preserve order.
+     * @param columnMap        The columns contained in the table indexed by name. Uses LinkedHashMap to preserve order.
      */
     public DocumentDbSchemaTable(final String sqlName,
             final String collectionName,
-            final LinkedHashMap<String, DocumentDbSchemaColumn> columns) {
+            final Map<String, DocumentDbSchemaColumn> columnMap) {
         this.uuid = UUID.randomUUID().toString();
         this.modifyDate = new Date(Instant.now().toEpochMilli());
         this.sqlName = sqlName;
         this.collectionName = collectionName;
-        this.columns = ImmutableMap.copyOf(columns);
-    }
+        this.columns = new ArrayList<>(columnMap.values());
+        this.columnMap = ImmutableMap.copyOf(columnMap);
+ }
 
     /**
      * The columns that are foreign keys.
@@ -155,7 +168,7 @@ public class DocumentDbSchemaTable {
      * @return the foreign keys as a list of {@link DocumentDbMetadataColumn}.
      */
     public ImmutableList<DocumentDbSchemaColumn> getForeignKeys() {
-        return ImmutableList.copyOf(getColumns().values()
+        return ImmutableList.copyOf(getColumnMap().values()
                 .stream()
                 .filter(entry -> entry.getForeignKeyTableName() != null)
                 .collect(Collectors.toList()));
@@ -173,16 +186,17 @@ public class DocumentDbSchemaTable {
         if (!(o instanceof DocumentDbSchemaTable)) {
             return false;
         }
-        final DocumentDbSchemaTable table = (DocumentDbSchemaTable) o;
-        return uuid.equals(table.uuid)
-                && sqlName.equals(table.sqlName)
-                && collectionName.equals(table.collectionName)
-                && modifyDate.equals(table.modifyDate)
-                && columns.equals(table.columns);
+        final DocumentDbSchemaTable that = (DocumentDbSchemaTable) o;
+        return Objects.equals(uuid, that.uuid)
+                && sqlName.equals(that.sqlName)
+                && collectionName.equals(that.collectionName)
+                && Objects.equals(modifyDate, that.modifyDate)
+                && columnMap.equals(that.columnMap)
+                && Objects.equals(columns, that.columns);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(uuid, sqlName, collectionName, modifyDate, columns);
+        return Objects.hash(uuid, sqlName, collectionName, modifyDate, columnMap, columns);
     }
 }

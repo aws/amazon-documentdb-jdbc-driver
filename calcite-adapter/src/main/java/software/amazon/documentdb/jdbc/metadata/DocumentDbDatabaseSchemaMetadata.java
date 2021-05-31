@@ -75,7 +75,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
     public static DocumentDbDatabaseSchemaMetadata get(
             final DocumentDbConnectionProperties properties,
             final boolean refreshAll)
-            throws SQLException, DocumentDbSchemaException {
+            throws SQLException {
         return get(DocumentDbSchema.DEFAULT_SCHEMA_NAME, properties, refreshAll);
     }
 
@@ -91,7 +91,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
      */
     public static DocumentDbDatabaseSchemaMetadata get(final String schemaName,
             final DocumentDbConnectionProperties properties)
-            throws SQLException, DocumentDbSchemaException {
+            throws SQLException {
         return get(schemaName, properties, false);
     }
 
@@ -108,17 +108,20 @@ public final class DocumentDbDatabaseSchemaMetadata {
     public static DocumentDbDatabaseSchemaMetadata get(
             final String schemaName,
             final DocumentDbConnectionProperties properties,
-            final boolean refreshAll) throws SQLException, DocumentDbSchemaException {
+            final boolean refreshAll) throws SQLException {
 
         final DocumentDbDatabaseSchemaMetadata metadata;
+        final int schemaVersion = refreshAll
+                ? DocumentDbMetadataService.VERSION_NEW
+                : DocumentDbMetadataService.VERSION_LATEST;
         final DocumentDbSchema schema = DocumentDbMetadataService
-                .get(properties, schemaName,
-                        refreshAll
-                                ? DocumentDbMetadataService.VERSION_NEW
-                                : DocumentDbMetadataService.VERSION_LATEST);
+                .get(properties, schemaName, schemaVersion);
         if (schema != null) {
-            schema.setGetTableFunction(tableId -> DocumentDbMetadataService
-                    .getTable(properties, schemaName, schema.getSchemaVersion(), tableId));
+            schema.setGetTableFunction(
+                    tableId -> DocumentDbMetadataService
+                            .getTable(properties, schemaName, schema.getSchemaVersion(), tableId),
+                    remainingTableIds -> DocumentDbMetadataService
+                            .getTables(properties, schemaName, schemaVersion, remainingTableIds));
             metadata = new DocumentDbDatabaseSchemaMetadata(schema);
         } else {
             metadata = null;
@@ -140,7 +143,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
      */
     public static DocumentDbDatabaseSchemaMetadata get(
             final DocumentDbConnectionProperties properties, final String schemaName,
-            final int schemaVersion) throws SQLException, DocumentDbSchemaException {
+            final int schemaVersion) throws SQLException {
 
         // Try to get it from the service.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata;
@@ -148,8 +151,11 @@ public final class DocumentDbDatabaseSchemaMetadata {
                 .get(properties, schemaName, schemaVersion);
         if (schema != null) {
             // Setup lazy load based on table ID.
-            schema.setGetTableFunction(tableId -> DocumentDbMetadataService
-                    .getTable(properties, schemaName, schemaVersion, tableId));
+            schema.setGetTableFunction(
+                    tableId -> DocumentDbMetadataService
+                            .getTable(properties, schemaName, schemaVersion, tableId),
+                    remainingTableIds -> DocumentDbMetadataService
+                            .getTables(properties, schemaName, schemaVersion, remainingTableIds));
             databaseMetadata = new DocumentDbDatabaseSchemaMetadata(schema);
         } else {
             databaseMetadata = null;

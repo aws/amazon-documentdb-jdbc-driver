@@ -59,6 +59,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.util.Properties;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
@@ -66,6 +67,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "resultDatabase";
     private static final String TEST_USER = "user";
     private static final String TEST_PASSWORD = "password";
+    private static final String CONNECTION_STRING_TEMPLATE = "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s";
     private static MongoClient client;
     private static Connection connection;
     private static Statement statement;
@@ -96,8 +98,12 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
     @AfterEach
     void afterEach() throws SQLException {
-        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
-        properties.setDatabase(DATABASE_NAME);
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(
+                        new Properties(),
+                        getJdbcConnectionString(),
+                        "jdbc:documentdb:");
+
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
@@ -347,9 +353,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final Document document = Document.parse("{\"_id\": \"key1\"}");
         document.append("field", new BsonString("30"));
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -364,9 +368,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final String collection = "resultSetTestInt";
         final Document document = Document.parse("{\"_id\": \"key1\", \"field\": 3}");
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -386,9 +388,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final String collection = "resultSetTestDouble";
         final Document document = Document.parse("{\"_id\": \"key1\", \"field\": 1.5}");
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -410,9 +410,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final Document document = Document.parse("{\"_id\": \"key1\"}");
         document.append("field", new BsonInt64(1000000000000L));
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -434,9 +432,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final Document document = Document.parse("{\"_id\": \"key1\"}");
         document.append("field", new BsonNull());
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -460,9 +456,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                 "\"subdocument\": " +
                 "{\"field\": 4}}");
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection + "_subdocument"));
@@ -484,9 +478,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final ObjectId id = new ObjectId();
         document.append("_id", id);
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -501,9 +493,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final String collection = "resultSetTestBoolean";
         final Document document = Document.parse("{\"_id\": \"key1\", \"field\": false}");
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -521,9 +511,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final BsonDateTime date = new BsonDateTime(100000);
         document.append("date", date);
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -542,9 +530,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final BsonRegularExpression regex = new BsonRegularExpression("^example");
         document.append("regex", regex);
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -563,9 +549,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         document.append("max", max);
         document.append("min", min);
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -582,9 +566,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final BsonTimestamp timestamp = new BsonTimestamp(100000);
         document.append("timestamp", timestamp);
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -601,9 +583,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         final BsonBinary binary = new BsonBinary("123abc".getBytes(StandardCharsets.UTF_8));
         document.append("binary", binary);
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
-        connection = DriverManager.getConnection(String.format(
-                "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanMethod=%s",
-                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.ALL.getName()));
+        connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
@@ -611,5 +591,12 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertArrayEquals(binary.getData(), resultSetFlapdoodle.getBytes(2));
         Assertions.assertArrayEquals(binary.getData(), resultSetFlapdoodle.getBlob(2).getBytes(1,6));
         Assertions.assertArrayEquals(binary.getData(), (byte[]) resultSetFlapdoodle.getObject(2));
+    }
+
+    private static String getJdbcConnectionString() {
+        return String.format(
+                CONNECTION_STRING_TEMPLATE,
+                TEST_USER, TEST_PASSWORD, getMongoPort(), DATABASE_NAME,
+                DocumentDbMetadataScanMethod.ALL.getName());
     }
 }

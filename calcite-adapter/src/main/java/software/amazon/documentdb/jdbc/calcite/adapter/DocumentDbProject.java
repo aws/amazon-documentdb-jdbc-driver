@@ -102,7 +102,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                                 mongoImplementor.getMetadataTable()));
         final List<String> items = new ArrayList<>();
         final List<String> inNames = getInput().getRowType().getFieldNames();
-        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumns());
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String outName = pair.right;
             final String expr = pair.left.accept(translator);
@@ -115,7 +115,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                 // If projecting an existing field as is, do nothing.
                 // If renaming, replace metadata column with new name but keep reference to original path.
                 if (!inName.equals(outName)) {
-                    columnMap.put(outName, implementor.getMetadataTable().getColumns().get(inName));
+                    columnMap.put(outName, implementor.getMetadataTable().getColumnMap().get(inName));
                     columnMap.remove(inName);
                 }
             } else {

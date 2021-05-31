@@ -28,6 +28,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.Setter;
+import lombok.SneakyThrows;
 import org.bson.codecs.pojo.annotations.BsonCreator;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 import org.bson.codecs.pojo.annotations.BsonProperty;
@@ -36,7 +37,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.LazyLinkedHashMap;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 
-import javax.annotation.Nullable;
 import java.time.Instant;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -50,6 +50,14 @@ import java.util.stream.Collectors;
 @Getter
 @JsonSerialize(as = DocumentDbSchema.class)
 public class DocumentDbSchema {
+
+    public static final String SCHEMA_NAME_PROPERTY = "schemaName";
+    public static final String SCHEMA_VERSION_PROPERTY = "schemaVersion";
+    public static final String SQL_NAME_PROPERTY = "sqlName";
+    public static final String ID_PROPERTY = "_id";
+    public static final String MODIFY_DATE_PROPERTY = "modifyDate";
+    public static final String TABLES_PROPERTY = "tables";
+    public static final String SCHEMA_TABLE_ID_SEPARATOR = "::";
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchema.class);
     private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper()
             .setSerializationInclusion(Include.NON_NULL)
@@ -64,40 +72,38 @@ public class DocumentDbSchema {
      */
     @NonNull
     @Setter
-    @BsonProperty("schemaName")
+    @BsonProperty(SCHEMA_NAME_PROPERTY)
     private String schemaName;
 
     /**
      * The version number of this metadata.
      */
     @Setter
-    @BsonProperty("schemaVersion")
+    @BsonProperty(SCHEMA_VERSION_PROPERTY)
     private int schemaVersion;
 
     /**
      * The name of the database, same as the DocumentDB database by default.
      */
     @NonNull
-    @BsonProperty("sqlName")
+    @BsonProperty(SQL_NAME_PROPERTY)
     private final String sqlName;
 
     /**
      * The time this metadata was created or updated.
      */
     @NonNull
-    @BsonProperty("modifyDate")
-    private Date modifyDate;
+    @BsonProperty(MODIFY_DATE_PROPERTY)
+    private final Date modifyDate;
 
     /**
      * The map of schema tables.
      */
     @Getter(AccessLevel.NONE)
-    @Nullable
     @BsonIgnore
     @JsonIgnore
     private Map<String, DocumentDbSchemaTable> tables;
 
-    @Nullable
     @BsonIgnore
     @JsonIgnore
     public Map<String, DocumentDbSchemaTable> getTableMap() {
@@ -107,13 +113,9 @@ public class DocumentDbSchema {
     /**
      * The list of table references.
      */
-    @BsonProperty("tables")
-    @JsonProperty("tables")
+    @BsonProperty(TABLES_PROPERTY)
+    @JsonProperty(TABLES_PROPERTY)
     private final Set<String> tableReferences;
-
-    @Getter(AccessLevel.NONE)
-    @Setter(AccessLevel.NONE)
-    private Function<String, DocumentDbSchemaTable> getTableFunction;
 
     /**
      * Sets the lazy load function for table schema retrieval.
@@ -126,32 +128,50 @@ public class DocumentDbSchema {
     @BsonIgnore
     @JsonIgnore
     public void setGetTableFunction(
-            @NonNull final Function<String, DocumentDbSchemaTable> getTableFunction)
-            throws IllegalStateException, DocumentDbSchemaException {
-        if (this.getTableFunction != null || this.tables != null
-                || this.tableReferences == null) {
+            @NonNull final Function<String, DocumentDbSchemaTable> getTableFunction,
+            @NonNull final Function<Set<String>, Map<String, DocumentDbSchemaTable>> getRemainingTablesFunction)
+            throws IllegalStateException {
+        if (this.tables != null || this.tableReferences == null) {
             throw new IllegalStateException(
                     SqlError.lookup(SqlError.INVALID_STATE_SET_TABLE_FUNCTION));
         }
-        this.getTableFunction = getTableFunction;
-        final Map<String, String> tableIdByTableName = new LinkedHashMap<>();
-        final LinkedHashSet<String> tableNames = new LinkedHashSet<>(); this.tableReferences.stream()
-                .map(t -> t.split("[:][:]")[0])
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        for (String tableId : this.tableReferences) {
-            final String[] tableNameAndUuid = tableId.split("[:][:]");
-            if (tableNameAndUuid.length != 2) {
-                throw new DocumentDbSchemaException(
-                        SqlError.lookup(SqlError.INVALID_FORMAT,
-                                tableId, "<tableName>::<tableId>"));
-            }
-            final String tableName = tableNameAndUuid[0];
-            tableIdByTableName.put(tableName, tableId);
-            tableNames.add(tableName);
-        }
+        final Map<String, String> tableIdByTableName = this.tableReferences.stream()
+                .collect(Collectors.toMap(
+                        DocumentDbSchema::parseSqlTableName,
+                        tableId -> tableId,
+                        (a, b) -> b,
+                        LinkedHashMap::new));
         this.tables = new LazyLinkedHashMap<>(
-                tableNames,
-                tableName -> getTableFunction.apply(tableIdByTableName.get(tableName)));
+                new LinkedHashSet<>(tableIdByTableName.keySet()),
+                tableName -> getTableFunction
+                        .apply(tableIdByTableName.get(tableName)),
+                remainingTableNames -> getRemainingTablesFunction
+                        .apply(tableIdByTableName.keySet().stream()
+                                .filter(remainingTableNames::contains)
+                                .map(tableIdByTableName::get)
+                                .collect(Collectors.toCollection(LinkedHashSet::new))));
+    }
+
+    /**
+     * Parses the SQL table name from the given table ID.
+     *
+     * @param tableId the table ID to parse.
+     *
+     * @return a SQL table name.
+     */
+    public static String parseSqlTableName(final String tableId) {
+        return parseTableNameAndUuid(tableId)[0];
+    }
+
+    @SneakyThrows
+    private static String[] parseTableNameAndUuid(final String tableId) {
+        final String[] tableNameAndUuid = tableId.split("[:][:]");
+        if (tableNameAndUuid.length != 2) {
+            throw new DocumentDbSchemaException(
+                    SqlError.lookup(SqlError.INVALID_FORMAT,
+                            tableId, "<tableName>::<tableId>"));
+        }
+        return tableNameAndUuid;
     }
 
     /**
@@ -198,11 +218,11 @@ public class DocumentDbSchema {
     @BsonCreator
     @JsonCreator
     public DocumentDbSchema(
-            @JsonProperty("schemaName") @BsonProperty("schemaName") final String schemaName,
-            @JsonProperty("schemaVersion") @BsonProperty("schemaVersion") final int schemaVersion,
-            @JsonProperty("sqlName") @BsonProperty("sqlName") final String sqlName,
-            @JsonProperty("modifyDate") @BsonProperty("modifyDate") final Date modifyDate,
-            @JsonProperty("tables") @BsonProperty("tables") final Set<String> tableReferences) {
+            @JsonProperty(SCHEMA_NAME_PROPERTY) @BsonProperty(SCHEMA_NAME_PROPERTY) final String schemaName,
+            @JsonProperty(SCHEMA_VERSION_PROPERTY) @BsonProperty(SCHEMA_VERSION_PROPERTY) final int schemaVersion,
+            @JsonProperty(SQL_NAME_PROPERTY) @BsonProperty(SQL_NAME_PROPERTY) final String sqlName,
+            @JsonProperty(MODIFY_DATE_PROPERTY) @BsonProperty(MODIFY_DATE_PROPERTY) final Date modifyDate,
+            @JsonProperty(TABLES_PROPERTY) @BsonProperty(TABLES_PROPERTY) final Set<String> tableReferences) {
         this.schemaName = schemaName;
         this.sqlName = sqlName;
         this.schemaVersion = schemaVersion;
@@ -218,15 +238,6 @@ public class DocumentDbSchema {
      */
     public Date getModifyDate() {
         return new Date(modifyDate.getTime());
-    }
-
-    /**
-     * Set the lasted modify date.
-     *
-     * @param modifyDate the last modified date.
-     */
-    public void setModifyDate(final Date modifyDate) {
-        this.modifyDate = new Date(modifyDate.getTime());
     }
 
     @Override

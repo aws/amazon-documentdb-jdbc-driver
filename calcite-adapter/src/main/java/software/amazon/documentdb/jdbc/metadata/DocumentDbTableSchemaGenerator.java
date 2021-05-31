@@ -241,11 +241,11 @@ public class DocumentDbTableSchemaGenerator {
 
     private static void filterArrayAndDocumentColumns(final LinkedHashMap<String, DocumentDbSchemaTable> tableMap) {
         for (DocumentDbSchemaTable table : tableMap.values()) {
-            final boolean needsUpdate = table.getColumns().values().stream()
+            final boolean needsUpdate = table.getColumnMap().values().stream()
                     .anyMatch(c -> c.getSqlType() == JdbcType.ARRAY || c.getSqlType() == JdbcType.JAVA_OBJECT);
             if (needsUpdate) {
                 final LinkedHashMap<String, DocumentDbSchemaColumn> columns = table
-                        .getColumns().values().stream()
+                        .getColumnMap().values().stream()
                         .filter(c -> c.getSqlType() != JdbcType.ARRAY && c.getSqlType() != JdbcType.JAVA_OBJECT)
                         .collect(Collectors.toMap(
                                 DocumentDbSchemaColumn::getSqlName,
@@ -285,7 +285,7 @@ public class DocumentDbTableSchemaGenerator {
             // If we've already visited this document/table,
             // start with the previously discovered columns.
             // This will have included and primary/foreign key definitions.
-            columnMap.putAll(tableMap.get(tableName).getColumns());
+            columnMap.putAll(tableMap.get(tableName).getColumnMap());
         } else {
             // Add foreign keys.
             //
@@ -390,7 +390,7 @@ public class DocumentDbTableSchemaGenerator {
             // If we've already visited this document/table,
             // start with the previously discovered columns.
             // This will have included and primary/foreign key definitions.
-            columnMap.putAll(tableMap.get(tableName).getColumns());
+            columnMap.putAll(tableMap.get(tableName).getColumnMap());
             final String valueColumnPath = VALUE_COLUMN_NAME;
             // TODO: Figure out if previous type was array of array.
             if (columnMap.containsKey(toName(valueColumnPath))) {
@@ -802,7 +802,7 @@ public class DocumentDbTableSchemaGenerator {
         final String primaryKeyColumnName = toName(combinePath(path, ID_FIELD_NAME));
         final DocumentDbMetadataColumn primaryKeyColumn = (DocumentDbMetadataColumn) columnMap.get(primaryKeyColumnName);
         for (DocumentDbSchemaTable table : tableMap.values()) {
-            final DocumentDbMetadataColumn column = (DocumentDbMetadataColumn) table.getColumns().get(primaryKeyColumnName);
+            final DocumentDbMetadataColumn column = (DocumentDbMetadataColumn) table.getColumnMap().get(primaryKeyColumnName);
             if (column != null) {
                 column.setSqlType(primaryKeyColumn.getSqlType());
             }
