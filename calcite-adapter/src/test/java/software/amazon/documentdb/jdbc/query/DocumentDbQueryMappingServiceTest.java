@@ -65,7 +65,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         insertBsonDocuments(
                 OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[] {otherDocument});
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
-                DocumentDbDatabaseSchemaMetadata.get("id", connectionProperties, true);
+                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", true);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
     }
 

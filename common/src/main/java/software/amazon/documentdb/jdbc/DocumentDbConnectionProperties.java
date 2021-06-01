@@ -350,6 +350,25 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Gets the schema name for persisted schema.
+     *
+     * @return the name of the schema.
+     */
+    public String getSchemaName() {
+        return getProperty(DocumentDbConnectionProperty.SCHEMA_NAME.getName(),
+                DocumentDbConnectionProperty.SCHEMA_NAME.getDefaultValue());
+    }
+
+    /**
+     * Sets the schema name for persisted schema.
+     *
+     * @param schemaName the name of he schema.
+     */
+    public void setSchemaName(final String schemaName) {
+        setProperty(DocumentDbConnectionProperty.SCHEMA_NAME.getName(), schemaName);
+    }
+
+    /**
      * Sets the TLS CA file path.
      *
      * @param tlsCAFilePath the TLS CA file path.

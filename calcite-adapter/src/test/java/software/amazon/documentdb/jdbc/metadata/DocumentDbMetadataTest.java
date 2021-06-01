@@ -62,7 +62,7 @@ class DocumentDbMetadataTest {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
-                .get(schemaName, properties);
+                .get(properties, schemaName);
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
         Assertions.assertEquals(0, databaseMetadata0.getTableSchemaMap().size());
 
@@ -73,14 +73,14 @@ class DocumentDbMetadataTest {
 
         // Even though we've added data, we're not refreshing, so expecting 0.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata00 = DocumentDbDatabaseSchemaMetadata
-                .get(schemaName, properties, false);
+                .get(properties, schemaName, false);
         Assertions.assertEquals(0, databaseMetadata00.getTableSchemaMap().size());
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
         Assertions.assertEquals(0, databaseMetadata0.getTableSchemaMap().size());
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(schemaName, properties, true);
+                .get(properties, schemaName, true);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
@@ -91,7 +91,7 @@ class DocumentDbMetadataTest {
 
         // Without a refresh we'll get the same metadata.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
-                .get(schemaName, properties);
+                .get(properties, schemaName);
         // This is exactly the same as it is cached.
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
         Assertions.assertEquals(2, databaseMetadata2.getSchemaVersion());
@@ -109,7 +109,7 @@ class DocumentDbMetadataTest {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
-                .get(schemaName, properties);
+                .get(properties, schemaName);
         Assertions.assertEquals(0,
                 databaseMetadata0.getTableSchemaMap().size());
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
@@ -121,7 +121,7 @@ class DocumentDbMetadataTest {
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(schemaName, properties, true);
+                .get(properties, schemaName, true);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
@@ -140,6 +140,77 @@ class DocumentDbMetadataTest {
         Assertions.assertNull(databaseMetadata3);
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
         schemaWriter.remove(schemaName);
+    }
+
+    @DisplayName("Tests removing a specific version of schema")
+    @Test
+    void testRemoveSchema() throws SQLException {
+        final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
+                .getMongoDb40Environment();
+
+        final String schemaName = UUID.randomUUID().toString();
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
+                .get(properties, schemaName);
+        Assertions.assertEquals(0,
+                databaseMetadata0.getTableSchemaMap().size());
+        Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
+
+        // Prepare some data.
+        final String collectionName = testEnvironment.newCollectionName(true);
+        prepareTestData(testEnvironment, collectionName, collection -> testEnvironment
+                .prepareSimpleConsistentData(collection, 10));
+
+        // Now use the "refreshAll=true" flag to re-read the collection(s).
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
+                .get(properties, schemaName, true);
+
+        Assertions.assertEquals(1,
+                databaseMetadata1.getTableSchemaMap().size());
+        Assertions.assertEquals(2, databaseMetadata1.getSchemaVersion());
+
+        DocumentDbDatabaseSchemaMetadata.remove(properties, schemaName);
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
+                .get(properties, schemaName, 2);
+        Assertions.assertNull(databaseMetadata2);
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata3 = DocumentDbDatabaseSchemaMetadata
+                .get(properties, schemaName, 1);
+        Assertions.assertNull(databaseMetadata3);
+    }
+
+    @DisplayName("Tests removing a specific version of schema")
+    @Test
+    void testRemoveSpecificSchema() throws SQLException {
+        final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
+                .getMongoDb40Environment();
+
+        final String schemaName = UUID.randomUUID().toString();
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
+                .get(properties, schemaName);
+        Assertions.assertEquals(0,
+                databaseMetadata0.getTableSchemaMap().size());
+        Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
+
+        // Prepare some data.
+        final String collectionName = testEnvironment.newCollectionName(true);
+        prepareTestData(testEnvironment, collectionName, collection -> testEnvironment
+                .prepareSimpleConsistentData(collection, 10));
+
+        // Now use the "refreshAll=true" flag to re-read the collection(s).
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
+                .get(properties, schemaName, true);
+
+        Assertions.assertEquals(1,
+                databaseMetadata1.getTableSchemaMap().size());
+        Assertions.assertEquals(2, databaseMetadata1.getSchemaVersion());
+
+        DocumentDbDatabaseSchemaMetadata.remove(properties, schemaName, 2);
+        final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
+                .get(properties, schemaName, 2);
+        Assertions.assertNull(databaseMetadata2);
     }
 
     private static void prepareTestData(

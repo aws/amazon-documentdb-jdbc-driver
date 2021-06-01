@@ -107,7 +107,8 @@ public class DocumentDbConnection extends Connection
 
     private void ensureDatabaseMetadata() throws SQLException, DocumentDbSchemaException {
         if (metadata == null) {
-            databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(connectionProperties, false);
+            databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
+                    connectionProperties, connectionProperties.getSchemaName(), false);
             metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
         }
     }
