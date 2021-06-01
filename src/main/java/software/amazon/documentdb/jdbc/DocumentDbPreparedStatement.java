@@ -16,34 +16,37 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.google.common.collect.ImmutableList;
+import lombok.SneakyThrows;
 import software.amazon.documentdb.jdbc.common.PreparedStatement;
+import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
+import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 
 /**
  * DocumentDb implementation of PreparedStatement.
  */
 public class DocumentDbPreparedStatement extends PreparedStatement
         implements java.sql.PreparedStatement {
-    private final java.sql.PreparedStatement preparedStatement;
+
+    private int queryTimeout = 0;
 
     /**
      * DocumentDbPreparedStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
-     * @param preparedStatement Connection Object.
+     * @param connection Connection Object.
      * @param sql Sql query.
      */
-    public DocumentDbPreparedStatement(final java.sql.PreparedStatement preparedStatement,
-            final String sql) throws SQLException {
-        super(preparedStatement.getConnection(), sql);
-        this.preparedStatement = preparedStatement;
+    public DocumentDbPreparedStatement(final Connection connection, final String sql) throws SQLException {
+        super(connection, sql);
     }
-
 
     @Override
     protected void cancelQuery() throws SQLException {
-        verifyOpen();
-        preparedStatement.cancel();
+        throw new SQLFeatureNotSupportedException();
+        // TODO: Implement cancelQuery()
     }
 
     @Override
@@ -55,24 +58,44 @@ public class DocumentDbPreparedStatement extends PreparedStatement
     @Override
     public java.sql.ResultSet executeQuery() throws SQLException {
         verifyOpen();
-        return preparedStatement.executeQuery(getSql());
+        return DocumentDbStatement.executeQuery(getSql(), this, getMaxFetchSize());
     }
 
     @Override
+    @SneakyThrows
     public ResultSetMetaData getMetaData() throws SQLException {
         verifyOpen();
-        return preparedStatement.getMetaData();
+        if (getResultSet() == null) {
+            final DocumentDbConnection connection = (DocumentDbConnection)getConnection();
+            final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
+                    connection.getConnectionProperties(),
+                    connection.getDatabaseMetadata());
+            return new DocumentDbResultSetMetaData(ImmutableList.copyOf(mappingService.get(getSql()).getColumnMetaData()));
+        }
+        return getResultSet().getMetaData();
     }
 
+    /**
+     * Returns the query timeout setting, with a default value of zero indicating no time limit.
+     *
+     * @return the query timeout in seconds.
+     * @throws SQLException If the statement is closed.
+     */
     @Override
     public int getQueryTimeout() throws SQLException {
         verifyOpen();
-        return preparedStatement.getQueryTimeout();
+        return queryTimeout;
     }
 
+    /**
+     * Sets the time limit for querying. A timeout of zero results in no time limit when querying.
+     *
+     * @param seconds The query timeout in seconds
+     * @throws SQLException If the statement is closed.
+     */
     @Override
     public void setQueryTimeout(final int seconds) throws SQLException {
         verifyOpen();
-        preparedStatement.setQueryTimeout(seconds);
+        queryTimeout = seconds;
     }
 }

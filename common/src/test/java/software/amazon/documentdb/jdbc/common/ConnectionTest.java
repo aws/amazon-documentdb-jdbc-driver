@@ -95,9 +95,9 @@ public class ConnectionTest {
         HelperFunctions.expectFunctionThrows(() -> connection.createStatement(0, 0, 0));
 
         // Prepared statements.
-        HelperFunctions.expectFunctionThrows(() -> connection.prepareStatement(null));
+        HelperFunctions.expectFunctionDoesntThrow(() -> connection.prepareStatement(null));
         HelperFunctions.expectFunctionThrows(() -> connection.prepareStatement(null, 0));
-        HelperFunctions.expectFunctionThrows(() -> connection.prepareStatement(null, 0, 0));
+        HelperFunctions.expectFunctionDoesntThrow(() -> connection.prepareStatement(null, 0, 0));
         HelperFunctions.expectFunctionThrows(() -> connection.prepareStatement(null, 0, 0, 0));
         HelperFunctions.expectFunctionThrows(() -> connection.prepareStatement(null, new int[] {}));
         HelperFunctions.expectFunctionThrows(() -> connection.prepareStatement(null, new String[] {}));

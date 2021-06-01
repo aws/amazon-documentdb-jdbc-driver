@@ -32,6 +32,7 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
 
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -149,9 +150,13 @@ public class DocumentDbConnection extends Connection
     }
 
     @Override
-    public java.sql.PreparedStatement prepareStatement(final String sql) throws SQLException {
-        // TODO: Implement prepared statement.
-        throw new SQLFeatureNotSupportedException();
+    public PreparedStatement prepareStatement(final String sql, final int resultSetType, final int resultSetConcurrency)
+            throws SQLException {
+        verifyOpen();
+        if (resultSetType != ResultSet.TYPE_FORWARD_ONLY || resultSetConcurrency != ResultSet.CONCUR_READ_ONLY) {
+            throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.UNSUPPORTED_RESULT_SET_TYPE);
+        }
+        return new DocumentDbPreparedStatement(this, sql);
     }
 
     @Override

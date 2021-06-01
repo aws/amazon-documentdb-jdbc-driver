@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.common.mock;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import software.amazon.documentdb.jdbc.common.Connection;
 import java.sql.DatabaseMetaData;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Arrays;
@@ -51,6 +52,13 @@ public class MockConnection extends Connection implements java.sql.Connection {
 
     @Override
     public Statement createStatement(final int resultSetType, final int resultSetConcurrency) throws SQLException {
+        return null;
+    }
+
+    @Override
+    public PreparedStatement prepareStatement(final String sql,
+                                              final int resultSetType,
+                                              final int resultSetConcurrency) throws SQLException {
         return null;
     }
 

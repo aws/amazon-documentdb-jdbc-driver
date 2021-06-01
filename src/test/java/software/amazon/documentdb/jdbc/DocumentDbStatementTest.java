@@ -1273,7 +1273,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         return statement;
     }
 
-    private static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
+    protected static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
         return String.format(
                 CONNECTION_STRING_TEMPLATE,
                 USER, PASSWORD, getMongoPort(), DATABASE_NAME, method.getName());

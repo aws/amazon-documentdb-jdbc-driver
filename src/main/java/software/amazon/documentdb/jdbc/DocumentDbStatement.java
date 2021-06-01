@@ -20,6 +20,7 @@ import lombok.SneakyThrows;
 import software.amazon.documentdb.jdbc.common.Statement;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 
@@ -52,22 +53,10 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
         return  Integer.MAX_VALUE;
     }
 
-    @SneakyThrows
     @Override
     public java.sql.ResultSet executeQuery(final String sql) throws SQLException {
         verifyOpen();
-
-        final DocumentDbConnection connection = (DocumentDbConnection)getConnection();
-        final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
-                ((DocumentDbConnection)getConnection()).getConnectionProperties(),
-                connection.getDatabaseMetadata());
-        final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(
-                this,
-                null,
-                mappingService,
-                getQueryTimeout(),
-                getMaxFetchSize());
-        return queryExecutor.executeQuery(sql);
+        return executeQuery(sql, this, getMaxFetchSize());
     }
 
     @Override
@@ -80,5 +69,21 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     public void setQueryTimeout(final int seconds) throws SQLException {
         verifyOpen();
         queryTimeout = seconds;
+    }
+
+    @SneakyThrows
+    protected static ResultSet executeQuery(final String sql, final Statement statement, final int maxFetchSize)
+            throws SQLException {
+        final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
+        final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
+                connection.getConnectionProperties(),
+                connection.getDatabaseMetadata());
+        final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(
+                statement,
+                null,
+                mappingService,
+                statement.getQueryTimeout(),
+                maxFetchSize);
+        return queryExecutor.executeQuery(sql);
     }
 }

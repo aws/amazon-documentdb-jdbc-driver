@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.common;
 
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
@@ -42,7 +43,9 @@ import java.util.Calendar;
  * Abstract implementation of PreparedStatement for JDBC Driver.
  */
 public abstract class PreparedStatement extends Statement implements java.sql.PreparedStatement {
+
     private final String sql;
+    private ResultSet resultSet;
 
     /**
      * Constructor for seeding the prepared statement with the parent connection.
@@ -64,19 +67,24 @@ public abstract class PreparedStatement extends Statement implements java.sql.Pr
 
     @Override
     public boolean execute() throws SQLException {
-        // TODO unread property - should be fixed
-        // resultSet = executeQuery();
+        resultSet = executeQuery();
         return true;
     }
 
     @Override
-    public boolean execute(final String sql) throws SQLException {
+    public ResultSet executeQuery(final String sql) throws SQLException {
         verifyOpen();
         throw new SQLFeatureNotSupportedException(SqlError.lookup(SqlError.PARAMETERS_NOT_SUPPORTED));
     }
 
     @Override
-    public ResultSet executeQuery(final String sql) throws SQLException {
+    public ResultSet getResultSet() throws SQLException {
+        verifyOpen();
+        return resultSet;
+    }
+
+    @Override
+    public boolean execute(final String sql) throws SQLException {
         verifyOpen();
         throw new SQLFeatureNotSupportedException(SqlError.lookup(SqlError.PARAMETERS_NOT_SUPPORTED));
     }
