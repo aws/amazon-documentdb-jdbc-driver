@@ -118,8 +118,8 @@ For further information on SSH tunneling , please refer to the documentation on
    are required while the others are optional. Descriptions for each parameter can be found in 
    the [JDBC connection string](connection-string.md) documentation. As an example, the image below 
    is equivalent to the connection string:
-   `jdbc:documentdb://localhost:27019/test?tls=true&tlsAllowInvalidHostnames=true&scanMethod=random&scanLimit=1000&loginTimeoutSec=0&readPreference=primary&retryReads=true` 
-   with username and password passed separately in a properties file.
+   `jdbc:documentdb://localhost:27019/test?tls=true&tlsAllowInvalidHostnames=true&scanMethod=random&scanLimit=1000&loginTimeoutSec=0&readPreference=primary&retryReads=true&schemaName=_default` 
+   with username and password passed separately in a properties collection.
 1. Click the **Sign In** button.
 
 ![Tableau login dialog](tableau-login.png)
