@@ -1260,6 +1260,29 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    /**
+     * Tests that SUM(1) works, equivalent to COUNT(*).
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests query with SUM(1).")
+    void testQuerySumOne() throws SQLException {
+        final String tableName = "testSumOfNulls";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 4}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT SUM(1) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(3, resultSet.getInt(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
     protected static DocumentDbStatement getDocumentDbStatement() throws SQLException {
         return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);
     }

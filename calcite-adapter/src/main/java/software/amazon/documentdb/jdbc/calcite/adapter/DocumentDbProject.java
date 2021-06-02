@@ -104,7 +104,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
         final List<String> inNames = getInput().getRowType().getFieldNames();
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
         for (Pair<RexNode, String> pair : getNamedProjects()) {
-            final String outName = pair.right;
+            final String outName = DocumentDbRules.getNormalizedIdentifier(pair.right);
             final String expr = pair.left.accept(translator);
 
             // Check if we are projecting an existing field or generating a new expression.
