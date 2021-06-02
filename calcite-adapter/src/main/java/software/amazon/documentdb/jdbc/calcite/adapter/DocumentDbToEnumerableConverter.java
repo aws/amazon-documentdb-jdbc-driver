@@ -129,7 +129,7 @@ public class DocumentDbToEnumerableConverter
                         Expressions.call(table,
                                 DocumentDbMethod.MONGO_QUERYABLE_AGGREGATE.getMethod(), fields, paths, ops));
         if (CalciteSystemProperty.DEBUG.value()) {
-            LOGGER.info("Mongo: " + opList);
+            LOGGER.info("Mongo: {}", opList);
         }
         Hook.QUERY_PLAN.run(opList);
         list.add(

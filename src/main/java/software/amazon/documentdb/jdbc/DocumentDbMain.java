@@ -210,7 +210,7 @@ public class DocumentDbMain {
         try {
             final StringBuilder output = new StringBuilder();
             handleCommandLine(args, output);
-            LOGGER.error(output.toString());
+            LOGGER.error("{}", output);
         } catch (ParseException | SQLException e) {
             LOGGER.error(e.getMessage(), e);
         } catch (Exception e) {
