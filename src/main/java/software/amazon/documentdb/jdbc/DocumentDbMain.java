@@ -25,18 +25,23 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 
 import java.io.Console;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
@@ -48,13 +53,14 @@ public class DocumentDbMain {
 
     @VisibleForTesting
     static final Options COMPLETE_OPTIONS;
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbMain.class);
     private static final Options HELP_VERSION_OPTIONS;
     private static final Option HELP_OPTION;
     private static final Option VERSION_OPTION;
     private static final OptionGroup COMMAND_OPTIONS;
     private static final List<Option> REQUIRED_OPTIONS;
     private static final List<Option> OPTIONAL_OPTIONS;
-    private static final String ARCHIVE_VERSION_DEFAULT = "1.0.0.0";
+    private static final String ARCHIVE_VERSION_DEFAULT = "1.0.0";
     private static final String DATABASE_NAME_ARG_NAME = "database-name";
     private static final String DATABASE_OPTION_FLAG = "d";
     private static final String DATABASE_OPTION_NAME = "database";
@@ -202,43 +208,57 @@ public class DocumentDbMain {
      */
     public static void main(final String[] args) {
         try {
-            if (handledHelpOrVersionOption(args)) {
-                return;
-            }
-            final CommandLineParser parser = new DefaultParser();
-            final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
-            final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
-            if (!tryGetConnectionProperties(commandLine, properties)) {
-                return;
-            }
-            performCommand(properties);
+            final StringBuilder output = new StringBuilder();
+            handleCommandLine(args, output);
+            LOGGER.error(output.toString());
         } catch (ParseException | SQLException e) {
-            System.out.println(e.getMessage());
+            LOGGER.error(e.getMessage(), e);
         } catch (Exception e) {
-            System.out.printf(
-                    "Unexpected exception: '%s'%n",
-                    e.getMessage());
+            LOGGER.error(
+                    "Unexpected exception: '{}'",
+                    e.getMessage(),
+                    e);
         }
     }
 
-    private static void performCommand(final DocumentDbConnectionProperties properties)
+    static void handleCommandLine(final String[] args, final StringBuilder output)
+            throws ParseException, SQLException {
+        if (handledHelpOrVersionOption(args, output)) {
+            return;
+        }
+        try {
+            final CommandLineParser parser = new DefaultParser();
+            final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
+            final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+            if (!tryGetConnectionProperties(commandLine, properties, output)) {
+                return;
+            }
+            performCommand(properties, output);
+        } catch (Exception e) {
+            output.append(e.getMessage());
+        }
+    }
+
+    private static void performCommand(
+            final DocumentDbConnectionProperties properties,
+            final StringBuilder output)
             throws SQLException {
         switch (COMMAND_OPTIONS.getSelected()) {
             case GENERATE_NAME_OPTION_FLAG: // --generate-new
                 final DocumentDbDatabaseSchemaMetadata schema =  DocumentDbDatabaseSchemaMetadata
                         .get(properties, properties.getSchemaName(), true);
                 if (schema != null) {
-                    System.out.printf(NEW_SCHEMA_VERSION_GENERATED_MESSAGE,
+                    output.append(String.format(NEW_SCHEMA_VERSION_GENERATED_MESSAGE,
                             schema.getSchemaName(),
-                            schema.getSchemaVersion());
+                            schema.getSchemaVersion()));
                 }
                 break;
             case REMOVE_OPTION_FLAG: // --remove
                 DocumentDbDatabaseSchemaMetadata.remove(properties, properties.getSchemaName());
-                System.out.printf(REMOVED_SCHEMA_MESSAGE, properties.getSchemaName());
+                output.append(String.format(REMOVED_SCHEMA_MESSAGE, properties.getSchemaName()));
                 break;
             default:
-                System.out.println(SqlError.lookup(SqlError.UNSUPPORTED_PROPERTY,
+                output.append(SqlError.lookup(SqlError.UNSUPPORTED_PROPERTY,
                         COMMAND_OPTIONS.getSelected()));
                 break;
         }
@@ -247,7 +267,8 @@ public class DocumentDbMain {
     @VisibleForTesting
     static boolean tryGetConnectionProperties(
             final CommandLine commandLine,
-            final DocumentDbConnectionProperties properties) {
+            final DocumentDbConnectionProperties properties,
+            final StringBuilder output) {
         properties.setHostname(commandLine.getOptionValue(SERVER_OPTION_FLAG));
         properties.setDatabase(commandLine.getOptionValue(DATABASE_OPTION_FLAG));
         properties.setUser(commandLine.getOptionValue(USER_OPTION_FLAG));
@@ -260,10 +281,10 @@ public class DocumentDbMain {
             if (console != null) {
                 password = console.readPassword(passwordPrompt);
             } else {
-                System.out.println("No console available.");
+                output.append("No console available.");
             }
             if (password == null || password.length == 0) {
-                System.out.println(SqlError.lookup(SqlError.MISSING_PASSWORD));
+                output.append(SqlError.lookup(SqlError.MISSING_PASSWORD));
                 return false;
             }
             properties.setPassword(new String(password));
@@ -283,18 +304,92 @@ public class DocumentDbMain {
     }
 
     private static boolean handledHelpOrVersionOption(
-            final String[] args) throws ParseException {
+            final String[] args,
+            final StringBuilder output) throws ParseException {
         final CommandLineParser parser = new DefaultParser();
         final CommandLine commandLine = parser.parse(HELP_VERSION_OPTIONS, args, true);
         if (commandLine.hasOption(HELP_OPTION_NAME)) {
+            final StringWriter stringWriter = new StringWriter();
+            final PrintWriter printWriter = new PrintWriter(stringWriter);
             final HelpFormatter formatter = new HelpFormatter();
-            formatter.printHelp(LIBRARY_NAME, COMPLETE_OPTIONS);
+            final StringBuilder cmdLineSyntax = new StringBuilder();
+            formatCommandLineSyntax(cmdLineSyntax);
+            formatter.printHelp(printWriter,
+                    80,
+                    cmdLineSyntax.toString(),
+                    null,
+                    COMPLETE_OPTIONS,
+                    1,
+                    2,
+                    null,
+                    false);
+            output.append(stringWriter);
             return true;
         } else if (commandLine.hasOption(VERSION_OPTION_NAME)) {
-            System.out.printf("%s: version %s%n", LIBRARY_NAME, ARCHIVE_VERSION);
+            output.append(String.format("%s: version %s", LIBRARY_NAME, ARCHIVE_VERSION));
             return true;
         }
         return false;
+    }
+
+    private static void formatCommandLineSyntax(final StringBuilder cmdLineSyntax) {
+        cmdLineSyntax.append(LIBRARY_NAME);
+        formatOptionGroup(cmdLineSyntax);
+        formatOptions(cmdLineSyntax, REQUIRED_OPTIONS);
+        formatOptions(cmdLineSyntax, OPTIONAL_OPTIONS);
+    }
+
+    private static void formatOptions(
+            final StringBuilder cmdLineSyntax,
+            final Collection<Option> options) {
+        for (Option option : options) {
+            cmdLineSyntax.append(" ");
+            if (!option.isRequired()) {
+                cmdLineSyntax.append("[");
+            }
+            if (option.getOpt() != null) {
+                cmdLineSyntax.append("-").append(option.getOpt());
+            } else {
+                cmdLineSyntax.append("--").append(option.getLongOpt());
+            }
+            if (option.hasArg()) {
+                cmdLineSyntax.append(String.format(" <%s>", option.getArgName()));
+            } else if (option.hasOptionalArg()) {
+                cmdLineSyntax.append(String.format(" [<%s>]", option.getArgName()));
+            }
+            if (!option.isRequired()) {
+                cmdLineSyntax.append("]");
+            }
+        }
+    }
+
+    private static void formatOptionGroup(
+            final StringBuilder cmdLineSyntax) {
+        boolean isFirst = true;
+        for (Option option : COMMAND_OPTIONS.getOptions()) {
+            if (isFirst) {
+                cmdLineSyntax.append(" ");
+            } else {
+                cmdLineSyntax.append(" | ");
+            }
+            if (!COMMAND_OPTIONS.isRequired()) {
+                cmdLineSyntax.append("[");
+            }
+            if (option.getOpt() != null) {
+                cmdLineSyntax.append("-").append(option.getOpt());
+            } else {
+                cmdLineSyntax.append("--").append(option.getLongOpt());
+            }
+            if (option.hasArg()) {
+                cmdLineSyntax.append(String.format(" <%s>", option.getArgName()));
+            } else if (option.hasOptionalArg()) {
+                cmdLineSyntax.append(String.format(" [<%s>]", option.getArgName()));
+            }
+            if (!COMMAND_OPTIONS.isRequired()) {
+                cmdLineSyntax.append("]");
+            }
+            isFirst = false;
+        }
     }
 
     private static List<Option> buildOptionalOptions() {

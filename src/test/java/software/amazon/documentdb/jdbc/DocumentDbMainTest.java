@@ -23,7 +23,6 @@ import org.apache.commons.cli.ParseException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,14 +32,8 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFact
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
-import java.nio.charset.Charset;
 import java.sql.SQLException;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -51,10 +44,6 @@ import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.DEFAULT_
 
 class DocumentDbMainTest {
 
-    private static final Charset DEFAULT_CHARSET = Charset.defaultCharset();
-    public static final Pattern MONGO_OUTPUT_PATTERN = Pattern
-            .compile("^.*\\[mongod output].*$", Pattern.MULTILINE | Pattern.DOTALL);
-    private ByteArrayOutputStream outputStream;
     private DocumentDbConnectionProperties properties;
 
     private static Stream<DocumentDbTestEnvironment> getTestEnvironments() {
@@ -81,22 +70,17 @@ class DocumentDbMainTest {
         }
     }
 
-    @BeforeEach
-    void beforeEach() throws IOException {
-        outputStream = new ByteArrayOutputStream();
-        System.setOut(new PrintStream(
-                outputStream, true, DEFAULT_CHARSET.name()));
-    }
-
     @DisplayName("Tests empty command line with no options provided.")
     @Test
-    void testEmptyCommandLine() throws IOException {
-        DocumentDbMain.main(new String[] {});
-        Assertions.assertTrue(getConsoleOutput().endsWith(
+    void testEmptyCommandLine() throws SQLException, ParseException {
+        final StringBuilder output = new StringBuilder();
+        DocumentDbMain.handleCommandLine(new String[] {}, output);
+        Assertions.assertEquals(
                 "Missing required options: "
                         + "[-g Generates a new schema for the database. This will have the effect of replacing an existing schema of the same name, if it exists., "
                         + "-r Removes the schema from storage for schema given by -m <schema-name>, or for schema '_default', if not provided.], "
-                        + "s, d, u"));
+                        + "s, d, u",
+                output.toString());
     }
 
     @ParameterizedTest(name = "testMinimum - [{index}] - {arguments}")
@@ -113,10 +97,11 @@ class DocumentDbMainTest {
                 "-p", password
         };
 
+        final StringBuilder output = new StringBuilder();
         final CommandLineParser parser = new DefaultParser();
         final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
         final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
-        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties));
+        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties, output));
         Assertions.assertEquals("localhost", newProperties.getHostname());
         Assertions.assertEquals("database", newProperties.getDatabase());
         Assertions.assertEquals("user", newProperties.getUser());
@@ -141,7 +126,8 @@ class DocumentDbMainTest {
         final CommandLineParser parser = new DefaultParser();
         final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
         final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
-        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties));
+        final StringBuilder output = new StringBuilder();
+        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties, output));
         Assertions.assertEquals("localhost", newProperties.getHostname());
         Assertions.assertEquals("database", newProperties.getDatabase());
         Assertions.assertEquals("user", newProperties.getUser());
@@ -166,7 +152,8 @@ class DocumentDbMainTest {
         final CommandLineParser parser = new DefaultParser();
         final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
         final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
-        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties));
+        final StringBuilder output = new StringBuilder();
+        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties, output));
         Assertions.assertEquals("localhost", newProperties.getHostname());
         Assertions.assertEquals("database", newProperties.getDatabase());
         Assertions.assertEquals("user", newProperties.getUser());
@@ -178,7 +165,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testGenerateNew - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testGenerateNew(final DocumentDbTestEnvironment testEnvironment)
-            throws ParseException, SQLException, UnsupportedEncodingException {
+            throws ParseException, SQLException {
         setConnectionProperties(testEnvironment);
         final String[] args =
                 String.format(
@@ -192,7 +179,8 @@ class DocumentDbMainTest {
         final CommandLineParser parser = new DefaultParser();
         final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
         final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
-        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties));
+        final StringBuilder output = new StringBuilder();
+        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties, output));
         Assertions.assertEquals(properties.getHostname(), newProperties.getHostname());
         Assertions.assertEquals(properties.getDatabase(), newProperties.getDatabase());
         Assertions.assertEquals(properties.getUser(), newProperties.getUser());
@@ -200,15 +188,15 @@ class DocumentDbMainTest {
         Assertions.assertEquals(properties.getTlsEnabled(), newProperties.getTlsEnabled());
         Assertions.assertEquals(properties.getTlsAllowInvalidHostnames(), newProperties.getTlsAllowInvalidHostnames());
 
-        DocumentDbMain.main(args);
-        final String output = getConsoleOutput();
-        Assertions.assertTrue(output.endsWith("New schema '_default', version '1' generated."));
+        DocumentDbMain.handleCommandLine(args, output);
+        Assertions.assertEquals("New schema '_default', version '1' generated.",
+                output.toString());
     }
 
     @ParameterizedTest(name = "testRemove - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testRemove(final DocumentDbTestEnvironment testEnvironment)
-            throws ParseException, SQLException, IOException {
+            throws ParseException, SQLException {
         setConnectionProperties(testEnvironment);
         final String[] args =
                 String.format(
@@ -222,7 +210,8 @@ class DocumentDbMainTest {
         final CommandLineParser parser = new DefaultParser();
         final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
         final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
-        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties));
+        final StringBuilder output = new StringBuilder();
+        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties, output));
         Assertions.assertEquals(properties.getHostname(), newProperties.getHostname());
         Assertions.assertEquals(properties.getDatabase(), newProperties.getDatabase());
         Assertions.assertEquals(properties.getUser(), newProperties.getUser());
@@ -230,83 +219,76 @@ class DocumentDbMainTest {
         Assertions.assertEquals(properties.getTlsEnabled(), newProperties.getTlsEnabled());
         Assertions.assertEquals(properties.getTlsAllowInvalidHostnames(), newProperties.getTlsAllowInvalidHostnames());
 
-        DocumentDbMain.main(args);
-        final String output = getConsoleOutput();
-        Assertions.assertTrue(output.endsWith("Removed schema '_default'."));
+        DocumentDbMain.handleCommandLine(args, output);
+        Assertions.assertEquals("Removed schema '_default'.", output.toString());
     }
 
     @DisplayName("Tests it detects an \"unknown\" option")
     @Test
-    void testUnrecognizedOption()
-            throws UnsupportedEncodingException {
-        DocumentDbMain.main(new String[] {"-x", "-g", "-s=localhost", "-d=test", "-u=testuser", "-p=password"});
-        Assertions.assertTrue(getConsoleOutput().endsWith("Unrecognized option: -x"));
+    void testUnrecognizedOption() throws SQLException, ParseException {
+        final StringBuilder output = new StringBuilder();
+        DocumentDbMain.handleCommandLine(
+                new String[] {"-x", "-g", "-s=localhost", "-d=test", "-u=testuser", "-p=password"},
+                output);
+        Assertions.assertEquals("Unrecognized option: -x", output.toString());
     }
 
     @DisplayName("Tests the help (--help) option")
     @Test
-    void testHelpOption()
-            throws UnsupportedEncodingException {
-        DocumentDbMain.main(new String[] {"--help"});
-        Assertions.assertTrue(getConsoleOutput().endsWith(
-                "usage: main\n"
-                        + " -a,--tls-allow-invalid-hostnames   The indicator of whether to allow\n"
-                        + "                                    invalid hostnames when connecting to\n"
-                        + "                                    DocumentDB. Default: false.\n"
-                        + " -d,--database <database-name>      The name of the database for the\n"
-                        + "                                    schema operations. Required.\n"
-                        + " -g,--generate-new                  Generates a new schema for the\n"
-                        + "                                    database. This will have the effect of\n"
-                        + "                                    replacing an existing schema of the\n"
-                        + "                                    same name, if it exists.\n"
-                        + " -h,--help                          Prints the command line syntax.\n"
-                        + " -l,--scan-limit <max-documents>    The maximum number of documents to\n"
-                        + "                                    sample in each collection. Used in\n"
-                        + "                                    conjunction with the --generate-new\n"
-                        + "                                    command. Default: 1000.\n"
-                        + " -m,--scan-method <method>          The scan method to sample documents\n"
-                        + "                                    from the collections. One of: random,\n"
-                        + "                                    idForward, idReverse, or all. Used in\n"
-                        + "                                    conjunction with the --generate-new\n"
-                        + "                                    command. Default: random.\n"
-                        + " -n,--schema-name <schema-name>     The name of the schema. Default:\n"
-                        + "                                    _default.\n"
-                        + " -p,--password <password>           The password for the user performing\n"
-                        + "                                    the schema operations. Optional. If\n"
-                        + "                                    this option is not provided, the\n"
-                        + "                                    end-user will be prompted to enter the\n"
-                        + "                                    password directly.\n"
-                        + " -r,--remove                        Removes the schema from storage for\n"
-                        + "                                    schema given by -m <schema-name>, or\n"
-                        + "                                    for schema '_default', if not\n"
-                        + "                                    provided.\n"
-                        + " -s,--server <host-name>            The hostname and optional port number\n"
-                        + "                                    (default: 27017) in the format\n"
-                        + "                                    hostname[:port]. Required.\n"
-                        + " -t,--tls                           The indicator of whether to use TLS\n"
-                        + "                                    encryption when connecting to\n"
-                        + "                                    DocumentDB. Default: false.\n"
-                        + " -u,--user <user-name>              The name of the user performing the\n"
-                        + "                                    schema operations. Required. Note: the\n"
-                        + "                                    user will require readWrite role on\n"
-                        + "                                    the <database-name> where the schema\n"
-                        + "                                    are stored if creating or modifying\n"
-                        + "                                    schema.\n"
-                        + "    --version                       Prints the version number of the\n"
-                        + "                                    command."));
+    void testHelpOption() throws SQLException, ParseException {
+        final StringBuilder output = new StringBuilder();
+        DocumentDbMain.handleCommandLine(new String[] {"--help"}, output);
+        Assertions.assertEquals(
+                "usage: main -g | -r -s <host-name> -d <database-name> -u <user-name> [-p\n"
+                        + "            <password>] [-n <schema-name>] [-m <method>] [-l <max-documents>]\n"
+                        + "            [-t] [-a] [-h] [--version]\n"
+                        + " -a,--tls-allow-invalid-hostnames  The indicator of whether to allow invalid\n"
+                        + "                                   hostnames when connecting to DocumentDB.\n"
+                        + "                                   Default: false.\n"
+                        + " -d,--database <database-name>     The name of the database for the schema\n"
+                        + "                                   operations. Required.\n"
+                        + " -g,--generate-new                 Generates a new schema for the database. This\n"
+                        + "                                   will have the effect of replacing an existing\n"
+                        + "                                   schema of the same name, if it exists.\n"
+                        + " -h,--help                         Prints the command line syntax.\n"
+                        + " -l,--scan-limit <max-documents>   The maximum number of documents to sample in\n"
+                        + "                                   each collection. Used in conjunction with the\n"
+                        + "                                   --generate-new command. Default: 1000.\n"
+                        + " -m,--scan-method <method>         The scan method to sample documents from the\n"
+                        + "                                   collections. One of: random, idForward,\n"
+                        + "                                   idReverse, or all. Used in conjunction with\n"
+                        + "                                   the --generate-new command. Default: random.\n"
+                        + " -n,--schema-name <schema-name>    The name of the schema. Default: _default.\n"
+                        + " -p,--password <password>          The password for the user performing the\n"
+                        + "                                   schema operations. Optional. If this option\n"
+                        + "                                   is not provided, the end-user will be\n"
+                        + "                                   prompted to enter the password directly.\n"
+                        + " -r,--remove                       Removes the schema from storage for schema\n"
+                        + "                                   given by -m <schema-name>, or for schema\n"
+                        + "                                   '_default', if not provided.\n"
+                        + " -s,--server <host-name>           The hostname and optional port number\n"
+                        + "                                   (default: 27017) in the format\n"
+                        + "                                   hostname[:port]. Required.\n"
+                        + " -t,--tls                          The indicator of whether to use TLS\n"
+                        + "                                   encryption when connecting to DocumentDB.\n"
+                        + "                                   Default: false.\n"
+                        + " -u,--user <user-name>             The name of the user performing the schema\n"
+                        + "                                   operations. Required. Note: the user will\n"
+                        + "                                   require readWrite role on the <database-name>\n"
+                        + "                                   where the schema are stored if creating or\n"
+                        + "                                   modifying schema.\n"
+                        + "    --version                      Prints the version number of the command.\n",
+                output.toString().replace("\r\n", "\n"));
     }
 
     @DisplayName("Tests the version (--version) option")
     @Test
-    void testVersionOption()
-            throws UnsupportedEncodingException {
-        DocumentDbMain.main(new String[] {"--version"});
-        Assertions.assertTrue(getConsoleOutput().endsWith(String.format(
-                "%s: version %s", DocumentDbMain.LIBRARY_NAME, DocumentDbMain.ARCHIVE_VERSION)));
-    }
-
-    private String getConsoleOutput() throws UnsupportedEncodingException {
-        return outputStream.toString(DEFAULT_CHARSET.name()).replace("\r\n", "\n").trim();
+    void testVersionOption() throws SQLException, ParseException {
+        final StringBuilder output = new StringBuilder();
+        DocumentDbMain.handleCommandLine(new String[] {"--version"}, output);
+        Assertions.assertEquals(String.format(
+                "%s: version %s", DocumentDbMain.LIBRARY_NAME, DocumentDbMain.ARCHIVE_VERSION),
+                output.toString());
     }
 
     private void setConnectionProperties(final DocumentDbTestEnvironment testEnvironment)

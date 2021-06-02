@@ -40,6 +40,8 @@ import org.apache.calcite.util.BuiltInMethod;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRel.Implementor;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 import java.util.AbstractList;
@@ -51,6 +53,9 @@ import java.util.List;
 public class DocumentDbToEnumerableConverter
         extends ConverterImpl
         implements EnumerableRel {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbToEnumerableConverter.class);
+
     protected DocumentDbToEnumerableConverter(
             final RelOptCluster cluster,
             final RelTraitSet traits,
@@ -124,7 +129,7 @@ public class DocumentDbToEnumerableConverter
                         Expressions.call(table,
                                 DocumentDbMethod.MONGO_QUERYABLE_AGGREGATE.getMethod(), fields, paths, ops));
         if (CalciteSystemProperty.DEBUG.value()) {
-            System.out.println("Mongo: " + opList);
+            LOGGER.info("Mongo: " + opList);
         }
         Hook.QUERY_PLAN.run(opList);
         list.add(
