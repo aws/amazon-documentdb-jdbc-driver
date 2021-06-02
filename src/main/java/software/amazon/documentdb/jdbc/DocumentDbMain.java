@@ -528,7 +528,7 @@ public class DocumentDbMain {
         try {
             manifest = new Manifest(resource);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.error(e.getMessage());
         }
         if (manifest != null) {
             final Attributes attributes = manifest.getMainAttributes();
