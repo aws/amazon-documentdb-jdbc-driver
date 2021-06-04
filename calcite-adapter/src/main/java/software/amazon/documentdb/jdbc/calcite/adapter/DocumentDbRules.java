@@ -247,8 +247,7 @@ public final class DocumentDbRules {
                         MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS).equals(stdOperator) ||
                         MONGO_OPERATORS.get(SqlStdOperatorTable.GREATER_THAN).equals(stdOperator) ||
                         MONGO_OPERATORS.get(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL).equals(stdOperator)) {
-                    // The operator {$gt null} filters out any values that are null or undefined.
-                    return "{$and: [{$gt: [" + strings.get(0) + ", null]}" + op + "]}";
+                    return addNullChecksToQuery(strings, op);
                 }
                 return op;
             }
@@ -291,6 +290,21 @@ public final class DocumentDbRules {
             }
             throw new IllegalArgumentException("Translation of " + call.toString()
                     + " is not supported by MongoProject");
+        }
+
+        private String addNullChecksToQuery(final List<String> strings, final String op) {
+            final StringBuilder sb = new StringBuilder("{$and: [");
+            sb.append(op);
+            for (int i = 0; i < 2; i++) {
+                if (!strings.get(i).equals("null")) {
+                    // The operator {$gt null} filters out any values that are null or undefined.
+                    sb.append("{$gt: [");
+                    sb.append(strings.get(i));
+                    sb.append(", null]}");
+                }
+            }
+            sb.append("]}");
+            return sb.toString();
         }
 
         private static String stripQuotes(final String s) {

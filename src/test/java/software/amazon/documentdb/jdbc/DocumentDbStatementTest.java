@@ -1390,6 +1390,42 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    /**
+     * Tests that queries of CASE are correct with two different fields involved.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests queries with two field CASE.")
+    void testCASETwoFields() throws SQLException {
+        final String tableName = "testCASETwoFields";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 1,\n" +
+                "\"fieldB\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 2,\n" +
+                "\"fieldB\": 1}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"fieldA\": 1}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CASE " +
+                                "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' " +
+                                "WHEN \"fieldA\" > \"fieldB\" THEN 'B' " +
+                                "ELSE 'C' END FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("A", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("B", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("C", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
     protected static DocumentDbStatement getDocumentDbStatement() throws SQLException {
         return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);
     }
