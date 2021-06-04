@@ -14,6 +14,7 @@
     const RETRY_READS_KEY = "retryReads";
     const LOGIN_TIMEOUT_KEY= "loginTimeoutSec";
     const TLS_CA_FILE_KEY="tlsCAFile"
+    const SCHEMA_NAME="schemaName"
 
     // Get optional parameters.
     var params = {};
@@ -24,6 +25,11 @@
     params[RETRY_READS_KEY] = attr["v-retry-reads"];
     params[LOGIN_TIMEOUT_KEY] = attr["v-login-timeout"];
     params[TLS_CA_FILE_KEY] = attr["v-tls-ca-file"];
+
+    // Add schema name if set.
+    if (attr["v-schema-name"]) {
+        params[SCHEMA_NAME] = attr["v-schema-name"];
+    }
 
     // Use default (and only) replica set.
     if (attr["v-replica-set"] === "true") {

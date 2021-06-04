@@ -54,7 +54,7 @@ import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGene
 
 class DocumentDbTableSchemaGeneratorTest {
     private static final String COLLECTION_NAME = DocumentDbTableSchemaGeneratorTest.class.getSimpleName();
-    private static final boolean DEMO_MODE = true;
+    private static final boolean DEMO_MODE = false;
 
     /**
      * Tests a collection where all the fields are consistent.

@@ -76,7 +76,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
             final DocumentDbConnectionProperties properties,
             final boolean refreshAll)
             throws SQLException {
-        return get(DocumentDbSchema.DEFAULT_SCHEMA_NAME, properties, refreshAll);
+        return get(properties, DocumentDbSchema.DEFAULT_SCHEMA_NAME, refreshAll);
     }
 
 
@@ -85,29 +85,29 @@ public final class DocumentDbDatabaseSchemaMetadata {
      * schemaName and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST}
      * for the version to indicate to get the latest or create a new instance if none exists.
      *
-     * @param schemaName the schema name.
      * @param properties the connection properties.
+     * @param schemaName the schema name.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
-    public static DocumentDbDatabaseSchemaMetadata get(final String schemaName,
-            final DocumentDbConnectionProperties properties)
+    public static DocumentDbDatabaseSchemaMetadata get(
+            final DocumentDbConnectionProperties properties, final String schemaName)
             throws SQLException {
-        return get(schemaName, properties, false);
+        return get(properties, schemaName, false);
     }
 
     /**
      * Gets the {@link DocumentDbDatabaseSchemaMetadata} by given schema name, connection properties
      * and an indicator of whether to refresh the metadata from the cached version.
      *
-     * @param schemaName the schema name.
      * @param properties the connection properties.
+     * @param schemaName the schema name.
      * @param refreshAll an indicator of whether to get refreshed metadata and ignore the cached
      *                   version.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
     public static DocumentDbDatabaseSchemaMetadata get(
-            final String schemaName,
             final DocumentDbConnectionProperties properties,
+            final String schemaName,
             final boolean refreshAll) throws SQLException {
 
         final DocumentDbDatabaseSchemaMetadata metadata;
@@ -161,6 +161,36 @@ public final class DocumentDbDatabaseSchemaMetadata {
             databaseMetadata = null;
         }
         return databaseMetadata;
+    }
+
+    /**
+     * Removes all versions of the schema for the given schema name.
+     *
+     * @param properties the connection properties.
+     * @param schemaName the name of the schema.
+     *
+     * @throws SQLException if invalid connection properties.
+     */
+    public static void remove(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName) throws SQLException {
+        DocumentDbMetadataService.remove(properties, schemaName);
+    }
+
+    /**
+     * Removes the specific schema for the given schema name and version.
+     *
+     * @param properties the connection properties.
+     * @param schemaName the name of the schema.
+     * @param schemaVersion the version of the schema.
+     *
+     * @throws SQLException if invalid connection properties.
+     */
+    public static void remove(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final int schemaVersion) throws SQLException {
+        DocumentDbMetadataService.remove(properties, schemaName, schemaVersion);
     }
 
     @Override

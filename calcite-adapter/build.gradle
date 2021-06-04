@@ -29,7 +29,7 @@ if (hasProperty('buildScan')) {
 
 jar {
     manifest {
-        attributes 'Implementation-Version': archiveVersion
+        attributes 'Implementation-Version': archiveVersion.get()
     }
 }
 
