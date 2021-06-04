@@ -223,6 +223,19 @@ public class DocumentDbMetadataService {
         schemaWriter.remove(schemaName, schemaVersion);
     }
 
+    /**
+     * Gets the list of all persisted schema.
+     *
+     * @param properties the connection properties.
+     * @return a list of {@link DocumentDbSchema} schemas.
+     * @throws SQLException if unable to connect.
+     */
+    public static List<DocumentDbSchema> getSchemaList(
+            final DocumentDbConnectionProperties properties) throws SQLException {
+        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
+        return schemaReader.list();
+    }
+
     private static DocumentDbSchema getSchemaMetadata(
             final DocumentDbConnectionProperties properties,
             final String schemaName,

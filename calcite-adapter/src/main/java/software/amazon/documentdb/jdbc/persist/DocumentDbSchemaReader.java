@@ -34,6 +34,8 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import javax.annotation.Nullable;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -42,9 +44,12 @@ import java.util.stream.StreamSupport;
 
 import static com.mongodb.MongoClientSettings.getDefaultCodecRegistry;
 import static com.mongodb.client.model.Filters.or;
+import static com.mongodb.client.model.Sorts.ascending;
 import static com.mongodb.client.model.Sorts.descending;
+import static com.mongodb.client.model.Sorts.orderBy;
 import static org.bson.codecs.configuration.CodecRegistries.fromProviders;
 import static org.bson.codecs.configuration.CodecRegistries.fromRegistries;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SCHEMA_NAME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SCHEMA_VERSION_PROPERTY;
 import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter.getDatabase;
 import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter.getSchemaFilter;
@@ -82,6 +87,14 @@ public class DocumentDbSchemaReader implements SchemaReader {
     @Override
     public DocumentDbSchema read() {
         return read(DEFAULT_SCHEMA_NAME);
+    }
+
+    @Override
+    public List<DocumentDbSchema> list() throws SQLException {
+        try (MongoClient client = MongoClients.create(properties.buildMongoClientSettings())) {
+            final MongoDatabase database = client.getDatabase(properties.getDatabase());
+            return getAllSchema(database);
+        }
     }
 
     @Nullable
@@ -153,6 +166,26 @@ public class DocumentDbSchemaReader implements SchemaReader {
             return StreamSupport.stream(
                     tableSchemasCollection.find(or(tableFilters)).spliterator(), false)
                     .collect(Collectors.toList());
+        }
+    }
+
+    static List<DocumentDbSchema> getAllSchema(final MongoDatabase database) {
+        final MongoCollection<DocumentDbSchema> schemasCollection = database
+                .getCollection(SCHEMA_COLLECTION, DocumentDbSchema.class)
+                .withCodecRegistry(POJO_CODEC_REGISTRY);
+        try {
+            final List<DocumentDbSchema> schemas = new ArrayList<>();
+            schemasCollection
+                    .find()
+                    .sort(orderBy(ascending(SCHEMA_NAME_PROPERTY), ascending(SCHEMA_VERSION_PROPERTY)))
+                    .forEach(schemas::add);
+            return schemas;
+        } catch (MongoException e) {
+            if (isAuthorizationFailure(e)) {
+                LOGGER.warn(e.getMessage(), e);
+                return null;
+            }
+            throw e;
         }
     }
 }

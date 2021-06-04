@@ -39,8 +39,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class FileSchemaReader implements SchemaReader {
@@ -146,6 +150,33 @@ public class FileSchemaReader implements SchemaReader {
         return schemaContainer.getSchema();
     }
 
+
+    @SneakyThrows
+    @Override
+    public List<DocumentDbSchema> list() throws SQLException {
+        final List<DocumentDbSchema> schemaList = new ArrayList<>();
+        final File folder = schemaFolder.toFile();
+        if (!folder.exists()) {
+            return schemaList;
+        }
+
+        final String escapedSqlName = databaseName
+                .replaceAll(INVALID_FILE_CHARACTERS_REGEX, "_").trim();
+        final String[] schemaFileNames = folder.list((dir, name) -> name.matches(
+                "^schema-" + Pattern.quote(escapedSqlName) + "-.+[.]json$"));
+        if (schemaFileNames == null) {
+            return schemaList;
+        }
+
+        for (String fileName : schemaFileNames) {
+            final File schemaFile = schemaFolder.resolve(fileName).toFile();
+            final FileSchemaContainer schemaContainer = OBJECT_MAPPER
+                    .readValue(schemaFile, FileSchemaContainer.class);
+            schemaList.add(schemaContainer.getSchema());
+        }
+
+        return schemaList;
+    }
 
     private @Nullable FileSchemaContainer getSchemaContainer(@NonNull final String schemaName)
             throws IOException {
