@@ -22,6 +22,7 @@
           <attr>v-login-timeout</attr> 
           <attr>v-scan-method</attr> 
           <attr>v-scan-limit</attr>
+          <attr>v-schema-name</attr>
         </attribute-list>
       </required-attributes>
     </connection-normalizer>

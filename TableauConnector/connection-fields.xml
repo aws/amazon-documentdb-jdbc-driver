@@ -89,4 +89,8 @@
         <validation-rule reg-exp="^\+?(0|[1-9]\d*)$"/>
     </field>
 
+    <field name="v-schema-name" label="Schema Name" value-type="string" category="general" default-value="_default">
+        <validation-rule reg-exp="^[_0-9a-zA-Z]+$"/>
+    </field>
+
 </connection-fields>

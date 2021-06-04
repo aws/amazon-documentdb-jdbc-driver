@@ -51,7 +51,10 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
             "Number of records to scan for metadata"),
     SCHEMA_PERSISTENCE_STORE("persistedSchemaStore", "database",
             "Determines which persisted schema storage to use. Supported: 'file'."),
-    TLS_CA_FILE("tlsCAFile", "", "The path to the Certificate Authority (CA) '.pem' file.");
+    TLS_CA_FILE("tlsCAFile", "",
+            "The path to the Certificate Authority (CA) '.pem' file."),
+    SCHEMA_NAME("schemaName", "_default",
+            "The name of the stored schema to use.");
 
     // Unsupported MongoDB connection properties that will be ignored but should have warnings.
     private static final String[] UNSUPPORTED_MONGO_DB_PROPERTIES = {

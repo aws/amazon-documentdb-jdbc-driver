@@ -29,14 +29,12 @@ import software.amazon.documentdb.jdbc.common.Connection;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
 
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
-import java.util.UUID;
 import java.util.concurrent.Executor;
 
 /**
@@ -49,7 +47,6 @@ public class DocumentDbConnection extends Connection
             LoggerFactory.getLogger(DocumentDbConnection.class.getName());
 
     private final DocumentDbConnectionProperties connectionProperties;
-    private final String connectionId;
     private DocumentDbDatabaseMetaData metadata;
     private DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private MongoClient mongoClient = null;
@@ -62,7 +59,6 @@ public class DocumentDbConnection extends Connection
             throws SQLException {
         super(connectionProperties);
         this.connectionProperties = connectionProperties;
-        connectionId = UUID.randomUUID().toString();
         initializeClients(connectionProperties);
     }
 
@@ -105,15 +101,16 @@ public class DocumentDbConnection extends Connection
         return metadata;
     }
 
-    private void ensureDatabaseMetadata() throws SQLException, DocumentDbSchemaException {
+    private void ensureDatabaseMetadata() throws SQLException {
         if (metadata == null) {
-            databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(connectionProperties, false);
+            databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
+                    connectionProperties, connectionProperties.getSchemaName(), false);
             metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
         }
     }
 
     DocumentDbDatabaseSchemaMetadata getDatabaseMetadata()
-            throws SQLException, DocumentDbSchemaException {
+            throws SQLException {
         ensureDatabaseMetadata();
         return databaseMetadata;
     }

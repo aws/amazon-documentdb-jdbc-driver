@@ -57,6 +57,7 @@
     - `all` - Sample all the documents in the collection.
 - `scanLimit` (int) The number of documents to sample. The value must be a positive integer.
   The default value is `1000`. If `scanMethod` is set to `all`, this option is ignored.
+- `schemaName` (string) The name of the SQL mapping schema for the database. Defaults to `_default`.  
 
 ## Examples
 

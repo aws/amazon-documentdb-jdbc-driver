@@ -191,6 +191,38 @@ public class DocumentDbMetadataService {
                         LinkedHashMap::new));
     }
 
+    /**
+     * Removes all versions of the schema with given schema name.
+     *
+     * @param properties the connection properties.
+     * @param schemaName the name of the schema to remove.
+     *
+     * @throws SQLException if connection properties are incorrect.
+     */
+    public static void remove(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName) throws SQLException {
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(schemaName);
+    }
+
+    /**
+     * Removes the specific version of the schema with given schema name and schema version.
+     *
+     * @param properties the connection properties.
+     * @param schemaName the schema name.
+     * @param schemaVersion the schema version.
+     *
+     * @throws SQLException if connection properties are incorrect.
+     */
+    public static void remove(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final int schemaVersion) throws SQLException {
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.remove(schemaName, schemaVersion);
+    }
+
     private static DocumentDbSchema getSchemaMetadata(
             final DocumentDbConnectionProperties properties,
             final String schemaName,
