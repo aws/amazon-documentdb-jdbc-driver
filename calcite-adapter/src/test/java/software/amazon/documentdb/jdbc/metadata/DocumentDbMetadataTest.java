@@ -142,7 +142,7 @@ class DocumentDbMetadataTest {
         schemaWriter.remove(schemaName);
     }
 
-    @DisplayName("Tests removing a specific version of schema")
+    @DisplayName("Tests removing all versions of schema")
     @Test
     void testRemoveSchema() throws SQLException {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory

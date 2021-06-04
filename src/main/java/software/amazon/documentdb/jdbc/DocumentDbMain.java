@@ -275,6 +275,7 @@ public class DocumentDbMain {
         if (commandLine.hasOption(PASSWORD_OPTION_FLAG)) {
             properties.setPassword(commandLine.getOptionValue(PASSWORD_OPTION_FLAG));
         } else {
+            // TODO: Refactor resource string lookup
             final String passwordPrompt = SqlError.lookup(SqlError.PASSWORD_PROMPT);
             final Console console = System.console();
             char[] password = null;
