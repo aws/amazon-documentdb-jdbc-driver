@@ -157,7 +157,21 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
             if (map.containsKey(op) && stronger(op, map.get(op), v)) {
                 return;
             }
-            map.put(op, v);
+            if ("$ne".equals(op)) {
+                if (map.containsKey("$nin")) {
+                    final List<?> list = (List<?>) map.get("$nin");
+                    final List<Object> newList = new ArrayList<>(list);
+                    newList.add(v);
+                    map.put("$nin", newList);
+                } else {
+                    final List<Object> vars = new ArrayList<>();
+                    vars.add(null);
+                    vars.add(v);
+                    map.put("$nin", vars);
+                }
+            } else {
+                map.put(op, v);
+            }
         }
 
         /** Returns whether {@code v0} is a stronger value for operator {@code key}

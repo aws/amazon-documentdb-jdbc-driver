@@ -240,7 +240,17 @@ public final class DocumentDbRules {
             }
             final String stdOperator = MONGO_OPERATORS.get(call.getOperator());
             if (stdOperator != null) {
-                return "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
+                // For comparisons other than equals we must check it exists and is not null.
+                final String op = "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
+                if (MONGO_OPERATORS.get(SqlStdOperatorTable.LESS_THAN).equals(stdOperator) ||
+                        MONGO_OPERATORS.get(SqlStdOperatorTable.LESS_THAN_OR_EQUAL).equals(stdOperator) ||
+                        MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS).equals(stdOperator) ||
+                        MONGO_OPERATORS.get(SqlStdOperatorTable.GREATER_THAN).equals(stdOperator) ||
+                        MONGO_OPERATORS.get(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL).equals(stdOperator)) {
+                    // The operator {$gt null} filters out any values that are null or undefined.
+                    return "{$and: [{$gt: [" + strings.get(0) + ", null]}" + op + "]}";
+                }
+                return op;
             }
             if (call.getOperator() == SqlStdOperatorTable.ITEM) {
                 final RexNode op1 = call.operands.get(1);
