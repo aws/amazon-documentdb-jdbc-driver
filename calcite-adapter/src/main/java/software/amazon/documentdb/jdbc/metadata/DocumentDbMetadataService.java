@@ -36,6 +36,7 @@ import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 import javax.annotation.Nullable;
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -234,6 +235,27 @@ public class DocumentDbMetadataService {
             final DocumentDbConnectionProperties properties) throws SQLException {
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
         return schemaReader.list();
+    }
+
+    /**
+     * Updates schema with the given table schema.
+     *
+     * @param properties the connection properties.
+     * @param schemaName the name of the schema.
+     * @param schemaTables the collection of updated table schema.
+     *
+     * @throws SQLException if unable to connect or other exception.
+     * @throws DocumentDbSchemaSecurityException if unable to write to the database due to
+     * unauthorized user.
+     */
+    public static void update(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final Collection<DocumentDbSchemaTable> schemaTables)
+            throws SQLException, DocumentDbSchemaSecurityException {
+        final DocumentDbSchema schema = get(properties, schemaName);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        schemaWriter.update(schema, schemaTables);
     }
 
     private static DocumentDbSchema getSchemaMetadata(

@@ -16,7 +16,6 @@
 
 package software.amazon.documentdb.jdbc;
 
-import com.google.common.base.Strings;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
@@ -39,14 +38,22 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFact
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperty.SCHEMA_NAME;
 import static software.amazon.documentdb.jdbc.DocumentDbMain.COMPLETE_OPTIONS;
 import static software.amazon.documentdb.jdbc.DocumentDbMain.DATE_FORMAT_PATTERN;
@@ -286,9 +293,9 @@ class DocumentDbMainTest {
         Assertions.assertEquals(0, output.length());
     }
 
-    @ParameterizedTest(name = "testExport - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testExportStdOut - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
-    void testExport(final DocumentDbTestEnvironment testEnvironment)
+    void testExportStdOut(final DocumentDbTestEnvironment testEnvironment)
             throws SQLException, ParseException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
@@ -300,10 +307,62 @@ class DocumentDbMainTest {
         Assertions.assertEquals("New schema '_default', version '1' generated.",
                 output.toString());
 
-        args = buildArguments("-e " + collectionName);
+        args = buildArguments("-e=" + collectionName);
         output.setLength(0);
         DocumentDbMain.handleCommandLine(args, output);
-        Assertions.assertEquals("[ {\n"
+        Assertions.assertEquals(
+                getExpectedExportContent(testEnvironment, collectionName),
+                output.toString().replace("\r\n", "\n"));
+    }
+
+    @ParameterizedTest(name = "testExport - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testExportOutputFile(final DocumentDbTestEnvironment testEnvironment)
+            throws SQLException, ParseException, IOException {
+        setConnectionProperties(testEnvironment);
+        final String collectionName = testEnvironment.newCollectionName(true);
+        createSimpleCollection(testEnvironment, collectionName);
+
+        final Path userHomePath = Paths.get(System.getProperty("user.home"));
+        final String outputFileName = collectionName + " tableSchema.json";
+        final Path outputFilePath = userHomePath.resolve(outputFileName);
+        String[] args = buildArguments("-g", DEFAULT_SCHEMA_NAME);
+        final StringBuilder output = new StringBuilder();
+        DocumentDbMain.handleCommandLine(args, output);
+        Assertions.assertEquals("New schema '_default', version '1' generated.",
+                output.toString());
+
+        args = buildArguments("-e=" + collectionName, DEFAULT_SCHEMA_NAME, outputFileName);
+        output.setLength(0);
+        try {
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals("",
+                    output.toString().replace("\r\n", "\n"));
+            try (BufferedReader reader = Files
+                    .newBufferedReader(outputFilePath, StandardCharsets.UTF_8)) {
+                String line = reader.readLine();
+                boolean isFirst = true;
+                while (line != null) {
+                    if (!isFirst) {
+                        output.append(System.lineSeparator());
+                    }
+                    isFirst = false;
+                    output.append(line);
+                    line = reader.readLine();
+                }
+            }
+            Assertions.assertEquals(
+                    getExpectedExportContent(testEnvironment, collectionName),
+                    output.toString().replace("\r\n", "\n"));
+        } finally {
+            Assertions.assertTrue(outputFilePath.toFile().delete());
+        }
+    }
+
+    private static String getExpectedExportContent(
+            final DocumentDbTestEnvironment testEnvironment,
+            final String collectionName) {
+        return "[ {\n"
                 + "  \"sqlName\" : \"" + collectionName + "\",\n"
                 + "  \"collectionName\" : \"" + collectionName + "\",\n"
                 + "  \"columns\" : [ {\n"
@@ -375,7 +434,7 @@ class DocumentDbMainTest {
                 + "    \"dbType\" : \"decimal128\"\n"
                 : "")
                 + "  } ]\n"
-                + "} ]", output.toString().replace("\r\n", "\n"));
+                + "} ]";
     }
 
     @ParameterizedTest(name = "testExportInvalidTable - [{index}] - {arguments}")
@@ -393,7 +452,7 @@ class DocumentDbMainTest {
                 output.toString());
 
         final String invalidTableName = UUID.randomUUID().toString();
-        args = buildArguments("-e " + invalidTableName);
+        args = buildArguments("-e=" + invalidTableName);
         output.setLength(0);
         DocumentDbMain.handleCommandLine(args, output);
         Assertions.assertTrue(output.toString().replace("\r\n", "\n").startsWith(
@@ -419,7 +478,8 @@ class DocumentDbMainTest {
         Assertions.assertEquals(
                 "usage: main -g | -r | -l | -e <[table-name[,...]]> | -i -s <host-name> -d\n"
                         + "            <database-name> -u <user-name> [-p <password>] [-n <schema-name>]\n"
-                        + "            [-m <method>] [-x <max-documents>] [-t] [-a] [-o] [-h] [--version]\n"
+                        + "            [-m <method>] [-x <max-documents>] [-t] [-a] [-o <file-name>] [-h]\n"
+                        + "            [--version]\n"
                         + " -a,--tls-allow-invalid-hostnames  The indicator of whether to allow invalid\n"
                         + "                                   hostnames when connecting to DocumentDB.\n"
                         + "                                   Default: false.\n"
@@ -447,7 +507,7 @@ class DocumentDbMainTest {
                         + "                                   idReverse, or all. Used in conjunction with\n"
                         + "                                   the --generate-new command. Default: random.\n"
                         + " -n,--schema-name <schema-name>    The name of the schema. Default: _default.\n"
-                        + " -o,--output                       Write the exported schema to <file-name> in\n"
+                        + " -o,--output <file-name>           Write the exported schema to <file-name> in\n"
                         + "                                   your home directory instead of stdout. This\n"
                         + "                                   will overwrite any existing file with the\n"
                         + "                                   same name\n"
@@ -514,16 +574,32 @@ class DocumentDbMainTest {
     }
 
     private String[] buildArguments(final String command, final String schemaName) {
-        return String.format(
-                "%s -s=%s -d=%s -u=%s -p=%s%s%s%s",
-                command,
-                properties.getHostname(),
-                properties.getDatabase(),
-                properties.getUser(),
-                properties.getPassword(),
-                properties.getTlsEnabled() ? " -t" : "",
-                properties.getTlsAllowInvalidHostnames() ? " -a" : "",
-                !Strings.isNullOrEmpty(schemaName) ? " -n " + schemaName : "").split(" ");
+        return buildArguments(command, schemaName, null);
+    }
+
+    private String[] buildArguments(final String command, final String schemaName,
+            final String outputFileName) {
+        final List<String> argsList = new ArrayList<>();
+        argsList.add(command);
+        argsList.add(String.format("-s=%s", properties.getHostname()));
+        argsList.add(String.format("-d=%s", properties.getDatabase()));
+        argsList.add(String.format("-u=%s", properties.getUser()));
+        argsList.add(String.format("-p=%s", properties.getPassword()));
+        if (properties.getTlsEnabled()) {
+            argsList.add("-t");
+        }
+        if (properties.getTlsAllowInvalidHostnames()) {
+            argsList.add("-a");
+        }
+        if (!isNullOrEmpty(schemaName)) {
+            argsList.add("-n");
+            argsList.add(schemaName);
+        }
+        if (!isNullOrEmpty(outputFileName)) {
+            argsList.add("-o");
+            argsList.add(outputFileName);
+        }
+        return argsList.toArray(new String[0]);
     }
 
     private void createSimpleCollection(

@@ -17,8 +17,10 @@
 package software.amazon.documentdb.jdbc.metadata;
 
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
 
 import java.sql.SQLException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -198,6 +200,25 @@ public final class DocumentDbDatabaseSchemaMetadata {
         schemas.forEach(schema -> setSchemaGetTableFunction(
                 properties, schema.getSchemaName(), schema.getSchemaVersion(), schema));
         return schemas;
+    }
+
+    /**
+     * Updates schema with the given table schema.
+     *
+     * @param properties the connection properties.
+     * @param schemaName the name of the schema.
+     * @param schemaTables the collection of updated table schema.
+     *
+     * @throws SQLException if unable to connect or other exception.
+     * @throws DocumentDbSchemaSecurityException if unable to write to the database due to
+     * unauthorized user.
+     */
+    public static void update(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final Collection<DocumentDbSchemaTable> schemaTables)
+            throws SQLException, DocumentDbSchemaSecurityException {
+        DocumentDbMetadataService.update(properties, schemaName, schemaTables);
     }
 
     private static void setSchemaGetTableFunction(

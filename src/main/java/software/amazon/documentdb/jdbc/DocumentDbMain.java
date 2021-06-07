@@ -16,11 +16,10 @@
 
 package software.amazon.documentdb.jdbc;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.MapperFeature;
@@ -33,6 +32,7 @@ import com.fasterxml.jackson.databind.util.StdDateFormat;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+import com.mongodb.DuplicateKeyException;
 import lombok.Getter;
 import lombok.NonNull;
 import org.apache.commons.cli.CommandLine;
@@ -43,6 +43,7 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.logging.log4j.util.Strings;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,14 +52,20 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
 
 import java.io.Console;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.Writer;
 import java.net.URISyntaxException;
 import java.net.URLClassLoader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
@@ -66,12 +73,14 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
+import static com.google.common.base.Strings.isNullOrEmpty;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SQL_NAME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable.COLLECTION_NAME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable.COLUMNS_PROPERTY;
@@ -208,6 +217,7 @@ public class DocumentDbMain {
     private static final String OUTPUT_OPTION_DESCRIPTION =
             "Write the exported schema to <file-name> in your home directory instead of stdout."
                     + " This will overwrite any existing file with the same name";
+    public static final String DUPLICATE_COLUMN_KEY_DETECTED_FOR_TABLE_SCHEMA = "Duplicate column key '%s' detected for table schema '%s'. Original column '%s'. Duplicate column '%s'.";
 
     static {
         ARCHIVE_VERSION = getArchiveVersion();
@@ -336,6 +346,9 @@ public class DocumentDbMain {
             case EXPORT_OPTION_FLAG: // --export
                 performExport(commandLine, properties, output);
                 break;
+            case IMPORT_OPTION_FLAG: // --import
+                performImport(commandLine, properties, output);
+                break;
             default:
                 output.append(SqlError.lookup(SqlError.UNSUPPORTED_PROPERTY,
                         COMMAND_OPTIONS.getSelected()));
@@ -343,17 +356,156 @@ public class DocumentDbMain {
         }
     }
 
+    private static void performImport(
+            final CommandLine commandLine,
+            final DocumentDbConnectionProperties properties,
+            final StringBuilder output) throws DuplicateKeyException {
+        final File importFile = tryGetImportFile(commandLine, output);
+        if (importFile == null) {
+            return;
+        }
+
+        final List<TableSchema> tableSchemaList = tryReadTableSchemaList(importFile, output);
+        if (tableSchemaList == null) {
+            return;
+        }
+
+        final List<DocumentDbSchemaTable> schemaTableList = tryGetSchemaTableList(
+                tableSchemaList, output);
+        if (schemaTableList == null) {
+            return;
+        }
+
+        updateTableSchema(properties, schemaTableList, output);
+    }
+
+    private static void updateTableSchema(
+            final DocumentDbConnectionProperties properties,
+            final List<DocumentDbSchemaTable> schemaTableList,
+            final StringBuilder output) {
+        try {
+            DocumentDbDatabaseSchemaMetadata.update(
+                    properties,
+                    properties.getSchemaName(),
+                    schemaTableList);
+        } catch (SQLException | DocumentDbSchemaSecurityException e) {
+            output.append(e.getClass().getName())
+                    .append(" ")
+                    .append(e.getMessage());
+        }
+    }
+
+    private static List<TableSchema> tryReadTableSchemaList(
+            final File importFile,
+            final StringBuilder output) {
+        final List<TableSchema> tableSchemaList;
+        try {
+            tableSchemaList = JSON_OBJECT_MAPPER.readValue(importFile,
+                    new TypeReference<List<TableSchema>>() { });
+        } catch (IOException e) {
+            output.append(e.getClass().getName())
+                    .append(" ")
+                    .append(e.getMessage());
+            return null;
+        }
+        return tableSchemaList;
+    }
+
+    private static List<DocumentDbSchemaTable> tryGetSchemaTableList(
+            final List<TableSchema> tableSchemaList, final StringBuilder output) {
+        final List<DocumentDbSchemaTable> schemaTableList;
+        try {
+            schemaTableList = tableSchemaList.stream()
+                    .map(tableSchema -> new DocumentDbSchemaTable(
+                            tableSchema.getSqlName(),
+                            tableSchema.getCollectionName(),
+                            tableSchema.getColumns().stream()
+                                    .collect(Collectors.toMap(
+                                            DocumentDbSchemaColumn::getSqlName,
+                                            c -> c,
+                                            (c1, c2) -> throwingDuplicateMergeOnColumn(c1, c2,
+                                                    tableSchema.getSqlName()),
+                                            LinkedHashMap::new))))
+                    .collect(Collectors.toList());
+        } catch (IllegalStateException e) {
+            output.append(e.getMessage());
+            return  null;
+        }
+        return schemaTableList;
+    }
+
+    private static DocumentDbSchemaColumn throwingDuplicateMergeOnColumn(
+            final DocumentDbSchemaColumn c1,
+            final DocumentDbSchemaColumn c2,
+            final String sqlName) {
+        throw new IllegalStateException(String.format(DUPLICATE_COLUMN_KEY_DETECTED_FOR_TABLE_SCHEMA,
+                c1.getSqlName(),
+                sqlName,
+                c1,
+                c2));
+    }
+
+    private static File tryGetImportFile(
+            final CommandLine commandLine,
+            final StringBuilder output) {
+        final String importFileName = commandLine.getOptionValue(IMPORT_OPTION_FLAG, null);
+        if (isNullOrEmpty(importFileName)) {
+            output.append(String.format("Option '-%s' requires a file name argument.", IMPORT_OPTION_FLAG));
+            return null;
+        }
+        final Path userHomePath = Paths.get(System.getProperty("user.home"));
+        final Path importFilePath = userHomePath.resolve(importFileName);
+        if (!importFilePath.toFile().exists()) {
+            output.append(String.format("Import file '%s' not found in your user's home folder.", importFileName));
+            return null;
+        }
+        return importFilePath.toFile();
+    }
+
     private static void performExport(
             final CommandLine commandLine,
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
+
+        // Determine if output file is required.
+        final File outputFile;
+        if (commandLine.hasOption(OUTPUT_OPTION_FLAG)) {
+            outputFile = tryGetOutputFile(commandLine, output);
+            if (outputFile == null) {
+                return;
+            }
+        } else {
+            outputFile = null;
+        }
+
         final String[] requestedTableNames = commandLine.getOptionValues(EXPORT_OPTION_FLAG);
         final List<String> requestedTableList = requestedTableNames != null
                 ? Arrays.asList(requestedTableNames)
                 : new ArrayList<>();
         final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata
                 .get(properties, properties.getSchemaName(), false);
-        final Set<String> availTableNames = schema.getTableSchemaMap().keySet();
+        final Set<String> availTableSet = schema.getTableSchemaMap().keySet();
+        if (requestedTableList.isEmpty()) {
+            requestedTableList.addAll(availTableSet);
+        } else if (verifyRequestedTablesExist(requestedTableList, availTableSet, output)) {
+            return;
+        }
+        final List<TableSchema> tableSchemaList = requestedTableList.stream()
+                .map(tableName -> new TableSchema(schema.getTableSchemaMap().get(tableName)))
+                .collect(Collectors.toList());
+        try {
+            writeTableSchemas(tableSchemaList, outputFile, output);
+        } catch (IOException e) {
+            output.append(e.getClass().getName())
+                    .append(" ")
+                    .append(e.getMessage());
+        }
+    }
+
+    private static boolean verifyRequestedTablesExist(
+            final List<String> requestedTableList,
+            final Set<String> availTableNames,
+            final StringBuilder output) {
         if (!availTableNames.containsAll(requestedTableList)) {
             final List<String> unknownTables = requestedTableList.stream()
                     .filter(name -> !availTableNames.contains(name))
@@ -363,22 +515,38 @@ public class DocumentDbMain {
                     .append(String.format("%n"))
                     .append("Available table names: ")
                     .append(Strings.join(availTableNames, ','));
-            return;
+            return true;
         }
-        if (requestedTableList.isEmpty()) {
-            requestedTableList.addAll(availTableNames);
+        return false;
+    }
+
+    private static void writeTableSchemas(
+            final List<TableSchema> tables, final File outputFile, final StringBuilder output) throws IOException {
+        try (Writer writer = outputFile != null
+                ? new OutputStreamWriter(new FileOutputStream((outputFile)), StandardCharsets.UTF_8)
+                : new StringBuilderWriter(output)) {
+            JSON_OBJECT_MAPPER.writeValue(writer, tables);
         }
-        final List<TableSchema> tables = new ArrayList<>();
-        for (String tableName : requestedTableList) {
-            tables.add(new TableSchema(schema.getTableSchemaMap().get(tableName)));
+    }
+
+    private static File tryGetOutputFile(final CommandLine commandLine, final StringBuilder output) {
+        final Path userHomePath = Paths.get(System.getProperty("user.home"));
+        if (!userHomePath.toFile().exists()) {
+            output.append("User's home directory does not exist.");
+            return null;
         }
-        try {
-            output.append(JSON_OBJECT_MAPPER.writeValueAsString(tables));
-        } catch (JsonProcessingException e) {
-            output.append(e.getClass().getName())
-                    .append(" ")
-                    .append(e.getMessage());
+        final String outputFileName = commandLine.getOptionValue(OUTPUT_OPTION_FLAG, null);
+        if (isNullOrEmpty(outputFileName)) {
+            output.append("Output file name argument must not be empty.");
+            return null;
         }
+        final Path fileNamePath = Paths.get(outputFileName).getFileName();
+        final File outputFile =  userHomePath.resolve(fileNamePath).toAbsolutePath().toFile();
+        if (outputFile.isDirectory()) {
+            output.append("Output file name must not be a directory.");
+            return null;
+        }
+        return outputFile;
     }
 
     private static void performList(
@@ -400,10 +568,7 @@ public class DocumentDbMain {
 
     @VisibleForTesting
     static String maybeQuote(final String value) {
-        if (value.matches("^.*[\\s,\"].*$")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
+        return StringEscapeUtils.escapeCsv(value);
     }
 
     private static void performRemove(
@@ -454,8 +619,8 @@ public class DocumentDbMain {
             final DocumentDbConnectionProperties properties, final StringBuilder output) {
         if (commandLine.hasOption(PASSWORD_OPTION_FLAG)) {
             properties.setPassword(commandLine.getOptionValue(PASSWORD_OPTION_FLAG));
-        } else if (!trySetPasswordFromPromptInput(properties, output)) {
-            return false;
+        } else {
+            return trySetPasswordFromPromptInput(properties, output);
         }
         return true;
     }
@@ -463,7 +628,6 @@ public class DocumentDbMain {
     private static boolean trySetPasswordFromPromptInput(
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) {
-        // TODO: Refactor resource string lookup
         final String passwordPrompt = SqlError.lookup(SqlError.PASSWORD_PROMPT);
         final Console console = System.console();
         char[] password = null;
@@ -621,6 +785,7 @@ public class DocumentDbMain {
         currOption = Option.builder(OUTPUT_OPTION_FLAG)
                 .longOpt(OUTPUT_OPTION_NAME)
                 .desc(OUTPUT_OPTION_DESCRIPTION)
+                .numberOfArgs(1)
                 .argName(FILE_NAME_ARG_NAME)
                 .required(false)
                 .build();
@@ -787,15 +952,33 @@ public class DocumentDbMain {
             this.collectionName = table.getCollectionName();
             this.columns = ImmutableList.copyOf(table.getColumns());
         }
+    }
 
-        @JsonCreator
-        public TableSchema(
-                final String sqlName,
-                final String collectionName,
-                final List<DocumentDbSchemaColumn> columns) {
-            this.sqlName = sqlName;
-            this.collectionName = collectionName;
-            this.columns = columns;
+    private static class StringBuilderWriter extends Writer {
+        private final StringBuilder stringBuilder;
+
+        public StringBuilderWriter(final StringBuilder stringBuilder) {
+            this.stringBuilder = stringBuilder;
+        }
+
+        @Override
+        public void write(final char[] cBuf, final int off, final int len) {
+            stringBuilder.append(cBuf, off, len);
+        }
+
+        @Override
+        public void flush() {
+            // noop
+        }
+
+        @Override
+        public void close() {
+            // noop
+        }
+
+        @Override
+        public String toString() {
+            return stringBuilder.toString();
         }
     }
 }

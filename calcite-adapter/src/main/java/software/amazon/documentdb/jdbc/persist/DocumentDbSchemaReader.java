@@ -183,7 +183,7 @@ public class DocumentDbSchemaReader implements SchemaReader {
         } catch (MongoException e) {
             if (isAuthorizationFailure(e)) {
                 LOGGER.warn(e.getMessage(), e);
-                return null;
+                return new ArrayList<>();
             }
             throw e;
         }
