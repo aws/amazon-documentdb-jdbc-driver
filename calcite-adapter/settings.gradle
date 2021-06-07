@@ -1,0 +1,3 @@
+rootProject.name = 'calcite-adapter'
+include 'common'
+

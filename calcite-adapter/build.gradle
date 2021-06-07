@@ -1,0 +1,229 @@
+plugins {
+    id 'java'
+    id 'com.github.spotbugs' // version '4.5.1'
+    id 'checkstyle'
+    id 'jacoco'
+    id 'com.github.hierynomus.license' // version '0.15.0'
+}
+
+group 'software.amazon.documentdb.jdbc'
+version '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+tasks.withType(JavaCompile) {
+    options.compilerArgs << '-Xlint:unchecked'
+    options.deprecation = true
+    options.encoding 'UTF-8'
+}
+// Silently agree to build scan terms.
+if (hasProperty('buildScan')) {
+    buildScan {
+        termsOfServiceUrl = 'https://gradle.com/terms-of-service'
+        termsOfServiceAgree = 'yes'
+    }
+}
+
+jar {
+    manifest {
+        attributes 'Implementation-Version': archiveVersion.get()
+    }
+}
+
+/**
+ * CheckStyle Plugin
+ */
+apply plugin: 'checkstyle'
+checkstyle {
+    toolVersion '8.37'
+    configFile file("../config/checkstyle/checkstyle-rules.xml")
+    ignoreFailures = false
+}
+checkstyleMain {
+    source = 'src/main/java'
+}
+checkstyleTest {
+    source = 'src/test/java'
+}
+
+/**
+ * SpotBugs Plugin
+ */
+spotbugs {
+    showStackTraces = false
+    reportsDir = file("$buildDir/reports/spotbugs")
+    ignoreFailures = false
+    excludeFilter = file("../config/spotbugs/spotbugs-exclude.xml")
+}
+spotbugsMain {
+    // Configure HTML report
+    reports {
+        xml {
+            enabled = true
+            destination = file("$buildDir/reports/spotbugs/main.xml")
+        }
+    }
+}
+spotbugsTest {
+    // Configure HTML report
+    reports {
+        xml {
+            enabled = true
+            destination = file("$buildDir/reports/spotbugs/test.xml")
+        }
+    }
+}
+
+task checkSpotBugsMainReport {
+    doLast {
+        def xmlReport = spotbugsMain.reports.getByName("XML")
+        def slurped = new XmlSlurper().parse(xmlReport.destination)
+        def bugsFound = slurped.BugInstance.size()
+        slurped.BugInstance.each {
+            println "SpotBugs Error"
+            println "\tShort Message:\t\t${it.ShortMessage}"
+            println "\tLong Message:\t\t${it.LongMessage}"
+            println "\tSource of Error:\t${it.SourceLine.Message}"
+        }
+        if (bugsFound > 0) {
+            throw new Exception("Encountered SpotBugs errors, see above.")
+        }
+    }
+}
+
+task checkSpotBugsTestReport {
+    doLast {
+        def xmlReport = spotbugsTest.reports.getByName("XML")
+        if (file(xmlReport.destination).exists()) {
+            def slurped = new XmlSlurper().parse(xmlReport.destination)
+            def bugsFound = slurped.BugInstance.size()
+            slurped.BugInstance.each {
+                println "SpotBugs Error"
+                println "\tShort Message:\t\t${it.ShortMessage}"
+                println "\tLong Message:\t\t${it.LongMessage}"
+                println "\tSource of Error:\t${it.SourceLine.Message}"
+            }
+            if (bugsFound > 0) {
+                throw new Exception("Encountered SpotBugs errors, see above.")
+            }
+        }
+    }
+}
+
+spotbugsMain.finalizedBy checkSpotBugsMainReport
+spotbugsTest.finalizedBy checkSpotBugsTestReport
+
+/**
+ * JaCoCo Plugin
+ */
+test {
+    jacoco {
+        excludes = ['org/codehaus/**', 'org.codehaus.*']
+    }
+}
+
+jacoco {
+    toolVersion = "0.8.5"
+}
+jacocoTestReport {
+    reports {
+        html.enabled true
+        csv.enabled true
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it,
+                     exclude: ['**/resources/**', '**janino**', '**commons**'])
+        }))
+    }
+}
+test.finalizedBy(project.tasks.jacocoTestReport)
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            element = 'CLASS'
+            excludes = ['org.codehaus.*']
+            limit {
+                counter = 'LINE'
+                minimum = 0.00
+            }
+            limit {
+                counter = 'BRANCH'
+                minimum = 0.00
+            }
+        }
+    }
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it,
+                     exclude: ['org/codehaus/**'])
+        }))
+    }
+}
+check.dependsOn jacocoTestCoverageVerification
+jacocoTestCoverageVerification.dependsOn jacocoTestReport
+
+/**
+ * License Plugin
+ * Ignores existing headers to avoid overwriting the headers from Calcite.
+ */
+license {
+    skipExistingHeaders = true
+    header =  project.parent.file('license-header.txt')
+    headerDefinitions {
+        slash_star_with_space {
+            firstLine = '/*'
+            endLine   = ' *\n */\n'
+            beforeEachLine = ' * '
+            firstLineDetectionPattern = '/\\*'
+            lastLineDetectionPattern  = ' \\*\n \\*/\n'
+        }
+    }
+    mapping {
+        java = 'slash_star_with_space'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':common')
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.1'
+    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.12.3'
+    implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
+    implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.29'
+    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.26.0'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+
+    compileOnly         'org.projectlombok:lombok:1.18.16'
+    annotationProcessor 'org.projectlombok:lombok:1.18.16'
+
+    testCompileOnly group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
+    testImplementation(testFixtures(project(':common')))
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
+}
+
+test {
+    useJUnitPlatform {
+        if (project.hasProperty('runRemoteIntegrationTests') && project.property('runRemoteIntegrationTests') == 'false') {
+            // Ensure to match the enumeration name exactly from DocumentDbTestEnvironmentType.
+            environment "CONFIGURED_ENVIRONMENTS", "MONGODB40_FLAPDOODLE"
+            excludeTags 'remote-integration'
+        } else {
+            // Ensure to match the enumeration name exactly from DocumentDbTestEnvironmentType.
+            environment "CONFIGURED_ENVIRONMENTS", "MONGODB40_FLAPDOODLE,DOCUMENTDB40_SSH_TUNNEL"
+            excludeTags 'local-integration'
+        }
+    }
+}
