@@ -1283,6 +1283,108 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    /**
+     * Tests query with two literals in a where clause such that the comparison is true.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests query WHERE clause containing two literals such that the comparison is true.")
+    void testQueryWhereTwoLiteralsTrue() throws SQLException {
+        final String tableName = "testQueryWhereTwoLiteralsTrue";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 4}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" WHERE 2 > 1", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(4, resultSet.getInt(2));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests query with two literals in a where clause such that the comparison is false.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests query WHERE clause containing two literals such that the comparison is false.")
+    void testQueryWhereTwoLiteralsFalse() throws SQLException {
+        final String tableName = "testQueryWhereTwoLiteralsFalse";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 4}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" WHERE 2 < 1", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(4, resultSet.getInt(2));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests query with two literals in a where clause such that the comparison is false.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests query WHERE clause boolean literal.")
+    void testQueryWhereLiteralBoolean() throws SQLException {
+        final String tableName = "testQueryWhereLiteralBoolean";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": true, \n " +
+                "\"fieldB\": false}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": false, \n " +
+                "\"fieldB\": true}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = TRUE AND \"fieldB\" = FALSE", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(4, resultSet.getInt(2));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests query with a where clause comparing two fields.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests query with WHERE clause comparing two fields.")
+    void testQueryWhereTwoColumns() throws SQLException {
+        final String tableName = "testQueryWhereTwoFields";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 4, \n " +
+                "\"fieldB\": 5}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 5, \n " +
+                "\"fieldB\": 4}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" < \"fieldB\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(4, resultSet.getInt(2));
+        Assertions.assertFalse(resultSet.next());
+    }
+
     protected static DocumentDbStatement getDocumentDbStatement() throws SQLException {
         return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);
     }
