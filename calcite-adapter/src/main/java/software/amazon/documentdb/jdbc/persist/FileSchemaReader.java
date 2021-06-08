@@ -47,6 +47,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.USER_HOME_PROPERTY;
+
 public class FileSchemaReader implements SchemaReader {
     public static final String DEFAULT_SCHEMA_NAME = DocumentDbSchema.DEFAULT_SCHEMA_NAME;
     static final String DEFAULT_FOLDER = ".documentdb";
@@ -93,7 +95,7 @@ public class FileSchemaReader implements SchemaReader {
      * @param databaseName the SQL database name.
      */
     public FileSchemaReader(final String databaseName) {
-        this(databaseName, Paths.get(System.getProperty("user.home"), DEFAULT_FOLDER));
+        this(databaseName, Paths.get(System.getProperty(USER_HOME_PROPERTY), DEFAULT_FOLDER));
     }
 
     /**

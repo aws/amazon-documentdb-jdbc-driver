@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonGenerator;
@@ -81,6 +82,7 @@ import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.USER_HOME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SQL_NAME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable.COLLECTION_NAME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable.COLUMNS_PROPERTY;
@@ -89,6 +91,7 @@ public class DocumentDbMain {
 
     public static final String LIBRARY_NAME;
     public static final String ARCHIVE_VERSION;
+    public static final Path USER_HOME_PATH = Paths.get(System.getProperty(USER_HOME_PROPERTY));
 
     @VisibleForTesting
     static final Options COMPLETE_OPTIONS;
@@ -114,20 +117,25 @@ public class DocumentDbMain {
     private static final OptionGroup COMMAND_OPTIONS;
     private static final List<Option> REQUIRED_OPTIONS;
     private static final List<Option> OPTIONAL_OPTIONS;
+    // String constants
     private static final String ARCHIVE_VERSION_DEFAULT = "1.0.0";
-    private static final String DATABASE_NAME_ARG_NAME = "database-name";
+    private static final String IMPLEMENTATION_VERSION_ATTR_NAME = "Implementation-Version";
+    private static final String LIBRARY_NAME_DEFAULT = "documentdb-jdbc";
+    private static final String MANIFEST_MF_RESOURCE_NAME = "META-INF/MANIFEST.MF";
+
+    // Option string constants
     private static final String DATABASE_OPTION_FLAG = "d";
     private static final String DATABASE_OPTION_NAME = "database";
+    private static final String EXPORT_OPTION_FLAG = "e";
+    private static final String EXPORT_OPTION_NAME = "export";
     private static final String GENERATE_NAME_OPTION_FLAG = "g";
     private static final String GENERATE_NEW_OPTION_NAME = "generate-new";
     private static final String HELP_OPTION_FLAG = "h";
     private static final String HELP_OPTION_NAME = "help";
-    private static final String HOST_NAME_ARG_NAME = "host-name";
-    private static final String IMPLEMENTATION_VERSION_ATTR_NAME = "Implementation-Version";
-    private static final String LIBRARY_NAME_DEFAULT = "documentdb-jdbc";
-    private static final String MANIFEST_MF_RESOURCE_NAME = "META-INF/MANIFEST.MF";
-    private static final String MAX_DOCUMENTS_ARG_NAME = "max-documents";
-    private static final String METHOD_ARG_NAME = "method";
+    private static final String IMPORT_OPTION_FLAG = "i";
+    private static final String IMPORT_OPTION_NAME = "import";
+    private static final String LIST_OPTION_FLAG = "l";
+    private static final String LIST_OPTION_NAME = "list";
     private static final String PASSWORD_OPTION_FLAG = "p";
     private static final String PASSWORD_OPTION_NAME = "password";
     private static final String REMOVE_OPTION_FLAG = "r";
@@ -144,10 +152,20 @@ public class DocumentDbMain {
     private static final String TLS_ALLOW_INVALID_HOSTNAMES_OPTION_NAME = "tls-allow-invalid-hostnames";
     private static final String TLS_OPTION_FLAG = "t";
     private static final String TLS_OPTION_NAME = "tls";
-    private static final String USER_NAME_ARG_NAME = "user-name";
     private static final String USER_OPTION_FLAG = "u";
     private static final String USER_OPTION_NAME = "user";
     private static final String VERSION_OPTION_NAME = "version";
+    private static final String OUTPUT_OPTION_FLAG = "o";
+    private static final String OUTPUT_OPTION_NAME = "output";
+    // Option argument string constants
+    private static final String DATABASE_NAME_ARG_NAME = "database-name";
+    private static final String FILE_NAME_ARG_NAME = "file-name";
+    private static final String HOST_NAME_ARG_NAME = "host-name";
+    private static final String MAX_DOCUMENTS_ARG_NAME = "max-documents";
+    private static final String METHOD_ARG_NAME = "method";
+    private static final String USER_NAME_ARG_NAME = "user-name";
+    private static final String TABLE_NAMES_ARG_NAME = "[table-name[,...]]";
+    // Option description string constants
     private static final String GENERATE_NEW_OPTION_DESCRIPTION =
             "Generates a new schema for the database. "
                     + "This will have the effect of replacing an existing schema "
@@ -190,34 +208,27 @@ public class DocumentDbMain {
     private static final String TLS_ALLOW_INVALID_HOSTNAMES_OPTION_DESCRIPTION =
             "The indicator of whether to allow invalid hostnames when connecting to "
                     + "DocumentDB. Default: false.";
-    private static final String NEW_SCHEMA_VERSION_GENERATED_MESSAGE =
-            "New schema '%s', version '%s' generated.";
-    private static final String REMOVED_SCHEMA_MESSAGE = "Removed schema '%s'.";
-    private static final String LIST_OPTION_FLAG = "l";
-    private static final String LIST_OPTION_NAME = "list";
     private static final String LIST_OPTION_DESCRIPTION =
             "Lists the schema names, version and table names available in the schema repository.";
-    private static final String EXPORT_OPTION_FLAG = "e";
-    private static final String EXPORT_OPTION_NAME = "export";
-    private static final String TABLE_NAMES_ARG_NAME = "[table-name[,...]]";
     private static final String EXPORT_OPTION_DESCRIPTION =
             "Exports the schema to for SQL tables named [<table-name>[,<table-name>[…]]]. If no"
                     + " <table-name> are given, all table schema will be exported. By default,"
                     + " the schema is written to stdout. Use the --output option to write to a file."
                     + " The output format is JSON.";
-    private static final String IMPORT_OPTION_FLAG = "i";
-    private static final String IMPORT_OPTION_NAME = "import";
     private static final String IMPORT_OPTION_DESCRIPTION =
-            "Imports the schema from <file-name>. The schema will be imported using the"
+            "Imports the schema from <file-name> in your home directory. The schema will be imported using the"
                     + " <schema-name> and a new version will be added - replacing the existing"
                     + " schema. The expected input format is JSON.";
-    private static final String FILE_NAME_ARG_NAME = "file-name";
-    private static final String OUTPUT_OPTION_FLAG = "o";
-    private static final String OUTPUT_OPTION_NAME = "output";
     private static final String OUTPUT_OPTION_DESCRIPTION =
-            "Write the exported schema to <file-name> in your home directory instead of stdout."
+            "Write the exported schema to <file-name> in your home directory (instead of stdout)."
                     + " This will overwrite any existing file with the same name";
-    public static final String DUPLICATE_COLUMN_KEY_DETECTED_FOR_TABLE_SCHEMA = "Duplicate column key '%s' detected for table schema '%s'. Original column '%s'. Duplicate column '%s'.";
+    // Messages string contants
+    public static final String DUPLICATE_COLUMN_KEY_DETECTED_FOR_TABLE_SCHEMA =
+            "Duplicate column key '%s' detected for table schema '%s'. Original column '%s'."
+                    + " Duplicate column '%s'.";
+    private static final String NEW_SCHEMA_VERSION_GENERATED_MESSAGE =
+            "New schema '%s', version '%s' generated.";
+    private static final String REMOVED_SCHEMA_MESSAGE = "Removed schema '%s'.";
 
     static {
         ARCHIVE_VERSION = getArchiveVersion();
@@ -243,51 +254,59 @@ public class DocumentDbMain {
     /**
      * Performs schema commands via the command line.
      * <pre>
-     *  -a,--tls-allow-invalid-hostnames   The indicator of whether to allow
-     *                                     invalid hostnames when connecting to
-     *                                     DocumentDB. Default: false.
-     *  -d,--database &#60;database-name&#62;      The name of the database for the
-     *                                     schema operations. Required.
-     *  -g,--generate-new                  Generates a new schema for the
-     *                                     database. This will have the effect of
-     *                                     replacing an existing schema of the
-     *                                     same name, if it exists.
-     *  -h,--help                          Prints the command line syntax.
-     *  -l,--scan-limit &#60;max-documents&#62;    The maximum number of documents to
-     *                                     sample in each collection. Used in
-     *                                     conjunction with the
-     *                                     --generate-new command. Default: 1000.
-     *  -m,--scan-method &#60;method&#62;          The scan method to sample documents
-     *                                     from the collections. One of: random,
-     *                                     idForward, idReverse, or all. Used in
-     *                                     conjunction with the
-     *                                     --generate-new command. Default:
-     *                                     random.
-     *  -n,--schema-name &#60;schema-name&#62;     The name of the schema. Default:
-     *                                     _default.
-     *  -p,--password &#60;password&#62;           The password for the user performing
-     *                                     the schema operations. Optional. If
-     *                                     this option is not provided, the
-     *                                     end-user will be prompted to enter the
-     *                                     password directly.
-     *  -r,--remove                        Removes the schema from storage for
-     *                                     schema given by -m &#60;schema-name&#62;, or
-     *                                     for schema '_default', if  not
-     *                                     provided.
-     *  -s,--server &#60;host-name&#62;            The hostname and optional port number
-     *                                     (default: 27017) in the format
-     *                                     hostname[:port]. Required.
-     *  -t,--tls                           The indicator of whether to use TLS
-     *                                     encryption when connecting to
-     *                                     DocumentDB. Default: false.
-     *  -u,--user &#60;user-name&#62;              The name of the user performing the
-     *                                     schema operations. Required. Note: the
-     *                                     user will require readWrite role on
-     *                                     the &#60;database-name&#62; where the schema
-     *                                     are stored if creating or modifying
-     *                                     schema.
-     *     --version                       Prints the version number of the
-     *                                     command."
+     + -a,--tls-allow-invalid-hostnames  The indicator of whether to allow invalid
+     +                                   hostnames when connecting to DocumentDB.
+     +                                   Default: false.
+     + -d,--database &#60;database-name&#62;     The name of the database for the schema
+     +                                   operations. Required.
+     + -e,--export &#60;[table-name[,...]]&#62;  Exports the schema to for SQL tables named
+     +                                   [&#60;table-name&#62;[,&#60;table-name&#62;[…]]]. If no
+     +                                   &#60;table-name&#62; are given, all table schema will
+     +                                   be exported. By default, the schema is
+     +                                   written to stdout. Use the --output option to
+     +                                   write to a file. The output format is JSON.
+     + -g,--generate-new                 Generates a new schema for the database. This
+     +                                   will have the effect of replacing an existing
+     +                                   schema of the same name, if it exists.
+     + -h,--help                         Prints the command line syntax.
+     + -i,--import &#60;file-name&#62;           Imports the schema from &#60;file-name&#62; in your
+     +                                   home directory. The schema will be imported
+     +                                   using the &#60;schema-name&#62; and a new version
+     +                                   will be added - replacing the existing
+     +                                   schema. The expected input format is JSON.
+     + -l,--list                         Lists the schema names, version and table
+     +                                   names available in the schema repository.
+     + -m,--scan-method &#60;method&#62;         The scan method to sample documents from the
+     +                                   collections. One of: random, idForward,
+     +                                   idReverse, or all. Used in conjunction with
+     +                                   the --generate-new command. Default: random.
+     + -n,--schema-name &#60;schema-name&#62;    The name of the schema. Default: _default.
+     + -o,--output &#60;file-name&#62;           Write the exported schema to &#60;file-name&#62; in
+     +                                   your home directory (instead of stdout). This
+     +                                   will overwrite any existing file with the
+     +                                   same name
+     + -p,--password &#60;password&#62;          The password for the user performing the
+     +                                   schema operations. Optional. If this option
+     +                                   is not provided, the end-user will be
+     +                                   prompted to enter the password directly.
+     + -r,--remove                       Removes the schema from storage for schema
+     +                                   given by -m &#60;schema-name&#62;, or for schema
+     +                                   '_default', if not provided.
+     + -s,--server &#60;host-name&#62;           The hostname and optional port number
+     +                                   (default: 27017) in the format
+     +                                   hostname[:port]. Required.
+     + -t,--tls                          The indicator of whether to use TLS
+     +                                   encryption when connecting to DocumentDB.
+     +                                   Default: false.
+     + -u,--user &#60;user-name&#62;             The name of the user performing the schema
+     +                                   operations. Required. Note: the user will
+     +                                   require readWrite role on the &#60;database-name&#62;
+     +                                   where the schema are stored if creating or
+     +                                   modifying schema.
+     +    --version                      Prints the version number of the command.
+     + -x,--scan-limit &#60;max-documents&#62;   The maximum number of documents to sample in
+     +                                   each collection. Used in conjunction with the
+     +                                   --generate-new command. Default: 1000.,
      * </pre>
      * @param args the command line arguments.
      */
@@ -389,7 +408,7 @@ public class DocumentDbMain {
                     properties.getSchemaName(),
                     schemaTableList);
         } catch (SQLException | DocumentDbSchemaSecurityException e) {
-            output.append(e.getClass().getName())
+            output.append(e.getClass().getSimpleName())
                     .append(" ")
                     .append(e.getMessage());
         }
@@ -403,7 +422,7 @@ public class DocumentDbMain {
             tableSchemaList = JSON_OBJECT_MAPPER.readValue(importFile,
                     new TypeReference<List<TableSchema>>() { });
         } catch (IOException e) {
-            output.append(e.getClass().getName())
+            output.append(e.getClass().getSimpleName())
                     .append(" ")
                     .append(e.getMessage());
             return null;
@@ -453,8 +472,7 @@ public class DocumentDbMain {
             output.append(String.format("Option '-%s' requires a file name argument.", IMPORT_OPTION_FLAG));
             return null;
         }
-        final Path userHomePath = Paths.get(System.getProperty("user.home"));
-        final Path importFilePath = userHomePath.resolve(importFileName);
+        final Path importFilePath = USER_HOME_PATH.resolve(importFileName);
         if (!importFilePath.toFile().exists()) {
             output.append(String.format("Import file '%s' not found in your user's home folder.", importFileName));
             return null;
@@ -496,7 +514,7 @@ public class DocumentDbMain {
         try {
             writeTableSchemas(tableSchemaList, outputFile, output);
         } catch (IOException e) {
-            output.append(e.getClass().getName())
+            output.append(e.getClass().getSimpleName())
                     .append(" ")
                     .append(e.getMessage());
         }
@@ -530,8 +548,7 @@ public class DocumentDbMain {
     }
 
     private static File tryGetOutputFile(final CommandLine commandLine, final StringBuilder output) {
-        final Path userHomePath = Paths.get(System.getProperty("user.home"));
-        if (!userHomePath.toFile().exists()) {
+        if (!USER_HOME_PATH.toFile().exists()) {
             output.append("User's home directory does not exist.");
             return null;
         }
@@ -541,7 +558,7 @@ public class DocumentDbMain {
             return null;
         }
         final Path fileNamePath = Paths.get(outputFileName).getFileName();
-        final File outputFile =  userHomePath.resolve(fileNamePath).toAbsolutePath().toFile();
+        final File outputFile =  USER_HOME_PATH.resolve(fileNamePath).toAbsolutePath().toFile();
         if (outputFile.isDirectory()) {
             output.append("Output file name must not be a directory.");
             return null;
@@ -653,11 +670,10 @@ public class DocumentDbMain {
             final StringWriter stringWriter = new StringWriter();
             final PrintWriter printWriter = new PrintWriter(stringWriter);
             final HelpFormatter formatter = new HelpFormatter();
-            final StringBuilder cmdLineSyntax = new StringBuilder();
-            formatCommandLineSyntax(cmdLineSyntax);
+            final String cmdLineSyntax = formatCommandLineSyntax();
             formatter.printHelp(printWriter,
                     80,
-                    cmdLineSyntax.toString(),
+                    cmdLineSyntax,
                     null,
                     COMPLETE_OPTIONS,
                     1,
@@ -673,11 +689,13 @@ public class DocumentDbMain {
         return false;
     }
 
-    private static void formatCommandLineSyntax(final StringBuilder cmdLineSyntax) {
+    private static String formatCommandLineSyntax() {
+        final StringBuilder cmdLineSyntax = new StringBuilder();
         cmdLineSyntax.append(LIBRARY_NAME);
         formatOptionGroup(cmdLineSyntax);
         formatOptions(cmdLineSyntax, REQUIRED_OPTIONS);
         formatOptions(cmdLineSyntax, OPTIONAL_OPTIONS);
+        return cmdLineSyntax.toString();
     }
 
     private static void formatOptions(
@@ -856,6 +874,7 @@ public class DocumentDbMain {
         currOption = Option.builder(IMPORT_OPTION_FLAG)
                 .longOpt(IMPORT_OPTION_NAME)
                 .desc(IMPORT_OPTION_DESCRIPTION)
+                .numberOfArgs(1)
                 .argName(FILE_NAME_ARG_NAME)
                 .build();
         commandOptions.addOption(currOption);
@@ -952,6 +971,19 @@ public class DocumentDbMain {
             this.collectionName = table.getCollectionName();
             this.columns = ImmutableList.copyOf(table.getColumns());
         }
+
+        @JsonCreator
+        public TableSchema(
+                @JsonProperty(SQL_NAME_PROPERTY)
+                final String sqlName,
+                @JsonProperty(COLLECTION_NAME_PROPERTY)
+                final String collectionName,
+                @JsonProperty(COLUMNS_PROPERTY)
+                final List<DocumentDbSchemaColumn> columns) {
+            this.sqlName = sqlName;
+            this.collectionName = collectionName;
+            this.columns = columns;
+        }
     }
 
     private static class StringBuilderWriter extends Writer {
@@ -974,11 +1006,6 @@ public class DocumentDbMain {
         @Override
         public void close() {
             // noop
-        }
-
-        @Override
-        public String toString() {
-            return stringBuilder.toString();
         }
     }
 }
