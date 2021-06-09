@@ -1251,4 +1251,47 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": \"$_f0\"}}}"),
                 result.getAggregateOperations().get(1));
     }
+
+    @Test
+    @DisplayName("Tests CASE with one field, and three sections.")
+    void testQueryWithCASE() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT CASE " +
+                                "WHEN \"field\" > 10 THEN 'A' " +
+                                "WHEN \"field\" > 5 THEN 'B' " +
+                                "ELSE 'C' END FROM \"%s\".\"%s\"", DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": " +
+                                "{\"$or\": " +
+                                "[{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, " +
+                                "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": " +
+                                "{\"path\": \"$array\", " +
+                                "\"preserveNullAndEmptyArrays\": true, " +
+                                "\"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {\"EXPR$0\": " +
+                                "{\"$cond\": [{\"$and\": [" +
+                                "{\"$gt\": [\"$array.field\", {\"$literal\": 10}]}, " +
+                                "{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 10}, null]}]}, {\"$literal\": \"A\"}, " +
+                                "{\"$cond\": [{\"$and\": [" +
+                                "{\"$gt\": [\"$array.field\", {\"$literal\": 5}]}, " +
+                                "{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 5}, null]}]}, " +
+                                "{\"$literal\": \"B\"}, {\"$literal\": \"C\"}]}]}}}\n"),
+                result.getAggregateOperations().get(2));
+    }
 }
