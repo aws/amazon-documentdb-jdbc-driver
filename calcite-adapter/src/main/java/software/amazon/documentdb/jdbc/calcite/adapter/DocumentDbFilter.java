@@ -18,6 +18,7 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
+import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -46,6 +47,8 @@ import java.util.Map;
  * relational expression in MongoDB.
  */
 public class DocumentDbFilter extends Filter implements DocumentDbRel {
+
+    private static final String BOOLEAN_FLAG_FIELD = "\"placeholderField_1841347\"";
 
     /**
      * Creates a new {@link DocumentDbFilter}
@@ -80,13 +83,24 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         final DocumentDbRel.Implementor mongoImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
         mongoImplementor.visitChild(0, getInput());
-        final Translator translator =
-                new Translator(implementor.getRexBuilder(),
-                        DocumentDbRules.mongoFieldNames(getRowType(),
+//        final Translator translator =
+//                new Translator(implementor.getRexBuilder(),
+//                        DocumentDbRules.mongoFieldNames(getRowType(),
+//                                mongoImplementor.getMetadataTable()));
+//        // DocumentDB: modified - end
+//        final String match = translator.translateMatch(condition);
+//        implementor.add(null, match);
+        final DocumentDbRules.RexToMongoTranslator rexToMongoTranslator =
+                new DocumentDbRules.RexToMongoTranslator(
+                        (JavaTypeFactory) getCluster().getTypeFactory(),
+                        DocumentDbRules.mongoFieldNames(getInput().getRowType(),
                                 mongoImplementor.getMetadataTable()));
-        // DocumentDB: modified - end
-        final String match = translator.translateMatch(condition);
-        implementor.add(null, match);
+        final String match = condition.accept(rexToMongoTranslator);
+// Use $addFields here and then match on it??
+
+        implementor.add(null, "{$addFields: {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
+        implementor.add(null, "{$match: {" + BOOLEAN_FLAG_FIELD + ": {$eq: true}}}");
+        implementor.add(null, "{$project: {" + BOOLEAN_FLAG_FIELD + ":0}}");
     }
 
     /** Translates {@link RexNode} expressions into MongoDB expression strings. */

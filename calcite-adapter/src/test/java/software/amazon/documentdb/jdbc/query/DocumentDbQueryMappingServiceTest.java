@@ -61,9 +61,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse(
                         "{ \"_id\" : \"key1\", \"otherArray\" : [ { \"field\" : 1, \"field3\": \"value\" }, { \"field\" : 2, \"field3\" : \"value\" } ]}");
         insertBsonDocuments(
-                COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[] {document});
+                COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{document});
         insertBsonDocuments(
-                OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[] {otherDocument});
+                OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{otherDocument});
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
                 DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", true);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
@@ -997,8 +997,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"array_index_lvl_0\": \"$array_index_lvl_0\", \"field2\": \"$array.field2\", \"testCollection__id\": \"$_id\"}, "
                                 + "\"pipeline\": ["
                                 + "{\"$match\": {\"$or\": ["
-                                    + "{\"otherArray.field\": {\"$exists\": true}}, "
-                                    + "{\"otherArray.field3\": {\"$exists\": true}}]}}, "
+                                + "{\"otherArray.field\": {\"$exists\": true}}, "
+                                + "{\"otherArray.field3\": {\"$exists\": true}}]}}, "
                                 + "{\"$unwind\": {\"path\": \"$otherArray\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"otherArray_index_lvl_0\"}}, "
                                 + "{\"$match\": {\"$expr\": {\"$eq\": [\"$$testCollection__id\", \"$_id\"]}}}], "
                                 + "\"as\": \"otherTestCollection_otherArray\"}}"),
@@ -1048,8 +1048,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"array_index_lvl_0\": \"$array_index_lvl_0\", \"field2\": \"$array.field2\", \"testCollection__id\": \"$_id\"}, "
                                 + "\"pipeline\": ["
                                 + "{\"$match\": {\"$or\": ["
-                                        + "{\"otherArray.field\": {\"$exists\": true}}, "
-                                        + "{\"otherArray.field3\": {\"$exists\": true}}]}}, "
+                                + "{\"otherArray.field\": {\"$exists\": true}}, "
+                                + "{\"otherArray.field3\": {\"$exists\": true}}]}}, "
                                 + "{\"$unwind\": {\"path\": \"$otherArray\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"otherArray_index_lvl_0\"}}, "
                                 + "{\"$match\": {\"$expr\": {\"$eq\": [\"$$testCollection__id\", \"$_id\"]}}}], "
                                 + "\"as\": \"otherTestCollection_otherArray\"}}"),
@@ -1065,26 +1065,26 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
             + "works for tables from different collections.")
     void testComplexQueryWithDifferentCollectionJoin() throws SQLException {
         final String complexQuery =
-            String.format(
-                "SELECT \"%s\" AS \"renamed\", COUNT(*) AS \"Total\" FROM \"%s\".\"%s\""
-                    + "INNER JOIN \"%s\".\"%s\""
-                    + "ON \"%s\".\"%s\" = \"%s\".\"%s\""
-                    + "WHERE \"%s\" > 1 GROUP BY \"%s\".\"%s\", \"%s\", \"%s\""
-                    + "HAVING COUNT(*) > 1 ORDER BY \"renamed\" LIMIT 1",
-                "field",
-                DATABASE_NAME,
-                OTHER_COLLECTION_NAME,
-                DATABASE_NAME,
-                COLLECTION_NAME + "_array",
-                OTHER_COLLECTION_NAME,
-                OTHER_COLLECTION_NAME + "__id",
-                COLLECTION_NAME + "_array",
-                COLLECTION_NAME + "__id",
-                "field",
-                OTHER_COLLECTION_NAME,
-                OTHER_COLLECTION_NAME + "__id",
-                "field",
-                "field1");
+                String.format(
+                        "SELECT \"%s\" AS \"renamed\", COUNT(*) AS \"Total\" FROM \"%s\".\"%s\""
+                                + "INNER JOIN \"%s\".\"%s\""
+                                + "ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                                + "WHERE \"%s\" > 1 GROUP BY \"%s\".\"%s\", \"%s\", \"%s\""
+                                + "HAVING COUNT(*) > 1 ORDER BY \"renamed\" LIMIT 1",
+                        "field",
+                        DATABASE_NAME,
+                        OTHER_COLLECTION_NAME,
+                        DATABASE_NAME,
+                        COLLECTION_NAME + "_array",
+                        OTHER_COLLECTION_NAME,
+                        OTHER_COLLECTION_NAME + "__id",
+                        COLLECTION_NAME + "_array",
+                        COLLECTION_NAME + "__id",
+                        "field",
+                        OTHER_COLLECTION_NAME,
+                        OTHER_COLLECTION_NAME + "__id",
+                        "field",
+                        "field1");
         final DocumentDbMqlQueryContext result = queryMapper.get(complexQuery);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(OTHER_COLLECTION_NAME, result.getCollectionName());
@@ -1097,20 +1097,20 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"let\": {\"otherTestCollection__id\": \"$_id\"}, "
                                 + "\"pipeline\": ["
                                 + "{\"$match\": {\"$or\": ["
-                                    + "{\"array.field\": {\"$exists\": true}}, "
-                                    + "{\"array.field1\": {\"$exists\": true}}, "
-                                    + "{\"array.field2\": {\"$exists\": true}}]}}, "
+                                + "{\"array.field\": {\"$exists\": true}}, "
+                                + "{\"array.field1\": {\"$exists\": true}}, "
+                                + "{\"array.field2\": {\"$exists\": true}}]}}, "
                                 + "{\"$unwind\": {"
-                                    + "\"path\": \"$array\", "
-                                    + "\"preserveNullAndEmptyArrays\": true, "
-                                    + "\"includeArrayIndex\": \"array_index_lvl_0\"}}, "
+                                + "\"path\": \"$array\", "
+                                + "\"preserveNullAndEmptyArrays\": true, "
+                                + "\"includeArrayIndex\": \"array_index_lvl_0\"}}, "
                                 + "{\"$match\": {\"array.field\": {\"$gt\": 1}}}, "
                                 + "{\"$match\": {\"$expr\": {\"$eq\": [\"$$otherTestCollection__id\", \"$_id\"]}}}], "
                                 + "\"as\": \"testCollection_array\"}}"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                 BsonDocument.parse("{\"$unwind\": {\"path\": \"$testCollection_array\", \"preserveNullAndEmptyArrays\": false}}"),
-        result.getAggregateOperations().get(1));
+                BsonDocument.parse("{\"$unwind\": {\"path\": \"$testCollection_array\", \"preserveNullAndEmptyArrays\": false}}"),
+                result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$group\": {\"_id\": {\"_id\": \"$_id\", "
@@ -1293,5 +1293,26 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 "{\"$gt\": [{\"$literal\": 5}, null]}]}, " +
                                 "{\"$literal\": \"B\"}, {\"$literal\": \"C\"}]}]}}}\n"),
                 result.getAggregateOperations().get(2));
+    }
+
+    @Test
+    @DisplayName("Tests a query with a where clause comparing two literals.")
+    void testWhereTwoLiterals() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE 2 > 1", DATABASE_NAME, COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(0, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {\"_f0\": {\"$literal\": 1}}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": \"$_f0\"}}}"),
+                result.getAggregateOperations().get(1));
     }
 }
