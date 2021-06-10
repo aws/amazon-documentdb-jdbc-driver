@@ -218,7 +218,10 @@ public final class DocumentDbRules {
             if (literal.getValue() == null) {
                 return "null";
             }
-            return "{$literal: "
+            if (typeFactory.getJavaClass(literal.getType()).toString().equals("long")) {
+                return "{\"$literal\": " + literal.getValue() + "}";
+            }
+            return "{\"$literal\": "
                     + RexToLixTranslator.translateLiteral(literal, literal.getType(),
                     typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
                     + "}";
@@ -241,7 +244,7 @@ public final class DocumentDbRules {
             final String stdOperator = MONGO_OPERATORS.get(call.getOperator());
             if (stdOperator != null) {
                 // For comparisons other than equals we must check it exists and is not null.
-                final String op = "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
+                final String op = "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
                 if (MONGO_OPERATORS.get(SqlStdOperatorTable.LESS_THAN).equals(stdOperator) ||
                         MONGO_OPERATORS.get(SqlStdOperatorTable.LESS_THAN_OR_EQUAL).equals(stdOperator) ||
                         MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS).equals(stdOperator) ||
@@ -293,12 +296,12 @@ public final class DocumentDbRules {
         }
 
         private String addNullChecksToQuery(final List<String> strings, final String op) {
-            final StringBuilder sb = new StringBuilder("{$and: [");
+            final StringBuilder sb = new StringBuilder("{\"$and\": [");
             sb.append(op);
             for (int i = 0; i < 2; i++) {
                 if (!strings.get(i).equals("null")) {
                     // The operator {$gt null} filters out any values that are null or undefined.
-                    sb.append("{$gt: [");
+                    sb.append(",{\"$gt\": [");
                     sb.append(strings.get(i));
                     sb.append(", null]}");
                 }

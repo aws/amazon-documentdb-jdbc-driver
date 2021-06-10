@@ -1345,33 +1345,9 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(4, resultSet.getInt(2));
         Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.next());
+        Assertions.assertNull(resultSet.getString(2));
+        Assertions.assertFalse(resultSet.next());
 
-    }
-
-    /**
-     * Tests query with two literals in a where clause such that the comparison is false.
-     *
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests query WHERE clause containing two literals such that the comparison is false.")
-    void testQueryWhereTwoLiteralsFalse() throws SQLException {
-        final String tableName = "testQueryWhereTwoLiteralsFalse";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"field\": 4}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE 2 < 1", DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(4, resultSet.getInt(2));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.next());
     }
 
     /* Tests that queries with multiple not-equals clauses are correct.
@@ -1401,7 +1377,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
-     * Tests query with two literals in a where clause such that the comparison is false.
+     * Tests query with boolean literal values.
      *
      * @throws SQLException occurs if query fails.
      */
@@ -1422,9 +1398,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
                 String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = TRUE AND \"fieldB\" = FALSE", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.getBoolean(2));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.getBoolean(2));
+        Assertions.assertFalse(resultSet.next());
     }
 
     /* Tests that queries CASE are correct, particularly where null or undefined values are involved.
@@ -1505,6 +1480,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(4, resultSet.getInt(2));
+        Assertions.assertFalse(resultSet.next());
     }
 
     /* Tests that queries of CASE are correct with two different fields involved.
