@@ -16,7 +16,10 @@
 
 package software.amazon.documentdb.jdbc;
 
+import java.sql.Timestamp;
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
+import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -1282,6 +1285,51 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(3, resultSet.getInt(1));
         Assertions.assertFalse(resultSet.next());
     }
+
+    /**
+     * Tests that SUM(1) works, equivalent to COUNT(*).
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests some basic date functions.")
+    void testQueryDateAdd() throws SQLException {
+        final String tableName = "testDateAdd";
+        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
+        final long expectedDateTime = Instant.parse("2020-01-02T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        // Add 1 day to a date column.
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT TIMESTAMPADD(DAY"
+                        + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(new Timestamp(expectedDateTime), resultSet.getTimestamp(1));
+        Assertions.assertFalse(resultSet.next());
+
+        // Add 1 day to a date literal.
+        final ResultSet resultSet4 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPADD(DAY"
+                        + ", 1, TIMESTAMP '2020-01-01 00:00:00' ) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet4);
+        Assertions.assertTrue(resultSet4.next());
+        Assertions.assertEquals(new Timestamp(expectedDateTime), resultSet4.getTimestamp(1));
+        Assertions.assertFalse(resultSet4.next());
+
+        // Add 1 day to the date and extract the day of the month from result.
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT DAYOFMONTH(TIMESTAMPADD(DAY"
+                        + ", 1, \"field\")) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals(2, resultSet2.getInt(1));
+        Assertions.assertFalse(resultSet2.next());
+    }
+
 
     protected static DocumentDbStatement getDocumentDbStatement() throws SQLException {
         return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);

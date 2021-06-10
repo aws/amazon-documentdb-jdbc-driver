@@ -16,9 +16,12 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import org.apache.calcite.adapter.enumerable.RexImpTable;
 import org.apache.calcite.adapter.enumerable.RexToLixTranslator;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
+import org.apache.calcite.avatica.util.TimeUnitRange;
 import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelTraitSet;
@@ -40,6 +43,7 @@ import org.apache.calcite.rex.RexVisitorImpl;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlOperator;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.type.IntervalSqlType;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Bug;
 import org.apache.calcite.util.Util;
@@ -218,10 +222,23 @@ public final class DocumentDbRules {
             if (literal.getValue() == null) {
                 return "null";
             }
-            return "{$literal: "
-                    + RexToLixTranslator.translateLiteral(literal, literal.getType(),
-                    typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
-                    + "}";
+
+            switch (literal.getType().getSqlTypeName()) {
+                case INTERVAL_DAY:
+                case INTERVAL_HOUR:
+                case INTERVAL_MINUTE:
+                case INTERVAL_SECOND:
+                    return "NumberLong(" + literal.getValueAs(Long.class) + ")";
+                case DATE:
+                case TIMESTAMP:
+                case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+                    return "new Date(" + literal.getValueAs(Long.class) +")";
+                default:
+                    return "{$literal: "
+                            + RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                            typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
+                            + "}";
+            }
         }
 
         @Override public String visitInputRef(final RexInputRef inputRef) {
@@ -238,6 +255,11 @@ public final class DocumentDbRules {
             if (call.getKind() == SqlKind.CAST) {
                 return strings.get(0);
             }
+
+            if (DateFunctionTranslator.isDateFunction(call)) {
+                return DateFunctionTranslator.translateDateFunction(call, strings);
+            }
+
             final String stdOperator = MONGO_OPERATORS.get(call.getOperator());
             if (stdOperator != null) {
                 return "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
@@ -288,6 +310,52 @@ public final class DocumentDbRules {
                     ? s.substring(1, s.length() - 1)
                     : s;
         }
+    }
+
+    private static class DateFunctionTranslator {
+        private static final Map<SqlOperator, BiFunction<RexCall, List<String>, String>> DATE_FUNCTIONS =
+                new HashMap<>();
+        private static final Map<TimeUnitRange, String> DATEPART_OPERATORS =
+                new HashMap<>();
+
+        static {
+            // Supported date functions
+            DATE_FUNCTIONS.put(SqlStdOperatorTable.DATETIME_PLUS, DateFunctionTranslator::translateDateAdd);
+            DATE_FUNCTIONS.put(SqlStdOperatorTable.EXTRACT, DateFunctionTranslator::translateExtract);
+
+            // Date part operators
+            DATEPART_OPERATORS.put(TimeUnitRange.YEAR, "$year");
+            DATEPART_OPERATORS.put(TimeUnitRange.MONTH, "$month");
+            DATEPART_OPERATORS.put(TimeUnitRange.WEEK, "$week");
+            DATEPART_OPERATORS.put(TimeUnitRange.HOUR, "$hour");
+            DATEPART_OPERATORS.put(TimeUnitRange.MINUTE, "$minute");
+            DATEPART_OPERATORS.put(TimeUnitRange.SECOND, "$second");
+            DATEPART_OPERATORS.put(TimeUnitRange.DOY, "$dayOfYear");
+            DATEPART_OPERATORS.put(TimeUnitRange.DAY, "$dayOfMonth");
+            DATEPART_OPERATORS.put(TimeUnitRange.DOW, "$dayOfWeek");
+        }
+
+        private static boolean isDateFunction(RexCall call) {
+            return DATE_FUNCTIONS.containsKey(call.getOperator());
+        }
+
+        private static String translateDateFunction(RexCall call, List<String> strings) {
+            return DATE_FUNCTIONS.get(call.getOperator()).apply(call, strings);
+        }
+
+        private static String translateDateAdd(RexCall call, List<String> strings) {
+            // Check for unsupported intervals.
+            return "{ $add:" + "[" + Util.commaList(strings) + "]}";
+        }
+
+        private static String translateExtract(RexCall call, List<String> strings) {
+            final RexLiteral literal = (RexLiteral) call.getOperands().get(0);
+            final TimeUnitRange range = literal.getValueAs(TimeUnitRange.class);
+
+            // Check for unsupported time unit.
+            return "{ " + DATEPART_OPERATORS.get(range) + ": [" + strings.get(1) + "]}";
+        }
+
     }
 
     /** Base class for planner rules that convert a relational expression to
