@@ -7,6 +7,14 @@
 The JDBC driver for the Amazon DocumentDB managed document database provides an 
 SQL-relational interface for developers and BI tool users.
 
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
+## License
+
+This project is licensed under the Apache-2.0 License.
+
 ## Connection String Syntax
 
 `jdbc:documentdb://[<user>[:<password>]@]<hostname>[:<port>]/<database-name>[?<option>=<value>[&<option>=<value>[...]]]`
