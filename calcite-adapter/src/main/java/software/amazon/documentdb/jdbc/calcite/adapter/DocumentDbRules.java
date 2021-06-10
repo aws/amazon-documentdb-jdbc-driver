@@ -228,10 +228,12 @@ public final class DocumentDbRules {
                 case INTERVAL_HOUR:
                 case INTERVAL_MINUTE:
                 case INTERVAL_SECOND:
+                    // Convert any intervals to milliseconds.
                     return "NumberLong(" + literal.getValueAs(Long.class) + ")";
                 case DATE:
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+                    // Convert from date to milliseconds to MongoDb date.
                     return "new Date(" + literal.getValueAs(Long.class) +")";
                 default:
                     return "{$literal: "
@@ -344,7 +346,7 @@ public final class DocumentDbRules {
         }
 
         private static String translateDateAdd(RexCall call, List<String> strings) {
-            // Check for unsupported intervals.
+            // TODO: Check for unsupported intervals and throw error/emulate in some other way.
             return "{ $add:" + "[" + Util.commaList(strings) + "]}";
         }
 
@@ -352,7 +354,7 @@ public final class DocumentDbRules {
             final RexLiteral literal = (RexLiteral) call.getOperands().get(0);
             final TimeUnitRange range = literal.getValueAs(TimeUnitRange.class);
 
-            // Check for unsupported time unit.
+            // TODO: Check for unsupported time unit (ex: quarter) and emulate in some other way.
             return "{ " + DATEPART_OPERATORS.get(range) + ": [" + strings.get(1) + "]}";
         }
 

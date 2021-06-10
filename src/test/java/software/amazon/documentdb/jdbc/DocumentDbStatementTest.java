@@ -1295,7 +1295,10 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     void testQueryDateAdd() throws SQLException {
         final String tableName = "testDateAdd";
         final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
-        final long expectedDateTime = Instant.parse("2020-01-02T00:00:00.00Z").toEpochMilli();
+        final long dayAfterDateTime = Instant.parse("2020-01-02T00:00:00.00Z").toEpochMilli();
+        final long hourAfterDateTime =  Instant.parse("2020-01-01T01:00:00.00Z").toEpochMilli();
+        final long minuteAfterDateTime = Instant.parse("2020-01-01T00:01:00.00Z").toEpochMilli();
+        final long secondAfterDateTime =  Instant.parse("2020-01-01T00:00:01.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
@@ -1308,26 +1311,53 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
                         + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(new Timestamp(expectedDateTime), resultSet.getTimestamp(1));
+        Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet.getTimestamp(1));
         Assertions.assertFalse(resultSet.next());
 
-        // Add 1 day to a date literal.
-        final ResultSet resultSet4 = statement.executeQuery(
-                String.format("SELECT TIMESTAMPADD(DAY"
-                        + ", 1, TIMESTAMP '2020-01-01 00:00:00' ) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet4);
-        Assertions.assertTrue(resultSet4.next());
-        Assertions.assertEquals(new Timestamp(expectedDateTime), resultSet4.getTimestamp(1));
-        Assertions.assertFalse(resultSet4.next());
-
-        // Add 1 day to the date and extract the day of the month from result.
+        // Add 1 hour to a date column.
         final ResultSet resultSet2 = statement.executeQuery(
-                String.format("SELECT DAYOFMONTH(TIMESTAMPADD(DAY"
-                        + ", 1, \"field\")) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                String.format("SELECT TIMESTAMPADD(HOUR"
+                        + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals(2, resultSet2.getInt(1));
+        Assertions.assertEquals(new Timestamp(hourAfterDateTime), resultSet2.getTimestamp(1));
         Assertions.assertFalse(resultSet2.next());
+
+        // Add 1 minute to a date column.
+        final ResultSet resultSet3 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPADD(MINUTE"
+                        + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet3);
+        Assertions.assertTrue(resultSet3.next());
+        Assertions.assertEquals(new Timestamp(minuteAfterDateTime), resultSet3.getTimestamp(1));
+        Assertions.assertFalse(resultSet3.next());
+
+        // Add 1 second to a date column.
+        final ResultSet resultSet4 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPADD(SECOND"
+                        + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet4);
+        Assertions.assertTrue(resultSet4.next());
+        Assertions.assertEquals(new Timestamp(secondAfterDateTime), resultSet4.getTimestamp(1));
+        Assertions.assertFalse(resultSet4.next());
+
+        // Add 1 day to a date literal.
+        final ResultSet resultSet5 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPADD(DAY"
+                        + ", 1, TIMESTAMP '2020-01-01 00:00:00' ) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet5);
+        Assertions.assertTrue(resultSet5.next());
+        Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet5.getTimestamp(1));
+        Assertions.assertFalse(resultSet5.next());
+
+        // Add 1 day to the date and extract the day of the month from result.
+        final ResultSet resultSet6 = statement.executeQuery(
+                String.format("SELECT DAYOFMONTH(TIMESTAMPADD(DAY"
+                        + ", 1, \"field\")) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet6);
+        Assertions.assertTrue(resultSet6.next());
+        Assertions.assertEquals(2, resultSet6.getInt(1));
+        Assertions.assertFalse(resultSet6.next());
     }
 
 
