@@ -240,7 +240,16 @@ public final class DocumentDbRules {
             }
             final String stdOperator = MONGO_OPERATORS.get(call.getOperator());
             if (stdOperator != null) {
-                return "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
+                // For comparisons other than equals we must check it exists and is not null.
+                final String op = "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
+                if (MONGO_OPERATORS.get(SqlStdOperatorTable.LESS_THAN).equals(stdOperator) ||
+                        MONGO_OPERATORS.get(SqlStdOperatorTable.LESS_THAN_OR_EQUAL).equals(stdOperator) ||
+                        MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS).equals(stdOperator) ||
+                        MONGO_OPERATORS.get(SqlStdOperatorTable.GREATER_THAN).equals(stdOperator) ||
+                        MONGO_OPERATORS.get(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL).equals(stdOperator)) {
+                    return addNullChecksToQuery(strings, op);
+                }
+                return op;
             }
             if (call.getOperator() == SqlStdOperatorTable.ITEM) {
                 final RexNode op1 = call.operands.get(1);
@@ -281,6 +290,21 @@ public final class DocumentDbRules {
             }
             throw new IllegalArgumentException("Translation of " + call.toString()
                     + " is not supported by MongoProject");
+        }
+
+        private String addNullChecksToQuery(final List<String> strings, final String op) {
+            final StringBuilder sb = new StringBuilder("{$and: [");
+            sb.append(op);
+            for (int i = 0; i < 2; i++) {
+                if (!strings.get(i).equals("null")) {
+                    // The operator {$gt null} filters out any values that are null or undefined.
+                    sb.append("{$gt: [");
+                    sb.append(strings.get(i));
+                    sb.append(", null]}");
+                }
+            }
+            sb.append("]}");
+            return sb.toString();
         }
 
         private static String stripQuotes(final String s) {

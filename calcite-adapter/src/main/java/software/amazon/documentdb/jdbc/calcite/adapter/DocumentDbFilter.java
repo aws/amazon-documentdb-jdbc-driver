@@ -152,12 +152,25 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
             return map;
         }
 
+        @SuppressWarnings("unchecked")
         private static void addPredicate(final Map<String, Object> map, final String op,
                 final Object v) {
             if (map.containsKey(op) && stronger(op, map.get(op), v)) {
                 return;
             }
-            map.put(op, v);
+            if ("$ne".equals(op)) {
+                if (map.containsKey("$nin") && map.get("$nin") instanceof List) {
+                    final List<Object> vars = (List<Object>) map.get("$nin");
+                    vars.add(v);
+                } else {
+                    final List<Object> vars = new ArrayList<>();
+                    vars.add(null);
+                    vars.add(v);
+                    map.put("$nin", vars);
+                }
+            } else {
+                map.put(op, v);
+            }
         }
 
         /** Returns whether {@code v0} is a stronger value for operator {@code key}
