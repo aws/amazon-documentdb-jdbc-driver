@@ -1302,7 +1302,8 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    /* Tests that queries with not-equals do not return null or undefined values.
+    /* 
+     * Tests that queries with not-equals do not return null or undefined values.
      * @throws SQLException occurs if query fails.
      */
     @Test
