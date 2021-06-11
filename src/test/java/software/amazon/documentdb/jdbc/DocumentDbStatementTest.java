@@ -1382,7 +1382,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
      * @throws SQLException occurs if query fails.
      */
     @Test
-    @DisplayName("Tests query WHERE clause boolean literal.")
+    @DisplayName("Tests query WHERE clause with boolean literal.")
     void testQueryWhereLiteralBoolean() throws SQLException {
         final String tableName = "testQueryWhereLiteralBoolean";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
@@ -1515,6 +1515,43 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals("B", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("C", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries can contain nested OR conditions in WHERE clause.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @DisplayName("Tests queries with nested OR.")
+    void testWhereNestedOR() throws SQLException {
+        final String tableName = "testCASETwoFields";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 1,\n" +
+                "\"fieldB\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 2,\n" +
+                "\"fieldB\": 1}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"fieldA\": 1}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104,\n" +
+                "\"fieldA\": 13, \n" +
+                "\"fieldB\": 1}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n" +
+                "\"fieldA\": 1, \n" +
+                "\"fieldB\": 10}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" " +
+                        "WHERE (\"fieldA\" < 3  OR \"fieldB\" < 2) " +
+                        "AND (\"fieldA\" > 12 OR \"fieldB\" > 8)", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(104, resultSet.getInt(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(105, resultSet.getInt(1));
         Assertions.assertFalse(resultSet.next());
     }
 
