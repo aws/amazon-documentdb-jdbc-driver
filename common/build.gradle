@@ -169,7 +169,7 @@ jacocoTestCoverageVerification.dependsOn jacocoTestReport
  * License Plugin
  */
 license {
-    header =  project.parent.file('LICENSE')
+    header =  project.parent.file('license-header.txt')
     headerDefinitions {
         slash_star_with_space {
             firstLine = '/*'
