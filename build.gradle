@@ -9,7 +9,7 @@ plugins {
 }
 
 group 'software.amazon.documentdb.jdbc'
-version '0.3-SNAPSHOT'
+version '1.0.0-beta.3'
 description 'documentdb-jdbc-driver'
 
 java {
