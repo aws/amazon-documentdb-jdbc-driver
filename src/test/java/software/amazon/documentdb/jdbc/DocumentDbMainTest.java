@@ -95,15 +95,13 @@ class DocumentDbMainTest {
     static void afterAll() throws Exception {
         for (DocumentDbTestEnvironment environment : getTestEnvironments()
                 .collect(Collectors.toList())) {
-            final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                    .getPropertiesFromConnectionString(environment.getJdbcConnectionString());
             environment.stop();
         }
     }
 
     @DisplayName("Tests empty command line with no options provided.")
     @Test
-    void testEmptyCommandLine() throws SQLException, ParseException {
+    void testEmptyCommandLine() throws SQLException {
         final StringBuilder output = new StringBuilder();
         DocumentDbMain.handleCommandLine(new String[] {}, output);
         Assertions.assertEquals(
@@ -252,7 +250,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testList - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testList(final DocumentDbTestEnvironment testEnvironment)
-            throws ParseException, SQLException {
+            throws SQLException {
         setConnectionProperties(testEnvironment);
         final String collectionName1 = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName1);
@@ -288,7 +286,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testListEmpty - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testListEmpty(final DocumentDbTestEnvironment testEnvironment)
-            throws ParseException, SQLException {
+            throws SQLException {
         setConnectionProperties(testEnvironment);
 
         final StringBuilder output = new StringBuilder();
@@ -300,7 +298,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testExportStdOut - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testExportStdOut(final DocumentDbTestEnvironment testEnvironment)
-            throws SQLException, ParseException {
+            throws SQLException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName);
@@ -322,7 +320,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testExportOutputFile - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testExportOutputFile(final DocumentDbTestEnvironment testEnvironment)
-            throws SQLException, ParseException, IOException {
+            throws SQLException, IOException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName);
@@ -353,7 +351,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testImportFile - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testImportFile(final DocumentDbTestEnvironment testEnvironment)
-            throws SQLException, ParseException, IOException {
+            throws SQLException, IOException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName);
@@ -389,7 +387,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testImportFileDuplicateColumn - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testImportFileDuplicateColumn(final DocumentDbTestEnvironment testEnvironment)
-            throws SQLException, ParseException, IOException {
+            throws SQLException, IOException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName);
@@ -443,7 +441,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testImportUnauthorizedError - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testImportUnauthorizedError(final DocumentDbTestEnvironment testEnvironment)
-            throws SQLException, ParseException, IOException {
+            throws SQLException, IOException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName);
@@ -484,7 +482,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testExportInvalidTable - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testExportInvalidTable(final DocumentDbTestEnvironment testEnvironment)
-            throws SQLException, ParseException {
+            throws SQLException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName);
@@ -506,7 +504,7 @@ class DocumentDbMainTest {
 
     @DisplayName("Tests it detects an \"Unrecognized\" option")
     @Test
-    void testUnrecognizedOption() throws SQLException, ParseException {
+    void testUnrecognizedOption() throws SQLException {
         final StringBuilder output = new StringBuilder();
         DocumentDbMain.handleCommandLine(
                 new String[] {"-w", "-g", "-s=localhost", "-d=test", "-u=testuser", "-p=password"},
@@ -516,7 +514,7 @@ class DocumentDbMainTest {
 
     @DisplayName("Tests the help (--help) option")
     @Test
-    void testHelpOption() throws SQLException, ParseException {
+    void testHelpOption() throws SQLException {
         final StringBuilder output = new StringBuilder();
         DocumentDbMain.handleCommandLine(new String[] {"--help"}, output);
         Assertions.assertEquals(
@@ -582,7 +580,7 @@ class DocumentDbMainTest {
 
     @DisplayName("Tests the version (--version) option")
     @Test
-    void testVersionOption() throws SQLException, ParseException {
+    void testVersionOption() throws SQLException {
         final StringBuilder output = new StringBuilder();
         DocumentDbMain.handleCommandLine(new String[] {"--version"}, output);
         Assertions.assertEquals(String.format(
@@ -593,7 +591,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testExportFileToDirectoryError - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testExportFileToDirectoryError(final DocumentDbTestEnvironment testEnvironment)
-            throws SQLException, ParseException, IOException {
+            throws SQLException, IOException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName);
@@ -615,7 +613,7 @@ class DocumentDbMainTest {
     @ParameterizedTest(name = "testExportFileToDirectoryError - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testImportFileNotExistsError(final DocumentDbTestEnvironment testEnvironment)
-            throws SQLException, ParseException, IOException {
+            throws SQLException {
         setConnectionProperties(testEnvironment);
         final String collectionName = testEnvironment.newCollectionName(true);
         createSimpleCollection(testEnvironment, collectionName);

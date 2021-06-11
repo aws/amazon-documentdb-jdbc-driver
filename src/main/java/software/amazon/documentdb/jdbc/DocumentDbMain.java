@@ -222,7 +222,7 @@ public class DocumentDbMain {
     private static final String OUTPUT_OPTION_DESCRIPTION =
             "Write the exported schema to <file-name> in your home directory (instead of stdout)."
                     + " This will overwrite any existing file with the same name";
-    // Messages string contants
+    // Messages string constants
     public static final String DUPLICATE_COLUMN_KEY_DETECTED_FOR_TABLE_SCHEMA =
             "Duplicate column key '%s' detected for table schema '%s'. Original column '%s'."
                     + " Duplicate column '%s'.";
@@ -315,7 +315,7 @@ public class DocumentDbMain {
             final StringBuilder output = new StringBuilder();
             handleCommandLine(args, output);
             LOGGER.error("{}", output);
-        } catch (ParseException | SQLException e) {
+        } catch (SQLException e) {
             LOGGER.error(e.getMessage(), e);
         } catch (Exception e) {
             LOGGER.error(
@@ -326,7 +326,7 @@ public class DocumentDbMain {
     }
 
     static void handleCommandLine(final String[] args, final StringBuilder output)
-            throws ParseException, SQLException {
+            throws SQLException {
         if (handledHelpOrVersionOption(args, output)) {
             return;
         }
@@ -663,9 +663,14 @@ public class DocumentDbMain {
 
     private static boolean handledHelpOrVersionOption(
             final String[] args,
-            final StringBuilder output) throws ParseException {
+            final StringBuilder output) throws SQLException {
         final CommandLineParser parser = new DefaultParser();
-        final CommandLine commandLine = parser.parse(HELP_VERSION_OPTIONS, args, true);
+        final CommandLine commandLine;
+        try {
+            commandLine = parser.parse(HELP_VERSION_OPTIONS, args, true);
+        } catch (ParseException e) {
+            throw new SQLException(e.getMessage(), e);
+        }
         if (commandLine.hasOption(HELP_OPTION_NAME)) {
             final StringWriter stringWriter = new StringWriter();
             final PrintWriter printWriter = new PrintWriter(stringWriter);
