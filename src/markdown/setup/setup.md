@@ -45,7 +45,7 @@ or later is installed on your computer. You can download the Java SE Runtime Env
 #### Download the DocumentDB JDBC Driver <a name='download-the-documentdb-jdbc-driver' />
 
 <!-- >TODO: Get link for DocumentDB JDBC driver. -->
-Download the DocumentDB JDBC driver here. The driver is packaged as a single JAR file
+Download the DocumentDB JDBC driver [here](https://github.com/aws/amazon-documentdb-jdbc-driver/releases). The driver is packaged as a single JAR file
 (e.g., `documentdb-jdbc-1.0-SNAPSHOT-all.jar`).
 
 ### Specifying the Amazon RDS Certificate Authority Certificate File <a name='adding-amazon-rds-certificate-bundle' />
