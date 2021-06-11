@@ -94,7 +94,7 @@ For further information on SSH tunneling , please refer to the documentation on
 
 1. [Download]() the DocumentDB Tableau connector (a TACO file) and copy it to your `My Tableau Repository/Connectors`
    directory.
-    - **_Windows_**: `C:\Users\[Windows User]\Documents\My Tableau Repository\Connectors`
+    - **_Windows_**: `C:\Users\[user]\Documents\My Tableau Repository\Connectors`
     - **_Mac_**: `/Users/[user]/Documents/My Tableau Repository/Connectors`
 
    For more information, consult the [Tableau documentation](https://tableau.github.io/connector-plugin-sdk/docs/run-taco). 
