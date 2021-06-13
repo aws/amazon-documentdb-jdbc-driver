@@ -19,6 +19,11 @@ This project is licensed under the Apache-2.0 License.
 
 `jdbc:documentdb://[<user>[:<password>]@]<hostname>[:<port>]/<database-name>[?<option>=<value>[&<option>=<value>[...]]]`
 
+
+## Setup and Usage
+
+To setup and use the DocumentDB JDBC driver, follow [these directions](src/markdown/setup/setup.md).
+
 ### Scheme
 
 `jdbc:documentdb:` Required: the scheme for this JDBC driver.
@@ -489,7 +494,3 @@ These can be combined as long as the complete set of foreign keys are still pres
     AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants"."subscriptions_index_lvl_0"```
 
 This feature allows `INNER` and `LEFT (OUTER) JOINs` .
-
-# Setup and Usage
-
-To setup and use the DocumentDB JDBC driver, follow [these directions](src/markdown/setup/setup.md).
