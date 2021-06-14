@@ -219,7 +219,7 @@ public final class DocumentDbRules {
                 return "null";
             }
             if (typeFactory.getJavaClass(literal.getType()).toString().equals("long")) {
-                return "{\"$literal\": " + literal.getValue() + "}";
+                return "{\"$numberLong\": \"" + literal.getValue() + "\"}";
             }
             return "{\"$literal\": "
                     + RexToLixTranslator.translateLiteral(literal, literal.getType(),

@@ -1302,8 +1302,9 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    /* 
+    /*
      * Tests that queries with not-equals do not return null or undefined values.
+     *
      * @throws SQLException occurs if query fails.
      */
     @Test
@@ -1526,7 +1527,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests queries with nested OR.")
     void testWhereNestedOR() throws SQLException {
-        final String tableName = "testCASETwoFields";
+        final String tableName = "testNestedOR";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 1,\n" +
                 "\"fieldB\": 2}");
