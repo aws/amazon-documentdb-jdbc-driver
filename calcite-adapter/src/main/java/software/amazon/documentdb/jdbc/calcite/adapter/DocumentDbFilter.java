@@ -42,9 +42,10 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
 
     /**
      * Creates a new {@link DocumentDbFilter}
-     * @param cluster the relational option cluster.
-     * @param traitSet the trait set.
-     * @param child the child.
+     *
+     * @param cluster   the relational option cluster.
+     * @param traitSet  the trait set.
+     * @param child     the child.
      * @param condition the condition.
      */
     public DocumentDbFilter(
@@ -57,17 +58,20 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         assert getConvention() == child.getConvention();
     }
 
-    @Override public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
-            final RelMetadataQuery mq) {
+    @Override
+    public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
+                                                final RelMetadataQuery mq) {
         return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.FILTER_COST_FACTOR);
     }
 
-    @Override public DocumentDbFilter copy(final RelTraitSet traitSet, final RelNode input,
-            final RexNode condition) {
+    @Override
+    public DocumentDbFilter copy(final RelTraitSet traitSet, final RelNode input,
+                                 final RexNode condition) {
         return new DocumentDbFilter(getCluster(), traitSet, input, condition);
     }
 
-    @Override public void implement(final Implementor implementor) {
+    @Override
+    public void implement(final Implementor implementor) {
         implementor.visitChild(0, getInput());
         // DocumentDB: modified - start
         final DocumentDbRel.Implementor mongoImplementor =
@@ -85,189 +89,191 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         implementor.add(null, "{\"$project\": {" + BOOLEAN_FLAG_FIELD + ":0}}");
     }
 
-//    /** Translates {@link RexNode} expressions into MongoDB expression strings. */
-//    static class Translator {
-//        private final JsonBuilder builder = new JsonBuilder();
-//        private final Multimap<String, Pair<String, RexLiteral>> multiMap =
-//                HashMultimap.create();
-//        private final Map<String, RexLiteral> eqMap =
-//                new LinkedHashMap<>();
-//        private final RexBuilder rexBuilder;
-//        private final List<String> fieldNames;
-//
-//        Translator(final RexBuilder rexBuilder, final List<String> fieldNames) {
-//            this.rexBuilder = rexBuilder;
-//            this.fieldNames = fieldNames;
-//        }
-//
-//        private String translateMatch(final RexNode condition) {
-//            final Map<String, Object> map = builder.map();
-//            map.put("$match", translateOr(condition));
-//            return builder.toJsonString(map);
-//        }
-//
-//        private Object translateOr(final RexNode condition) {
-//            final RexNode condition2 =
-//                    RexUtil.expandSearch(rexBuilder, null, condition);
-//
-//            final List<Object> list = new ArrayList<>();
-//            for (RexNode node : RelOptUtil.disjunctions(condition2)) {
-//                list.add(translateAnd(node));
-//            }
-//            switch (list.size()) {
-//                case 1:
-//                    return list.get(0);
-//                default:
-//                    final Map<String, Object> map = builder.map();
-//                    map.put("$or", list);
-//                    return map;
-//            }
-//        }
-//
-//        /** Translates a condition that may be an AND of other conditions. Gathers
-//         * together conditions that apply to the same field. */
-//        private Map<String, Object> translateAnd(final RexNode node0) {
-//            eqMap.clear();
-//            multiMap.clear();
-//            for (RexNode node : RelOptUtil.conjunctions(node0)) {
-//                translateMatch2(node);
-//            }
-//            final Map<String, Object> map = builder.map();
-//            for (Map.Entry<String, RexLiteral> entry : eqMap.entrySet()) {
-//                multiMap.removeAll(entry.getKey());
-//                map.put(entry.getKey(), literalValue(entry.getValue()));
-//            }
-//            for (Map.Entry<String, Collection<Pair<String, RexLiteral>>> entry
-//                    : multiMap.asMap().entrySet()) {
-//                final Map<String, Object> map2 = builder.map();
-//                for (Pair<String, RexLiteral> s : entry.getValue()) {
-//                    addPredicate(map2, s.left, literalValue(s.right));
-//                }
-//                map.put(entry.getKey(), map2);
-//            }
-//            return map;
-//        }
-//
-//        @SuppressWarnings("unchecked")
-//        private static void addPredicate(final Map<String, Object> map, final String op,
-//                final Object v) {
-//            if (map.containsKey(op) && stronger(op, map.get(op), v)) {
-//                return;
-//            }
-//            if ("$ne".equals(op)) {
-//                if (map.containsKey("$nin") && map.get("$nin") instanceof List) {
-//                    final List<Object> vars = (List<Object>) map.get("$nin");
-//                    vars.add(v);
-//                } else {
-//                    final List<Object> vars = new ArrayList<>();
-//                    vars.add(null);
-//                    vars.add(v);
-//                    map.put("$nin", vars);
-//                }
-//            } else {
-//                map.put(op, v);
-//            }
-//        }
-//
-//        /** Returns whether {@code v0} is a stronger value for operator {@code key}
-//         * than {@code v1}.
-//         *
-//         * <p>For example, {@code stronger("$lt", 100, 200)} returns true, because
-//         * "&lt; 100" is a more powerful condition than "&lt; 200".
-//         */
-//        private static boolean stronger(final String key, final Object v0, final Object v1) {
-//            if ("$lt".equals(key) || "$lte".equals(key)) {
-//                if (v0 instanceof Number && v1 instanceof Number) {
-//                    return ((Number) v0).doubleValue() < ((Number) v1).doubleValue();
-//                }
-//                if (v0 instanceof String && v1 instanceof String) {
-//                    return v0.toString().compareTo(v1.toString()) < 0;
-//                }
-//            }
-//            if ("$gt".equals(key) || "$gte".equals(key)) {
-//                return stronger("$lt", v1, v0);
-//            }
-//            return false;
-//        }
-//
-//        private static Object literalValue(final RexLiteral literal) {
-//            return literal.getValue2();
-//        }
-//
-//        private Void translateMatch2(final RexNode node) {
-//            switch (node.getKind()) {
-//                case EQUALS:
-//                    return translateBinary(null, null, (RexCall) node);
-//                case LESS_THAN:
-//                    return translateBinary("$lt", "$gt", (RexCall) node);
-//                case LESS_THAN_OR_EQUAL:
-//                    return translateBinary("$lte", "$gte", (RexCall) node);
-//                case NOT_EQUALS:
-//                    return translateBinary("$ne", "$ne", (RexCall) node);
-//                case GREATER_THAN:
-//                    return translateBinary("$gt", "$lt", (RexCall) node);
-//                case GREATER_THAN_OR_EQUAL:
-//                    return translateBinary("$gte", "$lte", (RexCall) node);
-//                default:
-//                    throw new AssertionError("cannot translate " + node);
-//            }
-//        }
-//
-//        /** Translates a call to a binary operator, reversing arguments if
-//         * necessary. */
-//        private Void translateBinary(final String op, final String rop, final RexCall call) {
-//            final RexNode left = call.operands.get(0);
-//            final RexNode right = call.operands.get(1);
-//            boolean b = translateBinary2(op, left, right);
-//            if (b) {
-//                return null;
-//            }
-//            b = translateBinary2(rop, right, left);
-//            if (b) {
-//                return null;
-//            }
-//            throw new AssertionError("cannot translate op " + op + " call " + call);
-//        }
-//
-//        /** Translates a call to a binary operator. Returns whether successful. */
-//        private boolean translateBinary2(final String op, final RexNode left, final RexNode right) {
-//            switch (right.getKind()) {
-//                case LITERAL:
-//                    break;
-//                default:
-//                    return false;
-//            }
-//            final RexLiteral rightLiteral = (RexLiteral) right;
-//            switch (left.getKind()) {
-//                case INPUT_REF:
-//                    final RexInputRef left1 = (RexInputRef) left;
-//                    final String name = fieldNames.get(left1.getIndex());
-//                    translateOp2(op, name, rightLiteral);
-//                    return true;
-//                case CAST:
-//                    return translateBinary2(op, ((RexCall) left).operands.get(0), right);
-//                case ITEM:
-//                    final String itemName = DocumentDbRules.isItem((RexCall) left);
-//                    if (itemName != null) {
-//                        translateOp2(op, itemName, rightLiteral);
-//                        return true;
-//                    }
-//                    // fall through
-//                default:
-//                    return false;
-//            }
-//        }
-//
-//        private void translateOp2(final String op, final String name, final RexLiteral right) {
-//            if (op == null) {
-//                // E.g.: {deptno: 100}
-//                eqMap.put(name, right);
-//            } else {
-//                // E.g. {deptno: {$lt: 100}}
-//                // which may later be combined with other conditions:
-//                // E.g. {deptno: [$lt: 100, $gt: 50]}
-//                multiMap.put(name, Pair.of(op, right));
-//            }
-//        }
-//    }
+    /*
+    /** Translates {@link RexNode} expressions into MongoDB expression strings. o/
+    static class Translator {
+        private final JsonBuilder builder = new JsonBuilder();
+        private final Multimap<String, Pair<String, RexLiteral>> multiMap =
+                HashMultimap.create();
+        private final Map<String, RexLiteral> eqMap =
+                new LinkedHashMap<>();
+        private final RexBuilder rexBuilder;
+        private final List<String> fieldNames;
+
+        Translator(final RexBuilder rexBuilder, final List<String> fieldNames) {
+            this.rexBuilder = rexBuilder;
+            this.fieldNames = fieldNames;
+        }
+
+        private String translateMatch(final RexNode condition) {
+            final Map<String, Object> map = builder.map();
+            map.put("$match", translateOr(condition));
+            return builder.toJsonString(map);
+        }
+
+        private Object translateOr(final RexNode condition) {
+            final RexNode condition2 =
+                    RexUtil.expandSearch(rexBuilder, null, condition);
+
+            final List<Object> list = new ArrayList<>();
+            for (RexNode node : RelOptUtil.disjunctions(condition2)) {
+                list.add(translateAnd(node));
+            }
+            switch (list.size()) {
+                case 1:
+                    return list.get(0);
+                default:
+                    final Map<String, Object> map = builder.map();
+                    map.put("$or", list);
+                    return map;
+            }
+        }
+
+        /** Translates a condition that may be an AND of other conditions. Gathers
+         * together conditions that apply to the same field. o/
+        private Map<String, Object> translateAnd(final RexNode node0) {
+            eqMap.clear();
+            multiMap.clear();
+            for (RexNode node : RelOptUtil.conjunctions(node0)) {
+                translateMatch2(node);
+            }
+            final Map<String, Object> map = builder.map();
+            for (Map.Entry<String, RexLiteral> entry : eqMap.entrySet()) {
+                multiMap.removeAll(entry.getKey());
+                map.put(entry.getKey(), literalValue(entry.getValue()));
+            }
+            for (Map.Entry<String, Collection<Pair<String, RexLiteral>>> entry
+                    : multiMap.asMap().entrySet()) {
+                final Map<String, Object> map2 = builder.map();
+                for (Pair<String, RexLiteral> s : entry.getValue()) {
+                    addPredicate(map2, s.left, literalValue(s.right));
+                }
+                map.put(entry.getKey(), map2);
+            }
+            return map;
+        }
+
+        @SuppressWarnings("unchecked")
+        private static void addPredicate(final Map<String, Object> map, final String op,
+                final Object v) {
+            if (map.containsKey(op) && stronger(op, map.get(op), v)) {
+                return;
+            }
+            if ("$ne".equals(op)) {
+                if (map.containsKey("$nin") && map.get("$nin") instanceof List) {
+                    final List<Object> vars = (List<Object>) map.get("$nin");
+                    vars.add(v);
+                } else {
+                    final List<Object> vars = new ArrayList<>();
+                    vars.add(null);
+                    vars.add(v);
+                    map.put("$nin", vars);
+                }
+            } else {
+                map.put(op, v);
+            }
+        }
+
+        /** Returns whether {@code v0} is a stronger value for operator {@code key}
+         * than {@code v1}.
+         *
+         * <p>For example, {@code stronger("$lt", 100, 200)} returns true, because
+         * "&lt; 100" is a more powerful condition than "&lt; 200".
+         o/
+        private static boolean stronger(final String key, final Object v0, final Object v1) {
+            if ("$lt".equals(key) || "$lte".equals(key)) {
+                if (v0 instanceof Number && v1 instanceof Number) {
+                    return ((Number) v0).doubleValue() < ((Number) v1).doubleValue();
+                }
+                if (v0 instanceof String && v1 instanceof String) {
+                    return v0.toString().compareTo(v1.toString()) < 0;
+                }
+            }
+            if ("$gt".equals(key) || "$gte".equals(key)) {
+                return stronger("$lt", v1, v0);
+            }
+            return false;
+        }
+
+        private static Object literalValue(final RexLiteral literal) {
+            return literal.getValue2();
+        }
+
+        private Void translateMatch2(final RexNode node) {
+            switch (node.getKind()) {
+                case EQUALS:
+                    return translateBinary(null, null, (RexCall) node);
+                case LESS_THAN:
+                    return translateBinary("$lt", "$gt", (RexCall) node);
+                case LESS_THAN_OR_EQUAL:
+                    return translateBinary("$lte", "$gte", (RexCall) node);
+                case NOT_EQUALS:
+                    return translateBinary("$ne", "$ne", (RexCall) node);
+                case GREATER_THAN:
+                    return translateBinary("$gt", "$lt", (RexCall) node);
+                case GREATER_THAN_OR_EQUAL:
+                    return translateBinary("$gte", "$lte", (RexCall) node);
+                default:
+                    throw new AssertionError("cannot translate " + node);
+            }
+        }
+
+        /** Translates a call to a binary operator, reversing arguments if
+         * necessary. o/
+        private Void translateBinary(final String op, final String rop, final RexCall call) {
+            final RexNode left = call.operands.get(0);
+            final RexNode right = call.operands.get(1);
+            boolean b = translateBinary2(op, left, right);
+            if (b) {
+                return null;
+            }
+            b = translateBinary2(rop, right, left);
+            if (b) {
+                return null;
+            }
+            throw new AssertionError("cannot translate op " + op + " call " + call);
+        }
+
+        /** Translates a call to a binary operator. Returns whether successful. o/
+        private boolean translateBinary2(final String op, final RexNode left, final RexNode right) {
+            switch (right.getKind()) {
+                case LITERAL:
+                    break;
+                default:
+                    return false;
+            }
+            final RexLiteral rightLiteral = (RexLiteral) right;
+            switch (left.getKind()) {
+                case INPUT_REF:
+                    final RexInputRef left1 = (RexInputRef) left;
+                    final String name = fieldNames.get(left1.getIndex());
+                    translateOp2(op, name, rightLiteral);
+                    return true;
+                case CAST:
+                    return translateBinary2(op, ((RexCall) left).operands.get(0), right);
+                case ITEM:
+                    final String itemName = DocumentDbRules.isItem((RexCall) left);
+                    if (itemName != null) {
+                        translateOp2(op, itemName, rightLiteral);
+                        return true;
+                    }
+                    // fall through
+                default:
+                    return false;
+            }
+        }
+
+        private void translateOp2(final String op, final String name, final RexLiteral right) {
+            if (op == null) {
+                // E.g.: {deptno: 100}
+                eqMap.put(name, right);
+            } else {
+                // E.g. {deptno: {$lt: 100}}
+                // which may later be combined with other conditions:
+                // E.g. {deptno: [$lt: 100, $gt: 50]}
+                multiMap.put(name, Pair.of(op, right));
+            }
+        }
+    }
+    */
 }
