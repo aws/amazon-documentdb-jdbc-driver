@@ -312,11 +312,11 @@ class DocumentDbMainTest {
             output.setLength(0);
             DocumentDbMain.handleCommandLine(args, output);
             Assertions.assertEquals(String.format(
-                    "Name=%1$s, Version=1, SQL Name=integration\n"
-                            + "Name=%2$s, Version=1, SQL Name=integration\n",
+                    "Name=%1$s, Version=1, SQL Name=integration%n"
+                            + "Name=%2$s, Version=1, SQL Name=integration%n",
                     DEFAULT_SCHEMA_NAME,
                     CUSTOM_SCHEMA_NAME),
-                    output.toString().replace("\r\n", "\n").replaceAll(", Modified=.*", ""));
+                    output.toString().replaceAll(", Modified=.*", ""));
         } finally {
             dropCollection(testEnvironment, collectionName1);
             dropCollection(testEnvironment, collectionName2);
@@ -728,7 +728,8 @@ class DocumentDbMainTest {
         }
     }
 
-    private String createSimpleCollection(DocumentDbTestEnvironment testEnvironment) throws SQLException {
+    private String createSimpleCollection(final DocumentDbTestEnvironment testEnvironment)
+            throws SQLException {
         final String collectionName;
         collectionName = testEnvironment.newCollectionName(false);
         createSimpleCollection(testEnvironment, collectionName);
