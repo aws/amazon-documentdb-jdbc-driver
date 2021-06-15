@@ -909,6 +909,7 @@ public class DocumentDbMain {
                 .argName(TABLE_NAMES_ARG_NAME)
                 .optionalArg(true) // Allow no arguments
                 .hasArgs() // Unlimited arguments
+                .valueSeparator(',')
                 .build();
         commandOptions.addOption(currOption);
         currOption = Option.builder(IMPORT_OPTION_FLAG)

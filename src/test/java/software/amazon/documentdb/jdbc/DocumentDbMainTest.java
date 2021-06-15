@@ -392,7 +392,8 @@ class DocumentDbMainTest {
     void testExportStdOut(final DocumentDbTestEnvironment testEnvironment)
             throws SQLException {
         setConnectionProperties(testEnvironment);
-        final String collectionName = createSimpleCollection(testEnvironment);
+        final String collectionName1 = createSimpleCollection(testEnvironment);
+        final String collectionName2 = createSimpleCollection(testEnvironment);
 
         try {
 
@@ -402,14 +403,15 @@ class DocumentDbMainTest {
             Assertions.assertEquals("New schema '_default', version '1' generated.",
                     output.toString());
 
-            args = buildArguments("-e=" + collectionName);
+            args = buildArguments(String.format("-e=%s,%s", collectionName1, collectionName2));
             output.setLength(0);
             DocumentDbMain.handleCommandLine(args, output);
             Assertions.assertEquals(
-                    getExpectedExportContent(testEnvironment, collectionName),
+                    getExpectedExportContent(testEnvironment, collectionName1, collectionName2),
                     output.toString().replace("\r\n", "\n"));
         } finally {
-            dropCollection(testEnvironment, collectionName);
+            dropCollection(testEnvironment, collectionName2);
+            dropCollection(testEnvironment, collectionName1);
         }
     }
 
@@ -841,79 +843,80 @@ class DocumentDbMainTest {
 
     private static String getExpectedExportContent(
             final DocumentDbTestEnvironment testEnvironment,
-            final String collectionName) {
-        return "[ {\n"
-                + "  \"sqlName\" : \"" + collectionName + "\",\n"
-                + "  \"collectionName\" : \"" + collectionName + "\",\n"
-                + "  \"columns\" : [ {\n"
-                + "    \"fieldPath\" : \"_id\",\n"
-                + "    \"sqlName\" : \"" + collectionName + "__id\",\n"
-                + "    \"sqlType\" : \"varchar\",\n"
-                + "    \"dbType\" : \"object_id\",\n"
-                + "    \"isPrimaryKey\" : true\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldDouble\",\n"
-                + "    \"sqlName\" : \"fieldDouble\",\n"
-                + "    \"sqlType\" : \"double\",\n"
-                + "    \"dbType\" : \"double\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldString\",\n"
-                + "    \"sqlName\" : \"fieldString\",\n"
-                + "    \"sqlType\" : \"varchar\",\n"
-                + "    \"dbType\" : \"string\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldObjectId\",\n"
-                + "    \"sqlName\" : \"fieldObjectId\",\n"
-                + "    \"sqlType\" : \"varchar\",\n"
-                + "    \"dbType\" : \"object_id\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldBoolean\",\n"
-                + "    \"sqlName\" : \"fieldBoolean\",\n"
-                + "    \"sqlType\" : \"boolean\",\n"
-                + "    \"dbType\" : \"boolean\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldDate\",\n"
-                + "    \"sqlName\" : \"fieldDate\",\n"
-                + "    \"sqlType\" : \"timestamp\",\n"
-                + "    \"dbType\" : \"date_time\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldInt\",\n"
-                + "    \"sqlName\" : \"fieldInt\",\n"
-                + "    \"sqlType\" : \"integer\",\n"
-                + "    \"dbType\" : \"int32\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldLong\",\n"
-                + "    \"sqlName\" : \"fieldLong\",\n"
-                + "    \"sqlType\" : \"bigint\",\n"
-                + "    \"dbType\" : \"int64\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldMaxKey\",\n"
-                + "    \"sqlName\" : \"fieldMaxKey\",\n"
-                + "    \"sqlType\" : \"varchar\",\n"
-                + "    \"dbType\" : \"max_key\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldMinKey\",\n"
-                + "    \"sqlName\" : \"fieldMinKey\",\n"
-                + "    \"sqlType\" : \"varchar\",\n"
-                + "    \"dbType\" : \"min_key\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldNull\",\n"
-                + "    \"sqlName\" : \"fieldNull\",\n"
-                + "    \"sqlType\" : \"null\",\n"
-                + "    \"dbType\" : \"null\"\n"
-                + "  }, {\n"
-                + "    \"fieldPath\" : \"fieldBinary\",\n"
-                + "    \"sqlName\" : \"fieldBinary\",\n"
-                + "    \"sqlType\" : \"varbinary\",\n"
-                + "    \"dbType\" : \"binary\"\n"
-                + ((testEnvironment instanceof DocumentDbMongoTestEnvironment)
-                ? "  }, {\n"
-                + "    \"fieldPath\" : \"fieldDecimal128\",\n"
-                + "    \"sqlName\" : \"fieldDecimal128\",\n"
-                + "    \"sqlType\" : \"decimal\",\n"
-                + "    \"dbType\" : \"decimal128\"\n"
-                : "")
-                + "  } ]\n"
-                + "} ]";
+            final String... collectionNames) {
+        if (collectionNames == null || collectionNames.length < 1) {
+            return "";
+        }
+
+        final StringBuilder builder = new StringBuilder();
+        builder.append("[ ");
+        boolean isFirst = true;
+        for (String collectionName : collectionNames) {
+            if (!isFirst) {
+                builder.append(", ");
+            }
+            isFirst = false;
+            builder.append("{\n" + "  \"sqlName\" : \"").append(collectionName).append("\",\n")
+                    .append("  \"collectionName\" : \"").append(collectionName).append("\",\n")
+                    .append("  \"columns\" : [ {\n").append("    \"fieldPath\" : \"_id\",\n")
+                    .append("    \"sqlName\" : \"").append(collectionName).append("__id\",\n")
+                    .append("    \"sqlType\" : \"varchar\",\n")
+                    .append("    \"dbType\" : \"object_id\",\n")
+                    .append("    \"isPrimaryKey\" : true\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldDouble\",\n")
+                    .append("    \"sqlName\" : \"fieldDouble\",\n")
+                    .append("    \"sqlType\" : \"double\",\n")
+                    .append("    \"dbType\" : \"double\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldString\",\n")
+                    .append("    \"sqlName\" : \"fieldString\",\n")
+                    .append("    \"sqlType\" : \"varchar\",\n")
+                    .append("    \"dbType\" : \"string\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldObjectId\",\n")
+                    .append("    \"sqlName\" : \"fieldObjectId\",\n")
+                    .append("    \"sqlType\" : \"varchar\",\n")
+                    .append("    \"dbType\" : \"object_id\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldBoolean\",\n")
+                    .append("    \"sqlName\" : \"fieldBoolean\",\n")
+                    .append("    \"sqlType\" : \"boolean\",\n")
+                    .append("    \"dbType\" : \"boolean\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldDate\",\n")
+                    .append("    \"sqlName\" : \"fieldDate\",\n")
+                    .append("    \"sqlType\" : \"timestamp\",\n")
+                    .append("    \"dbType\" : \"date_time\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldInt\",\n")
+                    .append("    \"sqlName\" : \"fieldInt\",\n")
+                    .append("    \"sqlType\" : \"integer\",\n")
+                    .append("    \"dbType\" : \"int32\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldLong\",\n")
+                    .append("    \"sqlName\" : \"fieldLong\",\n")
+                    .append("    \"sqlType\" : \"bigint\",\n")
+                    .append("    \"dbType\" : \"int64\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldMaxKey\",\n")
+                    .append("    \"sqlName\" : \"fieldMaxKey\",\n")
+                    .append("    \"sqlType\" : \"varchar\",\n")
+                    .append("    \"dbType\" : \"max_key\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldMinKey\",\n")
+                    .append("    \"sqlName\" : \"fieldMinKey\",\n")
+                    .append("    \"sqlType\" : \"varchar\",\n")
+                    .append("    \"dbType\" : \"min_key\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldNull\",\n")
+                    .append("    \"sqlName\" : \"fieldNull\",\n")
+                    .append("    \"sqlType\" : \"null\",\n").append("    \"dbType\" : \"null\"\n")
+                    .append("  }, {\n").append("    \"fieldPath\" : \"fieldBinary\",\n")
+                    .append("    \"sqlName\" : \"fieldBinary\",\n")
+                    .append("    \"sqlType\" : \"varbinary\",\n")
+                    .append("    \"dbType\" : \"binary\"\n")
+                    .append((testEnvironment instanceof DocumentDbMongoTestEnvironment)
+                            ? "  }, {\n"
+                            + "    \"fieldPath\" : \"fieldDecimal128\",\n"
+                            + "    \"sqlName\" : \"fieldDecimal128\",\n"
+                            + "    \"sqlType\" : \"decimal\",\n"
+                            + "    \"dbType\" : \"decimal128\"\n"
+                            : "")
+                    .append("  } ]\n")
+                    .append("}");
+        }
+        builder.append(" ]");
+        return builder.toString();
     }
 }
