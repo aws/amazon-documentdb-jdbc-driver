@@ -16,8 +16,6 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import java.util.function.BiFunction;
-import java.util.function.Function;
 import org.apache.calcite.adapter.enumerable.RexImpTable;
 import org.apache.calcite.adapter.enumerable.RexToLixTranslator;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
@@ -43,7 +41,6 @@ import org.apache.calcite.rex.RexVisitorImpl;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlOperator;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
-import org.apache.calcite.sql.type.IntervalSqlType;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Bug;
 import org.apache.calcite.util.Util;
@@ -57,6 +54,7 @@ import java.util.AbstractList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
@@ -228,15 +226,15 @@ public final class DocumentDbRules {
                 case INTERVAL_HOUR:
                 case INTERVAL_MINUTE:
                 case INTERVAL_SECOND:
-                    // Convert any intervals to milliseconds.
-                    return "NumberLong(" + literal.getValueAs(Long.class) + ")";
+                    // Convert supported intervals to milliseconds.
+                    return "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
                 case DATE:
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
-                    // Convert from date to milliseconds to MongoDb date.
-                    return "new Date(" + literal.getValueAs(Long.class) +")";
+                    // Convert from date in milliseconds to MongoDb date.
+                    return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }";
                 default:
-                    return "{$literal: "
+                    return "{\"$literal\": "
                             + RexToLixTranslator.translateLiteral(literal, literal.getType(),
                             typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
                             + "}";
@@ -335,27 +333,31 @@ public final class DocumentDbRules {
             DATEPART_OPERATORS.put(TimeUnitRange.DOY, "$dayOfYear");
             DATEPART_OPERATORS.put(TimeUnitRange.DAY, "$dayOfMonth");
             DATEPART_OPERATORS.put(TimeUnitRange.DOW, "$dayOfWeek");
+            DATEPART_OPERATORS.put(TimeUnitRange.ISODOW, "$isoDayOfWeek");
+            DATEPART_OPERATORS.put(TimeUnitRange.ISOYEAR, "$isoWeekYear");
         }
 
-        private static boolean isDateFunction(RexCall call) {
+        private static boolean isDateFunction(final RexCall call) {
             return DATE_FUNCTIONS.containsKey(call.getOperator());
         }
 
-        private static String translateDateFunction(RexCall call, List<String> strings) {
+        private static String translateDateFunction(final RexCall call, final List<String> strings) {
             return DATE_FUNCTIONS.get(call.getOperator()).apply(call, strings);
         }
 
-        private static String translateDateAdd(RexCall call, List<String> strings) {
+        private static String translateDateAdd(final RexCall call, final List<String> strings) {
             // TODO: Check for unsupported intervals and throw error/emulate in some other way.
-            return "{ $add:" + "[" + Util.commaList(strings) + "]}";
+            return "{ \"$add\":" + "[" + Util.commaList(strings) + "]}";
         }
 
-        private static String translateExtract(RexCall call, List<String> strings) {
+        private static String translateExtract(final RexCall call, final List<String> strings) {
+            // The first argument to extract is the interval (literal)
+            // and the second argument is the date (can be any node evaluating to a date).
             final RexLiteral literal = (RexLiteral) call.getOperands().get(0);
             final TimeUnitRange range = literal.getValueAs(TimeUnitRange.class);
 
             // TODO: Check for unsupported time unit (ex: quarter) and emulate in some other way.
-            return "{ " + DATEPART_OPERATORS.get(range) + ": [" + strings.get(1) + "]}";
+            return "{ " + quote(DATEPART_OPERATORS.get(range)) + ": [" + strings.get(1) + "]}";
         }
 
     }

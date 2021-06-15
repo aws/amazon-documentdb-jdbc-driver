@@ -16,10 +16,8 @@
 
 package software.amazon.documentdb.jdbc;
 
-import java.sql.Timestamp;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
-import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -42,6 +40,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -1287,13 +1286,13 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
-     * Tests that SUM(1) works, equivalent to COUNT(*).
+     * Tests that TIMESTAMPADD() works for intervals that can be converted to ms.
      * @throws SQLException occurs if query fails.
      */
     @Test
-    @DisplayName("Tests some basic date functions.")
-    void testQueryDateAdd() throws SQLException {
-        final String tableName = "testDateAdd";
+    @DisplayName("Tests TIMESTAMPADD() with different intervals.")
+    void testQueryTimestampAdd() throws SQLException {
+        final String tableName = "testTimestampAdd";
         final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
         final long dayAfterDateTime = Instant.parse("2020-01-02T00:00:00.00Z").toEpochMilli();
         final long hourAfterDateTime =  Instant.parse("2020-01-01T01:00:00.00Z").toEpochMilli();
@@ -1308,7 +1307,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         // Add 1 day to a date column.
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(DAY"
-                        + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet.getTimestamp(1));
@@ -1317,7 +1316,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         // Add 1 hour to a date column.
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(HOUR"
-                        + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals(new Timestamp(hourAfterDateTime), resultSet2.getTimestamp(1));
@@ -1326,7 +1325,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         // Add 1 minute to a date column.
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(MINUTE"
-                        + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertEquals(new Timestamp(minuteAfterDateTime), resultSet3.getTimestamp(1));
@@ -1335,7 +1334,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         // Add 1 second to a date column.
         final ResultSet resultSet4 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(SECOND"
-                        + ", 1, \"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet4);
         Assertions.assertTrue(resultSet4.next());
         Assertions.assertEquals(new Timestamp(secondAfterDateTime), resultSet4.getTimestamp(1));
@@ -1344,7 +1343,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         // Add 1 day to a date literal.
         final ResultSet resultSet5 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(DAY"
-                        + ", 1, TIMESTAMP '2020-01-01 00:00:00' ) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, TIMESTAMP '2020-01-01 00:00:00' ) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet5);
         Assertions.assertTrue(resultSet5.next());
         Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet5.getTimestamp(1));
@@ -1353,13 +1352,63 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         // Add 1 day to the date and extract the day of the month from result.
         final ResultSet resultSet6 = statement.executeQuery(
                 String.format("SELECT DAYOFMONTH(TIMESTAMPADD(DAY"
-                        + ", 1, \"field\")) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\")) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet6);
         Assertions.assertTrue(resultSet6.next());
         Assertions.assertEquals(2, resultSet6.getInt(1));
         Assertions.assertFalse(resultSet6.next());
     }
 
+    /**
+     * Tests that EXTRACT works for different time units.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests EXTRACT() for different time units.")
+    void testQueryExtract() throws SQLException {
+        final String tableName = "testDateAdd";
+        final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        // Get date parts.
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT "
+                        + "YEAR(\"field\"), "
+                        + "MONTH(\"field\"),"
+                        + "WEEK(\"field\"),"
+                        + "DAYOFMONTH(\"field\"),"
+                        + "DAYOFWEEK(\"field\"),"
+                        + "DAYOFYEAR(\"field\"),"
+                        + "HOUR(\"field\"),"
+                        + "MINUTE(\"field\"),"
+                        + "SECOND(\"field\")"
+                        + "FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        // Year is 2020.
+        Assertions.assertEquals(2020, resultSet.getInt(1));
+        // Month is 2 (Feb).
+        Assertions.assertEquals(2, resultSet.getInt(2));
+        // Week in year is 5.
+        Assertions.assertEquals(5, resultSet.getInt(3));
+        // Day of month is 3.
+        Assertions.assertEquals(3, resultSet.getInt(4));
+        // Day of week is 2 (Mon).
+        Assertions.assertEquals(2, resultSet.getInt(5));
+        // Day of year is 34.
+        Assertions.assertEquals(34, resultSet.getInt(6));
+        // Hour is 4.
+        Assertions.assertEquals(4, resultSet.getInt(7));
+        // Minute is 5.
+        Assertions.assertEquals(5, resultSet.getInt(8));
+        // Seconds is 6.
+        Assertions.assertEquals(6, resultSet.getInt(9));
+        Assertions.assertFalse(resultSet.next());
+    }
 
     protected static DocumentDbStatement getDocumentDbStatement() throws SQLException {
         return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);

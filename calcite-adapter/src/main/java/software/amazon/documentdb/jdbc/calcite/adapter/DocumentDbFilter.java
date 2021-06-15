@@ -18,7 +18,6 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
-import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -87,15 +86,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
                                 mongoImplementor.getMetadataTable()));
         // DocumentDB: modified - end
         final String match = translator.translateMatch(condition);
-        final DocumentDbRules.RexToMongoTranslator rexToMongoTranslator =
-                new DocumentDbRules.RexToMongoTranslator(
-                        (JavaTypeFactory) getCluster().getTypeFactory(),
-                        DocumentDbRules.mongoFieldNames(getInput().getRowType(),
-                                mongoImplementor.getMetadataTable()));
-        final String alternateMatch = condition.accept(rexToMongoTranslator);
-        implementor.add(null, "{$addFields: { 'condition' : " + alternateMatch + "}}");
-        implementor.add(null, "{$match: { 'condition' : true }}");
-        //implementor.add(null, match);
+        implementor.add(null, match);
     }
 
     /** Translates {@link RexNode} expressions into MongoDB expression strings. */
