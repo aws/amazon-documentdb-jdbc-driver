@@ -18,6 +18,7 @@ package software.amazon.documentdb.jdbc;
 
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
+import org.bson.BsonMinKey;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -1269,7 +1270,7 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests query with SUM(1).")
     void testQuerySumOne() throws SQLException {
-        final String tableName = "testSumOfNulls";
+        final String tableName = "testQuerySumOne";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": 4}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
@@ -1282,6 +1283,148 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(3, resultSet.getInt(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries with not-equals do not return null or undefined values.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests that comparisons to null do not return a value.")
+    void testComparisonToNull() throws SQLException {
+        final String tableName = "testComparisonsToNull";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 4}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n}" +
+                "\"field\": null");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 5", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries with multiple not-equals clauses are correct.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests that multiple != conditions can be used.")
+    void testMultipleNotEquals() throws SQLException {
+        final String tableName = "testMultipleNotEquals";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 4}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field\": 3}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
+                "\"field\": 2}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 4 AND \"field\" <> 3", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(2, resultSet.getInt(2));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries CASE are correct, particularly where null or undefined values are involved.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests queries with CASE and null values are correct.")
+    void testCASE() throws SQLException {
+        final String tableName = "testCASE";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": 2}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": 5}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104,\n" +
+                "\"field\": 4}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n" +
+                "\"field\": 3}");
+        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n" +
+                "\"field\": null}");
+        final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107}");
+        final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108}");
+        doc8.append("field", new BsonMinKey());
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CASE " +
+                                "WHEN \"field\" < 2  THEN 'A' " +
+                                "WHEN \"field\" <= 2 THEN 'B' " +
+                                "WHEN \"field\" > 4 THEN 'C' " +
+                                "WHEN \"field\" >= 4 THEN 'D' " +
+                                "WHEN \"field\" <> 7 THEN 'E' " +
+                                "ELSE 'F' END FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("A", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("B", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("C", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("D", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("E", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("F", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("F", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("F", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries of CASE are correct with two different fields involved.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests queries with two field CASE.")
+    void testCASETwoFields() throws SQLException {
+        final String tableName = "testCASETwoFields";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 1,\n" +
+                "\"fieldB\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 2,\n" +
+                "\"fieldB\": 1}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"fieldA\": 1}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CASE " +
+                                "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' " +
+                                "WHEN \"fieldA\" > \"fieldB\" THEN 'B' " +
+                                "ELSE 'C' END FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("A", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("B", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("C", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 

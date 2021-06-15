@@ -45,7 +45,7 @@ or later is installed on your computer. You can download the Java SE Runtime Env
 #### Download the DocumentDB JDBC Driver <a name='download-the-documentdb-jdbc-driver' />
 
 <!-- >TODO: Get link for DocumentDB JDBC driver. -->
-Download the DocumentDB JDBC driver here. The driver is packaged as a single JAR file
+Download the DocumentDB JDBC driver [here](https://github.com/aws/amazon-documentdb-jdbc-driver/releases). The driver is packaged as a single JAR file
 (e.g., `documentdb-jdbc-1.0-SNAPSHOT-all.jar`).
 
 ### Specifying the Amazon RDS Certificate Authority Certificate File <a name='adding-amazon-rds-certificate-bundle' />
@@ -93,7 +93,10 @@ For further information on SSH tunneling , please refer to the documentation on
     - **_Linux_**: `/opt/tableau/tableau_driver/jdbc`
 
 1. [Download]() the DocumentDB Tableau connector (a TACO file) and copy it to your `My Tableau Repository/Connectors`
-   directory. 
+   directory.
+    - **_Windows_**: `C:\Users\[user]\Documents\My Tableau Repository\Connectors`
+    - **_Mac_**: `/Users/[user]/Documents/My Tableau Repository/Connectors`
+
    For more information, consult the [Tableau documentation](https://tableau.github.io/connector-plugin-sdk/docs/run-taco). 
 
 #### Connecting to Amazon DocumentDB Using Tableau
