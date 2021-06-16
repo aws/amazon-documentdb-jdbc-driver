@@ -221,10 +221,10 @@ public final class DocumentDbRules {
             if (typeFactory.getJavaClass(literal.getType()).toString().equals("long")) {
                 return "{\"$numberLong\": \"" + literal.getValue() + "\"}";
             }
-            return "{\"$literal\": "
-                    + RexToLixTranslator.translateLiteral(literal, literal.getType(),
-                    typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
-                    + "}";
+
+            // When literal is supported, this should be surrounded by $literal
+            return RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                    typeFactory, RexImpTable.NullAs.NOT_POSSIBLE).toString();
         }
 
         @Override public String visitInputRef(final RexInputRef inputRef) {
