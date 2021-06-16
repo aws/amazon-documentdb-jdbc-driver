@@ -10,4 +10,5 @@ These sections cover the setup and use of the Amazon DocumentDB JDBC driver.
     - [Connection String Syntax and Options](setup/connection-string.md)
 - Managing Schema
     - [Managing Schema Using the Command Line Interface](schema/manage-schema-cli.md)
+    - [Table Schemas JSON Format](schema/table-schemas.schema.json)
 
