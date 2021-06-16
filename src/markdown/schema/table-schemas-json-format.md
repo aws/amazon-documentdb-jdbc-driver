@@ -60,7 +60,7 @@ Here is an example collection `"products"`.
 
 ```json
 [ {
-  "_id" : ObjectId("60830884bd61254fc1547e14"),
+  "_id" : "60830884bd61254fc1547e14",
   "name" : "Phone Service Basic Plan",
   "rating" : 3,
   "limits" : {
@@ -72,7 +72,7 @@ Here is an example collection `"products"`.
   }
 },
 {
-  "_id" : ObjectId("60830884bd61254fc1547e15"),
+  "_id" : "60830884bd61254fc1547e15",
   "name" : "Phone Service Core Plan",
   "rating" : 3,
   "limits" : {
@@ -84,7 +84,7 @@ Here is an example collection `"products"`.
   }
 },
 {
-  "_id" : ObjectId("60830884bd61254fc1547e16"),
+  "_id" : "60830884bd61254fc1547e16",
   "name" : "Phone Service Family Plan",
   "rating" : 4,
   "limits" : {
@@ -109,7 +109,7 @@ The schema generator produces this table schema for the `"products"` base table.
     "fieldPath" : "_id",
     "sqlName" : "products__id",
     "sqlType" : "varchar",
-    "dbType" : "object_id",
+    "dbType" : "string",
     "isPrimaryKey" : true
   }, {
     "fieldPath" : "name",
@@ -150,7 +150,7 @@ The schema generator produces this table schema for the `"products_limits_voice"
     "fieldPath" : "_id",
     "sqlName" : "products__id",
     "sqlType" : "varchar",
-    "dbType" : "object_id",
+    "dbType" : "string",
     "isPrimaryKey" : true,
     "foreignKeyTableName" : "products",
     "foreignKeyColumnName" : "products__id"
@@ -203,7 +203,7 @@ and `limits_voice_over_rate`) to give more context to what these values represen
     "fieldPath" : "_id",
     "sqlName" : "products__id",
     "sqlType" : "varchar",
-    "dbType" : "object_id",
+    "dbType" : "string",
     "isPrimaryKey" : true
   }, {
     "fieldPath" : "name",
@@ -252,4 +252,3 @@ SELECT * FROM "products"
 | "60830884bd61254fc1547e14" | "Phone Service Basic Plan" | 3.0 | "minutes" | 400 | 0.05 |
 | "60830884bd61254fc1547e15" | "Phone Service Core Plan" | 3.0 | "minutes" | 1000 | 0.05 |
 | "60830884bd61254fc1547e16" | "Phone Service Family Plan" | 4.0 | "minutes" | 1200 | 0.05 |
-
