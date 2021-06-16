@@ -16,31 +16,10 @@
 
 package software.amazon.documentdb.jdbc.persist;
 
-import software.amazon.documentdb.jdbc.common.utilities.SqlError;
-
 /**
  * This exception identifies when a security exception occurs during schema operations.
  */
 public class DocumentDbSchemaSecurityException extends Exception {
-    /**
-     * Constructs a new exception with the default error message.
-     * The cause is not initialized, and may subsequently be initialized by a call to initCause.
-     */
-    public DocumentDbSchemaSecurityException() {
-        super(SqlError.lookup(SqlError.SECURITY_ERROR, ""));
-    }
-
-    /**
-     * Constructs a new exception with the specified detail message.
-     * The cause is not initialized, and may subsequently be initialized by a call to initCause.
-     *
-     * @param message the detail message. The detail message is saved for later retrieval by the
-     *                getMessage() method.
-     */
-    public DocumentDbSchemaSecurityException(final String message) {
-        super(message);
-    }
-
     /**
      * Constructs a new exception with the specified detail message and cause.
      * Note that the detail message associated with cause is not automatically incorporated in this

@@ -15,9 +15,19 @@ See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more inform
 
 This project is licensed under the Apache-2.0 License.
 
+## Documentation
+
+See the [product documentation](src/markdown/index.md) for more detailed information about this driver.
+
 ## Connection String Syntax
 
-`jdbc:documentdb://[<user>[:<password>]@]<hostname>[:<port>]/<database-name>[?<option>=<value>[&<option>=<value>[...]]]`
+```
+jdbc:documentdb://[<user>[:<password>]@]<hostname>[:<port>]/<database-name>[?<option>=<value>[&<option>=<value>[...]]]
+```
+
+## Setup and Usage
+
+To setup and use the DocumentDB JDBC driver, follow [these directions](src/markdown/setup/setup.md).
 
 ### Scheme
 
@@ -365,6 +375,18 @@ So the resulting data in the table would look like this...
 | "112233" | "George Jackson" | "\[ \\"Vogue\\", \\"People\\",  \\"USA Today\\" \]" |
 | "112244" | "Joan Starr" | "1" |
 
+## Schema Management
+
+Schema can be managed in the following ways:
+
+- generated
+- removed
+- listed
+- exported
+- imported
+  
+See the [schema management documentation](src/markdown/schema/manage-schema-cli.md) for further 
+information.
 
 ## ResultSet Limitations
 
@@ -489,7 +511,3 @@ These can be combined as long as the complete set of foreign keys are still pres
     AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants"."subscriptions_index_lvl_0"```
 
 This feature allows `INNER` and `LEFT (OUTER) JOINs` .
-
-# Setup and Usage
-
-To setup and use the DocumentDB JDBC driver, follow [these directions](src/markdown/setup/setup.md).
