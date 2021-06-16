@@ -44,10 +44,6 @@ shadowJar {
     exclude 'org/apache/calcite/avatica/remote/Driver*'
     exclude 'org/apache/commons/dbcp2/PoolingDriver*'
 
-    // NOTE: Patched versions of janino and commons-compiler are being added in resources
-    dependencies {
-        exclude(dependency('org.codehaus.janino::'))
-    }
     // Relocate (shadow) the following packages.
     relocate 'org.apache.calcite', 'org.apache.calcite.shadow'
     relocate 'com.google.guava', 'com.google.guava.shadow'
@@ -232,6 +228,9 @@ license {
 }
 
 repositories {
+    maven {
+        url 'https://raw.githubusercontent.com/birschick-bq/janino/brucei/ad-189/maven'
+    }
     mavenCentral()
 }
 
@@ -243,7 +242,6 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.12.3'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.29'
-    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.26.0'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
