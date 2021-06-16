@@ -61,9 +61,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse(
                         "{ \"_id\" : \"key1\", \"otherArray\" : [ { \"field\" : 1, \"field3\": \"value\" }, { \"field\" : 2, \"field3\" : \"value\" } ]}");
         insertBsonDocuments(
-                COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[] {document});
+                COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{document});
         insertBsonDocuments(
-                OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[] {otherDocument});
+                OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{otherDocument});
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
                 DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", true);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
@@ -210,7 +210,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(5, result.getColumnMetaData().size());
-        Assertions.assertEquals(3, result.getAggregateOperations().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$match\": {\"$or\": ["
@@ -226,8 +226,14 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"preserveNullAndEmptyArrays\": true }}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{ \"$match\": {\"array.field\": 1} }"),
+                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": [\"$array.field\", {\"$literal\": 1}]}}}"),
                 result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                result.getAggregateOperations().get(4));
 
         final String queryWithCompoundWhere =
                 String.format(
@@ -237,7 +243,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(5, result.getColumnMetaData().size());
-        Assertions.assertEquals(3, result.getAggregateOperations().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$match\": {\"$or\": ["
@@ -254,8 +260,19 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{ \"$match\": {\"array.field1\": \"value\", \"array.field\": { \"$gt\": 0 } } }"),
+                        "{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                                "{\"$and\": [{\"$eq\": [\"$array.field1\", {\"$literal\": \"value\"}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, " +
+                                "{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}]}}}"),
                 result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3)
+        );
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                result.getAggregateOperations().get(4)
+        );
     }
 
     @Test
@@ -704,7 +721,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(3, result.getColumnMetaData().size());
-        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(7, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$match\": {\"$or\": ["
@@ -728,8 +745,18 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"_f3\": \"$_f3\"}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"_f3\": {\"$gt\": 1}}}"),
+                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                        "{\"$and\": [{\"$gt\": [\"$_f3\", {\"$literal\": 1}]}, {\"$gt\": [\"$_f3\", null]}, " +
+                        "{\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
                 result.getAggregateOperations().get(4));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(5));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                result.getAggregateOperations().get(6));
     }
 
     @Test
@@ -752,7 +779,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(3, result.getColumnMetaData().size());
-        Assertions.assertEquals(8, result.getAggregateOperations().size());
+        Assertions.assertEquals(12, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {\"$or\": ["
                         + "{\"array.field1\": {\"$exists\": true}}, "
@@ -767,24 +794,39 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"preserveNullAndEmptyArrays\": true }}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"_id\": \"key\"}}"),
+                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": [\"$_id\", {\"$literal\": \"key\"}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, \"Total\": {\"$sum\": 1}}}"),
+                        "{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
+                        "{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
+                BsonDocument.parse(
+                        "{\"$group\": " +
+                                "{\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, " +
+                                "\"Total\": {\"$sum\": 1}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$sort\": {\"array.field\": 1}}"),
+                BsonDocument.parse("{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(7));
+                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": {\"$and\": [{\"$gt\": [\"$Total\", {\"$literal\": 1}]}, {\"$gt\": [\"$Total\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}}}"), result.getAggregateOperations().get(7));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(8));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                result.getAggregateOperations().get(9));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$sort\": {\"array.field\": 1}}"),
+                result.getAggregateOperations().get(10));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 1}}"),
+                result.getAggregateOperations().get(11));
     }
 
     @Test
@@ -886,7 +928,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(2, result.getColumnMetaData().size());
-        Assertions.assertEquals(9, result.getAggregateOperations().size());
+        Assertions.assertEquals(13, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {"
@@ -895,39 +937,62 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"preserveNullAndEmptyArrays\": true }}"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"array.field\": {\"$gt\": 1}}}"),
+                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                        "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 1}]}, " +
+                        "{\"$gt\": [\"$array.field\", null]}, " +
+                        "{\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"$or\": ["
-                        + "{\"array.field\": {\"$exists\": true}}, "
-                        + "{\"array.field1\": {\"$exists\": true}}, "
-                        + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$addFields\": "
-                        + "{\"testCollection__id0\": {\"$cond\": [{\"$or\": ["
-                        + "{\"$ifNull\": [\"$array.field\", false]}, "
-                        + "{\"$ifNull\": [\"$array.field1\", false]}, "
-                        + "{\"$ifNull\": [\"$array.field2\", false]}]}, \"$_id\", null]}, "
-                        + "\"_id\": \"$_id\"}}"),
+                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, \"Total\": {\"$sum\": 1}}}"),
+                        "{\"$match\": " +
+                                "{\"$or\": [{\"array.field\": {\"$exists\": true}}, " +
+                                "{\"array.field1\": {\"$exists\": true}}, " +
+                                "{\"array.field2\": {\"$exists\": true}}]}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
+                        "{\"$addFields\": " +
+                                "{\"testCollection__id0\": " +
+                                "{\"$cond\": [{\"$or\": [{\"$ifNull\": [\"$array.field\", false]}, " +
+                                "{\"$ifNull\": [\"$array.field1\", false]}, " +
+                                "{\"$ifNull\": [\"$array.field2\", false]}]}, \"$_id\", null]}, \"_id\": \"$_id\"}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
+                BsonDocument.parse(
+                        "{\"$group\": " +
+                            "{\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, " +
+                                "\"Total\": {\"$sum\": 1}}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$sort\": {\"array.field\": 1}}"),
+                BsonDocument.parse(
+                        "{\"$project\": " +
+                                "{\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", " +
+                                "\"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
                 result.getAggregateOperations().get(7));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"),
+                BsonDocument.parse(
+                        "{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                                "{\"$and\": [{\"$gt\": [\"$Total\", {\"$literal\": 1}]}, " +
+                                "{\"$gt\": [\"$Total\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
                 result.getAggregateOperations().get(8));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}}"),
+                result.getAggregateOperations().get(9));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                result.getAggregateOperations().get(10));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$sort\": {\"array.field\": 1}}"),
+                result.getAggregateOperations().get(11));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 1}"),
+                result.getAggregateOperations().get(12));
     }
 
     @Test
@@ -997,8 +1062,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"array_index_lvl_0\": \"$array_index_lvl_0\", \"field2\": \"$array.field2\", \"testCollection__id\": \"$_id\"}, "
                                 + "\"pipeline\": ["
                                 + "{\"$match\": {\"$or\": ["
-                                    + "{\"otherArray.field\": {\"$exists\": true}}, "
-                                    + "{\"otherArray.field3\": {\"$exists\": true}}]}}, "
+                                + "{\"otherArray.field\": {\"$exists\": true}}, "
+                                + "{\"otherArray.field3\": {\"$exists\": true}}]}}, "
                                 + "{\"$unwind\": {\"path\": \"$otherArray\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"otherArray_index_lvl_0\"}}, "
                                 + "{\"$match\": {\"$expr\": {\"$eq\": [\"$$testCollection__id\", \"$_id\"]}}}], "
                                 + "\"as\": \"otherTestCollection_otherArray\"}}"),
@@ -1048,8 +1113,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"array_index_lvl_0\": \"$array_index_lvl_0\", \"field2\": \"$array.field2\", \"testCollection__id\": \"$_id\"}, "
                                 + "\"pipeline\": ["
                                 + "{\"$match\": {\"$or\": ["
-                                        + "{\"otherArray.field\": {\"$exists\": true}}, "
-                                        + "{\"otherArray.field3\": {\"$exists\": true}}]}}, "
+                                + "{\"otherArray.field\": {\"$exists\": true}}, "
+                                + "{\"otherArray.field3\": {\"$exists\": true}}]}}, "
                                 + "{\"$unwind\": {\"path\": \"$otherArray\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"otherArray_index_lvl_0\"}}, "
                                 + "{\"$match\": {\"$expr\": {\"$eq\": [\"$$testCollection__id\", \"$_id\"]}}}], "
                                 + "\"as\": \"otherTestCollection_otherArray\"}}"),
@@ -1065,52 +1130,47 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
             + "works for tables from different collections.")
     void testComplexQueryWithDifferentCollectionJoin() throws SQLException {
         final String complexQuery =
-            String.format(
-                "SELECT \"%s\" AS \"renamed\", COUNT(*) AS \"Total\" FROM \"%s\".\"%s\""
-                    + "INNER JOIN \"%s\".\"%s\""
-                    + "ON \"%s\".\"%s\" = \"%s\".\"%s\""
-                    + "WHERE \"%s\" > 1 GROUP BY \"%s\".\"%s\", \"%s\", \"%s\""
-                    + "HAVING COUNT(*) > 1 ORDER BY \"renamed\" LIMIT 1",
-                "field",
-                DATABASE_NAME,
-                OTHER_COLLECTION_NAME,
-                DATABASE_NAME,
-                COLLECTION_NAME + "_array",
-                OTHER_COLLECTION_NAME,
-                OTHER_COLLECTION_NAME + "__id",
-                COLLECTION_NAME + "_array",
-                COLLECTION_NAME + "__id",
-                "field",
-                OTHER_COLLECTION_NAME,
-                OTHER_COLLECTION_NAME + "__id",
-                "field",
-                "field1");
+                String.format(
+                        "SELECT \"%s\" AS \"renamed\", COUNT(*) AS \"Total\" FROM \"%s\".\"%s\""
+                                + "INNER JOIN \"%s\".\"%s\""
+                                + "ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                                + "WHERE \"%s\" > 1 GROUP BY \"%s\".\"%s\", \"%s\", \"%s\""
+                                + "HAVING COUNT(*) > 1 ORDER BY \"renamed\" LIMIT 1",
+                        "field",
+                        DATABASE_NAME,
+                        OTHER_COLLECTION_NAME,
+                        DATABASE_NAME,
+                        COLLECTION_NAME + "_array",
+                        OTHER_COLLECTION_NAME,
+                        OTHER_COLLECTION_NAME + "__id",
+                        COLLECTION_NAME + "_array",
+                        COLLECTION_NAME + "__id",
+                        "field",
+                        OTHER_COLLECTION_NAME,
+                        OTHER_COLLECTION_NAME + "__id",
+                        "field",
+                        "field1");
         final DocumentDbMqlQueryContext result = queryMapper.get(complexQuery);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(OTHER_COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(2, result.getColumnMetaData().size());
-        Assertions.assertEquals(7, result.getAggregateOperations().size());
+        Assertions.assertEquals(9, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$lookup\": "
-                                + "{\"from\": \"testCollection\", "
-                                + "\"let\": {\"otherTestCollection__id\": \"$_id\"}, "
-                                + "\"pipeline\": ["
-                                + "{\"$match\": {\"$or\": ["
-                                    + "{\"array.field\": {\"$exists\": true}}, "
-                                    + "{\"array.field1\": {\"$exists\": true}}, "
-                                    + "{\"array.field2\": {\"$exists\": true}}]}}, "
-                                + "{\"$unwind\": {"
-                                    + "\"path\": \"$array\", "
-                                    + "\"preserveNullAndEmptyArrays\": true, "
-                                    + "\"includeArrayIndex\": \"array_index_lvl_0\"}}, "
-                                + "{\"$match\": {\"array.field\": {\"$gt\": 1}}}, "
-                                + "{\"$match\": {\"$expr\": {\"$eq\": [\"$$otherTestCollection__id\", \"$_id\"]}}}], "
-                                + "\"as\": \"testCollection_array\"}}"),
+                        "{\"$lookup\": {\"from\": \"testCollection\", \"let\": {\"otherTestCollection__id\": \"$_id\"}, \"pipeline\": [" +
+                                "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}," +
+                                " {\"array.field2\": {\"$exists\": true}}]}}, " +
+                                "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}, " +
+                                "{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 1}]}, " +
+                                "{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}}}, " +
+                                "{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}, " +
+                                "{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}, " +
+                                "{\"$match\": {\"$expr\": {\"$eq\": [\"$$otherTestCollection__id\", \"$_id\"]}}}], \"as\": \"testCollection_array\"}}\n"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                 BsonDocument.parse("{\"$unwind\": {\"path\": \"$testCollection_array\", \"preserveNullAndEmptyArrays\": false}}"),
-        result.getAggregateOperations().get(1));
+                BsonDocument.parse("{\"$unwind\": {\"path\": \"$testCollection_array\", \"preserveNullAndEmptyArrays\": false}}"),
+                result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$group\": {\"_id\": {\"_id\": \"$_id\", "
@@ -1125,13 +1185,25 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"testCollection_array.array.field1\": \"$_id.testCollection_array_array_field1\", \"Total\": \"$Total\"}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
+                BsonDocument.parse(
+                        "{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                            "{\"$and\": [{\"$gt\": [\"$Total\", {\"$literal\": 1}]}, " +
+                            "{\"$gt\": [\"$Total\", null]}, " +
+                            "{\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$sort\": {\"testCollection_array.array.field\": 1}}"),
+                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(6));
+                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                result.getAggregateOperations().get(6)
+                );
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$sort\": {\"testCollection_array.array.field\": 1}}"),
+                result.getAggregateOperations().get(7)
+        );
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(8));
     }
 
     @Test
@@ -1293,5 +1365,18 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 "{\"$gt\": [{\"$literal\": 5}, null]}]}, " +
                                 "{\"$literal\": \"B\"}, {\"$literal\": \"C\"}]}]}}}\n"),
                 result.getAggregateOperations().get(2));
+    }
+
+    @Test
+    @DisplayName("Tests a query with a where clause comparing two literals.")
+    void testWhereTwoLiterals() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE 2 > 1", DATABASE_NAME, COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(0, result.getAggregateOperations().size());
     }
 }

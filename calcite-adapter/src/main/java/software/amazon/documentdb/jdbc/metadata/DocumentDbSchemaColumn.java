@@ -218,4 +218,18 @@ public class DocumentDbSchemaColumn {
                 .hash(fieldPath, sqlName, sqlType, dbType, index, primaryKey, foreignKeyTableName,
                         foreignKeyColumnName);
     }
+
+    @Override
+    public String toString() {
+        return "DocumentDbSchemaColumn{" +
+                "fieldPath='" + fieldPath + '\'' +
+                ", sqlName='" + sqlName + '\'' +
+                ", sqlType=" + sqlType +
+                ", dbType=" + dbType +
+                ", index=" + index +
+                ", primaryKey=" + primaryKey +
+                ", foreignKeyTableName='" + foreignKeyTableName + '\'' +
+                ", foreignKeyColumnName='" + foreignKeyColumnName + '\'' +
+                '}';
+    }
 }
