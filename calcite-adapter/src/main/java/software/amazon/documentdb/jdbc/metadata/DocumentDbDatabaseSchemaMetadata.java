@@ -17,8 +17,11 @@
 package software.amazon.documentdb.jdbc.metadata;
 
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
 
 import java.sql.SQLException;
+import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -70,12 +73,10 @@ public final class DocumentDbDatabaseSchemaMetadata {
      * @return a new {@link DocumentDbDatabaseSchemaMetadata} instance.
      *
      * @throws SQLException if a SQL exception occurs.
-     * @throws DocumentDbSchemaException if the schema cannot be retrieved for some reason.
      */
     public static DocumentDbDatabaseSchemaMetadata get(
             final DocumentDbConnectionProperties properties,
-            final boolean refreshAll)
-            throws SQLException {
+            final boolean refreshAll) throws SQLException {
         return get(properties, DocumentDbSchema.DEFAULT_SCHEMA_NAME, refreshAll);
     }
 
@@ -117,11 +118,8 @@ public final class DocumentDbDatabaseSchemaMetadata {
         final DocumentDbSchema schema = DocumentDbMetadataService
                 .get(properties, schemaName, schemaVersion);
         if (schema != null) {
-            schema.setGetTableFunction(
-                    tableId -> DocumentDbMetadataService
-                            .getTable(properties, schemaName, schema.getSchemaVersion(), tableId),
-                    remainingTableIds -> DocumentDbMetadataService
-                            .getTables(properties, schemaName, schemaVersion, remainingTableIds));
+            // Setup lazy load based on table ID.
+            setSchemaGetTableFunction(properties, schemaName, schemaVersion, schema);
             metadata = new DocumentDbDatabaseSchemaMetadata(schema);
         } else {
             metadata = null;
@@ -151,11 +149,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
                 .get(properties, schemaName, schemaVersion);
         if (schema != null) {
             // Setup lazy load based on table ID.
-            schema.setGetTableFunction(
-                    tableId -> DocumentDbMetadataService
-                            .getTable(properties, schemaName, schemaVersion, tableId),
-                    remainingTableIds -> DocumentDbMetadataService
-                            .getTables(properties, schemaName, schemaVersion, remainingTableIds));
+            setSchemaGetTableFunction(properties, schemaName, schemaVersion, schema);
             databaseMetadata = new DocumentDbDatabaseSchemaMetadata(schema);
         } else {
             databaseMetadata = null;
@@ -191,6 +185,52 @@ public final class DocumentDbDatabaseSchemaMetadata {
             final String schemaName,
             final int schemaVersion) throws SQLException {
         DocumentDbMetadataService.remove(properties, schemaName, schemaVersion);
+    }
+
+    /**
+     * Gets the list of all persisted schema.
+     *
+     * @param properties the connection properties.
+     * @return a list of {@link DocumentDbSchema} schema.
+     * @throws SQLException if unable to connect.
+     */
+    public static List<DocumentDbSchema> getSchemaList(
+            final DocumentDbConnectionProperties properties) throws SQLException {
+        final List<DocumentDbSchema> schemas = DocumentDbMetadataService.getSchemaList(properties);
+        schemas.forEach(schema -> setSchemaGetTableFunction(
+                properties, schema.getSchemaName(), schema.getSchemaVersion(), schema));
+        return schemas;
+    }
+
+    /**
+     * Updates schema with the given table schema.
+     *
+     * @param properties the connection properties.
+     * @param schemaName the name of the schema.
+     * @param schemaTables the collection of updated table schema.
+     *
+     * @throws SQLException if unable to connect or other exception.
+     * @throws DocumentDbSchemaSecurityException if unable to write to the database due to
+     * unauthorized user.
+     */
+    public static void update(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final Collection<DocumentDbSchemaTable> schemaTables)
+            throws SQLException, DocumentDbSchemaSecurityException {
+        DocumentDbMetadataService.update(properties, schemaName, schemaTables);
+    }
+
+    private static void setSchemaGetTableFunction(
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final int schemaVersion,
+            final DocumentDbSchema schema) {
+        schema.setGetTableFunction(
+                tableId -> DocumentDbMetadataService
+                        .getTable(properties, schemaName, schemaVersion, tableId),
+                remainingTableIds -> DocumentDbMetadataService
+                        .getTables(properties, schemaName, schemaVersion, remainingTableIds));
     }
 
     @Override

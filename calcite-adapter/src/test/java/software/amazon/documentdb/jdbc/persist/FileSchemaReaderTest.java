@@ -39,6 +39,7 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGenerator;
 
+import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -168,5 +169,17 @@ class FileSchemaReaderTest {
                         () -> schemaReader.readTable(
                                 DEFAULT_SCHEMA_NAME, 1, "unknown"))
                         .getMessage());
+    }
+
+    @DisplayName("Test reading the schema list")
+    @Test
+    void testReadSchemaList() throws SQLException {
+        final SchemaReader schemaReader = new FileSchemaReader(DATABASE_NAME);
+        final List<DocumentDbSchema> schemas = schemaReader.list();
+        Assertions.assertEquals(1, schemas.size());
+        final DocumentDbSchema schema = schemas.get(0);
+        Assertions.assertEquals(DATABASE_NAME, schema.getSqlName());
+        Assertions.assertEquals(DEFAULT_SCHEMA_NAME, schema.getSchemaName());
+        Assertions.assertEquals(1, schema.getSchemaVersion());
     }
 }

@@ -53,12 +53,12 @@ import java.util.regex.Pattern;
 public class DocumentDbConnectionProperties extends Properties {
 
     public static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
+    public static final String USER_HOME_PROPERTY = "user.home";
 
     private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Logger LOGGER =
             LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
-    private static final String USER_HOME_PROPERTY = "user.home";
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
 
     /**
@@ -794,10 +794,10 @@ public class DocumentDbConnectionProperties extends Properties {
             final String tlsCAFileName = getTlsCAFilePath();
             final Path tlsCAFileNamePath;
             if (tlsCAFileName.matches("^~[/\\\\].*$")) {
-                final String userHomePath = Matcher
-                        .quoteReplacement(System.getProperty(USER_HOME_PROPERTY));
+                final String userHomePath = System.getProperty(USER_HOME_PROPERTY);
                 tlsCAFileNamePath = Paths
-                        .get(tlsCAFileName.replaceFirst("~", userHomePath))
+                        .get(tlsCAFileName.replaceFirst("~", Matcher
+                                .quoteReplacement(userHomePath)))
                         .toAbsolutePath();
             } else {
                 tlsCAFileNamePath = Paths.get(tlsCAFileName).toAbsolutePath();
