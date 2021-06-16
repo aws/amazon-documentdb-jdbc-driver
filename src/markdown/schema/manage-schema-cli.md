@@ -3,7 +3,7 @@
 ## Syntax
 
 ```
-java -j documentdb-jdbc-<version>.jar [-g | -r | -l | -b | -e <[table-name[,...]]> | -i <file-name>]
+java -jar documentdb-jdbc-<version>.jar [-g | -r | -l | -b | -e <[table-name[,...]]> | -i <file-name>]
         -s <host-name> -d <database-name> -u <user-name> [-p <password>] [-t] [-a]
         [-n <schema-name>] [-m <method>] [-x <max-documents>] [-o <file-name>]
         [-h] [--version]
