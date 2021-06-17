@@ -222,6 +222,7 @@ public final class DocumentDbRules {
             }
 
             switch (literal.getType().getSqlTypeName()) {
+                case BIGINT:
                 case INTERVAL_DAY:
                 case INTERVAL_HOUR:
                 case INTERVAL_MINUTE:
@@ -229,6 +230,7 @@ public final class DocumentDbRules {
                     // Convert supported intervals to milliseconds.
                     return "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
                 case DATE:
+                    return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Integer.class) + "\" } }";
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                     // Convert from date in milliseconds to MongoDb date.
@@ -239,13 +241,6 @@ public final class DocumentDbRules {
                             typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
                             + "}";
             }
-            if (typeFactory.getJavaClass(literal.getType()).toString().equals("long")) {
-                return "{\"$numberLong\": \"" + literal.getValue() + "\"}";
-            }
-            return "{\"$literal\": "
-                    + RexToLixTranslator.translateLiteral(literal, literal.getType(),
-                    typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
-                    + "}";
         }
 
         @Override public String visitInputRef(final RexInputRef inputRef) {
@@ -388,7 +383,7 @@ public final class DocumentDbRules {
             final TimeUnitRange range = literal.getValueAs(TimeUnitRange.class);
 
             // TODO: Check for unsupported time unit (ex: quarter) and emulate in some other way.
-            return "{ " + quote(DATEPART_OPERATORS.get(range)) + ": [" + strings.get(1) + "]}";
+            return "{ " + quote(DATEPART_OPERATORS.get(range)) + ": " + strings.get(1) + "}";
         }
 
     }

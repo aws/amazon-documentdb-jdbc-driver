@@ -1560,6 +1560,83 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
+     * Tests that date literals can be used in WHERE comparisons.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests that date literals can be used in WHERE comparisons")
+    void testQueryWhereDateLiteral() throws SQLException {
+        final String tableName = "testDateLiteral";
+        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet1 = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" < DATE '2020-01-02'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
+        Assertions.assertFalse(resultSet1.next());
+
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = DATE '2020-01-01'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals(new Timestamp(dateTime), resultSet2.getTimestamp(2));
+        Assertions.assertFalse(resultSet2.next());
+
+        final ResultSet resultSet3 = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> DATE '2020-01-01'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet3);
+        Assertions.assertFalse(resultSet3.next());
+    }
+
+    /**
+     * Tests that date literals can be used in WHERE comparisons.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests that timestamp literals can be used in WHERE comparisons")
+    void testQueryWhereTimestampLiteral() throws SQLException {
+        final String tableName = "testTimestampLiteral";
+        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet1 = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" < TIMESTAMP '2020-01-02 00:00:00'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
+        Assertions.assertFalse(resultSet1.next());
+
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = TIMESTAMP '2020-01-01 00:00:00'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals(new Timestamp(dateTime), resultSet2.getTimestamp(2));
+        Assertions.assertFalse(resultSet2.next());
+
+        final ResultSet resultSet3 = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> TIMESTAMP '2020-01-01 00:00:00'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet3);
+        Assertions.assertFalse(resultSet3.next());
+    }
+
+
+    /**
      * Tests that TIMESTAMPADD() works for intervals that can be converted to ms.
      * @throws SQLException occurs if query fails.
      */
