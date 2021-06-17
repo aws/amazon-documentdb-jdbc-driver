@@ -218,13 +218,35 @@ public final class DocumentDbRules {
             if (literal.getValue() == null) {
                 return "null";
             }
-            if (typeFactory.getJavaClass(literal.getType()).toString().equals("long")) {
-                return "{\"$numberLong\": \"" + literal.getValue() + "\"}";
-            }
 
-            // When literal is supported, this should be surrounded by $literal
-            return RexToLixTranslator.translateLiteral(literal, literal.getType(),
-                    typeFactory, RexImpTable.NullAs.NOT_POSSIBLE).toString();
+            switch (literal.getType().getSqlTypeName()) {
+                case DOUBLE:
+                    return "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
+                case BIGINT:
+                case INTERVAL_DAY:
+                case INTERVAL_HOUR:
+                case INTERVAL_MINUTE:
+                case INTERVAL_SECOND:
+                    // Convert supported intervals to milliseconds.
+                    return "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
+                case DATE:
+                    return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Integer.class) + "\" } }";
+                case TIMESTAMP:
+                case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+                    // Convert from date in milliseconds to MongoDb date.
+                    return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }";
+                default:
+                    /*
+                    TODO: AD-239: Re-add use of literal here.
+                    return "{\"$literal\": "
+                            + RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                            typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
+                            + "}";
+
+                     */
+                    return RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                            typeFactory, RexImpTable.NullAs.NOT_POSSIBLE).toString();
+            }
         }
 
         @Override public String visitInputRef(final RexInputRef inputRef) {

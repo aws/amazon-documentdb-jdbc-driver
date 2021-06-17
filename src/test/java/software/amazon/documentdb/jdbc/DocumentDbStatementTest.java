@@ -16,7 +16,11 @@
 
 package software.amazon.documentdb.jdbc;
 
+import org.bson.BsonBoolean;
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
+import org.bson.BsonDouble;
+import org.bson.BsonInt64;
 import org.bson.BsonMinKey;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -1554,6 +1558,40 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(104, resultSet.getInt(1));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(105, resultSet.getInt(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries with various types in WHERE clause")
+    void testQueryWhereTypes()throws  SQLException {
+        final String tableName = "testQueryWhereTypes";
+        final BsonDateTime date = new BsonDateTime(Instant.now().toEpochMilli());
+        final long bigInt = 100000000000L;
+        final double doubleValue = 1.2345;
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": \"abc\", \n " +
+                "\"fieldB\": 5}");
+        doc1.append("fieldC", BsonBoolean.TRUE);
+        doc1.append("fieldD", date);
+        doc1.append("fieldE", new BsonInt64(bigInt));
+        doc1.append("fieldF", new BsonDouble(doubleValue));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": \"def\", \n " +
+                "\"fieldB\": 4}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = 'abc' AND " +
+                        "\"fieldB\" = 5 AND \"fieldC\" = TRUE AND \"fieldD\" > '2020-03-11' AND \"fieldE\" = %d AND \"fieldF\" = %f", DATABASE_NAME, tableName, bigInt, doubleValue));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("abc", resultSet.getString(2));
+        Assertions.assertEquals(5, resultSet.getInt(3));
+        Assertions.assertTrue(resultSet.getBoolean(4));
+        Assertions.assertEquals(date.getValue(), resultSet.getTimestamp(5).getTime());
+        Assertions.assertEquals(bigInt, resultSet.getLong(6));
+        Assertions.assertEquals(doubleValue, resultSet.getDouble(7));
         Assertions.assertFalse(resultSet.next());
     }
 
