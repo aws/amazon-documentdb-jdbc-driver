@@ -70,10 +70,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         doc1.append("field", new BsonDateTime(dateTime));
 
         insertBsonDocuments(
-                COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{document});
                 COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
         insertBsonDocuments(
-                OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{otherDocument});
                 OTHER_COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{otherDocument});
         insertBsonDocuments(DATE_COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD,
                 new BsonDocument[]{doc1});
@@ -1209,10 +1207,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 "{\"$gt\": [1, null]}]}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                BsonDocument.parse("{\"$match\": {\"placeholderField1F84EB1G3K47\": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                BsonDocument.parse("{\"$project\": {\"placeholderField1F84EB1G3K47\": 0}}"),
                 result.getAggregateOperations().get(6)
         );
         Assertions.assertEquals(
@@ -1389,19 +1387,6 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 "{\"$gt\": [5, null]}]}, " +
                                 "\"B\", \"C\"]}]}}}\n"),
                 result.getAggregateOperations().get(2));
-    }
-
-    @Test
-    @DisplayName("Tests a query with a where clause comparing two literals.")
-    void testWhereTwoLiterals() throws SQLException {
-        final String query =
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE 2 > 1", DATABASE_NAME, COLLECTION_NAME);
-        final DocumentDbMqlQueryContext result = queryMapper.get(query);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
-        Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(0, result.getAggregateOperations().size());
     }
 
     @Test
