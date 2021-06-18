@@ -222,6 +222,8 @@ public final class DocumentDbRules {
             }
 
             switch (literal.getType().getSqlTypeName()) {
+                case DOUBLE:
+                    return "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
                 case BIGINT:
                 case INTERVAL_DAY:
                 case INTERVAL_HOUR:
@@ -236,10 +238,16 @@ public final class DocumentDbRules {
                     // Convert from date in milliseconds to MongoDb date.
                     return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }";
                 default:
+                    /*
+                    TODO: AD-239: Re-add use of literal here.
                     return "{\"$literal\": "
                             + RexToLixTranslator.translateLiteral(literal, literal.getType(),
                             typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
                             + "}";
+
+                     */
+                    return RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                            typeFactory, RexImpTable.NullAs.NOT_POSSIBLE).toString();
             }
         }
 
