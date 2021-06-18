@@ -50,6 +50,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -62,7 +63,14 @@ import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.DEFAULT_
 
 class DocumentDbMainTest {
 
-    private static final String CUSTOM_SCHEMA_NAME = "customSchema";
+    // Ensure custom schema can be sorted after "_default" - so start with a lower-case letter
+    private static final String CUSTOM_SCHEMA_NAME = "a" + UUID.randomUUID().toString();
+    public static final String NEW_DEFAULT_SCHEMA_ANY_VERSION_REGEX =
+            Pattern.quote("New schema '_default', version '")
+                    + "\\d+"
+                    + Pattern.quote("' generated.");
+    public static final Pattern NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN = Pattern
+            .compile(NEW_DEFAULT_SCHEMA_ANY_VERSION_REGEX);
     private DocumentDbConnectionProperties properties;
     public static final Path USER_HOME_PATH = Paths.get(System.getProperty(USER_HOME_PROPERTY));
 
@@ -245,7 +253,7 @@ class DocumentDbMainTest {
     void testGenerateNew(final DocumentDbTestEnvironment testEnvironment)
             throws ParseException, SQLException {
         setConnectionProperties(testEnvironment);
-        final String[] args = buildArguments("-g");
+        final String[] args = buildArguments("-g", CUSTOM_SCHEMA_NAME);
         final CommandLineParser parser = new DefaultParser();
         final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
         final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
@@ -254,13 +262,13 @@ class DocumentDbMainTest {
         Assertions.assertEquals(properties.getHostname(), newProperties.getHostname());
         Assertions.assertEquals(properties.getDatabase(), newProperties.getDatabase());
         Assertions.assertEquals(properties.getUser(), newProperties.getUser());
-        Assertions.assertEquals(SCHEMA_NAME.getDefaultValue(), newProperties.getSchemaName());
+        Assertions.assertEquals(CUSTOM_SCHEMA_NAME, newProperties.getSchemaName());
         Assertions.assertEquals(properties.getTlsEnabled(), newProperties.getTlsEnabled());
         Assertions.assertEquals(properties.getTlsAllowInvalidHostnames(),
                 newProperties.getTlsAllowInvalidHostnames());
 
         DocumentDbMain.handleCommandLine(args, output);
-        Assertions.assertEquals("New schema '_default', version '1' generated.",
+        Assertions.assertEquals(String.format("New schema '%s', version '1' generated.", CUSTOM_SCHEMA_NAME),
                 output.toString());
     }
 
@@ -269,7 +277,7 @@ class DocumentDbMainTest {
     void testRemove(final DocumentDbTestEnvironment testEnvironment)
             throws ParseException, SQLException {
         setConnectionProperties(testEnvironment);
-        final String[] args = buildArguments("-r");
+        final String[] args = buildArguments("-r", CUSTOM_SCHEMA_NAME);
         final CommandLineParser parser = new DefaultParser();
         final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
         final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
@@ -278,12 +286,12 @@ class DocumentDbMainTest {
         Assertions.assertEquals(properties.getHostname(), newProperties.getHostname());
         Assertions.assertEquals(properties.getDatabase(), newProperties.getDatabase());
         Assertions.assertEquals(properties.getUser(), newProperties.getUser());
-        Assertions.assertEquals(SCHEMA_NAME.getDefaultValue(), newProperties.getSchemaName());
+        Assertions.assertEquals(CUSTOM_SCHEMA_NAME, newProperties.getSchemaName());
         Assertions.assertEquals(properties.getTlsEnabled(), newProperties.getTlsEnabled());
         Assertions.assertEquals(properties.getTlsAllowInvalidHostnames(), newProperties.getTlsAllowInvalidHostnames());
 
         DocumentDbMain.handleCommandLine(args, output);
-        Assertions.assertEquals("Removed schema '_default'.", output.toString());
+        Assertions.assertEquals(String.format("Removed schema '%s'.", CUSTOM_SCHEMA_NAME), output.toString());
     }
 
     @ParameterizedTest(name = "testListSchema - [{index}] - {arguments}")
@@ -298,14 +306,15 @@ class DocumentDbMainTest {
             String[] args = buildArguments("-g");
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertEquals("New schema '_default', version '1' generated.",
-                    output.toString());
+            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
+                    .matcher(output.toString())
+                    .matches());
 
             args = buildArguments("-g", CUSTOM_SCHEMA_NAME);
             output.setLength(0);
             DocumentDbMain.handleCommandLine(args, output);
             Assertions
-                    .assertEquals("New schema '" + CUSTOM_SCHEMA_NAME + "', version '1' generated.",
+                    .assertEquals(String.format("New schema '%s', version '1' generated.", CUSTOM_SCHEMA_NAME),
                             output.toString());
 
             args = buildArguments("-l");
@@ -349,8 +358,9 @@ class DocumentDbMainTest {
             String[] args = buildArguments("-g");
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertEquals("New schema '_default', version '1' generated.",
-                    output.toString());
+            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
+                    .matcher(output.toString())
+                    .matches());
 
             args = buildArguments("-g", CUSTOM_SCHEMA_NAME);
             output.setLength(0);
@@ -424,8 +434,9 @@ class DocumentDbMainTest {
             String[] args = buildArguments("-g");
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertEquals("New schema '_default', version '1' generated.",
-                    output.toString());
+            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
+                    .matcher(output.toString())
+                    .matches());
 
             args = buildArguments(String.format("-e=%s,%s", collectionName1, collectionName2));
             output.setLength(0);
@@ -450,8 +461,9 @@ class DocumentDbMainTest {
             String[] args = buildArguments("-g", DEFAULT_SCHEMA_NAME);
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertEquals("New schema '_default', version '1' generated.",
-                    output.toString());
+            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
+                    .matcher(output.toString())
+                    .matches());
 
             final String outputFileName = collectionName + " tableSchema.json";
             final Path outputFilePath = USER_HOME_PATH.resolve(outputFileName);
@@ -484,8 +496,9 @@ class DocumentDbMainTest {
             String[] args = buildArguments("-g", DEFAULT_SCHEMA_NAME);
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertEquals("New schema '_default', version '1' generated.",
-                    output.toString());
+            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
+                    .matcher(output.toString())
+                    .matches());
 
             final String outputFileName = collectionName + " tableSchema.json";
             final Path outputFilePath = USER_HOME_PATH.resolve(outputFileName);
@@ -523,8 +536,9 @@ class DocumentDbMainTest {
             String[] args = buildArguments("-g", DEFAULT_SCHEMA_NAME);
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertEquals("New schema '_default', version '1' generated.",
-                    output.toString());
+            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
+                    .matcher(output.toString())
+                    .matches());
 
             final String outputFileName = collectionName + " tableSchema.json";
             final Path outputFilePath = USER_HOME_PATH.resolve(outputFileName);
@@ -581,8 +595,9 @@ class DocumentDbMainTest {
             String[] args = buildArguments("-g", DEFAULT_SCHEMA_NAME);
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertEquals("New schema '_default', version '1' generated.",
-                    output.toString());
+            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
+                    .matcher(output.toString())
+                    .matches());
 
             final String outputFileName = collectionName + " tableSchema.json";
             final Path outputFilePath = USER_HOME_PATH.resolve(outputFileName);
@@ -625,8 +640,9 @@ class DocumentDbMainTest {
             String[] args = buildArguments("-g");
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertEquals("New schema '_default', version '1' generated.",
-                    output.toString());
+            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
+                    .matcher(output.toString())
+                    .matches());
 
             final String invalidTableName = UUID.randomUUID().toString();
             args = buildArguments("-e=" + invalidTableName);
