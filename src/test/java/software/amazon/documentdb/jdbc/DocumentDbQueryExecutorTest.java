@@ -78,7 +78,6 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final DocumentDbStatement statement = getDocumentDbStatement();
         final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(
                 statement,
-                null,
                 queryMapper,
                 0,
                 0);

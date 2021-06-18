@@ -29,6 +29,7 @@ import java.sql.SQLFeatureNotSupportedException;
  */
 class DocumentDbStatement extends Statement implements java.sql.Statement {
     private int queryTimeout;
+    private DocumentDbQueryExecutor queryExecutor;
 
     /**
      * DocumentDbStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
@@ -43,8 +44,11 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     @Override
     protected void cancelQuery() throws SQLException {
         verifyOpen();
-        // TODO: Implement
-        throw new SQLFeatureNotSupportedException();
+        if (queryExecutor != null) {
+            queryExecutor.cancelQuery();
+        } else {
+
+        }
     }
 
     @Override
@@ -72,15 +76,13 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     }
 
     @SneakyThrows
-    protected static ResultSet executeQuery(final String sql, final Statement statement, final int maxFetchSize)
-            throws SQLException {
+    protected static ResultSet executeQuery(final String sql, final Statement statement, final int maxFetchSize) {
         final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
                 connection.getDatabaseMetadata());
         final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(
                 statement,
-                null,
                 mappingService,
                 statement.getQueryTimeout(),
                 maxFetchSize);

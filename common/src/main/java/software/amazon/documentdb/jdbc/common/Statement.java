@@ -81,9 +81,7 @@ public abstract class Statement implements java.sql.Statement {
     public void close() throws SQLException {
         if (!this.isClosed.getAndSet(true)) {
             LOGGER.debug("Cancel any running queries.");
-            // TODO: Commented this out as closing statements in tests was throwing an exception
-            //  because cancelQuery() is unimplemented. Implement and uncomment.
-            // cancelQuery();
+            cancelQuery();
 
             if (this.resultSet != null) {
                 LOGGER.debug("Close opened result set.");
