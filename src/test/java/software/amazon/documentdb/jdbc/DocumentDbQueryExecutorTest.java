@@ -36,6 +36,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 import static software.amazon.documentdb.jdbc.DocumentDbStatementTest.getDocumentDbStatement;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
@@ -72,7 +73,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         prepareSimpleConsistentData(DATABASE_NAME, collectionSimple,
                 5, TEST_USER, TEST_PASSWORD);
         final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbDatabaseSchemaMetadata
-                .get(VALID_CONNECTION_PROPERTIES, "id", true);
+                .get(VALID_CONNECTION_PROPERTIES, "id", VERSION_NEW);
         final DocumentDbQueryMappingService queryMapper = new DocumentDbQueryMappingService(
                 VALID_CONNECTION_PROPERTIES, databaseMetadata);
         final DocumentDbStatement statement = getDocumentDbStatement();

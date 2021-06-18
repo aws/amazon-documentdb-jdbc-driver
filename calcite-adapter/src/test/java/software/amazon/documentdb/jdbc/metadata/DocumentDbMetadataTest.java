@@ -35,6 +35,9 @@ import java.sql.SQLException;
 import java.util.UUID;
 import java.util.function.Consumer;
 
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
+
 class DocumentDbMetadataTest {
 
     // Need to start and stop the test environment between tests to clear the collections.
@@ -73,14 +76,14 @@ class DocumentDbMetadataTest {
 
         // Even though we've added data, we're not refreshing, so expecting 0.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata00 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, false);
+                .get(properties, schemaName, VERSION_LATEST_OR_NEW);
         Assertions.assertEquals(0, databaseMetadata00.getTableSchemaMap().size());
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
         Assertions.assertEquals(0, databaseMetadata0.getTableSchemaMap().size());
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, true);
+                .get(properties, schemaName, VERSION_NEW);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
@@ -121,7 +124,7 @@ class DocumentDbMetadataTest {
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, true);
+                .get(properties, schemaName, VERSION_NEW);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
@@ -164,7 +167,7 @@ class DocumentDbMetadataTest {
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, true);
+                .get(properties, schemaName, VERSION_NEW);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
@@ -201,7 +204,7 @@ class DocumentDbMetadataTest {
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, true);
+                .get(properties, schemaName, VERSION_NEW);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
