@@ -34,6 +34,8 @@ import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.SQLException;
 
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
+
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
@@ -65,7 +67,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         insertBsonDocuments(
                 OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[] {otherDocument});
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
-                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", true);
+                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
     }
 

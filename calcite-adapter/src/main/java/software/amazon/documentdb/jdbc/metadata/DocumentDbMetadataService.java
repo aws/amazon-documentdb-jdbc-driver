@@ -47,6 +47,10 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NONE;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
+
 /**
  * A service for retrieving DocumentDB database metadata.
  */
@@ -54,12 +58,9 @@ public class DocumentDbMetadataService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbMetadataService.class);
     private static final Map<String, DocumentDbSchemaTable> TABLE_MAP = new ConcurrentHashMap<>();
 
-    public static final int VERSION_LATEST = 0;
-    public static final int VERSION_NEW = -1;
-
     /**
      * Gets the latest or a new {@link DocumentDbDatabaseSchemaMetadata} instance based on the
-     * schemaName and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST}
+     * schemaName and properties. It uses a value of {@link DocumentDbDatabaseSchemaMetadata#VERSION_LATEST_OR_NEW}
      * for the version to indicate to get the latest or create a new instance if none exists.
      *
      * @param properties the connection properties.
@@ -69,7 +70,7 @@ public class DocumentDbMetadataService {
     public static DocumentDbSchema get(
             final DocumentDbConnectionProperties properties,
             final String schemaName) throws SQLException {
-        return get(properties, schemaName, VERSION_LATEST);
+        return get(properties, schemaName, VERSION_LATEST_OR_NEW);
     }
 
 
@@ -80,7 +81,7 @@ public class DocumentDbMetadataService {
      * @param properties the connection properties.
      * @param schemaName the client ID.
      * @param schemaVersion the version of the metadata. A version number of
-     *                {@link DocumentDbMetadataService#VERSION_LATEST} indicates to get the latest
+     *                {@link DocumentDbDatabaseSchemaMetadata#VERSION_LATEST_OR_NEW} indicates to get the latest
      *                or create a new instance.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the clientId and version exist,
      * {@code null} otherwise.
@@ -92,27 +93,29 @@ public class DocumentDbMetadataService {
             final int schemaVersion) throws SQLException {
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
         final Map<String, DocumentDbSchemaTable> tableMap = new LinkedHashMap<>();
-        DocumentDbSchema schema;
-        if (schemaVersion == VERSION_LATEST) {
-            // Get the latest version
-            schema = schemaReader.read(schemaName);
-            if (schema != null) {
-                return schema;
-            }
-            // A previous version doesn't exist, create one.
-            final int newVersion = 1;
-            schema = getNewDatabaseMetadata(properties, schemaName, newVersion, tableMap);
-            return schema;
-        } else if (schemaVersion == VERSION_NEW) {
-            // Get a new version.
-            schema = schemaReader.read(schemaName);
-            final int newVersion = schema != null ? schema.getSchemaVersion() + 1 : 1;
-            schema = getNewDatabaseMetadata(properties, schemaName, newVersion, tableMap);
-            return schema;
-        }
 
-        // Get a specific version - might not exist.
-        return getSchemaMetadata(properties, schemaName, schemaVersion);
+        // ASSUMPTION: Negative versions handle special cases
+        int lookupVersion = Math.max(schemaVersion, VERSION_LATEST_OR_NEW);
+        // Get the latest or specific version, might not exist
+        DocumentDbSchema schema = schemaReader.read(schemaName, lookupVersion);
+
+        switch (schemaVersion) {
+            case VERSION_LATEST_OR_NEW:
+                // If latest exist, return it.
+                if (schema != null) {
+                    return schema;
+                }
+                // Otherwise, fall through to create new.
+            case VERSION_NEW:
+                // Get a new version.
+                lookupVersion = schema != null ? schema.getSchemaVersion() + 1 : 1;
+                schema = getNewDatabaseMetadata(properties, schemaName, lookupVersion, tableMap);
+                return schema;
+            case VERSION_LATEST_OR_NONE:
+            default:
+                // Return specific version or null.
+                return schema;
+        }
     }
 
     private static LinkedHashMap<String, DocumentDbSchemaTable> buildTableMapById(
@@ -256,14 +259,6 @@ public class DocumentDbMetadataService {
         final DocumentDbSchema schema = get(properties, schemaName);
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
         schemaWriter.update(schema, schemaTables);
-    }
-
-    private static DocumentDbSchema getSchemaMetadata(
-            final DocumentDbConnectionProperties properties,
-            final String schemaName,
-            final int schemaVersion) throws SQLException {
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
-        return schemaReader.read(schemaName, schemaVersion);
     }
 
     private static DocumentDbSchema getNewDatabaseMetadata(

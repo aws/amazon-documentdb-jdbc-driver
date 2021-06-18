@@ -317,6 +317,20 @@ class DocumentDbMainTest {
                     DEFAULT_SCHEMA_NAME,
                     CUSTOM_SCHEMA_NAME),
                     output.toString().replaceAll(", Modified=.*", ""));
+
+            // Ensure listing schemas doesn't create a new schema
+            args = buildArguments("-r", CUSTOM_SCHEMA_NAME);
+            output.setLength(0);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(String.format("Removed schema '%s'.", CUSTOM_SCHEMA_NAME), output.toString());
+            args = buildArguments("-r", DEFAULT_SCHEMA_NAME);
+            output.setLength(0);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(String.format("Removed schema '%s'.", DEFAULT_SCHEMA_NAME), output.toString());
+            args = buildArguments("-l", CUSTOM_SCHEMA_NAME);
+            output.setLength(0);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(0, output.length());
         } finally {
             dropCollection(testEnvironment, collectionName1);
             dropCollection(testEnvironment, collectionName2);
@@ -369,6 +383,16 @@ class DocumentDbMainTest {
                     + "%s\n",
                     formatArgs.toArray()),
                     actual);
+
+            // Ensure listing tables doesn't create a new schema
+            args = buildArguments("-r", CUSTOM_SCHEMA_NAME);
+            output.setLength(0);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(String.format("Removed schema '%s'.", CUSTOM_SCHEMA_NAME), output.toString());
+            args = buildArguments("-b", CUSTOM_SCHEMA_NAME);
+            output.setLength(0);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(0, output.length());
         } finally {
             dropCollection(testEnvironment, collectionName1);
             dropCollection(testEnvironment, collectionName2);
