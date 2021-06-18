@@ -218,10 +218,36 @@ public final class DocumentDbRules {
             if (literal.getValue() == null) {
                 return "null";
             }
-            return "{$literal: "
-                    + RexToLixTranslator.translateLiteral(literal, literal.getType(),
-                    typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
-                    + "}";
+
+            switch (literal.getType().getSqlTypeName()) {
+                case DOUBLE:
+                case DECIMAL:
+                    return "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
+                case BIGINT:
+                case INTERVAL_DAY:
+                case INTERVAL_HOUR:
+                case INTERVAL_MINUTE:
+                case INTERVAL_SECOND:
+                    // Convert supported intervals to milliseconds.
+                    return "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
+                case DATE:
+                    return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Integer.class) + "\" } }";
+                case TIMESTAMP:
+                case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
+                    // Convert from date in milliseconds to MongoDb date.
+                    return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }";
+                default:
+                    /*
+                    TODO: AD-239: Re-add use of literal here.
+                    return "{\"$literal\": "
+                            + RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                            typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
+                            + "}";
+
+                     */
+                    return RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                            typeFactory, RexImpTable.NullAs.NOT_POSSIBLE).toString();
+            }
         }
 
         @Override public String visitInputRef(final RexInputRef inputRef) {
@@ -241,7 +267,7 @@ public final class DocumentDbRules {
             final String stdOperator = MONGO_OPERATORS.get(call.getOperator());
             if (stdOperator != null) {
                 // For comparisons other than equals we must check it exists and is not null.
-                final String op = "{" + stdOperator + ": [" + Util.commaList(strings) + "]}";
+                final String op = "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
                 if (MONGO_OPERATORS.get(SqlStdOperatorTable.LESS_THAN).equals(stdOperator) ||
                         MONGO_OPERATORS.get(SqlStdOperatorTable.LESS_THAN_OR_EQUAL).equals(stdOperator) ||
                         MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS).equals(stdOperator) ||
@@ -293,12 +319,12 @@ public final class DocumentDbRules {
         }
 
         private String addNullChecksToQuery(final List<String> strings, final String op) {
-            final StringBuilder sb = new StringBuilder("{$and: [");
+            final StringBuilder sb = new StringBuilder("{\"$and\": [");
             sb.append(op);
             for (int i = 0; i < 2; i++) {
                 if (!strings.get(i).equals("null")) {
                     // The operator {$gt null} filters out any values that are null or undefined.
-                    sb.append("{$gt: [");
+                    sb.append(",{\"$gt\": [");
                     sb.append(strings.get(i));
                     sb.append(", null]}");
                 }
