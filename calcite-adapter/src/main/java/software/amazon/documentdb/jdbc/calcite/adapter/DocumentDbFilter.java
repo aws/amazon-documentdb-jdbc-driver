@@ -38,7 +38,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
      * This is a placeholder field to contain the output of the boolean expression in a
      * where clause.
      */
-    private static final String BOOLEAN_FLAG_FIELD = "\"placeholderField_1F84EB1G3K47\"";
+    public static final String BOOLEAN_FLAG_FIELD = "\"placeholderField1F84EB1G3K47\"";
 
     /**
      * Creates a new {@link DocumentDbFilter}
