@@ -26,6 +26,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbFilter;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
@@ -69,8 +70,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         doc1.append("field", new BsonDateTime(dateTime));
 
         insertBsonDocuments(
+                COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{document});
                 COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
         insertBsonDocuments(
+                OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{otherDocument});
                 OTHER_COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{otherDocument});
         insertBsonDocuments(DATE_COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD,
                 new BsonDocument[]{doc1});
@@ -236,13 +239,13 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"preserveNullAndEmptyArrays\": true }}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": [\"$array.field\", 1]}}}"),
+                BsonDocument.parse("{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": [\"$array.field\", 1]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                BsonDocument.parse("{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(4));
 
         final String queryWithCompoundWhere =
@@ -270,17 +273,17 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
                                 "{\"$and\": [{\"$eq\": [\"$array.field1\", \"value\"]}, " +
                                 "{\"$and\": [{\"$gt\": [\"$array.field\", 0]}, " +
                                 "{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [0, null]}]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(3)
         );
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                BsonDocument.parse("{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(4)
         );
     }
@@ -755,17 +758,17 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"_f3\": \"$_f3\"}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                BsonDocument.parse("{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
                         "{\"$and\": [{\"$gt\": [\"$_f3\", 1]}, {\"$gt\": [\"$_f3\", null]}, " +
                         "{\"$gt\": [1, null]}]}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(6));
     }
 
@@ -804,15 +807,15 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"preserveNullAndEmptyArrays\": true }}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": [\"$_id\", \"key\"]}}}"),
+                BsonDocument.parse("{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": [\"$_id\", \"key\"]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -826,14 +829,14 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "\"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                BsonDocument.parse("{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
                         "{\"$and\": [{\"$gt\": [\"$Total\", 1]}, {\"$gt\": [\"$Total\", null]}, {\"$gt\": [1, null]}]}}}"),
                 result.getAggregateOperations().get(7));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(8));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                BsonDocument.parse("{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(9));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$sort\": {\"array.field\": 1}}"),
@@ -951,16 +954,16 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"preserveNullAndEmptyArrays\": true }}"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                BsonDocument.parse("{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
                         "{\"$and\": [{\"$gt\": [\"$array.field\", 1]}, " +
                         "{\"$gt\": [\"$array.field\", null]}, " +
                         "{\"$gt\": [1, null]}]}}}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}"),
+                BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                BsonDocument.parse("{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -991,15 +994,15 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(7));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
                                 "{\"$and\": [{\"$gt\": [\"$Total\", 1]}, " +
                                 "{\"$gt\": [\"$Total\", null]}, {\"$gt\": [1, null]}]}}}"),
                 result.getAggregateOperations().get(8));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}}"),
+                BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}}"),
                 result.getAggregateOperations().get(9));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                BsonDocument.parse("{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(10));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$sort\": {\"array.field\": 1}}"),
@@ -1175,11 +1178,11 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}," +
                                 " {\"array.field2\": {\"$exists\": true}}]}}, " +
                                 "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}, " +
-                                "{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                                "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
                                 "{\"$and\": [{\"$gt\": [\"$array.field\", 1]}, " +
                                 "{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [1, null]}]}}}, " +
-                                "{\"$match\": {\"placeholderField_1F84EB1G3K47\": {\"$eq\": true}}}, " +
-                                "{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}, " +
+                                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}, " +
+                                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}, " +
                                 "{\"$match\": {\"$expr\": {\"$eq\": [\"$$otherTestCollection__id\", \"$_id\"]}}}], \"as\": \"testCollection_array\"}}\n"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
@@ -1200,7 +1203,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$addFields\": {\"placeholderField_1F84EB1G3K47\": " +
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
                                 "{\"$and\": [{\"$gt\": [\"$Total\", 1]}, " +
                                 "{\"$gt\": [\"$Total\", null]}, " +
                                 "{\"$gt\": [1, null]}]}}}"),
@@ -1210,6 +1213,13 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$project\": {\"placeholderField_1F84EB1G3K47\": 0}}"),
+                result.getAggregateOperations().get(6)
+        );
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(5));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(6)
         );
         Assertions.assertEquals(
@@ -1379,6 +1389,19 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 "{\"$gt\": [5, null]}]}, " +
                                 "\"B\", \"C\"]}]}}}\n"),
                 result.getAggregateOperations().get(2));
+    }
+
+    @Test
+    @DisplayName("Tests a query with a where clause comparing two literals.")
+    void testWhereTwoLiterals() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE 2 > 1", DATABASE_NAME, COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(0, result.getAggregateOperations().size());
     }
 
     @Test

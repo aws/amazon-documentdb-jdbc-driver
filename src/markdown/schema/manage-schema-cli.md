@@ -3,7 +3,7 @@
 ## Syntax
 
 ```
-java -j documentdb-jdbc-<version>.jar [-g | -r | -l | -b | -e <[table-name[,...]]> | -i <file-name>]
+java -jar documentdb-jdbc-<version>.jar [-g | -r | -l | -b | -e <[table-name[,...]]> | -i <file-name>]
         -s <host-name> -d <database-name> -u <user-name> [-p <password>] [-t] [-a]
         [-n <schema-name>] [-m <method>] [-x <max-documents>] [-o <file-name>]
         [-h] [--version]
@@ -16,12 +16,12 @@ options must be provided.
 
 |Option|Description|
 |---:|---|
-| <span style="white-space: nowrap;">`-g`, <br>`--generate-new`</span> | Generates a new schema for the database. This will have the effect of replacing an existing schema of the same name, if it exists. |
-| <span style="white-space: nowrap;">`-e`, <br>`--export <[table-name[,...]]>`</span> | Exports the schema to for SQL tables named `[<table-name>[,<table-name>[…]]]`. If no `<table-name>` are given, all table schema will be exported. By default, the schema is written to `stdout`. Use the `-o` option to write to a file. The output format is JSON. |
-| <span style="white-space: nowrap;">`-i`, <br>`--import <file-name>`</span> | Imports the schema from `<file-name>` in your home directory. The schema will be imported using the `<schema-name>` and a new version will be added - replacing the existing schema. The expected input format is JSON. |
-| <span style="white-space: nowrap;">`-l`, <br>`--list-schema`</span> | Lists the schema names, version and table names available in the schema repository." |
-| <span style="white-space: nowrap;">`-b`, <br>`--list-tables`</span> | Lists the SQL table names in a schema." |
-| <span style="white-space: nowrap;">`-r`, <br>`--remove`</span> | Removes the schema from storage for schema given by `-m <schema-name>`, or for schema `_default`, if not provided. |
+| `-g`, <br><span style="white-space: nowrap;">`--generate-new`</span> | Generates a new schema for the database. This will have the effect of replacing an existing schema of the same name, if it exists. |
+| `-e`, <br><span style="white-space: nowrap;">`--export <[table-name[,...]]>`</span> | Exports the schema to for SQL tables named `[<table-name>[,<table-name>[…]]]`. If no `<table-name>` are given, all table schema will be exported. By default, the schema is written to `stdout`. Use the `-o` option to write to a file. The output format is JSON. |
+| `-i`, <br><span style="white-space: nowrap;">`--import <file-name>`</span> | Imports the schema from `<file-name>` in your home directory. The schema will be imported using the `<schema-name>` and a new version will be added - replacing the existing schema. The expected input format is JSON. |
+| `-l`, <br><span style="white-space: nowrap;">`--list-schema`</span> | Lists the schema names, version and table names available in the schema repository." |
+| `-b`, <br><span style="white-space: nowrap;">`--list-tables`</span> | Lists the SQL table names in a schema." |
+| `-r`, <br><span style="white-space: nowrap;">`--remove`</span> | Removes the schema from storage for schema given by `-m <schema-name>`, or for schema `_default`, if not provided. |
 
 ### Connection Options
 
@@ -29,12 +29,12 @@ The connection options provide the settings needed to connect to your Amazon Doc
 
 |Option|Description|Default|
 |---:|---|---|
-| <span style="white-space: nowrap;">`-s`, <br>`--server <host-name>`</span> | The hostname and optional port number (default: `27017`) in the format `hostname[:port]`. (required) | |
-| <span style="white-space: nowrap;">`-d`, <br>`--database <database-name>`</span> | The name of the database for the schema operations. (required) | |
-| <span style="white-space: nowrap;">`-u`, <br>`--user <user-name>`</span> | The name of the user performing the schema operations. **Note**: *the user will require **readWrite** role on the `<database-name>` where the schema are stored if creating or modifying schema.* (required) | |
-| <span style="white-space: nowrap;">`-p`, <br>`--password <password>`</span> | The password for the user performing the schema operations. If this option is not provided, the end-user will be prompted to enter the password directly on the command line. (optional) | |
-| <span style="white-space: nowrap;">`-t`, <br>`--tls`</span> | The indicator of whether to use TLS encryption when connecting to DocumentDB. (optional) | `false` |
-| <span style="white-space: nowrap;">`-a`, <br>`--tls-allow-invalid-hostnames` </span> | The indicator of whether to allow invalid hostnames when connecting to DocumentDB. (optional) | `false` |
+| `-s`, <br><span style="white-space: nowrap;">`--server <host-name>`</span> | The hostname and optional port number (default: `27017`) in the format `hostname[:port]`. (required) | |
+| `-d`, <br><span style="white-space: nowrap;">`--database <database-name>`</span> | The name of the database for the schema operations. (required) | |
+| `-u`, <br><span style="white-space: nowrap;">`--user <user-name>`</span> | The name of the user performing the schema operations. **Note**: *the user will require **readWrite** role on the `<database-name>` where the schema are stored if creating or modifying schema.* (required) | |
+| `-p`, <br><span style="white-space: nowrap;">`--password <password>`</span> | The password for the user performing the schema operations. If this option is not provided, the end-user will be prompted to enter the password directly on the command line. (optional) | |
+| `-t`, <br><span style="white-space: nowrap;">`--tls`</span> | The indicator of whether to use TLS encryption when connecting to DocumentDB. (optional) | `false` |
+| `-a`, <br><span style="white-space: nowrap;">`--tls-allow-invalid-hostnames` </span> | The indicator of whether to allow invalid hostnames when connecting to DocumentDB. (optional) | `false` |
 
 ### Schema Options
 
@@ -42,10 +42,10 @@ The schema options provide the setting to override default behavior for schema m
 
 |Option|Description|Default|
 |---:|---|---|
-| <span style="white-space: nowrap;">`-n`, <br>`--schema-name <schema-name>`</span> | The name of the schema. (optional) | `_default` |
-| <span style="white-space: nowrap;">`-m`, <br>`--scan-method <method>`</span> | The scan method to sample documents from the collections. One of: `random`, `idForward`, `idReverse`, or `all`. Used in conjunction with the `--generate-new` command. (optional) | `random` |
-| <span style="white-space: nowrap;">`-x`, <br>`--scan-limit <max-documents>`</span> | The maximum number of documents to sample in each collection. Used in conjunction with the --generate-new command. (optional) | `1000` |
-| <span style="white-space: nowrap;">`-o`, <br>`--output <file-name>`</span> | Write the exported schema to `<file-name>` in your home directory (instead of stdout). This will overwrite any existing file with the same name | `stdout` |
+| `-n`, <br><span style="white-space: nowrap;">`--schema-name <schema-name>`</span> | The name of the schema. (optional) | `_default` |
+| `-m`, <br><span style="white-space: nowrap;">`--scan-method <method>`</span> | The scan method to sample documents from the collections. One of: `random`, `idForward`, `idReverse`, or `all`. Used in conjunction with the `--generate-new` command. (optional) | `random` |
+| `-x`, <br><span style="white-space: nowrap;">`--scan-limit <max-documents>`</span> | The maximum number of documents to sample in each collection. Used in conjunction with the --generate-new command. (optional) | `1000` |
+| `-o`, <br><span style="white-space: nowrap;">`--output <file-name>`</span> | Write the exported schema to `<file-name>` in your home directory (instead of stdout). This will overwrite any existing file with the same name | `stdout` |
 
 ### Miscellaneous Options
 
@@ -53,7 +53,7 @@ The miscellaneous options provide more information about this interface.
 
 |Option|Description|
 |---:|---|
-| <span style="white-space: nowrap;">`-h`, <br>`--help`</span> | Prints the command line syntax. (optional) |
+| `-h`, <br><span style="white-space: nowrap;">`--help`</span> | Prints the command line syntax. (optional) |
 | <span style="white-space: nowrap;">`--version`</span> | Prints the version number of the command. (optional) |
 
 ## Examples

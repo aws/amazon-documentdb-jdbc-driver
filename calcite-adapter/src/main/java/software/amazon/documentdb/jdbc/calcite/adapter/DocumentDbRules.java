@@ -223,6 +223,7 @@ public final class DocumentDbRules {
 
             switch (literal.getType().getSqlTypeName()) {
                 case DOUBLE:
+                case DECIMAL:
                     return "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
                 case BIGINT:
                 case INTERVAL_DAY:
