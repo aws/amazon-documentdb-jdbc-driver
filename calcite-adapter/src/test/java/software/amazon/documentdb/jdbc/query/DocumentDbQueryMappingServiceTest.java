@@ -1420,15 +1420,15 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                     + "{\"EXPR$0\": "
                             + "{\"$add\": "
                                     + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"604800000\" }, {\"$literal\": 1}]}]}, "
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"604800000\" }, 1]}]}, "
                     + "\"EXPR$1\": "
                             + "{\"$add\": "
                                     + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"86400000\"}, {\"$literal\": 2}]}]}, "
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"86400000\"}, 2]}]}, "
                     + "\"EXPR$2\": "
                             + "{\"$add\": "
                                     + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"3600000\"}, {\"$literal\": 3}]}]}}}"),
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"3600000\"}, 3]}]}}}"),
         result.getAggregateOperations().get(0));
 
         final String extractQuery =

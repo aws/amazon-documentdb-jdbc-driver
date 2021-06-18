@@ -16,7 +16,6 @@
 
 package software.amazon.documentdb.jdbc;
 
-import org.bson.BsonDateTime;
 import org.bson.BsonBoolean;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
