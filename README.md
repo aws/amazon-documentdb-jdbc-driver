@@ -189,7 +189,7 @@ encountered.
 
 The following diagram shows the way in which scalar-scalar data type conflicts are resolved.
 
-![Scalar-Scalar Promotion](images/ScalarDataTypePromotion-transparent.png)
+![Scalar-Scalar Promotion](src/markdown/images/ScalarDataTypePromotion-transparent.png)
 
 #### Object and Array Data Type Handling
 
@@ -385,7 +385,8 @@ Schema can be managed in the following ways:
 - exported
 - imported
   
-See the [schema management documentation](src/markdown/schema/manage-schema-cli.md) for further 
+See the [schema management documentation](src/markdown/schema/manage-schema-cli.md) and 
+[table schemas JSON format](src/markdown/schema/table-schemas-json-format.md) for further 
 information.
 
 ## ResultSet Limitations

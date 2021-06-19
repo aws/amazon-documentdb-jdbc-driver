@@ -1,0 +1,371 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "$id": "https://github.com/aws/amazon-documentdb-jdbc-driver/tree/develop/src/markdown/schema/table-schemas.schema.json",
+  "type": "array",
+  "title": "DocumentDB SQL table schemas",
+  "description": "An array of SQL table schemas.",
+  "minItems": 1,
+  "uniqueItems": true,
+  "examples": [
+    [
+      {
+        "sqlName": "products",
+        "collectionName": "products",
+        "columns": [
+          {
+            "fieldPath": "_id",
+            "sqlName": "products__id",
+            "sqlType": "varchar",
+            "dbType": "object_id",
+            "isPrimaryKey": true
+          },
+          {
+            "fieldPath": "name",
+            "sqlName": "name",
+            "sqlType": "varchar",
+            "dbType": "string"
+          },
+          {
+            "fieldPath": "monthly_price",
+            "sqlName": "monthly_price",
+            "sqlType": "double",
+            "dbType": "double"
+          },
+          {
+            "fieldPath": "rating",
+            "sqlName": "rating",
+            "sqlType": "double",
+            "dbType": "double"
+          },
+          {
+            "fieldPath": "term_years",
+            "sqlName": "term_years",
+            "sqlType": "double",
+            "dbType": "double"
+          },
+          {
+            "fieldPath": "cancel_penalty",
+            "sqlName": "cancel_penalty",
+            "sqlType": "double",
+            "dbType": "double"
+          },
+          {
+            "fieldPath": "sales_tax",
+            "sqlName": "sales_tax",
+            "sqlType": "boolean",
+            "dbType": "boolean"
+          },
+          {
+            "fieldPath": "brand",
+            "sqlName": "brand",
+            "sqlType": "varchar",
+            "dbType": "string"
+          },
+          {
+            "fieldPath": "price",
+            "sqlName": "price",
+            "sqlType": "double",
+            "dbType": "double"
+          },
+          {
+            "fieldPath": "warranty_years",
+            "sqlName": "warranty_years",
+            "sqlType": "double",
+            "dbType": "double"
+          },
+          {
+            "fieldPath": "available",
+            "sqlName": "available",
+            "sqlType": "boolean",
+            "dbType": "boolean"
+          },
+          {
+            "fieldPath": "color",
+            "sqlName": "color",
+            "sqlType": "varchar",
+            "dbType": "string"
+          }
+        ]
+      },
+      {
+        "sqlName": "products_for",
+        "collectionName": "products",
+        "columns": [
+          {
+            "fieldPath": "_id",
+            "sqlName": "products__id",
+            "sqlType": "varchar",
+            "dbType": "object_id",
+            "isPrimaryKey": true,
+            "foreignKeyTableName": "products",
+            "foreignKeyColumnName": "products__id"
+          },
+          {
+            "fieldPath": "for",
+            "sqlName": "for_index_lvl_0",
+            "sqlType": "bigint",
+            "isIndex": true,
+            "isPrimaryKey": true
+          },
+          {
+            "fieldPath": "for",
+            "sqlName": "value",
+            "sqlType": "varchar"
+          }
+        ]
+      }
+    ]
+  ],
+  "additionalItems": true,
+  "items": {
+    "$id": "#/items",
+    "anyOf": [
+      {
+        "$id": "#/items/anyOf/0",
+        "type": "object",
+        "title": "The first anyOf schema",
+        "description": "This is a SQL Table schema object.",
+        "default": {},
+        "examples": [
+          {
+            "sqlName": "products",
+            "collectionName": "products",
+            "columns": [
+              {
+                "fieldPath": "_id",
+                "sqlName": "products__id",
+                "sqlType": "varchar",
+                "dbType": "object_id",
+                "isPrimaryKey": true
+              },
+              {
+                "fieldPath": "name",
+                "sqlName": "name",
+                "sqlType": "varchar",
+                "dbType": "string"
+              },
+              {
+                "fieldPath": "monthly_price",
+                "sqlName": "monthly_price",
+                "sqlType": "double",
+                "dbType": "double"
+              },
+              {
+                "fieldPath": "rating",
+                "sqlName": "rating",
+                "sqlType": "double",
+                "dbType": "double"
+              },
+              {
+                "fieldPath": "term_years",
+                "sqlName": "term_years",
+                "sqlType": "double",
+                "dbType": "double"
+              },
+              {
+                "fieldPath": "cancel_penalty",
+                "sqlName": "cancel_penalty",
+                "sqlType": "double",
+                "dbType": "double"
+              },
+              {
+                "fieldPath": "sales_tax",
+                "sqlName": "sales_tax",
+                "sqlType": "boolean",
+                "dbType": "boolean"
+              },
+              {
+                "fieldPath": "brand",
+                "sqlName": "brand",
+                "sqlType": "varchar",
+                "dbType": "string"
+              },
+              {
+                "fieldPath": "price",
+                "sqlName": "price",
+                "sqlType": "double",
+                "dbType": "double"
+              },
+              {
+                "fieldPath": "warranty_years",
+                "sqlName": "warranty_years",
+                "sqlType": "double",
+                "dbType": "double"
+              },
+              {
+                "fieldPath": "available",
+                "sqlName": "available",
+                "sqlType": "boolean",
+                "dbType": "boolean"
+              },
+              {
+                "fieldPath": "color",
+                "sqlName": "color",
+                "sqlType": "varchar",
+                "dbType": "string"
+              }
+            ]
+          }
+        ],
+        "required": [
+          "sqlName",
+          "collectionName",
+          "columns"
+        ],
+        "properties": {
+          "sqlName": {
+            "$id": "#/items/anyOf/0/properties/sqlName",
+            "type": "string",
+            "title": "The sqlName schema",
+            "description": "The SQL name for the table.",
+            "minLength": 1,
+            "examples": [
+              "products"
+            ]
+          },
+          "collectionName": {
+            "$id": "#/items/anyOf/0/properties/collectionName",
+            "type": "string",
+            "title": "The collectionName schema",
+            "description": "The name of the collection this table refers to.",
+            "minLength": 1,
+            "examples": [
+              "products"
+            ]
+          },
+          "columns": {
+            "$id": "#/items/anyOf/0/properties/columns",
+            "type": "array",
+            "title": "The columns schema",
+            "description": "The ordered list of columns for this table.",
+            "minItems": 1,
+            "uniqueItems": true,
+            "examples": [
+              [
+                {
+                  "fieldPath": "_id",
+                  "sqlName": "products__id",
+                  "sqlType": "varchar",
+                  "dbType": "object_id",
+                  "isPrimaryKey": true
+                },
+                {
+                  "fieldPath": "name",
+                  "sqlName": "name",
+                  "sqlType": "varchar",
+                  "dbType": "string"
+                }
+              ]
+            ],
+            "additionalItems": true,
+            "items": {
+              "$id": "#/items/anyOf/0/properties/columns/items",
+              "anyOf": [
+                {
+                  "$id": "#/items/anyOf/0/properties/columns/items/anyOf/0",
+                  "type": "object",
+                  "title": "The first anyOf schema",
+                  "description": "The column schema.",
+                  "default": {},
+                  "examples": [
+                    {
+                      "fieldPath": "_id",
+                      "sqlName": "products__id",
+                      "sqlType": "varchar",
+                      "dbType": "object_id",
+                      "isPrimaryKey": true
+                    }
+                  ],
+                  "required": [
+                    "fieldPath",
+                    "sqlName",
+                    "sqlType",
+                    "dbType"
+                  ],
+                  "properties": {
+                    "fieldPath": {
+                      "$id": "#/items/anyOf/0/properties/columns/items/anyOf/0/properties/fieldPath",
+                      "type": "string",
+                      "minLength": 1,
+                      "title": "The field path in the DocumentDB document",
+                      "description": "Gives the relative path of the field in the original DocumentDB document.",
+                      "examples": [
+                        "_id"
+                      ]
+                    },
+                    "sqlName": {
+                      "$id": "#/items/anyOf/0/properties/columns/items/anyOf/0/properties/sqlName",
+                      "type": "string",
+                      "minLength": 1,
+                      "title": "The SQL name identifier used for SQL queries.",
+                      "description": "Gives the identifier name to be used in SQL queries.",
+                      "examples": [
+                        "products__id"
+                      ]
+                    },
+                    "sqlType": {
+                      "$id": "#/items/anyOf/0/properties/columns/items/anyOf/0/properties/sqlType",
+                      "type": "string",
+                      "enum": [ "bigint", "boolean", "decimal", "double", "integer", "null", "timestamp", "varbinary", "varchar" ],
+                      "title": "The sqlType schema",
+                      "description": "The SQL data type used for the representation of this column.",
+                      "default": "",
+                      "examples": [
+                        "varchar"
+                      ]
+                    },
+                    "dbType": {
+                      "$id": "#/items/anyOf/0/properties/columns/items/anyOf/0/properties/dbType",
+                      "type": "string",
+                      "enum": [ "binary", "boolean", "date_time", "decimal128", "double", "int32", "int64", "max_key", "min_key", "null", "object_id", "string" ],
+                      "title": "The dbType schema",
+                      "description": "The DocumentDB data type of the field in the collection.",
+                      "default": "",
+                      "examples": [
+                        "object_id"
+                      ]
+                    },
+                    "isPrimaryKey": {
+                      "$id": "#/items/anyOf/0/properties/columns/items/anyOf/0/properties/isPrimaryKey",
+                      "type": "boolean",
+                      "title": "The isPrimaryKey schema",
+                      "description": "Indicator of whether this column is a primary key column in the SQL table.",
+                      "default": false,
+                      "examples": [
+                        true
+                      ]
+                    },
+                    "foreignKeyTableName": {
+                      "$id": "#/items/anyOf/0/properties/columns/items/anyOf/0/properties/foreignKeyTableName",
+                      "type": "string",
+                      "minLength": 1,
+                      "title": "The foreignKeyTableName schema",
+                      "description": "The SQL table name of the foreign key table.",
+                      "default": "",
+                      "examples": [
+                        "products"
+                      ]
+                    },
+                    "foreignKeyColumnName": {
+                      "$id": "#/items/anyOf/0/properties/columns/items/anyOf/0/properties/foreignKeyColumnName",
+                      "type": "string",
+                      "minLength": 1,
+                      "title": "The foreignKeyColumnName schema",
+                      "description": "The SQL column name of the foreign key table.",
+                      "default": "",
+                      "examples": [
+                        "products__id"
+                      ]
+                    }
+                  },
+                  "additionalProperties": true
+                }
+              ]
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    ]
+  }
+}

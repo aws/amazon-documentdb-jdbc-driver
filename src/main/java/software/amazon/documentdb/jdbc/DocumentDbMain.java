@@ -84,6 +84,8 @@ import java.util.stream.Collectors;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.USER_HOME_PROPERTY;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NONE;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SQL_NAME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable.COLLECTION_NAME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable.COLUMNS_PROPERTY;
@@ -513,7 +515,11 @@ public class DocumentDbMain {
                 ? Arrays.asList(requestedTableNames)
                 : new ArrayList<>();
         final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), false);
+                .get(properties, properties.getSchemaName(), VERSION_LATEST_OR_NONE);
+        if (schema == null) {
+            // No schema to export.
+            return;
+        }
         final Set<String> availTableSet = schema.getTableSchemaMap().keySet();
         if (requestedTableList.isEmpty()) {
             requestedTableList.addAll(availTableSet);
@@ -598,7 +604,7 @@ public class DocumentDbMain {
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
         final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), false);
+                .get(properties, properties.getSchemaName(), VERSION_LATEST_OR_NONE);
         if (schema != null) {
             final List<String> sortedTableNames = schema.getTableSchemaMap().keySet().stream()
                     .sorted()
@@ -625,7 +631,7 @@ public class DocumentDbMain {
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
         final DocumentDbDatabaseSchemaMetadata schema =  DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), true);
+                .get(properties, properties.getSchemaName(), VERSION_NEW);
         if (schema != null) {
             output.append(String.format(NEW_SCHEMA_VERSION_GENERATED_MESSAGE,
                     schema.getSchemaName(),
