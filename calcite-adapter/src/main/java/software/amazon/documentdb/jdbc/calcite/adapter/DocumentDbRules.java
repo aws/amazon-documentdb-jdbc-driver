@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 import org.apache.calcite.adapter.enumerable.RexImpTable;
 import org.apache.calcite.adapter.enumerable.RexToLixTranslator;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
+import org.apache.calcite.avatica.util.TimeUnitRange;
 import org.apache.calcite.plan.Convention;
 import org.apache.calcite.plan.RelOptRule;
 import org.apache.calcite.plan.RelTraitSet;
@@ -53,6 +54,7 @@ import java.util.AbstractList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiFunction;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
@@ -264,6 +266,11 @@ public final class DocumentDbRules {
             if (call.getKind() == SqlKind.CAST) {
                 return strings.get(0);
             }
+
+            if (DateFunctionTranslator.isDateFunction(call)) {
+                return DateFunctionTranslator.translateDateFunction(call, strings);
+            }
+
             final String stdOperator = MONGO_OPERATORS.get(call.getOperator());
             if (stdOperator != null) {
                 // For comparisons other than equals we must check it exists and is not null.
@@ -338,6 +345,56 @@ public final class DocumentDbRules {
                     ? s.substring(1, s.length() - 1)
                     : s;
         }
+    }
+
+    private static class DateFunctionTranslator {
+        private static final Map<SqlOperator, BiFunction<RexCall, List<String>, String>> DATE_FUNCTIONS =
+                new HashMap<>();
+        private static final Map<TimeUnitRange, String> DATEPART_OPERATORS =
+                new HashMap<>();
+
+        static {
+            // Supported date functions
+            DATE_FUNCTIONS.put(SqlStdOperatorTable.DATETIME_PLUS, DateFunctionTranslator::translateDateAdd);
+            DATE_FUNCTIONS.put(SqlStdOperatorTable.EXTRACT, DateFunctionTranslator::translateExtract);
+
+            // Date part operators
+            DATEPART_OPERATORS.put(TimeUnitRange.YEAR, "$year");
+            DATEPART_OPERATORS.put(TimeUnitRange.MONTH, "$month");
+            DATEPART_OPERATORS.put(TimeUnitRange.WEEK, "$week");
+            DATEPART_OPERATORS.put(TimeUnitRange.HOUR, "$hour");
+            DATEPART_OPERATORS.put(TimeUnitRange.MINUTE, "$minute");
+            DATEPART_OPERATORS.put(TimeUnitRange.SECOND, "$second");
+            DATEPART_OPERATORS.put(TimeUnitRange.DOY, "$dayOfYear");
+            DATEPART_OPERATORS.put(TimeUnitRange.DAY, "$dayOfMonth");
+            DATEPART_OPERATORS.put(TimeUnitRange.DOW, "$dayOfWeek");
+            DATEPART_OPERATORS.put(TimeUnitRange.ISODOW, "$isoDayOfWeek");
+            DATEPART_OPERATORS.put(TimeUnitRange.ISOYEAR, "$isoWeekYear");
+        }
+
+        private static boolean isDateFunction(final RexCall call) {
+            return DATE_FUNCTIONS.containsKey(call.getOperator());
+        }
+
+        private static String translateDateFunction(final RexCall call, final List<String> strings) {
+            return DATE_FUNCTIONS.get(call.getOperator()).apply(call, strings);
+        }
+
+        private static String translateDateAdd(final RexCall call, final List<String> strings) {
+            // TODO: Check for unsupported intervals and throw error/emulate in some other way.
+            return "{ \"$add\":" + "[" + Util.commaList(strings) + "]}";
+        }
+
+        private static String translateExtract(final RexCall call, final List<String> strings) {
+            // The first argument to extract is the interval (literal)
+            // and the second argument is the date (can be any node evaluating to a date).
+            final RexLiteral literal = (RexLiteral) call.getOperands().get(0);
+            final TimeUnitRange range = literal.getValueAs(TimeUnitRange.class);
+
+            // TODO: Check for unsupported time unit (ex: quarter) and emulate in some other way.
+            return "{ " + quote(DATEPART_OPERATORS.get(range)) + ": " + strings.get(1) + "}";
+        }
+
     }
 
     /** Base class for planner rules that convert a relational expression to

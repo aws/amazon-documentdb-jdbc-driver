@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.query;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
@@ -32,16 +33,19 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
-
 import java.sql.SQLException;
+import java.time.Instant;
 
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
+    private static final String USER = "user";
+    private static final String PASSWORD = "password";
     private static final String COLLECTION_NAME = "testCollection";
     private static final String OTHER_COLLECTION_NAME = "otherTestCollection";
+    private static final String DATE_COLLECTION_NAME = "dateTestCollection";
     private static DocumentDbQueryMappingService queryMapper;
     private static DocumentDbConnectionProperties connectionProperties;
 
@@ -50,12 +54,13 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     static void initialize() throws SQLException, DocumentDbSchemaException {
         // Add a valid users to the local MongoDB instance.
         connectionProperties = new DocumentDbConnectionProperties();
-        createUser(DATABASE_NAME, "user", "password");
-        connectionProperties.setUser("user");
-        connectionProperties.setPassword("password");
+        createUser(DATABASE_NAME, USER, PASSWORD);
+        connectionProperties.setUser(USER);
+        connectionProperties.setPassword(PASSWORD);
         connectionProperties.setDatabase(DATABASE_NAME);
         connectionProperties.setTlsEnabled("false");
         connectionProperties.setHostname("localhost:" + getMongoPort());
+        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
@@ -63,10 +68,15 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final BsonDocument otherDocument =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key1\", \"otherArray\" : [ { \"field\" : 1, \"field3\": \"value\" }, { \"field\" : 2, \"field3\" : \"value\" } ]}");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+
         insertBsonDocuments(
-                COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{document});
+                COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
         insertBsonDocuments(
-                OTHER_COLLECTION_NAME, DATABASE_NAME, "user", "password", new BsonDocument[]{otherDocument});
+                OTHER_COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{otherDocument});
+        insertBsonDocuments(DATE_COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
                 DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
@@ -1199,6 +1209,13 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 "{\"$gt\": [1, null]}]}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"placeholderField1F84EB1G3K47\": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(5));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$project\": {\"placeholderField1F84EB1G3K47\": 0}}"),
+                result.getAggregateOperations().get(6)
+        );
+        Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
@@ -1385,5 +1402,76 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
         Assertions.assertEquals(0, result.getAggregateOperations().size());
+    }
+
+    /**
+     * Tests TIMESTAMPADD() and EXTRACT().
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests TIMESTAMPADD() and EXTRACT().")
+    void testDateFunctions() throws SQLException {
+        final String timestampAddQuery =
+                String.format(
+                        "SELECT "
+                                + "TIMESTAMPADD(WEEK, 1, \"field\"), "
+                                + "TIMESTAMPADD(DAY, 2, \"field\"), "
+                                + "TIMESTAMPADD(HOUR, 3, \"field\") "
+                                + "FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        DocumentDbMqlQueryContext result = queryMapper.get(timestampAddQuery);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(3, result.getColumnMetaData().size());
+        Assertions.assertEquals(1, result.getAggregateOperations().size());
+    Assertions.assertEquals(
+        BsonDocument.parse(
+            "{\"$addFields\": "
+                    + "{\"EXPR$0\": "
+                            + "{\"$add\": "
+                                    + "[\"$field\", "
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"604800000\" }, 1]}]}, "
+                    + "\"EXPR$1\": "
+                            + "{\"$add\": "
+                                    + "[\"$field\", "
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"86400000\"}, 2]}]}, "
+                    + "\"EXPR$2\": "
+                            + "{\"$add\": "
+                                    + "[\"$field\", "
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"3600000\"}, 3]}]}}}"),
+        result.getAggregateOperations().get(0));
+
+        final String extractQuery =
+                String.format(
+                        "SELECT "
+                                + "YEAR(\"field\"), "
+                                + "MONTH(\"field\"),"
+                                + "WEEK(\"field\"),"
+                                + "DAYOFMONTH(\"field\"),"
+                                + "DAYOFWEEK(\"field\"),"
+                                + "DAYOFYEAR(\"field\"),"
+                                + "HOUR(\"field\"),"
+                                + "MINUTE(\"field\"),"
+                                + "SECOND(\"field\")"
+                                + "FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        result = queryMapper.get(extractQuery);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(9, result.getColumnMetaData().size());
+        Assertions.assertEquals(1, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                    "{\"$addFields\": "
+                            + "{\"EXPR$0\": {\"$year\": \"$field\"}, "
+                            + "\"EXPR$1\": {\"$month\": \"$field\"}, "
+                            + "\"EXPR$2\": {\"$week\": \"$field\"}, "
+                            + "\"EXPR$3\": {\"$dayOfMonth\": \"$field\"}, "
+                            + "\"EXPR$4\": {\"$dayOfWeek\": \"$field\"}, "
+                            + "\"EXPR$5\": {\"$dayOfYear\": \"$field\"}, "
+                            + "\"EXPR$6\": {\"$hour\": \"$field\"}, "
+                            + "\"EXPR$7\": {\"$minute\": \"$field\"}, "
+                            + "\"EXPR$8\": {\"$second\": \"$field\"}}}"),
+        result.getAggregateOperations().get(0));
     }
 }
