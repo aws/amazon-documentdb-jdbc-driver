@@ -63,6 +63,7 @@ import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 import static com.mongodb.client.model.Updates.setOnInsert;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NONE;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.ID_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.MODIFY_DATE_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SCHEMA_NAME_PROPERTY;
@@ -132,7 +133,8 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             final MongoDatabase database = getDatabase(client, properties.getDatabase());
 
             // Get the latest schema from storage.
-            final DocumentDbSchema latestSchema = getSchema(schemaName, 0, database);
+            final DocumentDbSchema latestSchema = getSchema(
+                    schemaName, VERSION_LATEST_OR_NONE, database);
             final int schemaVersion = getSchemaVersion(schema, latestSchema);
             final Set<String> tableReferences = getTableReferences(latestSchema);
 
@@ -256,7 +258,13 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             // Delete the table schemas associated with this database schema.
             deleteTableSchemas(session, tableSchemasCollection, schema.getTableReferences());
             // Delete the database schema.
-            deleteDatabaseSchema(session, schemasCollection, schemaName, schema.getSchemaVersion());
+            final long numDeleted = deleteDatabaseSchema(
+                    session, schemasCollection, schemaName, schema.getSchemaVersion());
+            if (numDeleted < 1) {
+                throw SqlError.createSQLException(LOGGER,
+                        SqlState.DATA_EXCEPTION,
+                        SqlError.DELETE_SCHEMA_FAILED, schemaName);
+            }
         }
     }
 
@@ -363,15 +371,15 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             final Map<String, String> tableMap) {
         final List<String> tableReferencesToDelete = new ArrayList<>();
         for (DocumentDbSchemaTable tableSchema : tableSchemas) {
-            if (tableMap.containsKey(tableSchema.getSqlName())) {
+             if (tableMap.containsKey(tableSchema.getSqlName())) {
                 // remove existing
                 final String tableId = tableMap.get(tableSchema.getSqlName());
                 tableReferencesToDelete.add(tableId);
                 // update schema table references list
                 tableReferences.remove(tableId);
-                tableReferences.add(tableSchema.getId());
-                // write the table schema
             }
+            // write the table schema
+            tableReferences.add(tableSchema.getId());
         }
         return tableReferencesToDelete;
     }
@@ -486,7 +494,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
         }
     }
 
-    private static void deleteDatabaseSchema(
+    private static long deleteDatabaseSchema(
             final ClientSession session,
             final MongoCollection<DocumentDbSchema> schemasCollection,
             final String schemaName,
@@ -495,11 +503,12 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
         final DeleteResult result = session != null
                 ? schemasCollection.deleteOne(session, schemaFilter)
                 : schemasCollection.deleteOne(schemaFilter);
-        if (!result.wasAcknowledged() || result.getDeletedCount() < 1) {
+        if (!result.wasAcknowledged()) {
             throw SqlError.createSQLException(LOGGER,
                     SqlState.DATA_EXCEPTION,
                     SqlError.DELETE_SCHEMA_FAILED, schemaName);
         }
+        return result.getDeletedCount();
     }
 
     private static void deleteTableSchemas(
