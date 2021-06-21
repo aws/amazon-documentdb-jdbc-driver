@@ -45,6 +45,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -1795,6 +1797,316 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(5, resultSet.getInt(8));
         // Seconds is 6.
         Assertions.assertEquals(6, resultSet.getInt(9));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests queries with natural joins where there are no matching fields other than ID.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @DisplayName("Tests queries with natural joins.")
+    void testNaturalJoin() throws SQLException {
+        final String tableName = "testNaturalJoin";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15}}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertEquals(10, resultSet.getInt(2));
+        Assertions.assertEquals(15, resultSet.getInt(3));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that natural joins where there is an additional matching column works.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @Disabled("Only joins on foreign keys are supported currently.")
+    @DisplayName("Tests queries with natural join where an additional column matches the sub-table.")
+    void testNaturalJoinWithExtraColumn() throws SQLException {
+        final String tableName = "testNaturalJoinWithExtraColumn";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15," +
+                "   \"fieldA\": 10}}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertEquals(10, resultSet.getInt(2));
+        Assertions.assertEquals(15, resultSet.getInt(3));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that a cross join with a WHERE clause matching IDs works.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @DisplayName("Tests basic cross-join with WHERE condition.")
+    void testCrossJoinBasic() throws SQLException {
+        final String tableName = "testCrossJoinBasic";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15," +
+                "   \"fieldA\": 10}}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\" WHERE " +
+                                "\"testCrossJoinBasic\".\"testCrossJoinBasic__id\" = \"testCrossJoinBasic_sub\".\"testCrossJoinBasic__id\"",
+                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertEquals(10, resultSet.getInt(2));
+        Assertions.assertEquals("101", resultSet.getString(3));
+        Assertions.assertEquals(15, resultSet.getInt(4));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that a cross join works.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @Disabled("Only joins on foreign keys are supported currently.")
+    @DisplayName("Tests cross-join without WHERE condition.")
+    void testCrossJoin() throws SQLException {
+        final String tableName = "testCrossJoin";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15," +
+                "   \"fieldA\": 10}}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15," +
+                "   \"fieldA\": 10}}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries containing ORDER BY and OFFSET work.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @DisplayName("Tests queries with OFFSET")
+    void testQueryOffset() throws SQLException {
+        final String tableName = "testQueryOffset";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 1,\n" +
+                "\"fieldB\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 3,\n" +
+                "\"fieldB\": 4}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"fieldA\": 5,\n" +
+                "\"fieldB\": 6}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" LIMIT 2 OFFSET 1",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries containing IN (c1, c2...) work.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @DisplayName("Tests queries with WHERE [field] IN (...)")
+    void testQueryWhereIN() throws SQLException {
+        final String tableName = "testQueryWhereIN";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 1,\n" +
+                "\"fieldB\": \"abc\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 3,\n" +
+                "\"fieldB\": \"def\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"fieldA\": 5,\n" +
+                "\"fieldB\": \"ghi\"}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldA\" IN (1, 5)",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+        resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldB\" IN ('abc', 'ghi')",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries containing NOT IN (c1, c2...) work.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @DisplayName("Tests queries with WHERE [field] NOT IN (...)")
+    void testQueryWhereNotIN() throws SQLException {
+        final String tableName = "testQueryWhereNOTIN";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 1,\n" +
+                "\"fieldB\": \"abc\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 3,\n" +
+                "\"fieldB\": \"def\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"fieldA\": 5, \n" +
+                "\"fieldB\": \"ghi\"}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldA\" NOT IN (1, 5)",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+        resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldB\" NOT IN ('abc', 'ghi')",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries containing various casts work.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @Disabled("Casts are not functioning from string to integer.")
+    @DisplayName("Tests queries with cast.")
+    void testQueryCAST() throws SQLException {
+        final String tableName = "testQueryCast";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 1,\n" +
+                "\"fieldB\": \"1\"," +
+                "\"dateString\": \"2020-03-11\"}");
+        doc1.append("dateField", new BsonDateTime(Instant.now().toEpochMilli()));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CAST(\"fieldA\" AS VARCHAR), " +
+                                "CAST(\"fieldB\" AS INTEGER), " +
+                                "CAST(\"fieldA\" AS DOUBLE), " +
+                                "CAST(\"dateField\" AS VARCHAR)," +
+                                "CAST(\"dateString\" AS BIGINT)," +
+                                "CAST(\"dateString\" AS DATE)," +
+                                "CAST(\"dateField\" AS BIGINT)," +
+                                "CAST(\"dateField\" AS VARCHAR)" +
+                                " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("1", resultSet.getString(1));
+        Assertions.assertEquals(1, resultSet.getInt(2));
+        Assertions.assertEquals(1D, resultSet.getDouble(3));
+
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries containing various nested casts work.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @Disabled("Casts are not functioning from string to integer.")
+    @DisplayName("Tests queries with nested CAST.")
+    void testQueryNestedCast() throws SQLException, ParseException {
+        final String tableName = "testQueryNestedCast";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"dateString\": \"2020-03-11\"," +
+                "\"fieldNum\": 7," +
+                "\"fieldString\": \"5\"}");
+        doc1.append("dateLong", new BsonInt64(
+                new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime()));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CAST(CAST(\"dateString\" AS DATE) AS BIGINT), " +
+                                "CAST(CAST(\"dateLong\" AS DATE) AS VARCHAR), " +
+                                "CAST(CAST(\"fieldNum\" AS VARCHAR) AS INTEGER), " +
+                                "CAST(CAST(\"fieldString\" AS INTEGER) AS VARCHAR)" +
+                                " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime(),
+                resultSet.getLong(1));
+        Assertions.assertEquals("2020-03-11", resultSet.getString(2));
+        Assertions.assertEquals(7, resultSet.getInt(3));
+        Assertions.assertEquals("5", resultSet.getString(4));
         Assertions.assertFalse(resultSet.next());
     }
 
