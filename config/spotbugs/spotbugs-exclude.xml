@@ -46,6 +46,9 @@
       <Source name="Statement.java"/>
       <Source name="Connection.java"/>
       <Source name="DocumentDbStatementTest.java"/>
+      <Source name="DocumentDbStatementBasicTest.java"/>
+      <Source name="DocumentDbStatementFilterTest.java"/>
+      <Source name="DocumentDbStatementJoinTest.java"/>
       <Source name="DocumentDbConnection.java"/>
       <Source name="DocumentDbConnection.java"/>
       <Source name="DocumentDbPreparedStatement.java"/>
