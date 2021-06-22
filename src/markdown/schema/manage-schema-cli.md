@@ -21,7 +21,7 @@ options must be provided.
 | `-i`, <br><span style="white-space: nowrap;">`--import <file-name>`</span> | Imports the schema from `<file-name>` in your home directory. The schema will be imported using the `<schema-name>` and a new version will be added - replacing the existing schema. The expected input format is JSON. |
 | `-l`, <br><span style="white-space: nowrap;">`--list-schema`</span> | Lists the schema names, version and table names available in the schema repository." |
 | `-b`, <br><span style="white-space: nowrap;">`--list-tables`</span> | Lists the SQL table names in a schema." |
-| `-r`, <br><span style="white-space: nowrap;">`--remove`</span> | Removes the schema from storage for schema given by `-m <schema-name>`, or for schema `_default`, if not provided. |
+| `-r`, <br><span style="white-space: nowrap;">`--remove`</span> | Removes the schema from storage for schema given by `-n <schema-name>`, or for schema `_default`, if not provided. |
 
 ### Connection Options
 
