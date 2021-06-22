@@ -39,7 +39,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public class DocumentDbQueryBasic extends DocumentDbStatementTest {
+public class DocumentDbQueryBasicTest extends DocumentDbStatementTest {
 
     /**
      * Tests querying for all data types with all scan methods.
