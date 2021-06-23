@@ -60,7 +60,6 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
 
     @Override
     protected void cancelQuery() throws SQLException {
-        verifyOpen();
         queryExecutor.cancelQuery();
     }
 
