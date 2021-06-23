@@ -135,7 +135,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             // Get the latest schema from storage.
             final DocumentDbSchema latestSchema = getSchema(
                     schemaName, VERSION_LATEST_OR_NONE, database);
-            final int schemaVersion = getSchemaVersion(schema, latestSchema);
+            final int schemaVersion = getSchemaVersion(schema, latestSchema) + 1;
             final Set<String> tableReferences = getTableReferences(latestSchema);
 
             // Determine which table references to update/delete.
@@ -312,7 +312,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
         deletePreviousSchema(session, schemaCollection, tableSchemasCollection,
                 schemaName, tableReferencesToDelete);
         upsertNewSchema(session, schemaCollection, tableSchemasCollection, schemaName,
-                schemaVersion + 1, schema, tableSchemas, tableReferences);
+                schemaVersion, schema, tableSchemas, tableReferences);
     }
 
     private void ensureSchemaCollections(final MongoDatabase database)
@@ -371,7 +371,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             final Map<String, String> tableMap) {
         final List<String> tableReferencesToDelete = new ArrayList<>();
         for (DocumentDbSchemaTable tableSchema : tableSchemas) {
-             if (tableMap.containsKey(tableSchema.getSqlName())) {
+            if (tableMap.containsKey(tableSchema.getSqlName())) {
                 // remove existing
                 final String tableId = tableMap.get(tableSchema.getSqlName());
                 tableReferencesToDelete.add(tableId);
