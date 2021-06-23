@@ -521,4 +521,4 @@ because natural joins will join based on any common fields, and joins are curren
 
 ### Cross Joins
 
-Cross joins(eg. `SELECT * FROM "tableA" CROSS JOIN "tableB"`) are not supported.
+Cross joins (eg. `SELECT * FROM "tableA" CROSS JOIN "tableB"`) are not supported.
