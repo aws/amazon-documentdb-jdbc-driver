@@ -83,28 +83,28 @@ public class DocumentDbQueryExecutor {
         final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
         final DocumentDbConnectionProperties properties = connection.getConnectionProperties();
         final MongoClientSettings settings = properties.buildMongoClientSettings();
-        try (MongoClient client = MongoClients.create(settings)) {
-            final MongoDatabase database = client.getDatabase(properties.getDatabase());
-            final MongoCollection<Document> collection = database
-                    .getCollection(queryContext.getCollectionName());
-            AggregateIterable<Document> iterable = collection
-                    .aggregate(queryContext.getAggregateOperations());
-            if (getQueryTimeout() > 0) {
-                iterable = iterable.maxTime(getQueryTimeout(), TimeUnit.SECONDS);
-            }
-            if (getMaxFetchSize() > 0) {
-                iterable = iterable.batchSize(getMaxFetchSize());
-            }
-            final MongoCursor<Document> iterator = iterable.iterator();
-
-            final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
-                    .copyOf(queryContext.getColumnMetaData());
-            return new DocumentDbResultSet(
-                    this.statement,
-                    iterator,
-                    columnMetaData,
-                    queryContext.getPaths());
+        final MongoClient client = MongoClients.create(settings);
+        final MongoDatabase database = client.getDatabase(properties.getDatabase());
+        final MongoCollection<Document> collection = database
+                .getCollection(queryContext.getCollectionName());
+        AggregateIterable<Document> iterable = collection
+                .aggregate(queryContext.getAggregateOperations()).batchSize(Integer.MAX_VALUE);
+        if (getQueryTimeout() > 0) {
+            iterable = iterable.maxTime(getQueryTimeout(), TimeUnit.SECONDS);
         }
+        if (getMaxFetchSize() > 0) {
+            iterable = iterable.batchSize(getMaxFetchSize());
+        }
+        final MongoCursor<Document> iterator = iterable.iterator();
+
+        final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
+                .copyOf(queryContext.getColumnMetaData());
+        return new DocumentDbResultSet(
+                this.statement,
+                iterator,
+                columnMetaData,
+                queryContext.getPaths(),
+                client);
     }
 
     /**
