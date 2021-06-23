@@ -30,6 +30,11 @@ import java.util.Objects;
  * virtual tables.
  */
 public final class DocumentDbDatabaseSchemaMetadata {
+
+    public static final int VERSION_LATEST_OR_NEW = 0;
+    public static final int VERSION_NEW = -1;
+    public static final int VERSION_LATEST_OR_NONE = -2;
+
     private final DocumentDbSchema schema;
 
     /**
@@ -64,26 +69,10 @@ public final class DocumentDbDatabaseSchemaMetadata {
         this.schema = schema;
     }
 
-    /**
-     * Constructs a {@link DocumentDbDatabaseSchemaMetadata} instance using the default schema name
-     * with an option to refresh all the table schema.
-     *
-     * @param properties the connection properties.
-     * @param refreshAll an indicator of whether to refresh all the table schema.
-     * @return a new {@link DocumentDbDatabaseSchemaMetadata} instance.
-     *
-     * @throws SQLException if a SQL exception occurs.
-     */
-    public static DocumentDbDatabaseSchemaMetadata get(
-            final DocumentDbConnectionProperties properties,
-            final boolean refreshAll) throws SQLException {
-        return get(properties, DocumentDbSchema.DEFAULT_SCHEMA_NAME, refreshAll);
-    }
-
 
     /**
      * Gets the latest or a new {@link DocumentDbDatabaseSchemaMetadata} instance based on the
-     * schemaName and properties. It uses a value of {@link DocumentDbMetadataService#VERSION_LATEST}
+     * schemaName and properties. It uses a value of {@link DocumentDbDatabaseSchemaMetadata#VERSION_LATEST_OR_NEW}
      * for the version to indicate to get the latest or create a new instance if none exists.
      *
      * @param properties the connection properties.
@@ -93,39 +82,9 @@ public final class DocumentDbDatabaseSchemaMetadata {
     public static DocumentDbDatabaseSchemaMetadata get(
             final DocumentDbConnectionProperties properties, final String schemaName)
             throws SQLException {
-        return get(properties, schemaName, false);
+        return get(properties, schemaName, VERSION_LATEST_OR_NEW);
     }
 
-    /**
-     * Gets the {@link DocumentDbDatabaseSchemaMetadata} by given schema name, connection properties
-     * and an indicator of whether to refresh the metadata from the cached version.
-     *
-     * @param properties the connection properties.
-     * @param schemaName the schema name.
-     * @param refreshAll an indicator of whether to get refreshed metadata and ignore the cached
-     *                   version.
-     * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
-     */
-    public static DocumentDbDatabaseSchemaMetadata get(
-            final DocumentDbConnectionProperties properties,
-            final String schemaName,
-            final boolean refreshAll) throws SQLException {
-
-        final DocumentDbDatabaseSchemaMetadata metadata;
-        final int schemaVersion = refreshAll
-                ? DocumentDbMetadataService.VERSION_NEW
-                : DocumentDbMetadataService.VERSION_LATEST;
-        final DocumentDbSchema schema = DocumentDbMetadataService
-                .get(properties, schemaName, schemaVersion);
-        if (schema != null) {
-            // Setup lazy load based on table ID.
-            setSchemaGetTableFunction(properties, schemaName, schemaVersion, schema);
-            metadata = new DocumentDbDatabaseSchemaMetadata(schema);
-        } else {
-            metadata = null;
-        }
-        return metadata;
-    }
 
     /**
      * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the schema name
@@ -134,7 +93,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
      * @param properties the properties of the connection.
      * @param schemaName the name of the schema.
      * @param schemaVersion the version of the schema. A version number of
-     *                {@link DocumentDbMetadataService#VERSION_LATEST} indicates to get the latest
+     *                {@link DocumentDbDatabaseSchemaMetadata#VERSION_LATEST_OR_NEW} indicates to get the latest
      *                or create a new instance.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the schema and version exist,
      * null otherwise.
