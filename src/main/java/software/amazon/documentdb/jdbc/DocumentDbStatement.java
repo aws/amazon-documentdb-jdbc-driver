@@ -16,20 +16,17 @@
 
 package software.amazon.documentdb.jdbc;
 
-import lombok.SneakyThrows;
 import software.amazon.documentdb.jdbc.common.Statement;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 
 /**
  * DocumentDb implementation of DatabaseMetadata.
  */
 class DocumentDbStatement extends Statement implements java.sql.Statement {
     private int queryTimeout;
-    private DocumentDbQueryExecutor queryExecutor;
+    private final DocumentDbQueryExecutor queryExecutor;
 
     /**
      * DocumentDbStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
@@ -37,18 +34,34 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
      * @param connection the connection.
      */
     DocumentDbStatement(
-            final DocumentDbConnection connection) {
+            final DocumentDbConnection connection) throws SQLException {
         super(connection);
+        final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
+                connection.getConnectionProperties(),
+                connection.getDatabaseMetadata());
+        queryExecutor = new DocumentDbQueryExecutor(
+                this,
+                connection.getConnectionProperties(),
+                mappingService,
+                getQueryTimeout(),
+                getMaxFetchSize());
+    }
+
+    /**
+     * DocumentDbStatement constructor. Accepts a DocumentDbQueryExecutor that can
+     * be used for testing purposes.
+     * @param connection the connection.
+     * @param queryExecutor the DocumentDbQueryExecutor.
+     */
+    DocumentDbStatement(final DocumentDbConnection connection, final DocumentDbQueryExecutor queryExecutor) {
+        super(connection);
+        this.queryExecutor = queryExecutor;
     }
 
     @Override
     protected void cancelQuery() throws SQLException {
         verifyOpen();
-        if (queryExecutor != null) {
-            queryExecutor.cancelQuery();
-        } else {
-
-        }
+        queryExecutor.cancelQuery();
     }
 
     @Override
@@ -60,7 +73,7 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     @Override
     public java.sql.ResultSet executeQuery(final String sql) throws SQLException {
         verifyOpen();
-        return executeQuery(sql, this, getMaxFetchSize());
+        return queryExecutor.executeQuery(sql);
     }
 
     @Override
@@ -73,19 +86,6 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     public void setQueryTimeout(final int seconds) throws SQLException {
         verifyOpen();
         queryTimeout = seconds;
-    }
-
-    @SneakyThrows
-    protected static ResultSet executeQuery(final String sql, final Statement statement, final int maxFetchSize) {
-        final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
-        final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
-                connection.getConnectionProperties(),
-                connection.getDatabaseMetadata());
-        final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(
-                statement,
-                mappingService,
-                statement.getQueryTimeout(),
-                maxFetchSize);
-        return queryExecutor.executeQuery(sql);
+        queryExecutor.setQueryTimeout(seconds);
     }
 }

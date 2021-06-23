@@ -24,15 +24,14 @@ import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 
 /**
  * DocumentDb implementation of PreparedStatement.
  */
 public class DocumentDbPreparedStatement extends PreparedStatement
         implements java.sql.PreparedStatement {
-
     private int queryTimeout = 0;
+    private final DocumentDbQueryExecutor queryExecutor;
 
     /**
      * DocumentDbPreparedStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
@@ -41,12 +40,22 @@ public class DocumentDbPreparedStatement extends PreparedStatement
      */
     public DocumentDbPreparedStatement(final Connection connection, final String sql) throws SQLException {
         super(connection, sql);
+        final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
+                ((DocumentDbConnection) connection).getConnectionProperties(),
+                ((DocumentDbConnection) connection).getDatabaseMetadata());
+        queryExecutor = new DocumentDbQueryExecutor(
+                this,
+                ((DocumentDbConnection) connection).getConnectionProperties(),
+                mappingService,
+                getQueryTimeout(),
+                getMaxFetchSize());
     }
 
     @Override
     protected void cancelQuery() throws SQLException {
-        throw new SQLFeatureNotSupportedException();
-        // TODO: Implement cancelQuery()
+        verifyOpen();
+        queryExecutor.cancelQuery();
+
     }
 
     @Override
@@ -58,7 +67,7 @@ public class DocumentDbPreparedStatement extends PreparedStatement
     @Override
     public java.sql.ResultSet executeQuery() throws SQLException {
         verifyOpen();
-        return DocumentDbStatement.executeQuery(getSql(), this, getMaxFetchSize());
+        return queryExecutor.executeQuery(getSql());
     }
 
     @Override
@@ -97,5 +106,6 @@ public class DocumentDbPreparedStatement extends PreparedStatement
     public void setQueryTimeout(final int seconds) throws SQLException {
         verifyOpen();
         queryTimeout = seconds;
+        queryExecutor.setQueryTimeout(seconds);
     }
 }
