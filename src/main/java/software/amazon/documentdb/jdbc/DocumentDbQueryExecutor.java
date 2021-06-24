@@ -94,7 +94,7 @@ public class DocumentDbQueryExecutor {
         }
         if (getFetchSize() > 0) {
             iterable = iterable.batchSize(getFetchSize());
-        };
+        }
         final MongoCursor<Document> iterator = iterable.iterator();
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
