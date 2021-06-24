@@ -75,6 +75,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
@@ -528,6 +529,7 @@ public class DocumentDbMain {
         }
         final List<TableSchema> tableSchemaList = requestedTableList.stream()
                 .map(tableName -> new TableSchema(schema.getTableSchemaMap().get(tableName)))
+                .sorted(Comparator.comparing(TableSchema::getSqlName))
                 .collect(Collectors.toList());
         try {
             writeTableSchemas(tableSchemaList, outputFile, output);
