@@ -46,7 +46,7 @@ public class StatementTest {
         HelperFunctions.expectFunctionThrows(() -> statement.setFetchDirection(ResultSet.FETCH_REVERSE));
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.setFetchDirection(ResultSet.FETCH_FORWARD));
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.setEscapeProcessing(false));
-        HelperFunctions.expectFunctionThrows(() -> statement.setFetchSize(0));
+        HelperFunctions.expectFunctionDoesntThrow(() -> statement.setFetchSize(0));
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.setFetchSize(1));
         HelperFunctions.expectFunctionThrows(() -> statement.setLargeMaxRows(-1));
         HelperFunctions.expectFunctionDoesntThrow(() -> statement.setLargeMaxRows(1));
