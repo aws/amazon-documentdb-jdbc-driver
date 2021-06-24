@@ -50,15 +50,9 @@ public class DocumentDbPreparedStatement extends PreparedStatement
     }
 
     @Override
-    protected int getMaxFetchSize() throws SQLException {
-        verifyOpen();
-        return Integer.MAX_VALUE;
-    }
-
-    @Override
     public java.sql.ResultSet executeQuery() throws SQLException {
         verifyOpen();
-        return DocumentDbStatement.executeQuery(getSql(), this, getMaxFetchSize());
+        return DocumentDbStatement.executeQuery(getSql(), this, getFetchSize());
     }
 
     @Override

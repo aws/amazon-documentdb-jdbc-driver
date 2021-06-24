@@ -810,4 +810,34 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertEquals(5, resultSet.getInt(3));
         Assertions.assertFalse(resultSet.next());
     }
+
+
+    /**
+     * Tests that the result set of a query does not close prematurely when results are retrieved in multiple batches.
+     * Uses max fetch size of 10 to ensure multiple batches are retrieved.
+     * @throws SQLException
+     */
+    @Test
+    @DisplayName("Tests that the result set does not close prematurely when results are retrieved in multiple batches.")
+    void testResultSetDoesNotClose() throws SQLException {
+        final String tableName = "testResultsetClose";
+        final int numDocs = 100;
+        final BsonDocument[] docs = new BsonDocument[numDocs];
+        for (int i = 0; i < numDocs; i++) {
+            final BsonDocument doc = BsonDocument.parse("{\"_id\": " + i + ", \n" +
+                    "\"field\":\"abc\"}");
+            docs[i] = doc;
+        }
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD, docs);
+        final Statement statement = getDocumentDbStatement();
+        statement.setFetchSize(10);
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        for (int i = 0; i < numDocs; i++) {
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(String.valueOf(i), resultSet.getString(1));
+        }
+        Assertions.assertFalse(resultSet.next());
+    }
 }
