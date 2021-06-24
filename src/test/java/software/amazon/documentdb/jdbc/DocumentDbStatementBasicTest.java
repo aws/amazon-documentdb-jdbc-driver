@@ -815,7 +815,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     /**
      * Tests that the result set of a query does not close prematurely when results are retrieved in multiple batches.
      * Uses max fetch size of 10 to ensure multiple batches are retrieved.
-     * @throws SQLException
+     * @throws SQLException if connection or query fails.
      */
     @Test
     @DisplayName("Tests that the result set does not close prematurely when results are retrieved in multiple batches.")
