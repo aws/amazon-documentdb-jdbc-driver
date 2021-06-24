@@ -830,7 +830,35 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD, docs);
         final Statement statement = getDocumentDbStatement();
-        statement.setFetchSize(10);
+        statement.setFetchSize(1);
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        for (int i = 0; i < numDocs; i++) {
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(String.valueOf(i), resultSet.getString(1));
+        }
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries with a batch size of zero work.
+     * @throws SQLException if connection or query fails.
+     */
+    @Test
+    @DisplayName("Tests that a batch size of zero works.")
+    void testBatchSizeZero() throws SQLException {
+        final String tableName = "testBatchSizeZero";
+        final int numDocs = 10;
+        final BsonDocument[] docs = new BsonDocument[numDocs];
+        for (int i = 0; i < numDocs; i++) {
+            final BsonDocument doc = BsonDocument.parse("{\"_id\": " + i + ", \n" +
+                    "\"field\":\"abc\"}");
+            docs[i] = doc;
+        }
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD, docs);
+        final Statement statement = getDocumentDbStatement();
+        statement.setFetchSize(0);
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * from \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
