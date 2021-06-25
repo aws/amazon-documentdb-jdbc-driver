@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit;
  * DocumentDb implementation of QueryExecution.
  */
 public class DocumentDbQueryExecutor {
-    private final int maxFetchSize;
+    private final int fetchSize;
     private final java.sql.Statement statement;
     private final String uri;
     private final int queryTimeout;
@@ -51,11 +51,11 @@ public class DocumentDbQueryExecutor {
             final String uri,
             final DocumentDbQueryMappingService queryMapper,
             final int queryTimeoutSecs,
-            final int maxFetchSize) {
+            final int fetchSize) {
         this.statement = statement;
         this.uri = uri;
         this.queryMapper = queryMapper;
-        this.maxFetchSize = maxFetchSize;
+        this.fetchSize = fetchSize;
         this.queryTimeout = queryTimeoutSecs;
     }
 
@@ -64,8 +64,8 @@ public class DocumentDbQueryExecutor {
         throw new SQLFeatureNotSupportedException();
     }
 
-    protected int getMaxFetchSize() throws SQLException {
-        return maxFetchSize;
+    protected int getFetchSize() throws SQLException {
+        return fetchSize;
     }
 
     /**
@@ -83,28 +83,28 @@ public class DocumentDbQueryExecutor {
         final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
         final DocumentDbConnectionProperties properties = connection.getConnectionProperties();
         final MongoClientSettings settings = properties.buildMongoClientSettings();
-        try (MongoClient client = MongoClients.create(settings)) {
-            final MongoDatabase database = client.getDatabase(properties.getDatabase());
-            final MongoCollection<Document> collection = database
-                    .getCollection(queryContext.getCollectionName());
-            AggregateIterable<Document> iterable = collection
-                    .aggregate(queryContext.getAggregateOperations());
-            if (getQueryTimeout() > 0) {
-                iterable = iterable.maxTime(getQueryTimeout(), TimeUnit.SECONDS);
-            }
-            if (getMaxFetchSize() > 0) {
-                iterable = iterable.batchSize(getMaxFetchSize());
-            }
-            final MongoCursor<Document> iterator = iterable.iterator();
-
-            final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
-                    .copyOf(queryContext.getColumnMetaData());
-            return new DocumentDbResultSet(
-                    this.statement,
-                    iterator,
-                    columnMetaData,
-                    queryContext.getPaths());
+        final MongoClient client = MongoClients.create(settings);
+        final MongoDatabase database = client.getDatabase(properties.getDatabase());
+        final MongoCollection<Document> collection = database
+                .getCollection(queryContext.getCollectionName());
+        AggregateIterable<Document> iterable = collection
+                .aggregate(queryContext.getAggregateOperations());
+        if (getQueryTimeout() > 0) {
+            iterable = iterable.maxTime(getQueryTimeout(), TimeUnit.SECONDS);
         }
+        if (getFetchSize() > 0) {
+            iterable = iterable.batchSize(getFetchSize());
+        }
+        final MongoCursor<Document> iterator = iterable.iterator();
+
+        final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
+                .copyOf(queryContext.getColumnMetaData());
+        return new DocumentDbResultSet(
+                this.statement,
+                iterator,
+                columnMetaData,
+                queryContext.getPaths(),
+                client);
     }
 
     /**
