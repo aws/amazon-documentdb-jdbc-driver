@@ -44,7 +44,7 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
                 connection.getConnectionProperties(),
                 mappingService,
                 getQueryTimeout(),
-                getMaxFetchSize());
+                getFetchSize());
     }
 
     /**
@@ -66,6 +66,7 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     @Override
     public java.sql.ResultSet executeQuery(final String sql) throws SQLException {
         verifyOpen();
+        queryExecutor.setFetchSize(getFetchSize());
         return queryExecutor.executeQuery(sql);
     }
 

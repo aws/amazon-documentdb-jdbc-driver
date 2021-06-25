@@ -59,6 +59,7 @@ public class DocumentDbPreparedStatement extends PreparedStatement
     @Override
     public java.sql.ResultSet executeQuery() throws SQLException {
         verifyOpen();
+        queryExecutor.setFetchSize(getFetchSize());
         return queryExecutor.executeQuery(getSql());
     }
 

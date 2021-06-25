@@ -44,16 +44,17 @@ import java.util.concurrent.TimeUnit;
  * DocumentDb implementation of QueryExecution.
  */
 public class DocumentDbQueryExecutor {
-    private final int fetchSize;
     private static final int OPERATION_CANCELLED_CODE = 11601;
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryExecutor.class);
     private final Object queryStateLock = new Object();
     private final java.sql.Statement statement;
     private final DocumentDbConnectionProperties connectionProperties;
     private final DocumentDbQueryMappingService queryMapper;
+    private int fetchSize;
     private int queryTimeout;
     private String queryId = null;
     private QueryState queryState = QueryState.NOT_STARTED;
+
     private enum QueryState {
         NOT_STARTED,
         IN_PROGRESS,
@@ -78,31 +79,21 @@ public class DocumentDbQueryExecutor {
 
     /**
      * This function wraps query cancellation and ensures query state is kept consistent.
+     *
      * @throws SQLException If query cancellation fails or cannot be executed.
      */
     protected void cancelQuery() throws SQLException {
         synchronized (queryStateLock) {
             if (queryState.equals(QueryState.NOT_STARTED)) {
                 throw SqlError.createSQLException(
-                        LOGGER,
-                        SqlState.OPERATION_CANCELED,
-                        SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
+                        LOGGER, SqlState.OPERATION_CANCELED, SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
             } else if (queryState.equals(QueryState.CANCELED)) {
                 throw SqlError.createSQLException(
-                        LOGGER,
-                        SqlState.OPERATION_CANCELED,
-                        SqlError.QUERY_CANCELED);
+                        LOGGER, SqlState.OPERATION_CANCELED, SqlError.QUERY_CANCELED);
             }
-
-    protected int getFetchSize() throws SQLException {
-        return fetchSize;
             performCancel();
             queryState = QueryState.CANCELED;
         }
-    }
-
-    protected int getMaxFetchSize()  {
-        return maxFetchSize;
     }
 
     /**
@@ -278,11 +269,19 @@ public class DocumentDbQueryExecutor {
         return queryId;
     }
 
-    public int getQueryTimeout() {
+    protected int getQueryTimeout() {
         return queryTimeout;
     }
 
-    public void setQueryTimeout(final int queryTimeout) {
+    protected void setQueryTimeout(final int queryTimeout) {
         this.queryTimeout = queryTimeout;
+    }
+
+    protected int getFetchSize() {
+        return fetchSize;
+    }
+
+    protected void setFetchSize(final int fetchSize) {
+        this.fetchSize = fetchSize;
     }
 }
