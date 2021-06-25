@@ -19,15 +19,13 @@ package software.amazon.documentdb.jdbc;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoException;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.Setter;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,22 +44,16 @@ import java.util.concurrent.TimeUnit;
  * DocumentDb implementation of QueryExecution.
  */
 public class DocumentDbQueryExecutor {
+    private static final int OPERATION_CANCELLED_CODE = 11601;
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryExecutor.class);
     private final Object queryStateLock = new Object();
     private final int maxFetchSize;
     private final java.sql.Statement statement;
     private final DocumentDbConnectionProperties connectionProperties;
     private final DocumentDbQueryMappingService queryMapper;
-
-    @Getter @Setter
     private int queryTimeout;
-
-    @Getter(AccessLevel.PROTECTED)
-    @VisibleForTesting
     private String queryId = null;
-
     private QueryState queryState = QueryState.NOT_STARTED;
-
     private enum QueryState {
         NOT_STARTED,
         IN_PROGRESS,
@@ -147,7 +139,9 @@ public class DocumentDbQueryExecutor {
             throw e;
         } catch (final Exception e) {
             synchronized (queryStateLock) {
-                if (queryState.equals(QueryState.CANCELED)) {
+                if (e instanceof MongoException
+                        && ((MongoException) e).getCode() == OPERATION_CANCELLED_CODE
+                        && queryState.equals(QueryState.CANCELED)) {
                     resetQueryState();
                     throw SqlError.createSQLException(
                             LOGGER,
@@ -157,7 +151,7 @@ public class DocumentDbQueryExecutor {
                     resetQueryState();
                     throw SqlError.createSQLException(
                             LOGGER,
-                            SqlState.OPERATION_CANCELED,
+                            SqlState.CONNECTION_EXCEPTION,
                             SqlError.QUERY_FAILED, e);
                 }
             }
@@ -235,7 +229,7 @@ public class DocumentDbQueryExecutor {
                         SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
             }
 
-            // If there is more than 1 result then more than operations have been given same id
+            // If there is more than 1 result then more than 1 operations have been given same id
             // and we do not know which to cancel.
             if (ops.size() != 1) {
                 throw SqlError.createSQLException(
@@ -249,6 +243,10 @@ public class DocumentDbQueryExecutor {
                 throw new SQLException("Unexpected operation state.");
             }
             final Object opId = ((Document)ops.get(0)).get("opid");
+
+            if (opId == null) {
+                throw new SQLException("Unexpected operation state.");
+            }
 
             // Cancel the aggregation using killOp.
             final Document killOp =
@@ -273,5 +271,17 @@ public class DocumentDbQueryExecutor {
                     SqlError.QUERY_CANNOT_BE_CANCELED,
                     e);
         }
+    }
+
+    protected String getQueryId() {
+        return queryId;
+    }
+
+    public int getQueryTimeout() {
+        return queryTimeout;
+    }
+
+    public void setQueryTimeout(final int queryTimeout) {
+        this.queryTimeout = queryTimeout;
     }
 }
