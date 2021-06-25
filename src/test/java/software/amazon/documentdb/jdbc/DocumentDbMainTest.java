@@ -438,11 +438,15 @@ class DocumentDbMainTest {
                     .matcher(output.toString())
                     .matches());
 
-            args = buildArguments(String.format("-e=%s,%s", collectionName1, collectionName2));
+            final String[] collections = Arrays
+                    .stream(new String[] { collectionName1, collectionName2})
+                    .sorted()
+                    .collect(Collectors.toList()).toArray(new String[2]);
+            args = buildArguments(String.format("-e=%s,%s", (Object[]) collections));
             output.setLength(0);
             DocumentDbMain.handleCommandLine(args, output);
             Assertions.assertEquals(
-                    getExpectedExportContent(testEnvironment, collectionName1, collectionName2),
+                    getExpectedExportContent(testEnvironment, collections),
                     output.toString().replace("\r\n", "\n"));
         } finally {
             dropCollection(testEnvironment, collectionName2);
@@ -493,17 +497,16 @@ class DocumentDbMainTest {
         final String collectionName = createSimpleCollection(testEnvironment);
 
         try {
-            String[] args = buildArguments("-g", DEFAULT_SCHEMA_NAME);
+            String[] args = buildArguments("-g", CUSTOM_SCHEMA_NAME);
             final StringBuilder output = new StringBuilder();
             DocumentDbMain.handleCommandLine(args, output);
-            Assertions.assertTrue(NEW_DEFAULT_SCHEMA_ANY_VERSION_PATTERN
-                    .matcher(output.toString())
-                    .matches());
+            Assertions.assertEquals(String.format("New schema '%s', version '1' generated.", CUSTOM_SCHEMA_NAME),
+                    output.toString());
 
-            final String outputFileName = collectionName + " tableSchema.json";
+            final String outputFileName = collectionName + "_tableSchema.json";
             final Path outputFilePath = USER_HOME_PATH.resolve(outputFileName);
             output.setLength(0);
-            args = buildArguments("-e=" + collectionName, DEFAULT_SCHEMA_NAME, outputFileName);
+            args = buildArguments("-e=" + collectionName, CUSTOM_SCHEMA_NAME, outputFileName);
             try {
                 DocumentDbMain.handleCommandLine(args, output);
                 Assertions.assertEquals("",
@@ -514,9 +517,24 @@ class DocumentDbMainTest {
                         output.toString().replace("\r\n", "\n"));
 
                 output.setLength(0);
-                args = buildArguments("-i=" + outputFileName, DEFAULT_SCHEMA_NAME);
+                args = buildArguments("-r", CUSTOM_SCHEMA_NAME);
+                DocumentDbMain.handleCommandLine(args, output);
+                Assertions.assertEquals(String.format("Removed schema '%s'.", CUSTOM_SCHEMA_NAME), output.toString());
+
+                output.setLength(0);
+                args = buildArguments("-b", CUSTOM_SCHEMA_NAME);
                 DocumentDbMain.handleCommandLine(args, output);
                 Assertions.assertEquals(0, output.length());
+
+                output.setLength(0);
+                args = buildArguments("-i=" + outputFileName, CUSTOM_SCHEMA_NAME);
+                DocumentDbMain.handleCommandLine(args, output);
+                Assertions.assertEquals("", output.toString());
+
+                output.setLength(0);
+                args = buildArguments("-b", CUSTOM_SCHEMA_NAME);
+                DocumentDbMain.handleCommandLine(args, output);
+                Assertions.assertEquals(collectionName, output.toString().trim());
             } finally {
                 Assertions.assertTrue(outputFilePath.toFile().delete());
             }

@@ -852,4 +852,129 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         }
         Assertions.assertEquals(1, rowCount);
     }
+
+
+    /**
+     * Tests queries with natural joins where there are no matching fields other than ID.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @DisplayName("Tests queries with natural joins.")
+    void testNaturalJoin() throws SQLException {
+        final String tableName = "testNaturalJoin";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15}}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertEquals(10, resultSet.getInt(2));
+        Assertions.assertEquals(15, resultSet.getInt(3));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that natural joins where there is an additional matching column works.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @Disabled("Only joins on foreign keys are supported currently.")
+    @DisplayName("Tests queries with natural join where an additional column matches the sub-table.")
+    void testNaturalJoinWithExtraColumn() throws SQLException {
+        final String tableName = "testNaturalJoinWithExtraColumn";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15," +
+                "   \"fieldA\": 10}}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertEquals(10, resultSet.getInt(2));
+        Assertions.assertEquals(15, resultSet.getInt(3));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that a cross join with a WHERE clause matching IDs works.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @DisplayName("Tests basic cross-join with WHERE condition.")
+    void testCrossJoinBasic() throws SQLException {
+        final String tableName = "testCrossJoinBasic";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15," +
+                "   \"fieldA\": 10}}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\" WHERE " +
+                                "\"testCrossJoinBasic\".\"testCrossJoinBasic__id\" = \"testCrossJoinBasic_sub\".\"testCrossJoinBasic__id\"",
+                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertEquals(10, resultSet.getInt(2));
+        Assertions.assertEquals("101", resultSet.getString(3));
+        Assertions.assertEquals(15, resultSet.getInt(4));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that a cross join works.
+     * @throws SQLException occurs if query or connection fails.
+     */
+    @Test
+    @Disabled("Only joins on foreign keys are supported currently.")
+    @DisplayName("Tests cross-join without WHERE condition.")
+    void testCrossJoin() throws SQLException {
+        final String tableName = "testCrossJoin";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15," +
+                "   \"fieldA\": 10}}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 10, " +
+                "\"sub\": {" +
+                "   \"subField\": 15," +
+                "   \"fieldA\": 10}}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
 }

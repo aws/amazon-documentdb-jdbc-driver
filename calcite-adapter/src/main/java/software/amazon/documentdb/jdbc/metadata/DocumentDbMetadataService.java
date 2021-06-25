@@ -256,7 +256,16 @@ public class DocumentDbMetadataService {
             final String schemaName,
             final Collection<DocumentDbSchemaTable> schemaTables)
             throws SQLException, DocumentDbSchemaSecurityException {
-        final DocumentDbSchema schema = get(properties, schemaName);
+        DocumentDbSchema schema = get(properties, schemaName, VERSION_LATEST_OR_NONE);
+        if (schema == null) {
+            // This is intentional because the update will increment the version.
+            final int schemaVersion = 0;
+            schema = new DocumentDbSchema(
+                    schemaName,
+                    properties.getDatabase(),
+                    schemaVersion,
+                    new LinkedHashMap<>());
+        }
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
         schemaWriter.update(schema, schemaTables);
     }
