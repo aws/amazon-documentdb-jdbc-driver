@@ -45,11 +45,6 @@ public class MockStatement extends Statement implements java.sql.Statement {
     }
 
     @Override
-    protected int getMaxFetchSize() throws SQLException {
-        return 0;
-    }
-
-    @Override
     public ResultSet executeQuery(final String sql) throws SQLException {
         return resultSet;
     }

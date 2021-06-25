@@ -64,12 +64,6 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     }
 
     @Override
-    protected int getMaxFetchSize() throws SQLException {
-        verifyOpen();
-        return  Integer.MAX_VALUE;
-    }
-
-    @Override
     public java.sql.ResultSet executeQuery(final String sql) throws SQLException {
         verifyOpen();
         return queryExecutor.executeQuery(sql);

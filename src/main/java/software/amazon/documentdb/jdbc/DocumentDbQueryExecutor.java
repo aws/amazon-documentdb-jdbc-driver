@@ -44,10 +44,10 @@ import java.util.concurrent.TimeUnit;
  * DocumentDb implementation of QueryExecution.
  */
 public class DocumentDbQueryExecutor {
+    private final int fetchSize;
     private static final int OPERATION_CANCELLED_CODE = 11601;
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryExecutor.class);
     private final Object queryStateLock = new Object();
-    private final int maxFetchSize;
     private final java.sql.Statement statement;
     private final DocumentDbConnectionProperties connectionProperties;
     private final DocumentDbQueryMappingService queryMapper;
@@ -68,11 +68,11 @@ public class DocumentDbQueryExecutor {
             final DocumentDbConnectionProperties connectionProperties,
             final DocumentDbQueryMappingService queryMapper,
             final int queryTimeoutSecs,
-            final int maxFetchSize) {
+            final int fetchSize) {
         this.statement = statement;
         this.connectionProperties = connectionProperties;
         this.queryMapper = queryMapper;
-        this.maxFetchSize = maxFetchSize;
+        this.fetchSize = fetchSize;
         this.queryTimeout = queryTimeoutSecs;
     }
 
@@ -94,6 +94,8 @@ public class DocumentDbQueryExecutor {
                         SqlError.QUERY_CANCELED);
             }
 
+    protected int getFetchSize() throws SQLException {
+        return fetchSize;
             performCancel();
             queryState = QueryState.CANCELED;
         }
@@ -171,32 +173,31 @@ public class DocumentDbQueryExecutor {
             throw new SQLException("Unexpected operation state.");
         }
 
-        final MongoClientSettings settings = connectionProperties.buildMongoClientSettings();
-        try (MongoClient client = MongoClients.create(settings)) {
-            final MongoDatabase database = client.getDatabase(connectionProperties.getDatabase());
-            final MongoCollection<Document> collection = database
-                    .getCollection(queryContext.getCollectionName());
-
-            AggregateIterable<Document> iterable = collection.aggregate(queryContext.getAggregateOperations()).comment(queryId);
-
-            if (getQueryTimeout() > 0) {
-                iterable = iterable.maxTime(getQueryTimeout(), TimeUnit.SECONDS);
-            }
-            if (getMaxFetchSize() > 0) {
-                iterable = iterable.batchSize(getMaxFetchSize());
-            }
-
-            final MongoCursor<Document> iterator = iterable.iterator();
-
-            final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
-                    .copyOf(queryContext.getColumnMetaData());
-
-            return new DocumentDbResultSet(
-                    this.statement,
-                    iterator,
-                    columnMetaData,
-                    queryContext.getPaths());
+        final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
+        final DocumentDbConnectionProperties properties = connection.getConnectionProperties();
+        final MongoClientSettings settings = properties.buildMongoClientSettings();
+        final MongoClient client = MongoClients.create(settings);
+        final MongoDatabase database = client.getDatabase(properties.getDatabase());
+        final MongoCollection<Document> collection = database
+                .getCollection(queryContext.getCollectionName());
+        AggregateIterable<Document> iterable = collection
+                .aggregate(queryContext.getAggregateOperations());
+        if (getQueryTimeout() > 0) {
+            iterable = iterable.maxTime(getQueryTimeout(), TimeUnit.SECONDS);
         }
+        if (getFetchSize() > 0) {
+            iterable = iterable.batchSize(getFetchSize());
+        }
+        final MongoCursor<Document> iterator = iterable.iterator();
+
+        final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
+                .copyOf(queryContext.getColumnMetaData());
+        return new DocumentDbResultSet(
+                this.statement,
+                iterator,
+                columnMetaData,
+                queryContext.getPaths(),
+                client);
     }
 
     private void resetQueryState() {

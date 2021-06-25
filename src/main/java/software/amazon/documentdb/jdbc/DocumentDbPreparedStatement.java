@@ -48,18 +48,12 @@ public class DocumentDbPreparedStatement extends PreparedStatement
                 ((DocumentDbConnection) connection).getConnectionProperties(),
                 mappingService,
                 getQueryTimeout(),
-                getMaxFetchSize());
+                getFetchSize());
     }
 
     @Override
     protected void cancelQuery() throws SQLException {
         queryExecutor.cancelQuery();
-    }
-
-    @Override
-    protected int getMaxFetchSize() throws SQLException {
-        verifyOpen();
-        return Integer.MAX_VALUE;
     }
 
     @Override
