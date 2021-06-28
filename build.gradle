@@ -252,13 +252,15 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     testImplementation(testFixtures(project(':common')))
-    testCompileOnly    group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
-    testImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
-    testImplementation group: 'junit', name: 'junit', version: '4.12'
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.0'
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.0'
-    testImplementation group: 'org.mockito', name: 'mockito-core', version: '2.1.0'
-    testRuntimeOnly    group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.0'
+    testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
+    testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
+    testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
+    testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
+    testImplementation      group: 'junit', name: 'junit', version: '4.12'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.0'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.0'
+    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '2.1.0'
+    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.0'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
 }
