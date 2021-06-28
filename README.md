@@ -512,3 +512,13 @@ These can be combined as long as the complete set of foreign keys are still pres
     AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants"."subscriptions_index_lvl_0"```
 
 This feature allows `INNER` and `LEFT (OUTER) JOINs` .
+
+### Natural Joins
+
+Natural joins are partially supported (eg. `SELECT * FROM "tableA" NATURAL JOIN "tableB"`). This query will only work if both tables
+are in the same collection, and if there are no matching fields(with the same name) in the two tables other than the primary/foreign key. This is
+because natural joins will join based on any common fields, and joins are currently only supported on complete foreign keys.
+
+### Cross Joins
+
+Cross joins (eg. `SELECT * FROM "tableA" CROSS JOIN "tableB"`) are not supported.
