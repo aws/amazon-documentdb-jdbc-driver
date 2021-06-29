@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.query;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
+import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -30,11 +31,12 @@ import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbFilter;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+
 import java.sql.SQLException;
 import java.time.Instant;
+import java.util.List;
 
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
@@ -51,7 +53,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
 
     @BeforeAll
     @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
-    static void initialize() throws SQLException, DocumentDbSchemaException {
+    static void initialize() throws SQLException {
         // Add a valid users to the local MongoDB instance.
         connectionProperties = new DocumentDbConnectionProperties();
         createUser(DATABASE_NAME, USER, PASSWORD);
@@ -1031,7 +1033,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final String query =
                 String.format("SELECT * FROM \"%s\".\"%s\" UNION SELECT * FROM \"%s\".\"%s\"",
                         DATABASE_NAME, COLLECTION_NAME, DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertEquals(String.format("Unable to parse SQL '%s'.", query),
+        Assertions.assertEquals(String.format("Unable to parse SQL"
+                        + " 'SELECT * FROM \"database\".\"testCollection\" UNION SELECT * FROM \"database\".\"testCollection_array\"'.%n"
+                        + " Reason: 'At line 1, column 56: Column count mismatch in UNION'"),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(query))
                         .getMessage());
     }
@@ -1237,18 +1241,21 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final String rightJoinQuery =
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\""
-                                + "RIGHT JOIN \"%s\".\"%s\""
-                                + "ON \"%s\" = \"%s\"",
+                                + " RIGHT JOIN \"%s\".\"%s\""
+                                + " ON \"%s\" = \"%s\"",
                         DATABASE_NAME,
                         COLLECTION_NAME + "_array",
                         DATABASE_NAME,
                         OTHER_COLLECTION_NAME + "_otherArray",
                         COLLECTION_NAME + "__id",
                         OTHER_COLLECTION_NAME + "__id");
-        Assertions.assertEquals(
-                String.format("Unable to parse SQL '%s'.", rightJoinQuery),
-                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(rightJoinQuery))
-                        .getMessage());
+
+        String message = Assertions
+                        .assertThrows(SQLException.class, () -> queryMapper.get(rightJoinQuery))
+                        .getMessage();
+        Assertions.assertTrue(message.contains("Unable to parse SQL"));
+        Assertions.assertTrue(message.contains("'Unsupported join type: RIGHT.'"));
+
 
         // Cannot do a full outer join on tables from different collections.
         final String fullJoinQuery =
@@ -1262,10 +1269,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         OTHER_COLLECTION_NAME + "_otherArray",
                         COLLECTION_NAME + "__id",
                         OTHER_COLLECTION_NAME + "__id");
-        Assertions.assertEquals(
-                String.format("Unable to parse SQL '%s'.", fullJoinQuery),
-                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(fullJoinQuery))
-                        .getMessage());
+        message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(fullJoinQuery))
+                .getMessage();
+        Assertions.assertTrue(message.contains("Unable to parse SQL"));
+        Assertions.assertTrue(message.contains("'Unsupported join type: FULL.'"));
 
         // Can only have a single equi-condition for a join between tables from same collection.
         final String multipleConditionsQuery =
@@ -1282,10 +1289,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         OTHER_COLLECTION_NAME + "__id",
                         COLLECTION_NAME + "__id",
                         OTHER_COLLECTION_NAME + "__id");
-        Assertions.assertEquals(
-                String.format("Unable to parse SQL '%s'.", multipleConditionsQuery),
-                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(multipleConditionsQuery))
-                        .getMessage());
+        message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(multipleConditionsQuery))
+                .getMessage();
+        Assertions.assertTrue(message.contains("Unable to parse SQL"));
+        Assertions.assertTrue(message.contains("'Only a single equality condition is supported for joining tables from different collections.'"));
 
         // Can only join tables from same collection on foreign keys.
         final String nonForeignKeyQuery =
@@ -1301,11 +1308,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         COLLECTION_NAME + "__id",
                         COLLECTION_NAME + "_array",
                         "field");
-        Assertions.assertEquals(
-                String.format("Unable to parse SQL '%s'.", nonForeignKeyQuery),
-                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(nonForeignKeyQuery))
-                        .getMessage());
-
+        message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(nonForeignKeyQuery))
+                .getMessage();
+        Assertions.assertTrue(message.contains("Unable to parse SQL"));
+        Assertions.assertTrue(message.contains("'Only equi-joins on foreign keys is supported for tables from same collection.'"));
 
         // Can only join tables from same collection on foreign keys.
         final String nonEqualityQuery =
@@ -1321,10 +1327,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         COLLECTION_NAME + "__id",
                         COLLECTION_NAME + "_array",
                         "field");
-        Assertions.assertEquals(
-                String.format("Unable to parse SQL '%s'.", nonEqualityQuery),
-                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(nonEqualityQuery))
-                        .getMessage());
+        message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(nonEqualityQuery))
+                .getMessage();
+        Assertions.assertTrue(message.contains("Unable to parse SQL"));
+        Assertions.assertTrue(message.contains("'Only equi-joins on foreign keys is supported for tables from same collection.'"));
     }
 
     @Test
@@ -1416,13 +1422,16 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "SELECT "
                                 + "TIMESTAMPADD(WEEK, 1, \"field\"), "
                                 + "TIMESTAMPADD(DAY, 2, \"field\"), "
-                                + "TIMESTAMPADD(HOUR, 3, \"field\") "
+                                + "TIMESTAMPADD(HOUR, 3, \"field\"), "
+                                + "TIMESTAMPADD(MINUTE, 4, \"field\"), "
+                                + "TIMESTAMPADD(SECOND, 5, \"field\"), "
+                                + "TIMESTAMPADD(MICROSECOND, 6, \"field\") "
                                 + "FROM \"%s\".\"%s\"",
                         DATABASE_NAME, DATE_COLLECTION_NAME);
         DocumentDbMqlQueryContext result = queryMapper.get(timestampAddQuery);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
-        Assertions.assertEquals(3, result.getColumnMetaData().size());
+        Assertions.assertEquals(6, result.getColumnMetaData().size());
         Assertions.assertEquals(1, result.getAggregateOperations().size());
     Assertions.assertEquals(
         BsonDocument.parse(
@@ -1438,7 +1447,19 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                     + "\"EXPR$2\": "
                             + "{\"$add\": "
                                     + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"3600000\"}, 3]}]}}}"),
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"3600000\"}, 3]}]}, "
+                    + "\"EXPR$3\": "
+                            + "{\"$add\": "
+                                    + "[\"$field\", "
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"60000\"}, 4]}]}, "
+                    + "\"EXPR$4\": "
+                            + "{\"$add\": "
+                                    + "[\"$field\", "
+                                    + "{\"$multiply\": [ {\"$numberLong\": \"1000\"}, 5]}]}, "
+                    + "\"EXPR$5\": "
+                            + "{\"$add\": "
+                                    + "[\"$field\", "
+                                    + "{\"$divide\": [{\"$multiply\": [{\"$numberLong\": \"1\"}, 6]}, 1000]}]}}}"),
         result.getAggregateOperations().get(0));
 
         final String extractQuery =
@@ -1452,27 +1473,265 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "DAYOFYEAR(\"field\"),"
                                 + "HOUR(\"field\"),"
                                 + "MINUTE(\"field\"),"
-                                + "SECOND(\"field\")"
+                                + "SECOND(\"field\"),"
+                                + "QUARTER(\"field\")"
                                 + "FROM \"%s\".\"%s\"",
                         DATABASE_NAME, DATE_COLLECTION_NAME);
         result = queryMapper.get(extractQuery);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
-        Assertions.assertEquals(9, result.getColumnMetaData().size());
+        Assertions.assertEquals(10, result.getColumnMetaData().size());
         Assertions.assertEquals(1, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                    "{\"$addFields\": "
-                            + "{\"EXPR$0\": {\"$year\": \"$field\"}, "
-                            + "\"EXPR$1\": {\"$month\": \"$field\"}, "
-                            + "\"EXPR$2\": {\"$week\": \"$field\"}, "
-                            + "\"EXPR$3\": {\"$dayOfMonth\": \"$field\"}, "
-                            + "\"EXPR$4\": {\"$dayOfWeek\": \"$field\"}, "
-                            + "\"EXPR$5\": {\"$dayOfYear\": \"$field\"}, "
-                            + "\"EXPR$6\": {\"$hour\": \"$field\"}, "
-                            + "\"EXPR$7\": {\"$minute\": \"$field\"}, "
-                            + "\"EXPR$8\": {\"$second\": \"$field\"}}}"),
+                    "{\"$addFields\":"
+                            + " {\"EXPR$0\": {\"$year\": \"$field\"},"
+                            + " \"EXPR$1\": {\"$month\": \"$field\"},"
+                            + " \"EXPR$2\": {\"$week\": \"$field\"},"
+                            + " \"EXPR$3\": {\"$dayOfMonth\": \"$field\"},"
+                            + " \"EXPR$4\": {\"$dayOfWeek\": \"$field\"},"
+                            + " \"EXPR$5\": {\"$dayOfYear\": \"$field\"},"
+                            + " \"EXPR$6\": {\"$hour\": \"$field\"},"
+                            + " \"EXPR$7\": {\"$minute\": \"$field\"},"
+                            + " \"EXPR$8\": {\"$second\": \"$field\"},"
+                            + " \"EXPR$9\":"
+                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]}, 1,"
+                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, 2,"
+                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3, 4]}]}]}}}"),
         result.getAggregateOperations().get(0));
+
+        final String timestampDiffQuery =
+                String.format(
+                        "SELECT "
+                                + "TIMESTAMPDIFF(WEEK, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(DAY, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(HOUR, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(MINUTE, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(SECOND, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(MICROSECOND, \"field\", \"field\") "
+                                + "FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        result = queryMapper.get(timestampDiffQuery);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(6, result.getColumnMetaData().size());
+        Assertions.assertEquals(1, result.getAggregateOperations().size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\":"
+                        + " {\"EXPR$0\":"
+                            + " {\"$divide\":"
+                                + " [{\"$divide\":"
+                                    + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}, 604800]},"
+                        + " \"EXPR$1\":"
+                            + " {\"$divide\":"
+                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 86400000]},"
+                        + " \"EXPR$2\":"
+                            + " {\"$divide\":"
+                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 3600000]},"
+                        + " \"EXPR$3\":"
+                            + " {\"$divide\":"
+                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 60000]},"
+                        + " \"EXPR$4\":"
+                            + " {\"$divide\":"
+                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]},"
+                        + " \"EXPR$5\":"
+                            + " {\"$multiply\":"
+                                + " [{\"$divide\":"
+                                    + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}, 1000000]}}}"),
+                result.getAggregateOperations().get(0));
+    }
+
+    /**
+     * Tests CURRENT_TIMESTAMP, CURRENT_DATE, and CURRENT_TIME.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests CURRENT_TIMESTAMP, CURRENT_DATE, and CURRENT_TIME.")
+    void testCurrentTimestampFunctions() throws SQLException {
+        final String currentTimestampQuery =
+                String.format(
+                        "SELECT CURRENT_TIMESTAMP AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result1 = queryMapper.get(currentTimestampQuery);
+        Assertions.assertNotNull(result1);
+        Assertions.assertEquals(DATE_COLLECTION_NAME, result1.getCollectionName());
+        Assertions.assertEquals(1, result1.getColumnMetaData().size());
+        Assertions.assertEquals(1, result1.getAggregateOperations().size());
+        BsonDocument rootDoc = result1.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        BsonDateTime cstDateTime = addFieldsDoc.getDateTime("cts");
+        Assertions.assertNotNull(cstDateTime);
+        BsonDocument expectedDoc = BsonDocument.parse(
+                "{\"$addFields\": "
+                        + "{\"cts\": "
+                        + "{\"$date\": "
+                        + "{\"$numberLong\": "
+                        + "\"" + cstDateTime.getValue() + "\""
+                        + "}}}}");
+        Assertions.assertEquals(
+                expectedDoc,
+                result1.getAggregateOperations().get(0));
+
+        final String currentDateQuery =
+                String.format(
+                        "SELECT CURRENT_DATE AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result2 = queryMapper.get(currentDateQuery);
+        Assertions.assertNotNull(result2);
+        Assertions.assertEquals(DATE_COLLECTION_NAME, result2.getCollectionName());
+        Assertions.assertEquals(1, result2.getColumnMetaData().size());
+        Assertions.assertEquals(1, result2.getAggregateOperations().size());
+        rootDoc = result2.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        cstDateTime = addFieldsDoc.getDateTime("cts");
+        Assertions.assertNotNull(cstDateTime);
+        expectedDoc = BsonDocument.parse(
+                "{\"$addFields\": "
+                        + "{\"cts\": "
+                        + "{\"$date\": "
+                        + "{\"$numberLong\": "
+                        + "\"" + cstDateTime.getValue() + "\""
+                        + "}}}}");
+        Assertions.assertEquals(
+                expectedDoc,
+                result2.getAggregateOperations().get(0));
+
+        final String currentTimeQuery =
+                String.format(
+                        "SELECT CURRENT_TIME AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result3 = queryMapper.get(currentTimeQuery);
+        Assertions.assertNotNull(result3);
+        Assertions.assertEquals(DATE_COLLECTION_NAME, result3.getCollectionName());
+        Assertions.assertEquals(1, result3.getColumnMetaData().size());
+        Assertions.assertEquals(1, result3.getAggregateOperations().size());
+        rootDoc = result3.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        cstDateTime = addFieldsDoc.getDateTime("cts");
+        Assertions.assertNotNull(cstDateTime);
+        expectedDoc = BsonDocument.parse(
+                "{\"$addFields\": "
+                        + "{\"cts\": "
+                        + "{\"$date\": "
+                        + "{\"$numberLong\": "
+                        + "\"" + cstDateTime.getValue() + "\""
+                        + "}}}}");
+        Assertions.assertEquals(
+                expectedDoc,
+                result3.getAggregateOperations().get(0));
+    }
+
+    /**
+     * Tests TIMESTAMPADD for MONTH, YEAR or QUARTER.
+     */
+    @Test
+    @DisplayName("Tests TIMESTAMPADD for MONTH, YEAR or QUARTER.")
+    void testTimestampAddMonthYearFunction() {
+        final String timestampAddQuery8 =
+                String.format(
+                        "SELECT TIMESTAMPADD(MONTH, 10, \"field\") AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        Assertions.assertEquals(String.format("Unable to parse SQL"
+                        + " 'SELECT TIMESTAMPADD(MONTH, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
+                        + " Reason: 'Conversion between the source type (INTERVAL_MONTH) and the target type (TIMESTAMP) is not supported.'"),
+                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery8))
+                .getMessage());
+
+        final String timestampAddQuery9 =
+                String.format(
+                        "SELECT TIMESTAMPADD(YEAR, 10, \"field\") AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        Assertions.assertEquals(String.format("Unable to parse SQL"
+                        + " 'SELECT TIMESTAMPADD(YEAR, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
+                        + " Reason: 'Conversion between the source type (INTERVAL_YEAR) and the target type (TIMESTAMP) is not supported.'"),
+                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery9))
+                        .getMessage());
+
+        final String timestampAddQuery10 =
+                String.format(
+                        "SELECT TIMESTAMPADD(QUARTER, 10, \"field\") AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        Assertions.assertEquals(String.format("Unable to parse SQL"
+                        + " 'SELECT TIMESTAMPADD(QUARTER, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
+                        + " Reason: 'Conversion between the source type (INTERVAL_MONTH) and the target type (TIMESTAMP) is not supported.'"),
+                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery10))
+                        .getMessage());
+    }
+
+    /**
+     * Tests DAYNAME.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests DAYNAME.")
+    void testDayName() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT DAYNAME(\"field\") AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(1, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\":"
+                + " {\"cts\":"
+                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 1]}, \"Sunday\","
+                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 2]}, \"Monday\","
+                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 3]}, \"Tuesday\","
+                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 4]}, \"Wednesday\","
+                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 5]}, \"Thursday\","
+                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 6]}, \"Friday\","
+                + " \"Saturday\"]}]}]}]}]}]}}}"), operations.get(0));
+    }
+
+    /**
+     * Tests MONTHNAME.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests MONTHNAME.")
+    void testMonthName() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT MONTHNAME(\"field\") AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(1, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\":"
+                + " {\"cts\":"
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 1]}, \"January\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 2]}, \"February\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 3]}, \"March\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 4]}, \"April\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 5]}, \"May\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 6]}, \"June\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 7]}, \"July\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 8]}, \"August\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 9]}, \"September\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 10]}, \"October\","
+                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 11]}, \"November\","
+                + " \"December\"]}]}]}]}]}]}]}]}]}]}]}}}"), operations.get(0));
     }
 
     @Test

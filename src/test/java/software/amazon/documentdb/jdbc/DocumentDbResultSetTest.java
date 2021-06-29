@@ -574,7 +574,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
-        Assertions.assertEquals(timestamp.toString(), resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals(String.valueOf(timestamp.getValue()), resultSetFlapdoodle.getString(2));
         Assertions.assertEquals(timestamp, resultSetFlapdoodle.getObject(2));
     }
 

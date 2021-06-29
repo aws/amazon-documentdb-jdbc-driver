@@ -60,6 +60,8 @@ public class DocumentDbQueryMappingService {
      */
     public DocumentDbQueryMappingService(final DocumentDbConnectionProperties connectionProperties,
             final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
+        // Add MYSQL function support
+        connectionProperties.putIfAbsent("FUN", "standard,mysql");
         this.prepareContext =
                 new DocumentDbPrepareContext(
                         getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
@@ -100,10 +102,23 @@ public class DocumentDbQueryMappingService {
             }
         } catch (Exception e) {
             throw SqlError.createSQLException(
-                    LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql);
+                    LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql,
+                    getExceptionMessages(e));
         }
         // Query could be parsed but cannot be executed in pure MQL (likely involves nested queries).
         throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.UNSUPPORTED_SQL, sql);
+    }
+
+    private String getExceptionMessages(final Throwable e) {
+        final StringBuilder builder = new StringBuilder(e.getMessage());
+        if (e.getSuppressed() != null) {
+            for (Throwable suppressed : e.getSuppressed()) {
+                builder.append(" Additional info: '")
+                .append(getExceptionMessages(suppressed))
+                .append("'");
+            }
+        }
+        return builder.toString();
     }
 
     /**
