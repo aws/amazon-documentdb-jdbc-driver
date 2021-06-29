@@ -151,8 +151,8 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
             // First thread succeeded so second must fail.
             Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel2));
         } catch (SQLException e) {
-            // First thread failed so second one must have succeeded.;
-            Assertions.assertDoesNotThrow(() -> cancel2.getException());
+            // First thread failed so second one must have succeeded.
+            Assertions.assertDoesNotThrow(() -> getCancelException(cancel2));
         }
     }
 

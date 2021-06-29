@@ -496,10 +496,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
         doc2.append("field", new BsonDateTime(dateTime));
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+                new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
 
-        // Get date parts and use group by to remove duplicates.
+        // Get date parts and use group by to remove any duplicate rows.
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT "
                         + "YEAR(\"field\"), "
@@ -543,8 +543,22 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Seconds is 6.
         Assertions.assertEquals(6, resultSet.getInt(9));
         Assertions.assertFalse(resultSet.next());
-    }
 
+        // Use extract in CASE.
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT "
+                        + "CASE WHEN DAYOFMONTH(\"field\") < 5 "
+                        + "THEN 'A' "
+                        + "ELSE 'B' "
+                        + "END "
+                        + "FROM \"%s\".\"%s\" ", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("A", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("A", resultSet2.getString(1));
+        Assertions.assertFalse(resultSet2.next());
+    }
 
     /**
      * Tests that queries containing ORDER BY and OFFSET work.
