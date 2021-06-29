@@ -1,13 +1,13 @@
 <?xml version='1.0' encoding='utf-8' ?>
-<connector-plugin class='documentdbjdbc' superclass='jdbc' plugin-version='1.13.0.0' name='Amazon DocumentDB' version='18.1' min-version-tableau='2020.3'>
+<connector-plugin class='documentdbjdbc' superclass='jdbc' plugin-version='1.13.0.0' name='DocumentDB' version='18.1' min-version-tableau='2020.3'>
     <vendor-information>
-        <company name="Amazon DocumentDB"/>
-        <!-- TODO: Replace links later when repository moves. -->
-        <support-link url="https://github.com/Bit-Quill/documentdb-jdbc"/>
-        <driver-download-link url="https://github.com/Bit-Quill/documentdb-jdbc"/>
+        <company name="Amazon"/>
+        <!-- TODO: May need to replace links for GA release. -->
+        <support-link url="https://github.com/aws/amazon-documentdb-jdbc-driver"/>
+        <driver-download-link url="https://github.com/aws/amazon-documentdb-jdbc-driver"/>
     </vendor-information>
     <connection-customization class="documentdbjdbc" enabled="true" version="10.0">
-        <vendor name="Amazon DocumentDB"/>
+        <vendor name="Amazon"/>
         <driver name="DocumentDB JDBC"/>
         <customizations>
             <customization name="CAP_SUPPORTS_INITIAL_SQL" value="no" />
@@ -21,8 +21,8 @@
             <customization name="CAP_QUERY_HAVING_UNSUPPORTED" value="no"/>
             <customization name="CAP_QUERY_HAVING_REQUIRES_GROUP_BY" value="no"/>
             <customization name="CAP_QUERY_SORT_BY" value="yes"/>
-            <customization name="CAP_QUERY_SORT_BY_DEGREE" value="no"/> 
-            <!-- Although subqueries are not fully supported, allowing either 
+            <customization name="CAP_QUERY_SORT_BY_DEGREE" value="no"/>
+            <!-- Although subqueries are not fully supported, allowing either
             creation of temporary tables or subqueries is required for Tableau to proceed. -->
             <customization name="CAP_QUERY_SUBQUERIES" value="yes"/>
             <customization name="CAP_QUERY_SUBQUERIES_WITH_TOP" value="yes"/>
