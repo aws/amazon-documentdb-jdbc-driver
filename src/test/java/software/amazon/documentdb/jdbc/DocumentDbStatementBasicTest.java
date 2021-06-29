@@ -489,7 +489,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @Test
     @DisplayName("Tests EXTRACT() for different time units.")
     void testQueryExtract() throws SQLException {
-        final String tableName = "testDateAdd";
+        final String tableName = "testExtract";
         final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
