@@ -138,7 +138,7 @@ public class DocumentDbAggregate
             for (int group : groupSet) {
                 final String inName = inNames.get(group);
                 // Replace any '.'s with _ as the temporary field names in the group by output document.
-                keys.add(acceptedMongoFieldName(inName) + ": " + DocumentDbRules.quote("$" + inName));
+                keys.add(maybeQuote(acceptedMongoFieldName(inName)) + ": " + DocumentDbRules.quote("$" + inName));
                 ++i;
             }
             list.add("_id: " + Util.toString(keys, "{", ", ", "}"));

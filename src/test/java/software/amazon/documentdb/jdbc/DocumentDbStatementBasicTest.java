@@ -489,15 +489,17 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @Test
     @DisplayName("Tests EXTRACT() for different time units.")
     void testQueryExtract() throws SQLException {
-        final String tableName = "testDateAdd";
+        final String tableName = "testExtract";
         final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("field", new BsonDateTime(dateTime));
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+                new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
 
-        // Get date parts.
+        // Get date parts and use group by to remove any duplicate rows.
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT "
                         + "YEAR(\"field\"), "
@@ -509,7 +511,17 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         + "HOUR(\"field\"),"
                         + "MINUTE(\"field\"),"
                         + "SECOND(\"field\")"
-                        + "FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + "FROM \"%s\".\"%s\" "
+                        + "GROUP BY "
+                        + "YEAR(\"field\"), "
+                        + "MONTH(\"field\"),"
+                        + "WEEK(\"field\"),"
+                        + "DAYOFMONTH(\"field\"),"
+                        + "DAYOFWEEK(\"field\"),"
+                        + "DAYOFYEAR(\"field\"),"
+                        + "HOUR(\"field\"),"
+                        + "MINUTE(\"field\"),"
+                        + "SECOND(\"field\")", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         // Year is 2020.
@@ -531,8 +543,22 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Seconds is 6.
         Assertions.assertEquals(6, resultSet.getInt(9));
         Assertions.assertFalse(resultSet.next());
-    }
 
+        // Use extract in CASE.
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT "
+                        + "CASE WHEN DAYOFMONTH(\"field\") < 5 "
+                        + "THEN 'A' "
+                        + "ELSE 'B' "
+                        + "END "
+                        + "FROM \"%s\".\"%s\" ", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("A", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("A", resultSet2.getString(1));
+        Assertions.assertFalse(resultSet2.next());
+    }
 
     /**
      * Tests that queries containing ORDER BY and OFFSET work.
