@@ -861,7 +861,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that CURRENT_TIMESTAMP.
+     * Tests CURRENT_TIMESTAMP.
      * @throws SQLException occurs if query fails.
      */
     @Test
@@ -931,7 +931,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that CURRENT_DATE.
+     * Tests CURRENT_DATE.
      * @throws SQLException occurs if query fails.
      */
     @Test
@@ -998,7 +998,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that CURRENT_TIME.
+     * Tests CURRENT_TIME.
      * @throws SQLException occurs if query fails.
      */
     @Test
