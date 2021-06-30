@@ -177,9 +177,10 @@ public final class DocumentDbRules {
         for (int i = 0, n = s.length(); i < n; i++) {
             final char c = s.charAt(i);
             // DocumentDB: modified - start
-            // Add quotes for embedded documents (contains '.') as well.
+            // Add quotes for embedded documents (contains '.') and
+            // for field names with ':'.
             if (!Character.isJavaIdentifierPart(c)
-                    || c == '$' || c == '.') {
+                    || c == '$' || c == '.' || c == ':') {
                 return true;
             }
             // DocumentDB: modified - end
