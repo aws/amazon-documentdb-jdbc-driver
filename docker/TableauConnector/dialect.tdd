@@ -344,12 +344,12 @@
       <argument type='int' />
     </function>
     <function group='operator' name='+' return-type='datetime'>
-      <formula>TIMESTAMPADD(DAYS, %2, %1)</formula>
+      <formula>TIMESTAMPADD(DAY, %2, %1)</formula>
       <argument type='datetime' />
       <argument type='real' />
     </function>
     <function group='operator' name='+' return-type='date'>
-      <formula>TIMESTAMPADD(DAYS, %2, %1)</formula>
+      <formula>TIMESTAMPADD(DAY, %2, %1)</formula>
       <argument type='date' />
       <argument type='int' />
     </function>
@@ -366,23 +366,18 @@
       <formula>(0 - %1)</formula>
       <argument type='int' />
     </function>
-    <function group='operator' name='-' return-type='real'>
-      <formula>(%1 - %2)</formula>
-      <argument type='datetime' />
-      <argument type='datetime' />
-    </function>
     <function group='operator' name='-' return-type='int'>
       <formula>(%1 - %2)</formula>
       <argument type='int' />
       <argument type='int' />
     </function>
     <function group='operator' name='-' return-type='datetime'>
-      <formula>TIMESTAMPADD(DAYS, %2 * -1, %1)</formula>
+      <formula>TIMESTAMPADD(DAY, %2 * -1, %1)</formula>
       <argument type='datetime' />
       <argument type='real' />
     </function>
     <function group='operator' name='-' return-type='date'>
-      <formula>TIMESTAMPADD(DAYS, %2 * -1, %1)</formula>
+      <formula>TIMESTAMPADD(DAY, %2 * -1, %1)</formula>
       <argument type='date' />
       <argument type='int' />
     </function>
@@ -476,6 +471,10 @@
       <argument type='bool' />
       <argument type='bool' />
     </function>
+    <function group='date' name='DAY' return-type='int'>
+      <formula>DAY(%1)</formula>
+      <argument type='datetime' />
+    </function>
     <function group='date' name='MONTH' return-type='int'>
       <formula>MONTH(%1)</formula>
       <argument type='datetime' />
@@ -511,6 +510,9 @@
     </date-function>
     <date-function name='DATEDIFF' return-type='int'>
       <formula>TIMESTAMPDIFF(%1, %2, %3)</formula>
+      <formula part='year'>CAST( EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) - EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) AS BIGINT)</formula>
+      <formula part='quarter'>CAST( (4 * EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) + EXTRACT(QUARTER FROM CAST(%3 AS TIMESTAMP))) - (4 * EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) + EXTRACT(QUARTER FROM CAST(%2 AS TIMESTAMP))) AS BIGINT)</formula>
+      <formula part='month'>CAST( (12 * EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) + EXTRACT(MONTH FROM CAST(%3 AS TIMESTAMP))) - (12 * EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) + EXTRACT(MONTH FROM CAST(%2 AS TIMESTAMP))) AS BIGINT)</formula>
       <argument type='localstr' />
       <argument type='datetime' />
       <argument type='datetime' />
@@ -585,7 +587,20 @@
       <date-part-group>
         <date-function name='DATEADD' />
         <part name='year' value='YEAR' />
-        <part name='quarter' value='MONTH' />
+        <part name='quarter' value='QUARTER' />
+        <part name='month' value='MONTH' />
+        <part name='week' value='WEEK' />
+        <part name='weekday' value='DAY' />
+        <part name='dayofyear' value='DAY' />
+        <part name='day' value='DAY' />
+        <part name='hour' value='HOUR' />
+        <part name='minute' value='MINUTE' />
+        <part name='second' value='SECOND' />
+      </date-part-group>
+      <date-part-group>
+        <date-function name='DATEDIFF' />
+        <part name='year' value='YEAR' />
+        <part name='quarter' value='QUARTER' />
         <part name='month' value='MONTH' />
         <part name='week' value='WEEK' />
         <part name='weekday' value='DAY' />
