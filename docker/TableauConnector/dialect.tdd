@@ -344,7 +344,7 @@
       <argument type='int' />
     </function>
     <function group='operator' name='+' return-type='datetime'>
-      <formula>TIMESTAMPADD(DAY, %2, %1)</formula>
+      <formula>TIMESTAMPADD(SECOND, CAST((%2 * 86400) AS BIGINT), %1)</formula>
       <argument type='datetime' />
       <argument type='real' />
     </function>
@@ -372,7 +372,7 @@
       <argument type='int' />
     </function>
     <function group='operator' name='-' return-type='datetime'>
-      <formula>TIMESTAMPADD(DAY, %2 * -1, %1)</formula>
+      <formula>TIMESTAMPADD(SECOND, CAST((%2 * -86400) AS BIGINT), %1)</formula>
       <argument type='datetime' />
       <argument type='real' />
     </function>
@@ -380,6 +380,11 @@
       <formula>TIMESTAMPADD(DAY, %2 * -1, %1)</formula>
       <argument type='date' />
       <argument type='int' />
+    </function>
+    <function group='operator' name='-' return-type='real'>
+      <formula>TIMESTAMPDIFF(DAY, %2, %1)</formula>
+      <argument type='datetime' />
+      <argument type='datetime' />
     </function>
     <function group='operator' name='/' return-type='real'>
       <formula>(%1 / %2)</formula>
@@ -472,7 +477,7 @@
       <argument type='bool' />
     </function>
     <function group='date' name='DAY' return-type='int'>
-      <formula>DAY(%1)</formula>
+      <formula>DAYOFMONTH(%1)</formula>
       <argument type='datetime' />
     </function>
     <function group='date' name='MONTH' return-type='int'>
