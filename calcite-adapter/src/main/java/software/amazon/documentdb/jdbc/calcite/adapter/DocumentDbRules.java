@@ -50,6 +50,7 @@ import org.apache.calcite.util.trace.CalciteTrace;
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
+import org.bson.BsonNull;
 import org.bson.BsonString;
 import org.bson.BsonValue;
 import org.slf4j.Logger;
@@ -472,12 +473,13 @@ public final class DocumentDbRules {
 
         private static final Map<TimeUnitRange, String> DATE_PART_OPERATORS =
                 new HashMap<>();
-        public static final int MONGODB_SUNDAY = 1;
-        public static final int MONGODB_MONDAY = 2;
-        public static final int MONGODB_TUESDAY = 3;
-        public static final int MONGODB_WEDNESDAY = 4;
-        public static final int MONGODB_THURSDAY = 5;
-        public static final int MONGODB_FRIDAY = 6;
+        private static final int MONGODB_SUNDAY = 1;
+        private static final int MONGODB_MONDAY = 2;
+        private static final int MONGODB_TUESDAY = 3;
+        private static final int MONGODB_WEDNESDAY = 4;
+        private static final int MONGODB_THURSDAY = 5;
+        private static final int MONGODB_FRIDAY = 6;
+        private static final int MONGODB_SATURDAY = 7;
 
         static {
             // Date part operators
@@ -511,13 +513,13 @@ public final class DocumentDbRules {
 
             // TODO: Check for unsupported time unit (ex: quarter) and emulate in some other way.
             if (range == TimeUnitRange.QUARTER) {
-                return translateExtractQuarter(strings.get(1));
+                return translateExtractQuarter(call, strings);
             }
             return "{ " + quote(DATE_PART_OPERATORS.get(range)) + ": " + strings.get(1) + "}";
         }
 
-        private static String translateExtractQuarter(final String operand) {
-            final BsonDocument month = new BsonDocument("$month", new BsonString(stripQuotes(operand)));
+        private static String translateExtractQuarter(final RexCall call, final List<String> strings) {
+            final BsonValue month = getNullableExpr(call, strings, 1, "$month");
             final List<BsonValue> qtr1BoolArgs = Stream.of(
                     month,
                     new BsonInt32(Month.MARCH.getValue())).collect(Collectors.toList());
@@ -543,8 +545,7 @@ public final class DocumentDbRules {
         }
 
         public static String translateDayName(final RexCall rexCall, final List<String> strings) {
-            final String operand = strings.get(0);
-            final BsonDocument dayOfWeek = new BsonDocument("$dayOfWeek", new BsonString(stripQuotes(operand)));
+            final BsonValue dayOfWeek = getNullableExpr(rexCall, strings, 0, "$dayOfWeek");
             final List<BsonValue> sundayArgs = Stream.of(
                     dayOfWeek,
                     new BsonInt32(MONGODB_SUNDAY)).collect(Collectors.toList());
@@ -563,11 +564,18 @@ public final class DocumentDbRules {
             final List<BsonValue> fridayArgs = Stream.of(
                     dayOfWeek,
                     new BsonInt32(MONGODB_FRIDAY)).collect(Collectors.toList());
+            final List<BsonValue> saturdayArgs = Stream.of(
+                    dayOfWeek,
+                    new BsonInt32(MONGODB_SATURDAY)).collect(Collectors.toList());
 
+            final BsonDocument condDay7 = new BsonDocument("$cond", new BsonArray(Stream.of(
+                    new BsonDocument("$eq", new BsonArray(saturdayArgs)),
+                    new BsonString(DayOfWeek.SATURDAY.getDisplayName(TextStyle.FULL, Locale.getDefault())),
+                    new BsonNull()).collect(Collectors.toList())));
             final BsonDocument condDay6 = new BsonDocument("$cond", new BsonArray(Stream.of(
                     new BsonDocument("$eq", new BsonArray(fridayArgs)),
                     new BsonString(DayOfWeek.FRIDAY.getDisplayName(TextStyle.FULL, Locale.getDefault())),
-                    new BsonString(DayOfWeek.SATURDAY.getDisplayName(TextStyle.FULL, Locale.getDefault()))).collect(Collectors.toList())));
+                    condDay7).collect(Collectors.toList())));
             final BsonDocument condDay5 = new BsonDocument("$cond", new BsonArray(Stream.of(
                     new BsonDocument("$eq", new BsonArray(thursdayArgs)),
                     new BsonString(DayOfWeek.THURSDAY.getDisplayName(TextStyle.FULL, Locale.getDefault())),
@@ -592,19 +600,22 @@ public final class DocumentDbRules {
         }
 
         public static String translateMonthName(final RexCall rexCall, final List<String> strings) {
-            final String operand = strings.get(0);
-            final BsonDocument month = new BsonDocument("$month", new BsonString(stripQuotes(operand)));
+            final BsonValue month = getNullableExpr(rexCall, strings, 0, "$month");
             final Map<Integer, List<BsonValue>> monthArgs = new HashMap<>();
-            for (int i = Month.JANUARY.getValue(); i <= Month.NOVEMBER.getValue(); i++) {
+            for (int i = Month.JANUARY.getValue(); i <= Month.DECEMBER.getValue(); i++) {
                 monthArgs.put(i, Stream.of(
                         month,
                         new BsonInt32(i)).collect(Collectors.toList()));
             }
 
+            final BsonDocument condMonth12 = new BsonDocument("$cond", new BsonArray(Stream.of(
+                    new BsonDocument("$eq", new BsonArray(monthArgs.get(Month.DECEMBER.getValue()))),
+                    new BsonString(Month.DECEMBER.getDisplayName(TextStyle.FULL, Locale.getDefault())),
+                    new BsonNull()).collect(Collectors.toList())));
             final BsonDocument condMonth11 = new BsonDocument("$cond", new BsonArray(Stream.of(
                     new BsonDocument("$eq", new BsonArray(monthArgs.get(Month.NOVEMBER.getValue()))),
                     new BsonString(Month.NOVEMBER.getDisplayName(TextStyle.FULL, Locale.getDefault())),
-                    new BsonString(Month.DECEMBER.getDisplayName(TextStyle.FULL, Locale.getDefault()))).collect(Collectors.toList())));
+                    condMonth12).collect(Collectors.toList())));
             final BsonDocument condMonth10 = new BsonDocument("$cond", new BsonArray(Stream.of(
                     new BsonDocument("$eq", new BsonArray(monthArgs.get(Month.OCTOBER.getValue()))),
                     new BsonString(Month.OCTOBER.getDisplayName(TextStyle.FULL, Locale.getDefault())),
@@ -646,6 +657,21 @@ public final class DocumentDbRules {
                     new BsonString(Month.JANUARY.getDisplayName(TextStyle.FULL, Locale.getDefault())),
                     condMonth2).collect(Collectors.toList())));
             return condMonth1.toJson();
+        }
+
+        private static BsonValue getNullableExpr(
+                final RexCall call,
+                final List<String> strings,
+                final int index,
+                final String expr) {
+            final RexNode operand = call.getOperands().get(index);
+            final BsonValue value;
+            if (operand.getType().getSqlTypeName() == SqlTypeName.NULL) {
+                value = new BsonNull();
+            } else {
+                value = new BsonString(stripQuotes(strings.get(index)));
+            }
+            return new BsonDocument(expr, value);
         }
     }
 

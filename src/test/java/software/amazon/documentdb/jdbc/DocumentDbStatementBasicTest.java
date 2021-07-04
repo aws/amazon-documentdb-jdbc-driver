@@ -18,6 +18,7 @@ package software.amazon.documentdb.jdbc;
 
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
+import org.bson.BsonNull;
 import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -772,6 +773,9 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                     "field",
                     new BsonDateTime(startingDateTime.plusMonths(i).toInstant().toEpochMilli())));
         }
+        docs.add(new BsonDocument(
+                "field",
+                new BsonNull()));
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
                 docs.toArray(new BsonDocument[0]));
         final Statement statement = getDocumentDbStatement();
@@ -852,6 +856,45 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet.next());
             Assertions.assertEquals(
                     Month.JANUARY.getDisplayName(TextStyle.FULL, Locale.getDefault()),
+                    resultSet.getString(1));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(
+                    null,
+                    resultSet.getString(1));
+
+            Assertions.assertFalse(resultSet.next());
+        } finally {
+            Locale.setDefault(originalLocale);
+        }
+    }
+
+    @Test
+    @DisplayName("Tests MONTHNAME for NULL")
+    void testMonthNameForNull() throws SQLException {
+        final String tableName = "testMonthNameForNull";
+        final List<BsonDocument> docs = new ArrayList<>();
+        final OffsetDateTime startingDateTime = Instant.parse("2020-01-02T04:05:06.00Z").atOffset(ZoneOffset.UTC);
+        docs.add(new BsonDocument(
+                "field",
+                new BsonDateTime(startingDateTime.toInstant().toEpochMilli())));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                docs.toArray(new BsonDocument[0]));
+        final Statement statement = getDocumentDbStatement();
+
+        final Locale originalLocale = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.SIMPLIFIED_CHINESE);
+            // Get date parts.
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT "
+                            + " MONTHNAME(NULL)"
+                            + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+            Assertions.assertNotNull(resultSet);
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(
+                    null,
                     resultSet.getString(1));
 
             Assertions.assertFalse(resultSet.next());

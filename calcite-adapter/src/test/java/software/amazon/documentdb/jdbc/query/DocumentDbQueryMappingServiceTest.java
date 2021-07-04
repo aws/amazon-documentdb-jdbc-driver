@@ -1690,15 +1690,35 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final List<Bson> operations = context.getAggregateOperations();
         Assertions.assertEquals(1, operations.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\":"
-                + " {\"cts\":"
-                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 1]}, \"Sunday\","
-                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 2]}, \"Monday\","
-                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 3]}, \"Tuesday\","
-                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 4]}, \"Wednesday\","
-                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 5]}, \"Thursday\","
-                + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 6]}, \"Friday\","
-                + " \"Saturday\"]}]}]}]}]}]}}}"), operations.get(0));
+                "{\"$addFields\": {\"cts\":"
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 1]}, \"Sunday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 2]}, \"Monday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 3]}, \"Tuesday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 4]}, \"Wednesday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 5]}, \"Thursday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 6]}, \"Friday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 7]}, \"Saturday\","
+                        + " null]}]}]}]}]}]}]}}}"), operations.get(0));
+
+        final String dayNameQuery2 =
+                String.format(
+                        "SELECT DAYNAME(NULL) AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context2 = queryMapper.get(dayNameQuery2);
+        Assertions.assertNotNull(context2);
+        final List<Bson> operations2 = context2.getAggregateOperations();
+        Assertions.assertEquals(1, operations2.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": {\"cts\":"
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 1]}, \"Sunday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 2]}, \"Monday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 3]}, \"Tuesday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 4]}, \"Wednesday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 5]}, \"Thursday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 6]}, \"Friday\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 7]}, \"Saturday\","
+                        + " null]}]}]}]}]}]}]}}}"), operations2.get(0));
     }
 
     /**
@@ -1718,20 +1738,45 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final List<Bson> operations = context.getAggregateOperations();
         Assertions.assertEquals(1, operations.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\":"
-                + " {\"cts\":"
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 1]}, \"January\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 2]}, \"February\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 3]}, \"March\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 4]}, \"April\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 5]}, \"May\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 6]}, \"June\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 7]}, \"July\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 8]}, \"August\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 9]}, \"September\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 10]}, \"October\","
-                + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 11]}, \"November\","
-                + " \"December\"]}]}]}]}]}]}]}]}]}]}]}}}"), operations.get(0));
+                "{\"$addFields\": {\"cts\":"
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 1]}, \"January\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 2]}, \"February\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 3]}, \"March\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 4]}, \"April\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 5]}, \"May\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 6]}, \"June\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 7]}, \"July\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 8]}, \"August\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 9]}, \"September\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 10]}, \"October\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 11]}, \"November\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 12]}, \"December\","
+                        + " null]}]}]}]}]}]}]}]}]}]}]}]}}}"), operations.get(0));
+
+        final String dayNameQuery2 =
+                String.format(
+                        "SELECT MONTHNAME(NULL) AS \"cts\""
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context2 = queryMapper.get(dayNameQuery2);
+        Assertions.assertNotNull(context2);
+        final List<Bson> operations2 = context2.getAggregateOperations();
+        Assertions.assertEquals(1, operations2.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": {\"cts\":"
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 1]}, \"January\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 2]}, \"February\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 3]}, \"March\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 4]}, \"April\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 5]}, \"May\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 6]}, \"June\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 7]}, \"July\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 8]}, \"August\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 9]}, \"September\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 10]}, \"October\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 11]}, \"November\","
+                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 12]}, \"December\","
+                        + " null]}]}]}]}]}]}]}]}]}]}]}]}}}"), operations2.get(0));
     }
 
     @Test
