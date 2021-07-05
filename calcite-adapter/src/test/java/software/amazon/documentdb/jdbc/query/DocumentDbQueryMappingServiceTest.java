@@ -1497,7 +1497,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                             + " \"EXPR$9\":"
                                 + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]}, 1,"
                                 + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, 2,"
-                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3, 4]}]}]}}}"),
+                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3,"
+                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]}, 4,"
+                                + " null]}]}]}]}}}"),
         result.getAggregateOperations().get(0));
 
         final String timestampDiffQuery =

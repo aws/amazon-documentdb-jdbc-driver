@@ -302,7 +302,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @DisplayName("Test that documents not containing a sub-document do not add null rows.")
     @Test
     void testDocumentWithMissingSubDocument() throws SQLException {
-        final String collection = "testMissingSubdocumentNotNull";
+        final String collection = "testMissingSubDocumentNotNull";
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key0\", \n" +
@@ -339,7 +339,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @DisplayName("Test that documents not containing a sub-document do not add null rows.")
     @Test
     void testDocumentWithMissingNestedSubDocument() throws SQLException {
-        final String collection = "testMissingNestedSubdocumentNotNull";
+        final String collection = "testMissingNestedSubDocumentNotNull";
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key0\", \n" +
@@ -859,9 +859,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                     resultSet.getString(1));
 
             Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals(
-                    null,
-                    resultSet.getString(1));
+            Assertions.assertNull(resultSet.getString(1));
 
             Assertions.assertFalse(resultSet.next());
         } finally {
@@ -874,33 +872,83 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     void testMonthNameForNull() throws SQLException {
         final String tableName = "testMonthNameForNull";
         final List<BsonDocument> docs = new ArrayList<>();
-        final OffsetDateTime startingDateTime = Instant.parse("2020-01-02T04:05:06.00Z").atOffset(ZoneOffset.UTC);
         docs.add(new BsonDocument(
                 "field",
-                new BsonDateTime(startingDateTime.toInstant().toEpochMilli())));
+                new BsonNull()));
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
                 docs.toArray(new BsonDocument[0]));
         final Statement statement = getDocumentDbStatement();
 
-        final Locale originalLocale = Locale.getDefault();
-        try {
-            Locale.setDefault(Locale.SIMPLIFIED_CHINESE);
-            // Get date parts.
-            final ResultSet resultSet = statement.executeQuery(
-                    String.format("SELECT "
-                            + " MONTHNAME(NULL)"
-                            + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
-            Assertions.assertNotNull(resultSet);
+        // Get month name.
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT %n"
+                        + " MONTHNAME(CAST(NULL AS TIMESTAMP))%n"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertNull(resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
 
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals(
-                    null,
-                    resultSet.getString(1));
+        // Get date parts.
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT %n"
+                        + " MONTHNAME(NULL)%n"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertNull(resultSet2.getString(1));
+        Assertions.assertFalse(resultSet2.next());
 
-            Assertions.assertFalse(resultSet.next());
-        } finally {
-            Locale.setDefault(originalLocale);
-        }
+        final ResultSet resultSet3 = statement.executeQuery(
+                String.format("SELECT %n"
+                        + " MONTHNAME(CAST(\"field\" AS TIMESTAMP))%n"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet3);
+        Assertions.assertTrue(resultSet3.next());
+        Assertions.assertNull(resultSet3.getTimestamp(1));
+        Assertions.assertFalse(resultSet3.next());
+    }
+
+    @Test
+    @DisplayName("Tests DAYNAME for NULL")
+    void testDayNameForNull() throws SQLException {
+        final String tableName = "testDayNameForNull";
+        final List<BsonDocument> docs = new ArrayList<>();
+        docs.add(new BsonDocument(
+                "field",
+                new BsonNull()));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                docs.toArray(new BsonDocument[0]));
+        final Statement statement = getDocumentDbStatement();
+
+        // Get month name.
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT %n"
+                        + " DAYNAME(CAST(NULL AS TIMESTAMP))%n"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertNull(resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+
+        // Get date parts.
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT %n"
+                        + " DAYNAME(NULL)%n"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertNull(resultSet2.getString(1));
+        Assertions.assertFalse(resultSet2.next());
+
+        final ResultSet resultSet3 = statement.executeQuery(
+                String.format("SELECT %n"
+                        + " DAYNAME(CAST(\"field\" AS TIMESTAMP))%n"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet3);
+        Assertions.assertTrue(resultSet3.next());
+        Assertions.assertNull(resultSet3.getTimestamp(1));
+        Assertions.assertFalse(resultSet3.next());
     }
 
     /**
