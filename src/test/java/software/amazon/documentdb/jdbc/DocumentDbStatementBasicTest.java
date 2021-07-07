@@ -1494,6 +1494,44 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
+     * Tests for queries containing IS NULL and IS NOT NULL in the select clause.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests queries with IS [NOT] NULL in the select clause.")
+    void testQuerySelectIsNull() throws SQLException {
+        final String tableName = "testQuerySelectIsNull";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abc\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": null}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT \"field\" IS NULL, \"field\" IS NOT NULL FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.getBoolean(1));
+        Assertions.assertTrue(resultSet.getBoolean(2));
+
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.getBoolean(1));
+        Assertions.assertFalse(resultSet.getBoolean(2));
+
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.getBoolean(1));
+        Assertions.assertFalse(resultSet.getBoolean(2));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
      * Tests that queries with CASE are correct, particularly where null or undefined values are involved.
      * @throws SQLException occurs if query fails.
      */

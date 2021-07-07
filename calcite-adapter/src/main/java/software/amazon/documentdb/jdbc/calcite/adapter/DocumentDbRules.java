@@ -220,6 +220,9 @@ public final class DocumentDbRules {
             MONGO_OPERATORS.put(SqlStdOperatorTable.LESS_THAN, "$lt");
             MONGO_OPERATORS.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL, "$lte");
 
+            MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NULL, "$lte");
+            MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NOT_NULL, "$gt");
+
             // Arithmetic
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE,
                     (call, strings) -> getMongoAggregateForOperator(
@@ -271,6 +274,14 @@ public final class DocumentDbRules {
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
+
+            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NULL,
+                    (call, strings) -> getMongoAggregateForNullOperator(
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
+            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NOT_NULL,
+                    (call, strings) -> getMongoAggregateForNullOperator(
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
+
             // Date operations
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_DATE, DateFunctionTranslator::translateCurrentTimestamp);
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_TIME, DateFunctionTranslator::translateCurrentTimestamp);
@@ -424,6 +435,11 @@ public final class DocumentDbRules {
                 final String stdOperator) {
             verifySupportedType(call);
             return "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
+        }
+
+        private static String getMongoAggregateForNullOperator(final RexCall call, final List<String> strings,
+                                                               final String stdOperator) {
+            return "{" + stdOperator + ": [" + strings.get(0) + ", null]}";
         }
 
         private static void verifySupportedType(final RexCall call)
