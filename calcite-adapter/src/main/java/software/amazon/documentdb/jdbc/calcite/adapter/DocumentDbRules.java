@@ -434,7 +434,7 @@ public final class DocumentDbRules {
         }
 
         @SneakyThrows
-        private static String getMongoForNullOperator(RexCall call, List<String> strings) {
+        private static String getMongoForNullOperator(final RexCall call, final List<String> strings) {
             if (strings.size() != 1) {
                 throw SqlError.createSQLException(LOGGER,
                         SqlState.INVALID_QUERY_EXPRESSION,

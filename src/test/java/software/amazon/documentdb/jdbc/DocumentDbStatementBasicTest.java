@@ -1492,6 +1492,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    /**
+     * Tests for queries containing IS NULL and IS NOT NULL in the select clause.
+     *
+     * @throws SQLException occurs if query fails.
+     */
     @Test
     @DisplayName("Tests queries with IS [NOT] NULL in the select clause.")
     void testQuerySelectIsNull() throws SQLException {

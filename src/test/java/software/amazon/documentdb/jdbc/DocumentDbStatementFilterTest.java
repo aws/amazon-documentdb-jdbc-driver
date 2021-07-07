@@ -499,6 +499,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet1.next());
     }
 
+    /**
+     * Tests for queries filtering by IS NULL.
+     *
+     * @throws SQLException occurs if query fails.
+     */
     @Test
     @DisplayName("Tests for IS NULL")
     void testQueryWithIsNull() throws SQLException {
@@ -524,6 +529,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    /**
+     * Tests for queries filtering by IS NOT NULL.
+     *
+     * @throws SQLException occurs if query fails.
+     */
     @Test
     @DisplayName("Tests for IS NOT NULL")
     void testQueryWithIsNotNull() throws SQLException {
@@ -547,6 +557,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    /**
+     * Tests for CASE statements containing IS NULL and IS NOT NULL.
+     *
+     * @throws SQLException occurs if query fails.
+     */
     @Test
     @DisplayName("Tests for CASE statements with IS [NOT] NULL")
     void testQueryWithIsNotNullCase() throws SQLException {
