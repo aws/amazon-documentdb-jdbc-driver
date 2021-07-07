@@ -344,7 +344,7 @@ public class DocumentDbTableSchemaGenerator {
 
         // Ensure virtual table primary key column data types are consistent.
         if (isRootDocument) {
-            checkVirtualTablePrimaryKeys(tableMap, path, columnMap);
+            checkVirtualTablePrimaryKeys(tableMap, collectionName, columnMap);
         }
 
         // Add virtual table.
@@ -796,14 +796,17 @@ public class DocumentDbTableSchemaGenerator {
         }
     }
 
-    private static void checkVirtualTablePrimaryKeys(final Map<String, DocumentDbSchemaTable> tableMap,
-                                                     final String path,
-                                                     final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap) {
+    private static void checkVirtualTablePrimaryKeys(
+            final Map<String, DocumentDbSchemaTable> tableMap,
+            final String path,
+            final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap) {
         final String primaryKeyColumnName = toName(combinePath(path, ID_FIELD_NAME));
-        final DocumentDbMetadataColumn primaryKeyColumn = (DocumentDbMetadataColumn) columnMap.get(primaryKeyColumnName);
+        final DocumentDbMetadataColumn primaryKeyColumn = (DocumentDbMetadataColumn) columnMap
+                .get(primaryKeyColumnName);
         for (DocumentDbSchemaTable table : tableMap.values()) {
-            final DocumentDbMetadataColumn column = (DocumentDbMetadataColumn) table.getColumnMap().get(primaryKeyColumnName);
-            if (column != null) {
+            final DocumentDbMetadataColumn column = (DocumentDbMetadataColumn) table
+                    .getColumnMap().get(primaryKeyColumnName);
+            if (column != null && !column.getSqlType().equals(primaryKeyColumn.getSqlType())) {
                 column.setSqlType(primaryKeyColumn.getSqlType());
             }
         }
