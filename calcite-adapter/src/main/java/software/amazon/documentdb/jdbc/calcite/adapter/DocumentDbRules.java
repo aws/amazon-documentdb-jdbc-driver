@@ -54,7 +54,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.DayOfWeek;
 import java.time.Month;
