@@ -1527,6 +1527,76 @@ class DocumentDbTableSchemaGeneratorTest {
         Assertions.assertNotNull(metadata);
     }
 
+    @DisplayName("Tests when some arrays are empty")
+    @Test
+    void testEmptyNonEmptyObjectArray() {
+        final String nestedJson = "{\n"
+                + "  \"_id\": { \"$oid\": \"607d96b40352ee001f493a73\" },\n"
+                + "  \"language\": \"en\",\n"
+                + "  \"tags\": [],\n"
+                + "  \"title\": \"TT Eval\",\n"
+                + "  \"name\": \"tt_eval\",\n"
+                + "  \"type\": \"form\",\n"
+                + "  \"created\": \"2021-04-19T14:41:56.252Z\",\n"
+                + "  \"modified\": \"2021-04-19T14:41:56.252Z\",\n"
+                + "  \"owner\": \"12345\",\n"
+                + "  \"array\": [\n"
+                + "    {\n"
+                + "      \"components\": []\n"
+                + "    },\n"
+                + "    {\n"
+                + "      \"components\": [\n"
+                + "        {\n"
+                + "          \"_id\": { \"$oid\": \"607d96b40352ee001f493acb\" },\n"
+                + "          \"label\": \"Objective b\",\n"
+                + "          \"required\": false,\n"
+                + "          \"tooltip\": \"additional note go here to describe context of question b\",\n"
+                + "          \"name\": \"tteval-b\",\n"
+                + "          \"type\": \"section\"\n"
+                + "        }\n"
+                + "      ]\n"
+                + "    },\n"
+                + "    {\n"
+                + "      \"components\": []\n"
+                + "    }\n"
+                + "  ],\n"
+                + "  \"__v\": { \"$numberInt\": \"0\" }\n"
+                + "}\n";
+        final BsonDocument document = BsonDocument.parse(nestedJson);
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Collections.singleton(document).iterator());
+        Assertions.assertNotNull(metadata);
+        Assertions.assertEquals(4, metadata.size());
+
+        DocumentDbSchemaTable schemaTable = metadata.get(COLLECTION_NAME);
+        Assertions.assertNotNull(schemaTable);
+        Assertions.assertEquals(9, schemaTable.getColumns().size());
+
+        schemaTable = metadata.get(toName(combinePath(COLLECTION_NAME, "tags")));
+        Assertions.assertNotNull(schemaTable);
+        Assertions.assertEquals(3, schemaTable.getColumns().size());
+        Assertions
+                .assertEquals(JdbcType.NULL, schemaTable.getColumnMap().get("value").getSqlType());
+
+        schemaTable = metadata.get(toName(combinePath(COLLECTION_NAME, "array")));
+        Assertions.assertNotNull(schemaTable);
+        Assertions.assertEquals(2, schemaTable.getColumns().size());
+
+        schemaTable = metadata.get(toName(combinePath(combinePath(
+                COLLECTION_NAME, "array"), "components")));
+        Assertions.assertNotNull(schemaTable);
+        Assertions.assertEquals(9, schemaTable.getColumns().size());
+        Assertions
+                .assertEquals(JdbcType.VARCHAR, schemaTable.getColumnMap().get("_id").getSqlType());
+        Assertions.assertEquals(BsonType.OBJECT_ID,
+                schemaTable.getColumnMap().get("_id").getDbType());
+        Assertions.assertEquals(JdbcType.BOOLEAN,
+                schemaTable.getColumnMap().get("required").getSqlType());
+        Assertions.assertEquals(BsonType.BOOLEAN,
+                schemaTable.getColumnMap().get("required").getDbType());
+        Assertions.assertNull(schemaTable.getColumnMap().get("value"));
+    }
+
     private boolean producesVirtualTable(final BsonType bsonType, final BsonType nextBsonType) {
         return (bsonType == BsonType.ARRAY && nextBsonType == BsonType.ARRAY)
                 || (bsonType == BsonType.DOCUMENT && nextBsonType == BsonType.DOCUMENT)

@@ -408,12 +408,15 @@ public class DocumentDbTableSchemaGenerator {
         if (!isComplexType(sqlType)) {
             if (isComplexType(prevSqlType)) {
                 // If promoted to scalar type from complex type, remove previous definition.
-                handleComplexToScalarConflict(tableMap, tableName, columnMap);
+                handleComplexScalarConflict(tableMap, tableName, columnMap);
             } else {
                 // Check to see if we're processing scalars at a different level than previously
                 // detected.
                 sqlType = handleArrayLevelConflict(columnMap, level, sqlType);
             }
+        } else if (isComplexType(sqlType) && !isComplexType(prevSqlType)) {
+            // Promoted from NULL to ARRAY or OBJECT.
+            handleComplexScalarConflict(tableMap, tableName, columnMap);
         }
 
         if (!tableMap.containsKey(path)) {
@@ -668,7 +671,7 @@ public class DocumentDbTableSchemaGenerator {
      * @param path      the path to the table.
      * @param columnMap the column map.
      */
-    private static void handleComplexToScalarConflict(
+    private static void handleComplexScalarConflict(
             final Map<String, DocumentDbSchemaTable> tableMap,
             final String path,
             final Map<String, DocumentDbSchemaColumn> columnMap) {
