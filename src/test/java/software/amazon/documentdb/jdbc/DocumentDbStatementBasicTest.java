@@ -1540,22 +1540,22 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @DisplayName("Tests queries with CASE and null values are correct.")
     void testCase() throws SQLException {
         final String tableName = "testCASE";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"field\": 1}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
-                "\"field\": 2}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
-                "\"field\": 5}");
-        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104,\n" +
-                "\"field\": 4}");
-        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n" +
-                "\"field\": 3}");
-        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n" +
-                "\"field2\": 9}");
-        final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107,\n" +
-                "\"field3\": false}");
-        final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108,\n" +
-                "\"field\": null}");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"field\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"field\": 2}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"field\": 5}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104,\n"
+                + "\"field\": 4}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n"
+                + "\"field\": 3}");
+        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n"
+                + "\"field2\": 9}");
+        final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107,\n"
+                + "\"field3\": false}");
+        final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108,\n"
+                + "\"field\": null}");
         final BsonDocument doc9 = BsonDocument.parse("{\"_id\": 109}");
         final BsonDocument doc10 = BsonDocument.parse("{\"_id\": 110}");
         doc10.append("field", new BsonMinKey());
@@ -1564,8 +1564,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
-                        "SELECT CASE " +
-                                "WHEN \"field\" < 2  THEN 'A' "
+                        "SELECT CASE "
+                                + "WHEN \"field\" < 2  THEN 'A' "
                                 + "WHEN \"field\" <= 2 THEN 'B' "
                                 + "WHEN \"field\" > 4 THEN 'C' "
                                 + "WHEN \"field\" >= 4 THEN 'D' "
@@ -1606,23 +1606,23 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @DisplayName("Tests queries with two field CASE.")
     void testCaseTwoFields() throws SQLException {
         final String tableName = "testCASETwoFields";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"fieldA\": 1,\n" +
-                "\"fieldB\": 2}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
-                "\"fieldA\": 2,\n" +
-                "\"fieldB\": 1}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
-                "\"fieldA\": 1}");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"fieldA\": 1,\n"
+                + "\"fieldB\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"fieldA\": 2,\n"
+                + "\"fieldB\": 1}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"fieldA\": 1}");
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
                 new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
-                        "SELECT CASE " +
-                                "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' " +
-                                "WHEN \"fieldA\" > \"fieldB\" THEN 'B' " +
-                                "ELSE 'C' END FROM \"%s\".\"%s\"",
+                        "SELECT CASE "
+                                + "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' "
+                                + "WHEN \"fieldA\" > \"fieldB\" THEN 'B' "
+                                + "ELSE 'C' END FROM \"%s\".\"%s\"",
                         DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
@@ -1642,12 +1642,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @DisplayName("Tests a query with nested CASE.")
     void testNestedCase() throws SQLException {
         final String tableName = "testNestedCASE";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"field\": 1}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
-                "\"field\": 2}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
-                "\"field\": 3}");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"field\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"field\": 2}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"field\": 3}");
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
                 new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
@@ -1677,20 +1677,20 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @DisplayName("Tests queries with CASE where a string literal contains '$'.")
     void testCaseWithConflictingStringLiterals() throws SQLException {
         final String tableName = "testCaseWithConflictingStringLiterals";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"price\": \"$1\"}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
-                "\"price\": \"$2.25\"}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
-                "\"price\": \"1\"}");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"price\": \"$1\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"price\": \"$2.25\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"price\": \"1\"}");
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
                 new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format(
-                        "SELECT CASE " +
-                                "WHEN \"price\" = '$1'  THEN 'A' " +
-                                "ELSE 'B' END FROM \"%s\".\"%s\"",
+                        "SELECT CASE "
+                                + "WHEN \"price\" = '$1'  THEN 'A' "
+                                + "ELSE 'B' END FROM \"%s\".\"%s\"",
                         DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet1);
         Assertions.assertTrue(resultSet1.next());
@@ -1703,9 +1703,9 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format(
-                        "SELECT CASE " +
-                                "WHEN \"price\" = '1'  THEN 'YES' " +
-                                "ELSE '$price' END FROM \"%s\".\"%s\"",
+                        "SELECT CASE "
+                                + "WHEN \"price\" = '1'  THEN 'YES' "
+                                + "ELSE '$price' END FROM \"%s\".\"%s\"",
                         DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());

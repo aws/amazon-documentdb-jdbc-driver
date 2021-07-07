@@ -512,18 +512,18 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     @DisplayName("Tests query with WHERE and CASE.")
     void testWhereWithCase() throws SQLException {
         final String tableName = "testWhereCASE";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"field\": 1}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
-                "\"field\": 2}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
-                "\"field\": 5}");
-        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104,\n" +
-                "\"field\": 4}");
-        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n" +
-                "\"field\": 3}");
-        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n" +
-                "\"field\": null}");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"field\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"field\": 2}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"field\": 5}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104,\n"
+                + "\"field\": 4}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n"
+                + "\"field\": 3}");
+        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n"
+                + "\"field\": null}");
         final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107}");
         final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108}");
         doc8.append("field", new BsonMinKey());
@@ -557,12 +557,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     @DisplayName("Tests queries with WHERE using string literals with '$'.")
     void testWhereWithConflictingStringLiterals() throws SQLException {
         final String tableName = "testWhereWithConflictingStringLiterals";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"price\": \"$1\"}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
-                "\"price\": \"$2.25\"}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
-                "\"price\": \"1\"}");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"price\": \"$1\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"price\": \"$2.25\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"price\": \"1\"}");
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
                 new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
