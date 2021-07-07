@@ -498,4 +498,83 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
         Assertions.assertFalse(resultSet1.next());
     }
+
+    @Test
+    @DisplayName("Tests for IS NULL")
+    void testQueryWithIsNull() throws SQLException {
+        final String tableName = "testWhereQueryIsNull";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abc\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": null}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NULL",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests for IS NOT NULL")
+    void testQueryWithIsNotNull() throws SQLException {
+        final String tableName = "testWhereQueryIsNotNull";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abc\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": null}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NOT NULL",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests for CASE statements with IS [NOT] NULL")
+    void testQueryWithIsNotNullCase() throws SQLException {
+        final String tableName = "testWhereQueryIsNotNullCase";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abc\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": null}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT CASE " +
+                                "WHEN \"field\" IS NULL THEN 1" +
+                                "WHEN \"field\" IS NOT NULL THEN 2" +
+                                "ELSE 3 END " +
+                                "FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(2, resultSet.getInt(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(1, resultSet.getInt(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(1, resultSet.getInt(1));
+        Assertions.assertFalse(resultSet.next());
+    }
 }

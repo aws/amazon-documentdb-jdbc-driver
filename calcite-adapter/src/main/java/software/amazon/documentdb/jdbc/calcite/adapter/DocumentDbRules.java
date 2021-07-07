@@ -49,10 +49,12 @@ import org.apache.calcite.util.Util;
 import org.apache.calcite.util.trace.CalciteTrace;
 import org.slf4j.Logger;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.DayOfWeek;
 import java.time.Month;
@@ -271,6 +273,12 @@ public final class DocumentDbRules {
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
+
+            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NULL,
+                    RexToMongoTranslator::getMongoForNullOperator);
+            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NOT_NULL,
+                    RexToMongoTranslator::getMongoForNullOperator);
+
             // Date operations
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_DATE, DateFunctionTranslator::translateCurrentTimestamp);
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_TIME, DateFunctionTranslator::translateCurrentTimestamp);
@@ -424,6 +432,24 @@ public final class DocumentDbRules {
                 final String stdOperator) {
             verifySupportedType(call);
             return "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
+        }
+
+        @SneakyThrows
+        private static String getMongoForNullOperator(RexCall call, List<String> strings) {
+            if (strings.size() != 1) {
+                throw SqlError.createSQLException(LOGGER,
+                        SqlState.INVALID_QUERY_EXPRESSION,
+                        SqlError.INVALID_QUERY,
+                        String.format("IS [NOT] NULL should have one argument, received %d",
+                                strings.size()));
+            }
+            if (call.getOperator().equals(SqlStdOperatorTable.IS_NULL)) {
+                return "{$lte: [" + strings.get(0) + ", null]}";
+            }
+            if (call.getOperator().equals(SqlStdOperatorTable.IS_NOT_NULL)) {
+                return "{$gt: [" + strings.get(0) + ", null]}";
+            }
+            return null;
         }
 
         private static void verifySupportedType(final RexCall call)
