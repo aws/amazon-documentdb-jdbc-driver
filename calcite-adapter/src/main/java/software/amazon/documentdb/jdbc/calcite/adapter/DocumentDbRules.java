@@ -49,7 +49,6 @@ import org.apache.calcite.util.Util;
 import org.apache.calcite.util.trace.CalciteTrace;
 import org.slf4j.Logger;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
-import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
@@ -221,6 +220,9 @@ public final class DocumentDbRules {
             MONGO_OPERATORS.put(SqlStdOperatorTable.LESS_THAN, "$lt");
             MONGO_OPERATORS.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL, "$lte");
 
+            MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NULL, "$lte");
+            MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NOT_NULL, "$gt");
+
             // Arithmetic
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE,
                     (call, strings) -> getMongoAggregateForOperator(
@@ -274,9 +276,11 @@ public final class DocumentDbRules {
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
 
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NULL,
-                    RexToMongoTranslator::getMongoForNullOperator);
+                    (call, strings) -> getMongoAggregateForNullOperator(
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NOT_NULL,
-                    RexToMongoTranslator::getMongoForNullOperator);
+                    (call, strings) -> getMongoAggregateForNullOperator(
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
 
             // Date operations
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_DATE, DateFunctionTranslator::translateCurrentTimestamp);
@@ -433,22 +437,9 @@ public final class DocumentDbRules {
             return "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
         }
 
-        @SneakyThrows
-        private static String getMongoForNullOperator(final RexCall call, final List<String> strings) {
-            if (strings.size() != 1) {
-                throw SqlError.createSQLException(LOGGER,
-                        SqlState.INVALID_QUERY_EXPRESSION,
-                        SqlError.INVALID_QUERY,
-                        String.format("IS [NOT] NULL should have one argument, received %d",
-                                strings.size()));
-            }
-            if (call.getOperator().equals(SqlStdOperatorTable.IS_NULL)) {
-                return "{$lte: [" + strings.get(0) + ", null]}";
-            }
-            if (call.getOperator().equals(SqlStdOperatorTable.IS_NOT_NULL)) {
-                return "{$gt: [" + strings.get(0) + ", null]}";
-            }
-            return null;
+        private static String getMongoAggregateForNullOperator(final RexCall call, final List<String> strings,
+                                                               final String stdOperator) {
+            return "{" + stdOperator + ": [" + strings.get(0) + ", null]}";
         }
 
         private static void verifySupportedType(final RexCall call)
