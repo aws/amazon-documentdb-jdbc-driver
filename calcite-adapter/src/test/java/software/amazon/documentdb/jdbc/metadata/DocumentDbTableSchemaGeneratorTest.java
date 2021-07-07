@@ -1486,6 +1486,47 @@ class DocumentDbTableSchemaGeneratorTest {
         Assertions.assertNotNull(subDoc1);
     }
 
+    @DisplayName("Test whether a sub-document with '_id' as a field is handled correctly.")
+    @Test
+    void testNestedDocumentWithIdInSubDocument() {
+        final String nestedJson = "{\n"
+                + "  \"_id\": { \"$oid\": \"607d96b40352ee001f493a73\" },\n"
+                + "  \"language\": \"en\",\n"
+                + "  \"tags\": [],\n"
+                + "  \"title\": \"TT Eval\",\n"
+                + "  \"name\": \"tt_eval\",\n"
+                + "  \"type\": \"form\",\n"
+                + "  \"created\": \"2021-04-19T14:41:56.252Z\",\n"
+                + "  \"modified\": \"2021-04-19T14:41:56.252Z\",\n"
+                + "  \"owner\": \"12345\",\n"
+                + "  \"components\": [\n"
+                + "    {\n"
+                + "      \"_id\": { \"$oid\": \"607d96b40352ee001f493aca\" },\n"
+                + "      \"label\": \"Objective\",\n"
+                + "      \"required\": false,\n"
+                + "      \"tooltip\": \"additional note go here to describe context of question 54\",\n"
+                + "      \"name\": \"tteval-54\",\n"
+                + "      \"type\": \"section\",\n"
+                + "      \"components\": [\n"
+                + "        {\n"
+                + "          \"_id\": { \"$oid\": \"607d96b50352ee001f493bdc\" },\n"
+                + "          \"label\": \"Strength/ROM\",\n"
+                + "          \"required\": false,\n"
+                + "          \"tooltip\": \"additional note go here to describe context of question 221\",\n"
+                + "          \"name\": \"tteval-221\",\n"
+                + "          \"type\": \"section\",\n"
+                + "        }\n"
+                + "      ]\n"
+                + "    }\n"
+                + "  ],\n"
+                + "  \"__v\": { \"$numberInt\": \"0\" }\n"
+                + "}\n";
+        final BsonDocument document = BsonDocument.parse(nestedJson);
+        final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
+                .generate(COLLECTION_NAME, Collections.singleton(document).iterator());
+        Assertions.assertNotNull(metadata);
+    }
+
     private boolean producesVirtualTable(final BsonType bsonType, final BsonType nextBsonType) {
         return (bsonType == BsonType.ARRAY && nextBsonType == BsonType.ARRAY)
                 || (bsonType == BsonType.DOCUMENT && nextBsonType == BsonType.DOCUMENT)
