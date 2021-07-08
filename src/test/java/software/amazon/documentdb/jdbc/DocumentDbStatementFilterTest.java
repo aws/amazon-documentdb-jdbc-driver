@@ -180,7 +180,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * @throws SQLException occurs if query fails.
      */
     @Test
-    @Disabled("Null/undefined not handled correctly for NOT.")
     @DisplayName("Tests queries with CASE and null values are correct.")
     void testCase() throws SQLException {
         final String tableName = "testCASE";
@@ -197,14 +196,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n"
                 + "\"field2\": 9}");
         final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107,\n"
-                + "\"field3\": false}");
-        final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108,\n"
                 + "\"field\": null}");
+        final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108}");
         final BsonDocument doc9 = BsonDocument.parse("{\"_id\": 109}");
-        final BsonDocument doc10 = BsonDocument.parse("{\"_id\": 110}");
-        doc10.append("field", new BsonMinKey());
+        doc9.append("field", new BsonMinKey());
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8, doc9, doc10});
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8, doc9});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
@@ -215,8 +212,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                                 + "WHEN \"field\" >= 4 THEN 'D' "
                                 + "WHEN \"field\" <> 7 THEN 'E' "
                                 + "WHEN \"field2\" IN (9, 10) THEN 'F' "
-                                + "WHEN NOT \"field3\" THEN 'G' "
-                                + "ELSE 'H' END FROM \"%s\".\"%s\"",
+                                + "ELSE 'G' END FROM \"%s\".\"%s\"",
                         DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
@@ -234,11 +230,9 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("G", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("H", resultSet.getString(1));
+        Assertions.assertEquals("G", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("H", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("H", resultSet.getString(1));
+        Assertions.assertEquals("G", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
@@ -761,5 +755,34 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("YES", resultSet2.getString(1));
         Assertions.assertFalse(resultSet2.next());
+    }
+
+    @Test
+    @Disabled("Null/undefined not handled correctly for $not.")
+    @DisplayName("Tests queries with CASE where a string literal contains '$'.")
+    void testCaseWithBooleanColumns() throws SQLException {
+        final String tableName = "testCaseWithConflictingStringLiterals";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"field\": true }");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"field\": false }");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103 }");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CASE "
+                                + "WHEN \"field\" THEN 'Yes' "
+                                + "WHEN NOT \"field\" THEN 'No' "
+                                + "ELSE 'Unknown' END FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("Yes", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("No", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("Unknown", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
     }
 }
