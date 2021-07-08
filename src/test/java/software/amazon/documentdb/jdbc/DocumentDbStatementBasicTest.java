@@ -1529,5 +1529,4 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.getBoolean(2));
         Assertions.assertFalse(resultSet.next());
     }
-
 }

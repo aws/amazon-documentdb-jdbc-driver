@@ -176,6 +176,110 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     /**
+     * Tests that queries with CASE are correct, particularly where null or undefined values are involved.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @Disabled("Null/undefined not handled correctly for NOT.")
+    @DisplayName("Tests queries with CASE and null values are correct.")
+    void testCase() throws SQLException {
+        final String tableName = "testCASE";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"field\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"field\": 2}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"field\": 5}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104,\n"
+                + "\"field\": 4}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n"
+                + "\"field\": 3}");
+        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n"
+                + "\"field2\": 9}");
+        final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107,\n"
+                + "\"field3\": false}");
+        final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108,\n"
+                + "\"field\": null}");
+        final BsonDocument doc9 = BsonDocument.parse("{\"_id\": 109}");
+        final BsonDocument doc10 = BsonDocument.parse("{\"_id\": 110}");
+        doc10.append("field", new BsonMinKey());
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8, doc9, doc10});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CASE "
+                                + "WHEN \"field\" < 2  THEN 'A' "
+                                + "WHEN \"field\" <= 2 THEN 'B' "
+                                + "WHEN \"field\" > 4 THEN 'C' "
+                                + "WHEN \"field\" >= 4 THEN 'D' "
+                                + "WHEN \"field\" <> 7 THEN 'E' "
+                                + "WHEN \"field2\" IN (9, 10) THEN 'F' "
+                                + "WHEN NOT \"field3\" THEN 'G' "
+                                + "ELSE 'H' END FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("A", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("B", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("C", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("D", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("E", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("F", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("G", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("H", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("H", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("H", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries with CASE are correct with two different fields involved.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests queries with two field CASE.")
+    void testCaseTwoFields() throws SQLException {
+        final String tableName = "testCASETwoFields";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"fieldA\": 1,\n"
+                + "\"fieldB\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"fieldA\": 2,\n"
+                + "\"fieldB\": 1}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"fieldA\": 1}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CASE "
+                                + "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' "
+                                + "WHEN \"fieldA\" > \"fieldB\" THEN 'B' "
+                                + "ELSE 'C' END FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("A", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("B", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("C", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+
+    /**
      * Tests query with a where clause comparing two fields.
      *
      * @throws SQLException occurs if query fails.
@@ -579,110 +683,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that queries with CASE are correct, particularly where null or undefined values are involved.
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @Disabled("Null/undefined not handled correctly for NOT.")
-    @DisplayName("Tests queries with CASE and null values are correct.")
-    void testCase() throws SQLException {
-        final String tableName = "testCASE";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
-                + "\"field\": 1}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
-                + "\"field\": 2}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
-                + "\"field\": 5}");
-        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104,\n"
-                + "\"field\": 4}");
-        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n"
-                + "\"field\": 3}");
-        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n"
-                + "\"field2\": 9}");
-        final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107,\n"
-                + "\"field3\": false}");
-        final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108,\n"
-                + "\"field\": null}");
-        final BsonDocument doc9 = BsonDocument.parse("{\"_id\": 109}");
-        final BsonDocument doc10 = BsonDocument.parse("{\"_id\": 110}");
-        doc10.append("field", new BsonMinKey());
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8, doc9, doc10});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"field\" < 2  THEN 'A' "
-                                + "WHEN \"field\" <= 2 THEN 'B' "
-                                + "WHEN \"field\" > 4 THEN 'C' "
-                                + "WHEN \"field\" >= 4 THEN 'D' "
-                                + "WHEN \"field\" <> 7 THEN 'E' "
-                                + "WHEN \"field2\" IN (9, 10) THEN 'F' "
-                                + "WHEN NOT \"field3\" THEN 'G' "
-                                + "ELSE 'H' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("A", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("B", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("D", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("E", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("F", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("G", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("H", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("H", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("H", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
-    }
-
-    /**
-     * Tests that queries with CASE are correct with two different fields involved.
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests queries with two field CASE.")
-    void testCaseTwoFields() throws SQLException {
-        final String tableName = "testCASETwoFields";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
-                + "\"fieldA\": 1,\n"
-                + "\"fieldB\": 2}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
-                + "\"fieldA\": 2,\n"
-                + "\"fieldB\": 1}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
-                + "\"fieldA\": 1}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' "
-                                + "WHEN \"fieldA\" > \"fieldB\" THEN 'B' "
-                                + "ELSE 'C' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("A", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("B", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
-    }
-
-
-    /**
      * Tests a query with nested CASE.
      */
     @Test
@@ -763,5 +763,4 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertEquals("YES", resultSet2.getString(1));
         Assertions.assertFalse(resultSet2.next());
     }
-
 }
