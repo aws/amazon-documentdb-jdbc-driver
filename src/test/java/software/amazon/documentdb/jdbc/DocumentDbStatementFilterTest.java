@@ -243,6 +243,32 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     /**
+     * Tests query with a where clause comparing two fields.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests query with WHERE clause comparing two fields.")
+    void testQueryWhereTwoColumns() throws SQLException {
+        final String tableName = "testQueryWhereTwoFields";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"fieldA\": 4, \n " +
+                "\"fieldB\": 5}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"fieldA\": 5, \n " +
+                "\"fieldB\": 4}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" < \"fieldB\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(4, resultSet.getInt(2));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
      * Tests that queries with CASE are correct with two different fields involved.
      * @throws SQLException occurs if query fails.
      */
@@ -275,33 +301,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertEquals("B", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
-    }
-
-
-    /**
-     * Tests query with a where clause comparing two fields.
-     *
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests query with WHERE clause comparing two fields.")
-    void testQueryWhereTwoColumns() throws SQLException {
-        final String tableName = "testQueryWhereTwoFields";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"fieldA\": 4, \n " +
-                "\"fieldB\": 5}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
-                "\"fieldA\": 5, \n " +
-                "\"fieldB\": 4}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" < \"fieldB\"", DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(4, resultSet.getInt(2));
         Assertions.assertFalse(resultSet.next());
     }
 
