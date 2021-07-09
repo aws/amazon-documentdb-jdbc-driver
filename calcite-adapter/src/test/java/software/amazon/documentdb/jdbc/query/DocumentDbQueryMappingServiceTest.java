@@ -1905,7 +1905,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$eq\": [{\"$substr\": [\"$array.field\", 1, 3]}, \"abc\"]}}}"),
+                                "{\"$eq\": [{\"$substrCP\": [\"$array.field\", 1, 3]}, \"abc\"]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1917,7 +1917,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$addFields\": {\"EXPR$0\": {\"$substr\": [\"$array.field\", 3, 2]}}}"),
+                        "{\"$addFields\": {\"EXPR$0\": {\"$substrCP\": [\"$array.field\", 3, 2]}}}"),
                 result.getAggregateOperations().get(5));
     }
 }
