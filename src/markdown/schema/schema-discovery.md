@@ -1,6 +1,6 @@
-## Schema Discovery
+# Schema Discovery
 
-### Automated Discovery Behavior
+## Automated Discovery Behavior
 
 When the JDBC driver connection needs to get the schema for the collection in the database,
 it will poll for all the collections in the database.
@@ -9,7 +9,7 @@ The driver will determine if a cached version of the schema for that collection 
 If a cached version does not exist, it will sample the collection for documents and create a schema
 based on the following behavior.
 
-#### Scanning Method Options
+### Scanning Method Options
 
 The sampling behavior can be modified using connection string or datasource options.
 
@@ -21,7 +21,7 @@ The sampling behavior can be modified using connection string or datasource opti
 - `scanLimit=<n>` - The number of documents to sample. The value must be a positive integer.
   The default value is `1000`. If `scanMethod` is set to `all`, this option is ignored.
 
-#### DocumentDB Data Types
+### DocumentDB Data Types
 
 The DocumentDB server supports a number of MongoDB data types. Listed below are the supported data
 types, and their associated JDBC data types.
@@ -50,7 +50,7 @@ types, and their associated JDBC data types.
 | Symbol | No | VARCHAR |
 | DBPointer (4.0+) | No | VARCHAR |
 
-#### Mapping Scalar Document Fields
+### Mapping Scalar Document Fields
 
 When scanning a sample of documents from a collection, the JDBC driver will create one or more
 schema to represent the samples in the collection. In general, a scalar field in the document
@@ -63,13 +63,13 @@ document `{ "_id" : "112233", "name" : "Alastair", "age" : 25 }`, this would map
 | team | name | VARCHAR | |
 | team | age | INTEGER | |
 
-#### Data Type Conflict Promotion
+### Data Type Conflict Promotion
 
 When scanning the sampled documents, it is possible that the data types for a field are not
 consistent from document to document. In this case, the JDBC driver will _promote_ the JDBC data
 type to a common data type that will suit all data types from the sampled documents.
 
-##### Example
+#### Example
 
 ```json
 {
@@ -97,13 +97,13 @@ encountered.
 | team | name | VARCHAR | |
 | team | age | VARCHAR | |
 
-#### Scalar-Scalar Conflict Promotion
+### Scalar-Scalar Conflict Promotion
 
 The following diagram shows the way in which scalar-scalar data type conflicts are resolved.
 
 ![Scalar-Scalar Promotion](src/markdown/images/ScalarDataTypePromotion-transparent.png)
 
-#### Object and Array Data Type Handling
+### Object and Array Data Type Handling
 
 So far, we've only described how scalar data types are mapped. Object and Array data types are
 (currently) mapped to virtual tables. The JDBC driver will create a virtual table to represent
@@ -116,7 +116,7 @@ virtual table and is provided as a foreign key to the associated base table.
 For embedded array type fields, index columns are generated to represent the
 index into the array at each level of the array.
 
-##### Embedded Object Field Example
+#### Embedded Object Field Example
 
 For object fields in a document, a mapping to a virtual table is created by the
 JDBC driver.
@@ -159,13 +159,13 @@ maps to schema for `customer` table, ...
 
 So the resulting data in the two tables would look like this...
 
-##### Table: customer
+#### Table: customer
 
 | _**customer__id**_ | name |
 | --- | --- |
 | "112233" | "George Jackson" |
 
-##### Virtual Table: customer_address
+#### Virtual Table: customer_address
 
 | _**customer__id**_ | address1 | address2 | city | region | country | code |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -180,7 +180,7 @@ SELECT * FROM "customer"
     ON "customer"."customer__id" = "customer_address"."customer__id"
 ```
 
-##### Embedded Array Field Example
+#### Embedded Array Field Example
 
 For array fields in a document, a mapping to a virtual table is also created by the
 JDBC driver.
@@ -216,13 +216,13 @@ maps to schema for the `customer1` table, ...
 
 So the resulting data in the two tables would look like this...
 
-##### Table: customer1
+#### Table: customer1
 
 | _**customer1__id**_ | name |
 | --- | --- |
 | "112233" | "George Jackson" |
 
-##### Virtual Table: customer1_subscriptions
+#### Virtual Table: customer1_subscriptions
 
 | _**customer1__id**_ | subscriptions_index_lvl0 | value |
 | --- | --- | --- |
@@ -239,14 +239,14 @@ SELECT * FROM "customer1"
     ON "customer"."customer1__id" = "customer_address"."customer1__id"
 ```
 
-#### Scalar-Complex Type Conflict Promotion
+### Scalar-Complex Type Conflict Promotion
 
 Like the scalar-scalar type conflicts, the same field in different documents can have conflicting
 data types between complex (array and object) and scalar (integer, boolean, etc.). All of these
 conflicts are resolved (promoted) to VARCHAR for those fields. In this case, array and object data
 is returned as the JSON representation.
 
-##### Embedded Array - String Field Conflict Example
+#### Embedded Array - String Field Conflict Example
 
 Collection: `customer2`
 
@@ -280,7 +280,7 @@ maps to schema for the `customer2` table, ...
 
 So the resulting data in the table would look like this...
 
-##### Table: customer2
+#### Table: customer2
 
 | _**customer2__id**_ | name | subscriptions |
 | --- | --- | --- |

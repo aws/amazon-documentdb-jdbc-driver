@@ -33,7 +33,7 @@ If you're a Tableau or other BI user, follow the directions on how to
 
 ## Setup and Usage
 
-To setup and use the DocumentDB JDBC driver, see [Amazon DocumentDB JDBC Driver Setup](src/markdown/setup/setup.md).
+To set up and use the DocumentDB JDBC driver, see [Amazon DocumentDB JDBC Driver Setup](setup/setup.md).
 
 ## Connection String Syntax
 

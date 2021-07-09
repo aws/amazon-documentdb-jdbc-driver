@@ -1,4 +1,4 @@
-# BI Tool Setup<a name='bi-tool-setup' />
+# BI Tool Setup
 
 The DocumentDB JDBC driver can be setup for a number of business integration (BI) applications.
 Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/products/desktop),
@@ -12,11 +12,11 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
     - [DbVisualizer](#dbvisualizer)
     - [SQuirreL SQL Client](#squirrel-sql-client)
 
-## Tableau Desktop<a name='tableau-desktop' />
+## Tableau Desktop
 
 ### Adding the Amazon DocumentDB JDBC Driver
 
-1. [Download](#download-the-documentdb-jdbc-driver) the DocumentDB JDBC driver JAR file and copy it to one of these
+1. [Download](setup.md#download-the-documentdb-jdbc-driver) the DocumentDB JDBC driver JAR file and copy it to one of these
    directories according to your operating system:
 
     - **_Windows_**: `C:\Program Files\Tableau\Drivers`
@@ -32,7 +32,7 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
 
 ### Connecting to Amazon DocumentDB Using Tableau
 
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 1. Launch the Tableau Desktop application.
     - If using a **signed** Tableau Connector, launch Tableau like a typical application on your machine.
     - If using an **unsigned** Tableau connector, Tableau must be launched from the command line with the flag
@@ -58,7 +58,7 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
 
 ![Tableau login dialog](tableau-login.png)
 
-## DbVisualizer<a name='dbvisualizer' />
+## DbVisualizer
 
 ### Adding the Amazon DocumentDB JDBC Driver
 
@@ -78,7 +78,7 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 
 ### Connecting to Amazon DocumentDB Using DbVisualizer
 
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 1. Navigate the menu path **Database > Create Database Connection**.
 1. For the **Name** field, enter a descriptive name for the connection.
 1. For the **Driver (JDBC)** field, choose the **DocumentDB** driver you created earlier.
@@ -90,11 +90,11 @@ Click the plus icon (or menu path **Driver > Create Driver**)
    ![DbVisualizer New Connection](dbvisualizer-new-connection.png)
 1. Click the **Connect** button to make the connection to your Amazon DocumentDB database.
 
-## SQuirreL SQL Client<a name='squirrel-sql-client' />
+## SQuirreL SQL Client
 
 ### Adding the Amazon DocumentDB JDBC Driver
 
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 1. Launch the SQuirrel SQL Client application.
 1. Ensure the **Drivers** tab is selected.
 1. Navigate to menu path ***Drivers > New Driver ...***
@@ -111,7 +111,7 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 
 ### Connecting to Amazon DocumentDB Using SQuirreL SQL Client
 
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 1. Launch the SQuirrel SQL Client application.
 1. Ensure the **Aliases** table is selected.
 1. Navigate the menu path **Aliases > New Alias...**.
