@@ -601,7 +601,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    /**   
+    /**
      * Tests a query with CASE in the WHERE clause.
      * @throws SQLException occurs if query fails.
      */
@@ -645,7 +645,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
             
-    /**    
+    /**
      * Tests queries with WHERE using string literals with '$'.
      * @throws SQLException occurs if query fails.
      */
@@ -675,7 +675,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet1.next());
     }
 
-    /**    
+    /**
      * Tests queries with CASE where a string literal contains '$'.
      */
     @Test
@@ -721,6 +721,40 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("YES", resultSet2.getString(1));
         Assertions.assertFalse(resultSet2.next());
+    }
+
+    /**
+     * Tests a query with nested CASE.
+     */
+    @Test
+    @DisplayName("Tests a query with nested CASE.")
+    void testNestedCase() throws SQLException {
+        final String tableName = "testNestedCASE";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"field\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"field\": 2}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"field\": 3}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT CASE "
+                                + "WHEN \"field\" < 3  THEN "
+                                + "( CASE WHEN \"field\" < 2 THEN 'A' "
+                                + "ELSE 'B' END )"
+                                + "ELSE 'C' END FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("A", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("B", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("C", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
     }
 
     @Test
@@ -810,41 +844,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
-    }
-
-
-    /**
-     * Tests a query with nested CASE.
-     */
-    @Test
-    @DisplayName("Tests a query with nested CASE.")
-    void testNestedCase() throws SQLException {
-        final String tableName = "testNestedCASE";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
-                + "\"field\": 1}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
-                + "\"field\": 2}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
-                + "\"field\": 3}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"field\" < 3  THEN "
-                                + "( CASE WHEN \"field\" < 2 THEN 'A' "
-                                + "ELSE 'B' END )"
-                                + "ELSE 'C' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("A", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("B", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
     }
 
     /**
