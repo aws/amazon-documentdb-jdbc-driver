@@ -592,4 +592,104 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertEquals(1, resultSet.getInt(1));
         Assertions.assertFalse(resultSet.next());
     }
+
+    /**
+     * Tests that queries with substring work.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Test that queries filtering with substring work.")
+    void testQuerySubstring() throws SQLException {
+        final String tableName = "testWhereQuerySubstring";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abcdefg\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"uvwxyz\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\"}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2, 3) = 'bcd'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries with a substring containing a negative length work. Note that this is not
+     * standard SQL, but a feature of DocumentDB where a negative length results in the rest of
+     * the string.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Test that queries filtering with substring containing a negative length work.")
+    void testQuerySubstringNegativeLength() throws SQLException {
+        final String tableName = "testWhereQuerySubstringNegativeLength";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abcdefg\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"uvwxyz\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\"}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2, -1) = 'bcdefg'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries with case containing substring.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Test that queries with case containing substring work.")
+    void testQueryCaseSubstring() throws SQLException {
+        final String tableName = "testCaseQuerySubstring";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abcdefg\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"abcmno\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\"}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT CASE " +
+                                "WHEN SUBSTRING(\"field\", 1, 4) = 'abcd' THEN 'A'" +
+                                "WHEN SUBSTRING(\"field\", 1, 3) = 'abc' THEN 'B'" +
+                                "ELSE 'C' END FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("A", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("B", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("C", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("C", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
 }

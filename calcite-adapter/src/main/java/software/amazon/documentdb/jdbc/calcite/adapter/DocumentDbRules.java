@@ -223,6 +223,8 @@ public final class DocumentDbRules {
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NULL, "$lte");
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NOT_NULL, "$gt");
 
+            MONGO_OPERATORS.put(SqlStdOperatorTable.SUBSTRING, "$substr");
+
             // Arithmetic
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE,
                     (call, strings) -> getMongoAggregateForOperator(
@@ -294,6 +296,9 @@ public final class DocumentDbRules {
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CASE, RexToMongoTranslator::getMongoAggregateForCase);
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.ITEM, RexToMongoTranslator::getMongoAggregateForItem);
 
+            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.SUBSTRING,
+                    (call, strings) -> getMongoAggregateForSubstringOperator(
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
         }
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
@@ -440,6 +445,14 @@ public final class DocumentDbRules {
         private static String getMongoAggregateForNullOperator(final RexCall call, final List<String> strings,
                                                                final String stdOperator) {
             return "{" + stdOperator + ": [" + strings.get(0) + ", null]}";
+        }
+
+        private static String getMongoAggregateForSubstringOperator(final RexCall call, final List<String> strings,
+                                                                    final String stdOperator) {
+            return "{" + stdOperator + ": [" +
+                    strings.get(0) + "," +
+                    (Integer.parseInt(strings.get(1))- 1) + "," +
+                    strings.get(2) + "]}";
         }
 
         private static void verifySupportedType(final RexCall call)

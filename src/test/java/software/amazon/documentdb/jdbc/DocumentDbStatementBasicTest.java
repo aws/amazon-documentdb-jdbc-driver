@@ -1529,4 +1529,46 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.getBoolean(2));
         Assertions.assertFalse(resultSet.next());
     }
+
+    /**
+     * Test that queries selecting a substring work.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Test that queries selecting a substring work.")
+    void testQuerySubstring() throws SQLException {
+        final String tableName = "testSelectQuerySubstring";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abcdefg\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"uvwxyz\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\"}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105}");
+        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n" +
+                "\"field\": \"ab\"}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT SUBSTRING(\"field\", 1, 3) FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("abc", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("uvw", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("ab", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
 }
