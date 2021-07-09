@@ -176,6 +176,7 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
             put("jdbc:documentdb://username:password@localhost:1:2/database", "Valid hostname is required to connect. Syntax: 'jdbc:documentdb://[<user>[:<password>]@]<hostname>/<database>[?options...]'");
             put("jdbc:documentdb://username:password@localhost:1/", "Database is required to connect. Syntax: 'jdbc:documentdb://[<user>[:<password>]@]<hostname>/<database>[?options...]'");
             put("jdbc:documentdb://username@localhost:1/database", "User and password are required to connect. Syntax: 'jdbc:documentdb://[<user>[:<password>]@]<hostname>/<database>[?options...]'");
+            put("jdbc:documentdb://username:password@localhost:1?tls=true", "Database is required to connect. Syntax: 'jdbc:documentdb://[<user>[:<password>]@]<hostname>/<database>[?options...]'");
         }};
 
         for (Entry<String, String> test : tests.entrySet()) {
