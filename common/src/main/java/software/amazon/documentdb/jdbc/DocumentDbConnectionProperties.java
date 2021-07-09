@@ -584,9 +584,9 @@ public class DocumentDbConnectionProperties extends Properties {
         return properties;
     }
 
-    private static void setDatabase(final Properties properties, final URI mongoUri) throws UnsupportedEncodingException,
-            SQLException {
-        if (mongoUri.getPath() == null) {
+    private static void setDatabase(final Properties properties, final URI mongoUri)
+            throws SQLException {
+        if (isNullOrWhitespace(mongoUri.getPath())) {
             if (properties.getProperty(
                     DocumentDbConnectionProperty.DATABASE.getName(), null) == null) {
                 throw SqlError.createSQLException(
@@ -766,9 +766,7 @@ public class DocumentDbConnectionProperties extends Properties {
         }
 
         // Handle the tlsCAFile option.
-        InputStream inputStream = null;
-        try {
-            inputStream = getTlsCAFileInputStream();
+        try (InputStream inputStream = getTlsCAFileInputStream()) {
             if (inputStream != null) {
                 final X509Certificate certificate = (X509Certificate) CertificateFactory
                         .getInstance("X.509")
@@ -778,10 +776,6 @@ public class DocumentDbConnectionProperties extends Properties {
                         .build()
                         .getSslContext();
                 builder.context(sslContext);
-            }
-        } finally {
-            if (inputStream != null) {
-                inputStream.close();
             }
         }
     }
