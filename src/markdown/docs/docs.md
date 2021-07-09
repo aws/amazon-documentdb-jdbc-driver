@@ -237,7 +237,7 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
     - **_Mac_**: `~/Library/Tableau/Drivers`
     - **_Linux_**: `/opt/tableau/tableau_driver/jdbc`
 
-1. [Download]() the DocumentDB Tableau connector (a TACO file) and copy it to your `My Tableau Repository/Connectors`
+1. [Download](#download-the-documentdb-jdbc-driver) the DocumentDB Tableau connector (a TACO file) and copy it to your `My Tableau Repository/Connectors`
    directory.
     - **_Windows_**: `C:\Users\[user]\Documents\My Tableau Repository\Connectors`
     - **_Mac_**: `/Users/[user]/Documents/My Tableau Repository/Connectors`
@@ -248,16 +248,7 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
 
 1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 1. Launch the Tableau Desktop application.
-    - If using a **signed** Tableau Connector, launch Tableau like a typical application on your machine.
-    - If using an **unsigned** Tableau connector, Tableau must be launched from the command line with the flag
-      `-DDisableVerifyConnectorPluginSignature=true`.
-
-      Assuming default installation of Tableau Desktop:
-        - On **Windows**, use `tableau.exe -DDisableVerifyConnectorPluginSignature=true`.
-        - On **Mac**, use `/Applications/Tableau\ Desktop\ [version].app/Contents/MacOS/Tableau -DDisableVerifyConnectorPluginSignature=true`.
-        - For more information, consult the [Tableau documentation](https://tableau.github.io/connector-plugin-sdk/docs/run-taco).
-
-1. Navigate to **Connect > To A Server > More**. **Amazon DocumentDB by Amazon DocumentDB** should be listed
+1. Navigate to **Connect > To A Server > More**. **DocumentDB by Amazon** should be listed
    under **Installed Connectors**. Select it.
 
 ![Select a Connector](../setup/tableau-connector.png)
