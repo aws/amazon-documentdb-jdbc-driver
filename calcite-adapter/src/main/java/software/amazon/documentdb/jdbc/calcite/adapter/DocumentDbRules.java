@@ -223,7 +223,7 @@ public final class DocumentDbRules {
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NULL, "$lte");
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NOT_NULL, "$gt");
 
-            MONGO_OPERATORS.put(SqlStdOperatorTable.SUBSTRING, "$substr");
+            MONGO_OPERATORS.put(SqlStdOperatorTable.SUBSTRING, "$substrCP");
 
             // Arithmetic
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE,

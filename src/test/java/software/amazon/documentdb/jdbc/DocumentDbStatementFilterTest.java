@@ -815,38 +815,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that queries with a substring containing a negative length work. Note that this is not
-     * standard SQL, but a feature of DocumentDB where a negative length results in the rest of
-     * the string.
-     *
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Test that queries filtering with substring containing a negative length work.")
-    void testQuerySubstringNegativeLength() throws SQLException {
-        final String tableName = "testWhereQuerySubstringNegativeLength";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"field\": \"abcdefg\"}");
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
-                "\"field\": \"uvwxyz\"}");
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
-                "\"field\": \"\"}");
-        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
-                "\"field\": null}");
-        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105}");
-
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2, -1) = 'bcdefg'",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-    }
-
-    /**
      * Tests that queries with case containing substring.
      * @throws SQLException occurs if query fails.
      */
