@@ -451,7 +451,7 @@ public final class DocumentDbRules {
                                                                     final String stdOperator) {
             return "{" + stdOperator + ": [" +
                     strings.get(0) + "," +
-                    (Integer.parseInt(strings.get(1))- 1) + "," +
+                    (Integer.parseInt(strings.get(1)) - 1) + "," +
                     strings.get(2) + "]}";
         }
 
