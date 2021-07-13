@@ -224,8 +224,6 @@ public final class DocumentDbRules {
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NULL, "$lte");
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NOT_NULL, "$gt");
 
-            MONGO_OPERATORS.put(SqlStdOperatorTable.SUBSTRING, "$substrCP");
-
             // Arithmetic
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE,
                     (call, strings) -> getMongoAggregateForOperator(
@@ -298,8 +296,7 @@ public final class DocumentDbRules {
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.ITEM, RexToMongoTranslator::getMongoAggregateForItem);
 
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.SUBSTRING,
-                    (call, strings) -> getMongoAggregateForSubstringOperator(
-                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
+                    (call, strings) -> getMongoAggregateForSubstringOperator(call, strings));
         }
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
@@ -448,14 +445,13 @@ public final class DocumentDbRules {
             return "{" + stdOperator + ": [" + strings.get(0) + ", null]}";
         }
 
-        private static String getMongoAggregateForSubstringOperator(final RexCall call, final List<String> strings,
-                                                                    final String stdOperator) {
+        private static String getMongoAggregateForSubstringOperator(final RexCall call, final List<String> strings) {
             final List<String> inputs = new ArrayList<>(strings);
             inputs.set(1, "{$subtract: [" + inputs.get(1) + ", 1]}"); // Conversion from one-indexed to zero-indexed
             if (inputs.size() == 2) {
                 inputs.add(String.valueOf(Integer.MAX_VALUE));
             }
-            return "{" + stdOperator + ": [" + Util.commaList(inputs) + "]}";
+            return "{$substrCP: [" + Util.commaList(inputs) + "]}";
         }
 
         private static void verifySupportedType(final RexCall call)
