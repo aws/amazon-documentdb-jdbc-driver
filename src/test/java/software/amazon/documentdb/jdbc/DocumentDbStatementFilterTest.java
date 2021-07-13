@@ -812,6 +812,36 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests that queries with substring without a length input work.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Test that queries filtering with substring without a length input work.")
+    void testQuerySubstringNoLength() throws SQLException {
+        final String tableName = "testWhereQuerySubstringNoLength";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abcdefg\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"abcdefgh\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\"}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2) = 'bcdefg'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
     }
 
     /**
@@ -861,7 +891,8 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     void testSubstringLiteral() throws SQLException {
         final String tableName = "testSubstringLiteral";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"field\": \"abc\"}");
+                "\"field\": \"abc\", \n" +
+                "\"field2\": 3}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
                 "\"field\": \"abcmno\"}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
@@ -882,8 +913,43 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     @Test
+    @DisplayName("Tests substring with expressions for index and length.")
+    void testSubstringExpressions() throws SQLException {
+        final String tableName = "testSubstringExpressions";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"abcdef\", \n" +
+                "\"field2\": 3, \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"abcdef\", \n" +
+                "\"field2\": 2 \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\", \n" +
+                "\"field2\": 3, \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null, \n" +
+                "\"field2\": 3, \n" +
+                "\"field3\": 1}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT SUBSTRING(\"field\", \"field3\", \"field2\" - \"field3\") " +
+                                "FROM \"%s\".\"%s\" " +
+                                "WHERE SUBSTRING(\"field\", \"field3\", \"field2\" + \"field3\") = 'abcd'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("ab", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
     @Disabled("Requires literal support.")
-    @DisplayName("Tests substring where a conflict with an operator exists")
+    @DisplayName("Tests substring where a conflict with a field exists")
     void testSubstringFieldConflict() throws SQLException {
         final String tableName = "testSubstringLiteralConflict";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
@@ -900,6 +966,32 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('$1000', 1, 4)",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @Disabled("Requires literal support.")
+    @DisplayName("Tests substring where a conflict with an operator exists")
+    void testSubstringOperatorConflict() throws SQLException {
+        final String tableName = "testSubstringOperatorConflict";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"$o\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"abc\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\"}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('$or', 1, 2)",
                         DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());

@@ -58,6 +58,7 @@ import java.time.DayOfWeek;
 import java.time.Month;
 import java.time.format.TextStyle;
 import java.util.AbstractList;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -449,10 +450,12 @@ public final class DocumentDbRules {
 
         private static String getMongoAggregateForSubstringOperator(final RexCall call, final List<String> strings,
                                                                     final String stdOperator) {
-            return "{" + stdOperator + ": [" +
-                    strings.get(0) + "," +
-                    (Integer.parseInt(strings.get(1)) - 1) + "," +
-                    strings.get(2) + "]}";
+            final List<String> inputs = new ArrayList<>(strings);
+            inputs.set(1, "{$subtract: [" + inputs.get(1) + ", 1]}"); // Conversion from one-indexed to zero-indexed
+            if (inputs.size() == 2) {
+                inputs.add(String.valueOf(Integer.MAX_VALUE));
+            }
+            return "{" + stdOperator + ": [" + Util.commaList(inputs) + "]}";
         }
 
         private static void verifySupportedType(final RexCall call)
