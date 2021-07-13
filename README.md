@@ -375,6 +375,12 @@ So the resulting data in the table would look like this...
 | "112233" | "George Jackson" | "\[ \\"Vogue\\", \\"People\\",  \\"USA Today\\" \]" |
 | "112244" | "Joan Starr" | "1" |
 
+### Schema Generation Limitations
+
+The DocumentDB JDBC driver imposes a limit on the length of identifiers at 128 characters. 
+The schema generator may truncate the length of generated identifiers (table names and column names) 
+to ensure they fit that limit.
+   
 ## Schema Management
 
 Schema can be managed in the following ways:
@@ -388,6 +394,10 @@ Schema can be managed in the following ways:
 See the [schema management documentation](src/markdown/schema/manage-schema-cli.md) and 
 [table schemas JSON format](src/markdown/schema/table-schemas-json-format.md) for further 
 information.
+
+## Identifier Limitations
+
+The DocumentDB JDBC driver limits the maximum identifier length to 128 characters.
 
 ## ResultSet Limitations
 
