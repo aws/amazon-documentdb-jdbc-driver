@@ -785,4 +785,32 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertEquals("Unknown", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
+
+    @Test
+    @DisplayName("Tests FLOOR(... TO ...) in WHERE clause.")
+    void testFloorForDateInWhere() throws SQLException {
+        final String tableName = "testFloorForDateInWhere";
+        final Instant dateTime = Instant.parse("2020-02-03T12:34:56.78Z");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime.toEpochMilli()));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet = statement.executeQuery(
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\""
+                                + " WHERE FLOOR(\"field\" TO SECOND) >= \"field\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertFalse(resultSet.next());
+
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\""
+                                + " WHERE FLOOR(\"field\" TO SECOND) < \"field\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("101", resultSet2.getString(1));
+        Assertions.assertFalse(resultSet2.next());
+    }
 }

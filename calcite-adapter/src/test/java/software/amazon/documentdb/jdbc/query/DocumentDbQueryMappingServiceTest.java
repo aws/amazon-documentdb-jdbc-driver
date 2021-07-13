@@ -1434,33 +1434,17 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(6, result.getColumnMetaData().size());
         Assertions.assertEquals(1, result.getAggregateOperations().size());
     Assertions.assertEquals(
-        BsonDocument.parse(
-            "{\"$addFields\": "
-                    + "{\"EXPR$0\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"604800000\" }, 1]}]}, "
-                    + "\"EXPR$1\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"86400000\"}, 2]}]}, "
-                    + "\"EXPR$2\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"3600000\"}, 3]}]}, "
-                    + "\"EXPR$3\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"60000\"}, 4]}]}, "
-                    + "\"EXPR$4\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"1000\"}, 5]}]}, "
-                    + "\"EXPR$5\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$divide\": [{\"$multiply\": [{\"$numberLong\": \"1\"}, 6]}, 1000]}]}}}"),
-        result.getAggregateOperations().get(0));
+            BsonDocument.parse(
+                    "{\"$addFields\":"
+                    + " {\"EXPR$0\": {\"$add\": [\"$field\", {\"$multiply\": [604800000, 1]}]},"
+                    + " \"EXPR$1\": {\"$add\": [\"$field\", {\"$multiply\": [86400000, 2]}]},"
+                    + " \"EXPR$2\": {\"$add\": [\"$field\", {\"$multiply\": [3600000, 3]}]},"
+                    + " \"EXPR$3\": {\"$add\": [\"$field\", {\"$multiply\": [60000, 4]}]},"
+                    + " \"EXPR$4\": {\"$add\": [\"$field\", {\"$multiply\": [1000, 5]}]},"
+                    + " \"EXPR$5\": {\"$add\": [\"$field\", {\"$divide\":"
+                        + " [{\"$subtract\": [{\"$multiply\": [1, 6]},"
+                            + " {\"$mod\": [{\"$multiply\": [1, 6]}, 1000]}]}, 1000]}]}}}").toJson(),
+            ((BsonDocument)result.getAggregateOperations().get(0)).toJson());
 
         final String extractQuery =
                 String.format(
@@ -1520,26 +1504,12 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(1, result.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$addFields\":"
-                        + " {\"EXPR$0\":"
-                            + " {\"$divide\":"
-                                + " [{\"$divide\":"
-                                    + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}, 604800]},"
-                        + " \"EXPR$1\":"
-                            + " {\"$divide\":"
-                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 86400000]},"
-                        + " \"EXPR$2\":"
-                            + " {\"$divide\":"
-                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 3600000]},"
-                        + " \"EXPR$3\":"
-                            + " {\"$divide\":"
-                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 60000]},"
-                        + " \"EXPR$4\":"
-                            + " {\"$divide\":"
-                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]},"
-                        + " \"EXPR$5\":"
-                            + " {\"$multiply\":"
-                                + " [{\"$divide\":"
-                                    + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}, 1000000]}}}"),
+                        + " {\"EXPR$0\": {\"$divide\": [{\"$subtract\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]}, {\"$mod\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]}, 604800]}]}, 604800]},"
+                        + " \"EXPR$1\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 86400000]}]}, 86400000]},"
+                        + " \"EXPR$2\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 3600000]}]}, 3600000]},"
+                        + " \"EXPR$3\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 60000]}]}, 60000]},"
+                        + " \"EXPR$4\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]},"
+                        + " \"EXPR$5\": {\"$multiply\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]}, 1000000]}}}"),
                 result.getAggregateOperations().get(0));
     }
 
@@ -1881,5 +1851,58 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse(
                         "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests FLOOR(ts TO <x>).")
+    void testFloorForDate() throws SQLException {
+        final String floorDayQuery =
+                String.format(
+                        "SELECT"
+                                + " FLOOR(\"field\" TO YEAR),"
+                                + " FLOOR(\"field\" TO MONTH),"
+                                + " FLOOR(\"field\" TO DAY),"
+                                + " FLOOR(\"field\" TO HOUR),"
+                                + " FLOOR(\"field\" TO MINUTE),"
+                                + " FLOOR(\"field\" TO SECOND),"
+                                + " FLOOR(\"field\" TO MILLISECOND)"
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(floorDayQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(1, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\":"
+                        + " {\"EXPR$0\": {\"$dateFromString\": {\"dateString\":"
+                        + " {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-01-01T00:00:00Z\"}}}},"
+                        + " \"EXPR$1\": {\"$dateFromString\": {\"dateString\":"
+                        + " {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-%m-01T00:00:00Z\"}}}},"
+                        + " \"EXPR$2\": {\"$add\": [{\"$date\": \"1970-01-01T00:00:00Z\"},"
+                        + " {\"$multiply\": [86400000, {\"$divide\": [{\"$subtract\":"
+                        + " [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " 86400000]}]}, 86400000]}]}]},"
+                        + " \"EXPR$3\": {\"$add\": [{\"$date\": \"1970-01-01T00:00:00Z\"},"
+                        + " {\"$multiply\": [3600000, {\"$divide\": [{\"$subtract\":"
+                        + " [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " 3600000]}]}, 3600000]}]}]},"
+                        + " \"EXPR$4\": {\"$add\": [{\"$date\": \"1970-01-01T00:00:00Z\"},"
+                        + " {\"$multiply\": [60000, {\"$divide\": [{\"$subtract\":"
+                        + " [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " 60000]}]}, 60000]}]}]},"
+                        + " \"EXPR$5\": {\"$add\": [{\"$date\": \"1970-01-01T00:00:00Z\"},"
+                        + " {\"$multiply\": [1000, {\"$divide\": [{\"$subtract\":"
+                        + " [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " 1000]}]}, 1000]}]}]},"
+                        + " \"EXPR$6\": {\"$add\": [{\"$date\": \"1970-01-01T00:00:00Z\"},"
+                        + " {\"$multiply\": [1, {\"$divide\": [{\"$subtract\":"
+                        + " [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
+                        + " 1]}]}, 1]}]}]}}}").toJson(),
+                ((BsonDocument) operations.get(0)).toJson());
     }
 }

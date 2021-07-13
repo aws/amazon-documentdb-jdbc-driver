@@ -95,7 +95,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertArrayEquals(
                     expectedBytes, blob.getBytes(1, (int) blob.length()));
             final byte[] actualBytes = new byte[(int) blob.length()];
-            resultSet.getBinaryStream("fieldBinary").read(actualBytes);
+            Assertions.assertEquals(3,
+                    resultSet.getBinaryStream("fieldBinary").read(actualBytes));
             Assertions.assertArrayEquals(expectedBytes, actualBytes);
 
             count++;
@@ -1528,5 +1529,131 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet.getBoolean(1));
         Assertions.assertFalse(resultSet.getBoolean(2));
         Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests for queries FLOOR(... TO ...) in select clause.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests for queries FLOOR(... TO ...) in select clause.")
+    void testQuerySelectFloorForDate() throws SQLException {
+        final String tableName = "testQuerySelectFloorForDate";
+        final Instant dateTime = Instant.parse("2020-02-03T12:34:56.78Z");
+        final OffsetDateTime offsetDateTime = dateTime.atOffset(ZoneOffset.UTC);
+        final Instant epochDateTime = Instant.EPOCH;
+        final OffsetDateTime offsetEpochDateTime = epochDateTime.atOffset(ZoneOffset.UTC);
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime.toEpochMilli()));
+        doc1.append("fieldEpoch", new BsonDateTime(epochDateTime.toEpochMilli()));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT"
+                                + " FLOOR(\"field\" TO YEAR),"
+                                + " FLOOR(\"field\" TO MONTH),"
+                                + " FLOOR(\"field\" TO DAY),"
+                                + " FLOOR(\"field\" TO HOUR),"
+                                + " FLOOR(\"field\" TO MINUTE),"
+                                + " FLOOR(\"field\" TO SECOND),"
+                                + " FLOOR(\"field\" TO MILLISECOND),"
+                                + " FLOOR(\"fieldEpoch\" TO YEAR),"
+                                + " FLOOR(\"fieldEpoch\" TO MONTH),"
+                                + " FLOOR(\"fieldEpoch\" TO DAY),"
+                                + " FLOOR(\"fieldEpoch\" TO HOUR),"
+                                + " FLOOR(\"fieldEpoch\" TO MINUTE),"
+                                + " FLOOR(\"fieldEpoch\" TO SECOND),"
+                                + " FLOOR(\"fieldEpoch\" TO MILLISECOND)"
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 1),
+                resultSet.getTimestamp(1).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, offsetDateTime.getMonthValue()),
+                resultSet.getTimestamp(2).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet.getTimestamp(3).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.HOURS),
+                resultSet.getTimestamp(4).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.MINUTES),
+                resultSet.getTimestamp(5).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.SECONDS),
+                resultSet.getTimestamp(6).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.MILLIS),
+                resultSet.getTimestamp(7).getTime());
+
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetEpochDateTime, 1),
+                resultSet.getTimestamp(8).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetEpochDateTime, offsetEpochDateTime.getMonthValue()),
+                resultSet.getTimestamp(9).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.DAYS),
+                resultSet.getTimestamp(10).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.HOURS),
+                resultSet.getTimestamp(11).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.MINUTES),
+                resultSet.getTimestamp(12).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.SECONDS),
+                resultSet.getTimestamp(13).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.MILLIS),
+                resultSet.getTimestamp(14).getTime());
+        Assertions.assertFalse(resultSet.next());
+
+        // Don't support WEEK and many other time span units.
+        Assertions.assertEquals(
+                String.format("Unable to parse SQL"
+                        + " 'SELECT FLOOR(\"field\" TO WEEK) FROM \"database\".\"testQuerySelectFloorForDate\"'.%n"
+                        + " Reason: 'The property WEEK is not supported.'"),
+                Assertions.assertThrows(SQLException.class, () -> statement.executeQuery(
+                        String.format("SELECT"
+                                        + " FLOOR(\"field\" TO WEEK)"
+                                        + " FROM \"%s\".\"%s\"",
+                                DATABASE_NAME, tableName))).getMessage());
+
+        // Don't support FLOOR for numeric, yet.
+        final String errorMessage = Assertions.assertThrows(
+                SQLException.class,
+                () -> statement.executeQuery(
+                        String.format("SELECT FLOOR(12.34) FROM \"%s\".\"%s\"",
+                                DATABASE_NAME, tableName))).getMessage();
+        Assertions.assertTrue(
+                errorMessage.startsWith(
+                        "Unable to parse SQL 'SELECT FLOOR(12.34) FROM \"database\".\"testQuerySelectFloorForDate\"'.")
+                && errorMessage.endsWith(
+                        "Additional info: 'Translation of FLOOR(12.34:DECIMAL(4, 2)) is not supported by DocumentDbRules''"));
+    }
+
+    private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
+        return OffsetDateTime.of(
+                offsetDateTime.getYear(), monthValue, 1,
+                0, 0, 0, 0,
+                ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli();
+    }
+
+    private long getTruncatedTimestamp(final Instant dateTime, final ChronoUnit chronoUnit) {
+        return dateTime
+                .atOffset(ZoneOffset.UTC)
+                .truncatedTo(chronoUnit)
+                .toInstant()
+                .toEpochMilli();
     }
 }
