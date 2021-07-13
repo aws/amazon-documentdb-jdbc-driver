@@ -607,7 +607,6 @@ public final class DocumentDbRules {
             final RexLiteral literal = (RexLiteral) operand2;
             final TimeUnitRange timeUnitRange = literal.getValueAs(TimeUnitRange.class);
             switch (timeUnitRange) {
-                case ISOYEAR:
                 case YEAR:
                 case MONTH:
                     return formatYearMonthFloorOperation(strings, timeUnitRange);
@@ -627,16 +626,12 @@ public final class DocumentDbRules {
                 final List<String> strings,
                 final TimeUnitRange timeUnitRange) {
             final String yearFormat = "%Y";
-            final String monthFormat = isTimeUnitRangeYear(timeUnitRange) ? "01" : "%m";
+            final String monthFormat = timeUnitRange == TimeUnitRange.YEAR ? "01" : "%m";
             return String.format(
                     "{'$dateFromString': {'dateString':"
                             + " {'$dateToString':"
                             + " {'date': %1$s, 'format': '%2$s-%3$s-01T00:00:00Z'}}}}",
                     strings.get(0), yearFormat, monthFormat);
-        }
-
-        private static boolean isTimeUnitRangeYear(TimeUnitRange timeUnitRange) {
-            return timeUnitRange == TimeUnitRange.YEAR || timeUnitRange == TimeUnitRange.ISOYEAR;
         }
 
         private static String formatNumericFloorOperation(

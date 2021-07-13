@@ -807,7 +807,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\""
-                                + " WHERE FLOOR(\"field\" TO ISOYEAR) < \"field\"",
+                                + " WHERE FLOOR(\"field\" TO SECOND) < \"field\"",
                         DATABASE_NAME, tableName));
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("101", resultSet2.getString(1));
