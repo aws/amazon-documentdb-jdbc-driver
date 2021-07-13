@@ -190,26 +190,6 @@ public final class DocumentDbRules {
         return fieldName.startsWith("$") ? "_" + fieldName.substring(1) : fieldName;
     }
 
-    @SneakyThrows
-    private static String getMongoAggregateForOperator(
-            final RexCall call,
-            final List<String> strings,
-            final String stdOperator) {
-        verifySupportedType(call);
-        return "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
-    }
-
-    private static void verifySupportedType(final RexCall call)
-            throws SQLFeatureNotSupportedException {
-        if (call.type.getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
-                || call.type.getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
-            throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
-                    SqlError.UNSUPPORTED_CONVERSION,
-                    call.type.getSqlTypeName().getName(),
-                    SqlTypeName.TIMESTAMP.getName());
-        }
-    }
-
     /** Translator from {@link RexNode} to strings in MongoDB's expression
      * language. */
     static class RexToMongoTranslator extends RexVisitorImpl<String> {
@@ -472,6 +452,26 @@ public final class DocumentDbRules {
         return s.startsWith("'") && s.endsWith("'")
                 ? s.substring(1, s.length() - 1)
                 : s;
+    }
+
+    @SneakyThrows
+    private static String getMongoAggregateForOperator(
+            final RexCall call,
+            final List<String> strings,
+            final String stdOperator) {
+        verifySupportedType(call);
+        return "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
+    }
+
+    private static void verifySupportedType(final RexCall call)
+            throws SQLFeatureNotSupportedException {
+        if (call.type.getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
+                || call.type.getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
+            throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
+                    SqlError.UNSUPPORTED_CONVERSION,
+                    call.type.getSqlTypeName().getName(),
+                    SqlTypeName.TIMESTAMP.getName());
+        }
     }
 
     private static String getIntegerDivisionOperation(final String value, final String divisor) {
