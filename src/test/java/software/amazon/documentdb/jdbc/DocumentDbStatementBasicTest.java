@@ -429,12 +429,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @DisplayName("Tests TIMESTAMPADD() with different intervals.")
     void testQueryTimestampAdd() throws SQLException {
         final String tableName = "testTimestampAdd";
-        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
-        final long weekAfterDateTime = Instant.parse("2020-01-08T00:00:00.00Z").toEpochMilli();
-        final long dayAfterDateTime = Instant.parse("2020-01-02T00:00:00.00Z").toEpochMilli();
-        final long hourAfterDateTime =  Instant.parse("2020-01-01T01:00:00.00Z").toEpochMilli();
-        final long minuteAfterDateTime = Instant.parse("2020-01-01T00:01:00.00Z").toEpochMilli();
-        final long secondAfterDateTime =  Instant.parse("2020-01-01T00:00:01.00Z").toEpochMilli();
+        final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
+        final long weekAfterDateTime = Instant.parse("2020-02-29T00:00:00.00Z").toEpochMilli();
+        final long dayAfterDateTime = Instant.parse("2020-02-23T00:00:00.00Z").toEpochMilli();
+        final long hourAfterDateTime =  Instant.parse("2020-02-22T01:00:00.00Z").toEpochMilli();
+        final long minuteAfterDateTime = Instant.parse("2020-02-22T00:01:00.00Z").toEpochMilli();
+        final long secondAfterDateTime =  Instant.parse("2020-02-22T00:00:01.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         doc1.append("fieldWeekAfter", new BsonDateTime(weekAfterDateTime));
@@ -448,12 +448,21 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
         // Add 1 day to a date column.
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT TIMESTAMPADD(DAY"
+                String.format("SELECT TIMESTAMPADD(WEEK"
                         + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet.getTimestamp(1));
+        Assertions.assertEquals(new Timestamp(weekAfterDateTime), resultSet.getTimestamp(1));
         Assertions.assertFalse(resultSet.next());
+
+        // Add 1 day to a date column.
+        final ResultSet resultSet1 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPADD(DAY"
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet1.getTimestamp(1));
+        Assertions.assertFalse(resultSet1.next());
 
         // Add 1 hour to a date column.
         final ResultSet resultSet2 = statement.executeQuery(
@@ -485,7 +494,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Add 1 day to a date literal.
         final ResultSet resultSet5 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(DAY"
-                        + ", 1, TIMESTAMP '2020-01-01 00:00:00' ) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, TIMESTAMP '2020-02-22 00:00:00' ) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet5);
         Assertions.assertTrue(resultSet5.next());
         Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet5.getTimestamp(1));
@@ -497,7 +506,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         + ", 1, \"field\")) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet6);
         Assertions.assertTrue(resultSet6.next());
-        Assertions.assertEquals(2, resultSet6.getInt(1));
+        Assertions.assertEquals(23, resultSet6.getInt(1));
         Assertions.assertFalse(resultSet6.next());
 
         // Difference of DAY
@@ -1616,16 +1625,51 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 resultSet.getTimestamp(14).getTime());
         Assertions.assertFalse(resultSet.next());
 
-        // Don't support WEEK and many other time span units.
+        // Test WEEK (to Monday) truncation
+        final ResultSet resultSet1 = statement.executeQuery(String.format(
+                "SELECT"
+                        + " FLOOR(\"field\" TO WEEK)," // Monday
+                        + " FLOOR(TIMESTAMPADD(DAY, 1, \"field\") TO WEEK)," // Tuesday
+                        + " FLOOR(TIMESTAMPADD(DAY, 2, \"field\") TO WEEK)," // Wednesday
+                        + " FLOOR(TIMESTAMPADD(DAY, 3, \"field\") TO WEEK)," // Thursday
+                        + " FLOOR(TIMESTAMPADD(DAY, 4, \"field\") TO WEEK)," // Friday
+                        + " FLOOR(TIMESTAMPADD(DAY, 5, \"field\") TO WEEK)," // Saturday
+                        + " FLOOR(TIMESTAMPADD(DAY, 6, \"field\") TO WEEK)," // Sunday
+                        + " FLOOR(TIMESTAMPADD(DAY, 7, \"field\") TO WEEK)" // Next week
+                        + " FROM \"%s\".\"%s\"",
+                DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
         Assertions.assertEquals(
-                String.format("Unable to parse SQL"
-                        + " 'SELECT FLOOR(\"field\" TO WEEK) FROM \"database\".\"testQuerySelectFloorForDate\"'.%n"
-                        + " Reason: 'The property WEEK is not supported.'"),
-                Assertions.assertThrows(SQLException.class, () -> statement.executeQuery(
-                        String.format("SELECT"
-                                        + " FLOOR(\"field\" TO WEEK)"
-                                        + " FROM \"%s\".\"%s\"",
-                                DATABASE_NAME, tableName))).getMessage());
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(1).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(2).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(3).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(4).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(5).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(6).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(7).getTime());
+        // Next week
+        Assertions.assertEquals(
+                getTruncatedTimestamp(
+                        dateTime
+                                .atOffset(ZoneOffset.UTC)
+                                .plus(1, ChronoUnit.WEEKS)
+                                .toInstant(), ChronoUnit.DAYS),
+                resultSet1.getTimestamp(8).getTime());
+        Assertions.assertFalse(resultSet1.next());
 
         // Don't support FLOOR for numeric, yet.
         final String errorMessage = Assertions.assertThrows(

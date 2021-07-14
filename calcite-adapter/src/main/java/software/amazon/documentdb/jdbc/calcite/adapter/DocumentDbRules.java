@@ -55,6 +55,7 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.Month;
 import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
@@ -610,12 +611,16 @@ public final class DocumentDbRules {
                 case YEAR:
                 case MONTH:
                     return formatYearMonthFloorOperation(strings, timeUnitRange);
+                case WEEK:
                 case DAY:
                 case HOUR:
                 case MINUTE:
                 case SECOND:
                 case MILLISECOND:
-                    return formatNumericFloorOperation(strings, timeUnitRange);
+                    final Instant baseDate = timeUnitRange == TimeUnitRange.WEEK
+                            ? Instant.parse("1970-01-05T00:00:00Z") // Monday (or first day of week)
+                            : Instant.parse("1970-01-01T00:00:00Z");
+                    return formatNumericFloorOperation(strings, timeUnitRange, baseDate);
                 default:
                     throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
                             SqlError.UNSUPPORTED_PROPERTY, timeUnitRange.toString());
@@ -636,24 +641,30 @@ public final class DocumentDbRules {
 
         private static String formatNumericFloorOperation(
                 final List<String> strings,
-                final TimeUnitRange timeUnitRange) throws SQLFeatureNotSupportedException {
+                final TimeUnitRange timeUnitRange,
+                final Instant baseDate) throws SQLFeatureNotSupportedException {
 
             final long divisorLong = getDivisorValueForNumericFloor(timeUnitRange);
             final String divisor = String.format(
                     "{\"$numberLong\": \"%d\"}", divisorLong);
             final String subtract = String.format(
-                    "{\"$subtract\": [%s, new Date(0)]}", strings.get(0));
+                    "{\"$subtract\": [%s, {\"$date\": {\"$numberLong\": \"%d\"}}]}",
+                    strings.get(0), baseDate.toEpochMilli());
             final String divide = getIntegerDivisionOperation(subtract, divisor);
             final String multiply =  String.format(
                     "{\"$multiply\": [%s, %s]}", divisor, divide);
             return String.format(
-                    "{\"$add\": [new Date(0), %s]}", multiply);
+                    "{\"$add\": [{\"$date\": {\"$numberLong\": \"%d\"}}, %s]}",
+                    baseDate.toEpochMilli(), multiply);
         }
 
         private static long getDivisorValueForNumericFloor(final TimeUnitRange timeUnitRange)
                 throws SQLFeatureNotSupportedException {
             final long divisorLong;
             switch (timeUnitRange) {
+                case WEEK:
+                    divisorLong = ChronoUnit.WEEKS.getDuration().toMillis();
+                    break;
                 case DAY:
                     divisorLong = ChronoUnit.DAYS.getDuration().toMillis();
                     break;
