@@ -553,6 +553,11 @@
       <argument type='localstr' />
       <argument type='datetime' />
     </date-function>
+    <date-function name='DATETRUNC' return-type='datetime'>
+      <formula>FLOOR(%2 TO %1)</formula>
+      <argument type='localstr' />
+      <argument type='datetime' />
+    </date-function>
   </function-map>
   <supported-aggregations>
     <aggregation value='AGG_COUNT'/>
@@ -604,6 +609,19 @@
       </date-part-group>
       <date-part-group>
         <date-function name='DATEDIFF' />
+        <part name='year' value='YEAR' />
+        <part name='quarter' value='QUARTER' />
+        <part name='month' value='MONTH' />
+        <part name='week' value='WEEK' />
+        <part name='weekday' value='DAY' />
+        <part name='dayofyear' value='DAY' />
+        <part name='day' value='DAY' />
+        <part name='hour' value='HOUR' />
+        <part name='minute' value='MINUTE' />
+        <part name='second' value='SECOND' />
+      </date-part-group>
+      <date-part-group>
+        <date-function name='DATETRUNC' />
         <part name='year' value='YEAR' />
         <part name='quarter' value='QUARTER' />
         <part name='month' value='MONTH' />
