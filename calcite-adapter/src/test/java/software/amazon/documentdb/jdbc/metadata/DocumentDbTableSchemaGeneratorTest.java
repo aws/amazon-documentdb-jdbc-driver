@@ -51,8 +51,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.apache.calcite.sql.parser.SqlParser.DEFAULT_IDENTIFIER_MAX_LENGTH;
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGenerator.combinePath;
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGenerator.toName;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.combinePath;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.getPromotedSqlType;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.toName;
 
 class DocumentDbTableSchemaGeneratorTest {
     private static final String COLLECTION_NAME = DocumentDbTableSchemaGeneratorTest.class.getSimpleName();
@@ -164,8 +165,7 @@ class DocumentDbTableSchemaGeneratorTest {
         for (int outerIndex = 0; outerIndex < supportedBsonTypeSet.length; outerIndex++) {
             final BsonType bsonType = supportedBsonTypeSet[outerIndex];
             final BsonValue bsonValue = supportedBsonValueSet[outerIndex];
-            final JdbcType initSqlType = DocumentDbTableSchemaGenerator
-                    .getPromotedSqlType(bsonType, JdbcType.NULL);
+            final JdbcType initSqlType = getPromotedSqlType(bsonType, JdbcType.NULL);
 
             final BsonDocument initDocument = new BsonDocument()
                     .append("_id", new BsonObjectId())
@@ -175,7 +175,7 @@ class DocumentDbTableSchemaGeneratorTest {
 
                 final BsonValue nextBsonValue = supportedBsonValueSet[innerIndex];
                 final BsonType nextBsonType = supportedBsonTypeSet[innerIndex];
-                final JdbcType nextSqlType = DocumentDbTableSchemaGenerator.getPromotedSqlType(
+                final JdbcType nextSqlType = getPromotedSqlType(
                         nextBsonType, initSqlType);
                 final BsonDocument nextDocument = new BsonDocument()
                         .append("_id", new BsonObjectId())
@@ -229,7 +229,7 @@ class DocumentDbTableSchemaGeneratorTest {
         for (final BsonType bsonType : unsupportedBsonTypeSet) {
             Assertions.assertEquals(
                     JdbcType.VARCHAR,
-                    DocumentDbTableSchemaGenerator.getPromotedSqlType(bsonType, JdbcType.NULL));
+                    getPromotedSqlType(bsonType, JdbcType.NULL));
         }
     }
 
@@ -1690,21 +1690,21 @@ class DocumentDbTableSchemaGeneratorTest {
         testName = toName(testPath, tableNameMap, 10);
         Assertions.assertEquals("_d_e_f_g", testName);
 
-        testPath = "12345678901";
+        testPath = "baseTable01"; // "12345678901";
         testName = toName(testPath, tableNameMap, 10);
-        Assertions.assertEquals("1234567890", testName);
+        Assertions.assertEquals("baseTable0", testName);
 
-        testPath = "12345678901.12345678901";
+        testPath = "baseTable01.childtble01";
         testName = toName(testPath, tableNameMap, 10);
-        Assertions.assertEquals("2345678901", testName);
+        Assertions.assertEquals("hildtble01", testName);
 
-        testPath = "12345678903.12345678901";
+        testPath = "baseTable02.childtble01";
         testName = toName(testPath, tableNameMap, 10);
-        Assertions.assertEquals("2345678902", testName);
+        Assertions.assertEquals("hildtble02", testName);
 
-        testPath = "12345678901.12345678902";
+        testPath = "baseTable02.childtble02";
         testName = toName(testPath, tableNameMap, 10);
-        Assertions.assertEquals("2345678903", testName);
+        Assertions.assertEquals("hildtble03", testName);
     }
 
     @DisplayName("Tests that even deeply nested documents and array have name length less than max.")
