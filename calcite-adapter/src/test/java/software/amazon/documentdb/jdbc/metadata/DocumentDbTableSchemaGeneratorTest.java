@@ -1711,7 +1711,7 @@ class DocumentDbTableSchemaGeneratorTest {
     @Test
     void testDeeplyNestedDocumentsArraysForSqlNameLength() {
         BsonValue doc = new BsonNull();
-        for (int i = 999; i >= 0; i--) {
+        for (int i = 199; i >= 0; i--) {
             doc = new BsonDocument("_id", new BsonInt32(i))
                     .append(i + "field", new BsonInt32(i))
                     .append(i + "doc", doc)
@@ -1720,7 +1720,7 @@ class DocumentDbTableSchemaGeneratorTest {
         final Map<String, DocumentDbSchemaTable> tableMap = DocumentDbTableSchemaGenerator
                 .generate(COLLECTION_NAME, Collections.singleton((BsonDocument) doc).iterator());
 
-        Assertions.assertEquals(2000, tableMap.size());
+        Assertions.assertEquals(400, tableMap.size());
         tableMap.keySet().stream()
                 .map(tableName -> tableName.length() <= DEFAULT_IDENTIFIER_MAX_LENGTH)
                 .forEach(Assertions::assertTrue);
