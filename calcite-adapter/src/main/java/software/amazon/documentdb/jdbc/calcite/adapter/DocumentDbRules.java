@@ -617,10 +617,7 @@ public final class DocumentDbRules {
                 case MINUTE:
                 case SECOND:
                 case MILLISECOND:
-                    final Instant baseDate = timeUnitRange == TimeUnitRange.WEEK
-                            ? Instant.parse("1970-01-05T00:00:00Z") // Monday (or first day of week)
-                            : Instant.parse("1970-01-01T00:00:00Z");
-                    return formatNumericFloorOperation(strings, timeUnitRange, baseDate);
+                    return formatNumericFloorOperation(strings, timeUnitRange);
                 default:
                     throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
                             SqlError.UNSUPPORTED_PROPERTY, timeUnitRange.toString());
@@ -641,9 +638,11 @@ public final class DocumentDbRules {
 
         private static String formatNumericFloorOperation(
                 final List<String> strings,
-                final TimeUnitRange timeUnitRange,
-                final Instant baseDate) throws SQLFeatureNotSupportedException {
+                final TimeUnitRange timeUnitRange) throws SQLFeatureNotSupportedException {
 
+            final Instant baseDate = timeUnitRange == TimeUnitRange.WEEK
+                    ? Instant.parse("1970-01-05T00:00:00Z") // Monday (or first day of week)
+                    : Instant.parse("1970-01-01T00:00:00Z");
             final long divisorLong = getDivisorValueForNumericFloor(timeUnitRange);
             final String divisor = String.format(
                     "{\"$numberLong\": \"%d\"}", divisorLong);
