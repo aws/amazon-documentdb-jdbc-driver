@@ -588,6 +588,14 @@
     <aggregation value='AGG_SECOND'/>
     <aggregation value='AGG_ISO_YEAR'/>
     <aggregation value='AGG_ISO_WEEKDAY'/>
+    <aggregation value='TRUNC_YEAR'/>
+    <aggregation value='TRUNC_QTR'/>
+    <aggregation value='TRUNC_MONTH'/>
+    <aggregation value='TRUNC_DAY'/>
+    <aggregation value='TRUNC_WEEK'/>
+    <aggregation value='TRUNC_HOUR'/>
+    <aggregation value='TRUNC_MINUTE'/>
+    <aggregation value='TRUNC_SECOND'/>
   </supported-aggregations>
   <sql-format>
     <date-literal-escape value='PostgresStyle' />
