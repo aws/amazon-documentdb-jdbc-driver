@@ -491,6 +491,8 @@ public final class DocumentDbRules {
 
         private static final Map<TimeUnitRange, String> DATE_PART_OPERATORS =
                 new HashMap<>();
+        private static final Instant FIRST_DAY_OF_WEEK_AFTER_EPOCH =
+                Instant.parse("1970-01-05T00:00:00Z");
 
         static {
             // Date part operators
@@ -641,8 +643,8 @@ public final class DocumentDbRules {
                 final TimeUnitRange timeUnitRange) throws SQLFeatureNotSupportedException {
 
             final Instant baseDate = timeUnitRange == TimeUnitRange.WEEK
-                    ? Instant.parse("1970-01-05T00:00:00Z") // Monday (or first day of week)
-                    : Instant.parse("1970-01-01T00:00:00Z");
+                    ? FIRST_DAY_OF_WEEK_AFTER_EPOCH // Monday (or first day of week)
+                    : Instant.EPOCH;
             final long divisorLong = getDivisorValueForNumericFloor(timeUnitRange);
             final String divisor = String.format(
                     "{\"$numberLong\": \"%d\"}", divisorLong);
