@@ -44,8 +44,8 @@ public class DocumentDbTableSchemaGeneratorHelper {
     /**
      * The map of data type promotions.
      *
-     * @see <a href="https://docs.mongodb.com/bi-connector/current/schema/type-conflicts#scalar-scalar-conflicts">
-     * Map Relational Schemas to MongoDB - Scalar-Scalar Conflicts</a>
+     * @see <a href="https://github.com/aws/amazon-documentdb-jdbc-driver#data-type-conflict-promotion">
+     * Map Relational Schemas to DocumentDB - Scalar-Scalar Conflicts</a>
      */
     private static final ImmutableMap<Entry<JdbcType, BsonType>, JdbcType> PROMOTION_MAP =
             new ImmutableMap.Builder<Entry<JdbcType, BsonType>, JdbcType>()
