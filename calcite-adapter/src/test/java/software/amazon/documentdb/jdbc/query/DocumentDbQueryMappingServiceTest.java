@@ -1509,4 +1509,82 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result.getAggregateOperations().get(4));
     }
+
+    @Test
+    @DisplayName("Tests queries with SUBSTRING")
+    void testQuerySubstring() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT SUBSTRING(\"field\", 4, 2) FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2, 3) = 'abc'" , DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(6, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$eq\": [{\"$substrCP\": [\"$array.field\", {\"$subtract\": [2, 1]}, 3]}, \"abc\"]}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(4));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {\"EXPR$0\": {\"$substrCP\": [\"$array.field\", {\"$subtract\": [4, 1]}, 2]}}}"),
+                result.getAggregateOperations().get(5));
+    }
+
+    @Test
+    @DisplayName("Tests queries with containing expressions works.")
+    void testQuerySubstringExpr() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT SUBSTRING(\"field\", \"field2\", \"field1\" - \"field2\") " +
+                                "FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", \"field2\", \"field1\" + \"field2\") = 'abcd'",
+                        DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(6, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$eq\": [{\"$substrCP\": [\"$array.field\", {\"$subtract\": [\"$array.field2\", 1]}, {\"$add\": [\"$array.field1\", \"$array.field2\"]}]}, \"abcd\"]}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(4));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {\"EXPR$0\": {\"$substrCP\": [\"$array.field\", {\"$subtract\": [\"$array.field2\", 1]}, {\"$subtract\": [\"$array.field1\", \"$array.field2\"]}]}}}"),
+                result.getAggregateOperations().get(5));
+    }
 }

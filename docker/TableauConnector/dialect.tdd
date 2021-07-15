@@ -507,6 +507,17 @@
     <function group='date' name='NOW' return-type='datetime'>
       <formula>CURRENT_TIMESTAMP</formula>
     </function>
+    <function group='string' name='MID' return-type='str'>
+      <formula>SUBSTRING(%1, %2)</formula>
+      <argument type='str' />
+      <argument type='int' />
+   </function>
+   <function group='string' name='MID' return-type='str'>
+      <formula>SUBSTRING(%1, %2, %3)</formula>
+      <argument type='str' />
+      <argument type='int' />
+      <argument type='int' />
+    </function>
     <date-function name='DATEADD' return-type='datetime'>
       <formula>TIMESTAMPADD(%1, %2, %3)</formula>
       <argument type='localstr' />

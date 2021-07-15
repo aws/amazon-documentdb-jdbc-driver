@@ -102,6 +102,7 @@ public class DocumentDbQueryMappingService {
                         .build();
             }
         } catch (Exception e) {
+            // TODO: AD-273 Fix this error handling.
             throw SqlError.createSQLException(
                     LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql,
                     getExceptionMessages(e));
