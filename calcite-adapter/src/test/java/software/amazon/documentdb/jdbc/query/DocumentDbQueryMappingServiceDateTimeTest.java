@@ -568,5 +568,28 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + " }"
                         + "}").toJson(),
                 ((BsonDocument) operations2.get(0)).toJson());
+
+        final String floorDayQuery3 =
+                String.format(
+                        "SELECT FLOOR(\"field\" TO QUARTER)"
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context3 = queryMapper.get(floorDayQuery3);
+        Assertions.assertNotNull(context3);
+        final List<Bson> operations3 = context3.getAggregateOperations();
+        Assertions.assertEquals(1, operations3.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\":"
+                        + " {\"EXPR$0\": "
+                        + "   {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]},"
+                        + "     {\"$dateFromString\": {\"dateString\": {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-01-01T00:00:00Z\"}}}},"
+                        + "   {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, "
+                        + "     {\"$dateFromString\": {\"dateString\": {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-04-01T00:00:00Z\"}}}},"
+                        + "   {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]},"
+                        + "     {\"$dateFromString\": {\"dateString\": {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-07-01T00:00:00Z\"}}}},"
+                        + "   {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]},"
+                        + "     {\"$dateFromString\": {\"dateString\": {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-10-01T00:00:00Z\"}}}},"
+                        + "   null]}]}]}]}}}").toJson(),
+                ((BsonDocument) operations3.get(0)).toJson());
     }
 }

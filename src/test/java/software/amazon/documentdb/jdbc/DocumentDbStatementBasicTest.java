@@ -1606,6 +1606,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 String.format("SELECT"
                                 + " FLOOR(\"field\" TO YEAR),"
                                 + " FLOOR(\"field\" TO MONTH),"
+                                + " FLOOR(\"field\" TO QUARTER),"
                                 + " FLOOR(\"field\" TO DAY),"
                                 + " FLOOR(\"field\" TO HOUR),"
                                 + " FLOOR(\"field\" TO MINUTE),"
@@ -1613,11 +1614,13 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                                 + " FLOOR(\"field\" TO MILLISECOND),"
                                 + " FLOOR(\"fieldEpoch\" TO YEAR),"
                                 + " FLOOR(\"fieldEpoch\" TO MONTH),"
+                                + " FLOOR(\"fieldEpoch\" TO QUARTER),"
                                 + " FLOOR(\"fieldEpoch\" TO DAY),"
                                 + " FLOOR(\"fieldEpoch\" TO HOUR),"
                                 + " FLOOR(\"fieldEpoch\" TO MINUTE),"
                                 + " FLOOR(\"fieldEpoch\" TO SECOND),"
-                                + " FLOOR(\"fieldEpoch\" TO MILLISECOND)"
+                                + " FLOOR(\"fieldEpoch\" TO MILLISECOND),"
+                                + " FLOOR(NULL TO MILLISECOND)"
                                 + " FROM \"%s\".\"%s\"",
                         DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
@@ -1629,42 +1632,49 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 getTruncatedTimestamp(offsetDateTime, offsetDateTime.getMonthValue()),
                 resultSet.getTimestamp(2).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                getTruncatedTimestamp(offsetDateTime, 1),
                 resultSet.getTimestamp(3).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.HOURS),
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
                 resultSet.getTimestamp(4).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.MINUTES),
+                getTruncatedTimestamp(dateTime, ChronoUnit.HOURS),
                 resultSet.getTimestamp(5).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.SECONDS),
+                getTruncatedTimestamp(dateTime, ChronoUnit.MINUTES),
                 resultSet.getTimestamp(6).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.MILLIS),
+                getTruncatedTimestamp(dateTime, ChronoUnit.SECONDS),
                 resultSet.getTimestamp(7).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.MILLIS),
+                resultSet.getTimestamp(8).getTime());
 
         Assertions.assertEquals(
                 getTruncatedTimestamp(offsetEpochDateTime, 1),
-                resultSet.getTimestamp(8).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetEpochDateTime, offsetEpochDateTime.getMonthValue()),
                 resultSet.getTimestamp(9).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.DAYS),
+                getTruncatedTimestamp(offsetEpochDateTime, offsetEpochDateTime.getMonthValue()),
                 resultSet.getTimestamp(10).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.HOURS),
+                getTruncatedTimestamp(offsetEpochDateTime, 1),
                 resultSet.getTimestamp(11).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.MINUTES),
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.DAYS),
                 resultSet.getTimestamp(12).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.SECONDS),
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.HOURS),
                 resultSet.getTimestamp(13).getTime());
         Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.MILLIS),
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.MINUTES),
                 resultSet.getTimestamp(14).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.SECONDS),
+                resultSet.getTimestamp(15).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.MILLIS),
+                resultSet.getTimestamp(16).getTime());
+        Assertions.assertNull(resultSet.getTimestamp(17));
         Assertions.assertFalse(resultSet.next());
 
         // Test WEEK (to Monday) truncation
@@ -1677,7 +1687,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         + " FLOOR(TIMESTAMPADD(DAY, 4, \"field\") TO WEEK)," // Friday
                         + " FLOOR(TIMESTAMPADD(DAY, 5, \"field\") TO WEEK)," // Saturday
                         + " FLOOR(TIMESTAMPADD(DAY, 6, \"field\") TO WEEK)," // Sunday
-                        + " FLOOR(TIMESTAMPADD(DAY, 7, \"field\") TO WEEK)" // Next week
+                        + " FLOOR(TIMESTAMPADD(DAY, 7, \"field\") TO WEEK)," // Next week
+                        + " FLOOR(NULL TO WEEK)" // NULL
                         + " FROM \"%s\".\"%s\"",
                 DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet1);
@@ -1711,7 +1722,35 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                                 .plus(1, ChronoUnit.WEEKS)
                                 .toInstant(), ChronoUnit.DAYS),
                 resultSet1.getTimestamp(8).getTime());
+        Assertions.assertNull(resultSet1.getTimestamp(9));
         Assertions.assertFalse(resultSet1.next());
+
+        // Test QUARTER truncation
+        final ResultSet resultSet2 = statement.executeQuery(String.format(
+                "SELECT %n"
+                        + " FLOOR(\"field\" TO QUARTER), %n"
+                        + " FLOOR(TIMESTAMPADD(DAY, 100, \"field\") TO QUARTER), %n"
+                        + " FLOOR(TIMESTAMPADD(DAY, 200, \"field\") TO QUARTER), %n"
+                        + " FLOOR(TIMESTAMPADD(DAY, 300, \"field\") TO QUARTER), %n"
+                        + " FLOOR(NULL TO QUARTER) %n"
+                        + " FROM \"%s\".\"%s\"",
+                DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 1), // Jan. 01
+                resultSet2.getTimestamp(1).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 4), // Apr. 01
+                resultSet2.getTimestamp(2).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 7), // Jul. 01
+                resultSet2.getTimestamp(3).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 10), // Oct. 01
+                resultSet2.getTimestamp(4).getTime());
+        Assertions.assertNull(resultSet2.getTimestamp(5)); // NULL
+        Assertions.assertFalse(resultSet2.next());
 
         // Don't support FLOOR for numeric, yet.
         final String errorMessage = Assertions.assertThrows(
