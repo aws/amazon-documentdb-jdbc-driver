@@ -16,6 +16,8 @@
 
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -25,6 +27,8 @@ import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.util.Util;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+
 import java.util.Iterator;
 import java.util.List;
 
@@ -36,7 +40,7 @@ import java.util.List;
 @AllArgsConstructor
 public class DocumentDbEnumerable extends AbstractEnumerable<Object> {
 
-    private final MongoDatabase mongoDb;
+    private final DocumentDbConnectionProperties properties;
     private final String collectionName;
     private final List<Bson> list;
     private final Function1<Document, Object> getter;
@@ -45,13 +49,19 @@ public class DocumentDbEnumerable extends AbstractEnumerable<Object> {
     @Override
     public Enumerator<Object> enumerator() {
         final Iterator<Document> resultIterator;
+        MongoClient client = null;
         try {
-            resultIterator = mongoDb.getCollection(collectionName)
+            client = MongoClients.create(properties.buildMongoClientSettings());
+            final MongoDatabase database = client.getDatabase(properties.getDatabase());
+            resultIterator = database.getCollection(collectionName)
                     .aggregate(list).iterator();
         } catch (Exception e) {
+            if (client != null) {
+                client.close();
+            }
             throw new RuntimeException("While running MongoDB query "
                     + Util.toString(list, "[", ",\n", "]"), e);
         }
-        return new DocumentDbEnumerator(resultIterator, getter);
+        return new DocumentDbEnumerator(resultIterator, getter, client);
     }
 }
