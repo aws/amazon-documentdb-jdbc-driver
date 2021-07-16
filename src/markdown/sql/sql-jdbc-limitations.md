@@ -1,5 +1,9 @@
 # SQL and JDBC Support and Limitations
 
+## Identifier Limitations
+
+The DocumentDB JDBC driver limits the maximum identifier length to 128 characters.
+
 ## SQL - Join Limitations
 
 ### Cross Collection Joins

@@ -9,6 +9,12 @@ The driver will determine if a cached version of the schema for that collection 
 If a cached version does not exist, it will sample the collection for documents and create a schema
 based on the following behavior.
 
+### Schema Generation Limitations
+
+The DocumentDB JDBC driver imposes a limit on the length of identifiers at 128 characters.
+The schema generator may truncate the length of generated identifiers (table names and column names)
+to ensure they fit that limit.
+
 ### Scanning Method Options
 
 The sampling behavior can be modified using connection string or datasource options.
