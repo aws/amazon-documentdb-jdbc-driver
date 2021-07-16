@@ -16,12 +16,12 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import com.mongodb.client.MongoDatabase;
 import lombok.SneakyThrows;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.utilities.LazyLinkedHashMap;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
@@ -36,9 +36,9 @@ import java.util.Map;
  */
 public class DocumentDbSchema extends AbstractSchema {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchema.class);
-    private final MongoDatabase mongoDatabase;
     private Map<String, Table> tables;
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
+    private final DocumentDbConnectionProperties properties;
 
     /**
      * Constructs a new {@link DocumentDbSchema} from {@link DocumentDbDatabaseSchemaMetadata}.
@@ -46,14 +46,19 @@ public class DocumentDbSchema extends AbstractSchema {
      * @param databaseMetadata the database metadata.
      */
     protected DocumentDbSchema(final DocumentDbDatabaseSchemaMetadata databaseMetadata,
-            final MongoDatabase mongoDatabase) {
+            final DocumentDbConnectionProperties properties) {
         this.databaseMetadata = databaseMetadata;
-        this.mongoDatabase = mongoDatabase;
+        this.properties = properties;
         tables = null;
     }
 
-    public MongoDatabase getMongoDatabase() {
-        return mongoDatabase;
+    /**
+     * Gets the connection properties.
+     *
+     * @return the {@link DocumentDbConnectionProperties} connection properties object.
+     */
+    public DocumentDbConnectionProperties getProperties() {
+        return properties;
     }
 
     @SneakyThrows
