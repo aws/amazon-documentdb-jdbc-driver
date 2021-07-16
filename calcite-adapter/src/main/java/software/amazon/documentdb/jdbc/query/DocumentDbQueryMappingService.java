@@ -30,6 +30,7 @@ import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.linq4j.QueryProvider;
 import org.apache.calcite.rel.type.RelDataTypeSystem;
+import org.apache.calcite.rel.type.RelDataTypeSystemImpl;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.SchemaVersion;
@@ -101,6 +102,7 @@ public class DocumentDbQueryMappingService {
                         .build();
             }
         } catch (Exception e) {
+            // TODO: AD-273 Fix this error handling.
             throw SqlError.createSQLException(
                     LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql,
                     getExceptionMessages(e));
@@ -136,6 +138,23 @@ public class DocumentDbQueryMappingService {
     }
 
     /**
+     * Our own implementation of {@link RelDataTypeSystem}. All settings are the same as
+     * the default unless otherwise overridden.
+     */
+    private static class DocumentDbTypeSystem extends RelDataTypeSystemImpl implements RelDataTypeSystem {
+
+        /**
+         * Returns whether the least restrictive type of a number of CHAR types of different lengths
+         * should be a VARCHAR type.
+         * @return true to be consistent with SQLServer, MySQL and other major DBMS.
+         */
+        @Override
+        public boolean shouldConvertRaggedUnionTypesToVarying() {
+            return true;
+        }
+    }
+
+    /**
      * Our own implementation of {@link CalcitePrepare.Context} to pass the schema without a {@link java.sql.Connection}.
      * Based on the prepare context in CalciteConnectionImpl.
      */
@@ -151,7 +170,7 @@ public class DocumentDbQueryMappingService {
                 final CalciteSchema rootSchema,
                 final String defaultSchema,
                 final DocumentDbConnectionProperties properties) {
-            this.typeFactory = new JavaTypeFactoryImpl(RelDataTypeSystem.DEFAULT);
+            this.typeFactory = new JavaTypeFactoryImpl(new DocumentDbTypeSystem());
             this.config = new CalciteConnectionConfigImpl(properties);
             final long now = System.currentTimeMillis();
             final SchemaVersion schemaVersion = new LongSchemaVersion(now);
