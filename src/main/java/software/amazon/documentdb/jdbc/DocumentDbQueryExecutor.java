@@ -125,7 +125,6 @@ public class DocumentDbQueryExecutor {
                             SqlState.OPERATION_CANCELED,
                             SqlError.QUERY_CANCELED);
                 }
-                resetQueryState();
             }
             return resultSet;
         } catch (final SQLException e) {
@@ -135,19 +134,19 @@ public class DocumentDbQueryExecutor {
                 if (e instanceof MongoException
                         && ((MongoException) e).getCode() == OPERATION_CANCELLED_CODE
                         && queryState.equals(QueryState.CANCELED)) {
-                    resetQueryState();
                     throw SqlError.createSQLException(
                             LOGGER,
                             SqlState.OPERATION_CANCELED,
                             SqlError.QUERY_CANCELED);
                 } else {
-                    resetQueryState();
                     throw SqlError.createSQLException(
                             LOGGER,
                             SqlState.CONNECTION_EXCEPTION,
                             SqlError.QUERY_FAILED, e);
                 }
             }
+        } finally {
+            resetQueryState();
         }
     }
 
