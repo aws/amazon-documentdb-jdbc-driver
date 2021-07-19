@@ -18,6 +18,8 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableMap;
 import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import lombok.SneakyThrows;
@@ -42,6 +44,7 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
@@ -134,16 +137,21 @@ public class DocumentDbTable extends AbstractQueryableTable
      * <p>For example,
      * <code>zipsTable.find("{state: 'OR'}", "{city: 1, zipcode: 1}")</code></p>
      *
-     * @param mongoDb MongoDB connection
+     * @param properties Connection properties
      * @param filterJson Filter JSON string, or null
      * @param projectJson Project JSON string, or null
      * @param fields List of fields to project; or null to return map
      * @return Enumerator of results
      */
-    private Enumerable<Object> find(final MongoDatabase mongoDb, final String filterJson,
-            final String projectJson, final List<Entry<String, Class<?>>> fields) {
+    private Enumerable<Object> find(
+            final DocumentDbConnectionProperties properties,
+            final String filterJson,
+            final String projectJson,
+            final List<Entry<String, Class<?>>> fields) {
+        final MongoClient client = MongoClients.create(properties.buildMongoClientSettings());
+        final MongoDatabase database = client.getDatabase(properties.getDatabase());
         final MongoCollection<Document> collection =
-                mongoDb.getCollection(collectionName);
+                database.getCollection(collectionName);
         final Bson filter = filterJson == null
                 ? BsonDocument.parse("{}")
                 : BsonDocument.parse(filterJson);
@@ -154,7 +162,7 @@ public class DocumentDbTable extends AbstractQueryableTable
             @Override public Enumerator<Object> enumerator() {
                 final FindIterable<Document> cursor =
                         collection.find(filter).projection(project);
-                return new DocumentDbEnumerator(cursor.iterator(), getter);
+                return new DocumentDbEnumerator(cursor.iterator(), getter, client);
             }
         };
     }
@@ -167,12 +175,14 @@ public class DocumentDbTable extends AbstractQueryableTable
      * "{$group: {_id: '$city', c: {$sum: 1}, p: {$sum: '$pop'}}}")
      * </code></p>
      *
-     * @param mongoDb MongoDB connection
+     * @param properties Connection properties
      * @param fields List of fields to project; or null to return map
+     * @param paths List of paths
      * @param operations One or more JSON strings
      * @return Enumerator of results
      */
-    Enumerable<Object> aggregate(final MongoDatabase mongoDb,
+    Enumerable<Object> aggregate(
+            final DocumentDbConnectionProperties properties,
             final List<Entry<String, Class<?>>> fields,
             final List<String> paths,
             final List<String> operations) {
@@ -185,7 +195,7 @@ public class DocumentDbTable extends AbstractQueryableTable
         final Function1<Document, Object> getter =
                 DocumentDbEnumerator.getter(fields, tableMetadata);
         // Return this instead of the anonymous class to get more information from CalciteSignature.
-        return new DocumentDbEnumerable(mongoDb, collectionName, list, getter, paths);
+        return new DocumentDbEnumerable(properties, collectionName, list, getter, paths);
     }
 
     /** Implementation of {@link org.apache.calcite.linq4j.Queryable} based on
@@ -202,12 +212,12 @@ public class DocumentDbTable extends AbstractQueryableTable
         @Override public Enumerator<T> enumerator() {
             //noinspection unchecked
             final Enumerable<T> enumerable =
-                    (Enumerable<T>) getTable().find(getMongoDb(), null, null, null);
+                    (Enumerable<T>) getTable().find(getProperties(), null, null, null);
             return enumerable.enumerator();
         }
 
-        private MongoDatabase getMongoDb() {
-            return schema.unwrap(DocumentDbSchema.class).getMongoDatabase();
+        private DocumentDbConnectionProperties getProperties() {
+            return schema.unwrap(DocumentDbSchema.class).getProperties();
         }
 
         private DocumentDbTable getTable() {
@@ -223,7 +233,7 @@ public class DocumentDbTable extends AbstractQueryableTable
         public Enumerable<Object> aggregate(final List<Entry<String, Class<?>>> fields,
                 final List<String> paths,
                 final List<String> operations) {
-            return getTable().aggregate(getMongoDb(), fields, paths, operations);
+            return getTable().aggregate(getProperties(), fields, paths, operations);
         }
 
         /** Called via code-generation.
@@ -238,7 +248,7 @@ public class DocumentDbTable extends AbstractQueryableTable
         @SuppressWarnings("UnusedDeclaration")
         public Enumerable<Object> find(final String filterJson,
                 final String projectJson, final List<Entry<String, Class<?>>> fields) {
-            return getTable().find(getMongoDb(), filterJson, projectJson, fields);
+            return getTable().find(getProperties(), filterJson, projectJson, fields);
         }
     }
 

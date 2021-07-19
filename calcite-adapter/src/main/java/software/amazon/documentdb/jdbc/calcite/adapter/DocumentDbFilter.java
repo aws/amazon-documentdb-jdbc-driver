@@ -16,30 +16,17 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
+import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
-import org.apache.calcite.plan.RelOptUtil;
 import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.Filter;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
-import org.apache.calcite.rex.RexBuilder;
-import org.apache.calcite.rex.RexCall;
-import org.apache.calcite.rex.RexInputRef;
-import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexUtil;
-import org.apache.calcite.util.JsonBuilder;
-import org.apache.calcite.util.Pair;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * Implementation of a {@link Filter}
@@ -48,10 +35,17 @@ import java.util.Map;
 public class DocumentDbFilter extends Filter implements DocumentDbRel {
 
     /**
+     * This is a placeholder field to contain the output of the boolean expression in a
+     * where clause.
+     */
+    public static final String BOOLEAN_FLAG_FIELD = "\"placeholderField1F84EB1G3K47\"";
+
+    /**
      * Creates a new {@link DocumentDbFilter}
-     * @param cluster the relational option cluster.
-     * @param traitSet the trait set.
-     * @param child the child.
+     *
+     * @param cluster   the relational option cluster.
+     * @param traitSet  the trait set.
+     * @param child     the child.
      * @param condition the condition.
      */
     public DocumentDbFilter(
@@ -64,32 +58,39 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         assert getConvention() == child.getConvention();
     }
 
-    @Override public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
-            final RelMetadataQuery mq) {
+    @Override
+    public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
+                                                final RelMetadataQuery mq) {
         return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.FILTER_COST_FACTOR);
     }
 
-    @Override public DocumentDbFilter copy(final RelTraitSet traitSet, final RelNode input,
-            final RexNode condition) {
+    @Override
+    public DocumentDbFilter copy(final RelTraitSet traitSet, final RelNode input,
+                                 final RexNode condition) {
         return new DocumentDbFilter(getCluster(), traitSet, input, condition);
     }
 
-    @Override public void implement(final Implementor implementor) {
+    @Override
+    public void implement(final Implementor implementor) {
         implementor.visitChild(0, getInput());
         // DocumentDB: modified - start
         final DocumentDbRel.Implementor mongoImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
         mongoImplementor.visitChild(0, getInput());
-        final Translator translator =
-                new Translator(implementor.getRexBuilder(),
-                        DocumentDbRules.mongoFieldNames(getRowType(),
+        final DocumentDbRules.RexToMongoTranslator rexToMongoTranslator =
+                new DocumentDbRules.RexToMongoTranslator(
+                        (JavaTypeFactory) getCluster().getTypeFactory(),
+                        DocumentDbRules.mongoFieldNames(getInput().getRowType(),
                                 mongoImplementor.getMetadataTable()));
-        // DocumentDB: modified - end
-        final String match = translator.translateMatch(condition);
-        implementor.add(null, match);
+        final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
+        final String match = expandedCondition.accept(rexToMongoTranslator);
+        implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
+        implementor.add(null, "{\"$match\": {" + BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}");
+        implementor.add(null, "{\"$project\": {" + BOOLEAN_FLAG_FIELD + ":0}}");
     }
 
-    /** Translates {@link RexNode} expressions into MongoDB expression strings. */
+    /*
+    /** Translates {@link RexNode} expressions into MongoDB expression strings. o/
     static class Translator {
         private final JsonBuilder builder = new JsonBuilder();
         private final Multimap<String, Pair<String, RexLiteral>> multiMap =
@@ -129,7 +130,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         }
 
         /** Translates a condition that may be an AND of other conditions. Gathers
-         * together conditions that apply to the same field. */
+         * together conditions that apply to the same field. o/
         private Map<String, Object> translateAnd(final RexNode node0) {
             eqMap.clear();
             multiMap.clear();
@@ -178,7 +179,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
          *
          * <p>For example, {@code stronger("$lt", 100, 200)} returns true, because
          * "&lt; 100" is a more powerful condition than "&lt; 200".
-         */
+         o/
         private static boolean stronger(final String key, final Object v0, final Object v1) {
             if ("$lt".equals(key) || "$lte".equals(key)) {
                 if (v0 instanceof Number && v1 instanceof Number) {
@@ -218,7 +219,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         }
 
         /** Translates a call to a binary operator, reversing arguments if
-         * necessary. */
+         * necessary. o/
         private Void translateBinary(final String op, final String rop, final RexCall call) {
             final RexNode left = call.operands.get(0);
             final RexNode right = call.operands.get(1);
@@ -233,7 +234,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
             throw new AssertionError("cannot translate op " + op + " call " + call);
         }
 
-        /** Translates a call to a binary operator. Returns whether successful. */
+        /** Translates a call to a binary operator. Returns whether successful. o/
         private boolean translateBinary2(final String op, final RexNode left, final RexNode right) {
             switch (right.getKind()) {
                 case LITERAL:
@@ -274,4 +275,5 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
             }
         }
     }
+    */
 }

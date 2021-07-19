@@ -20,7 +20,9 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import javax.annotation.Nullable;
+import java.sql.SQLException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Set;
 
 public interface SchemaReader {
@@ -31,6 +33,13 @@ public interface SchemaReader {
      * @return a {@link DocumentDbSchema} schema for the database.
      */
     DocumentDbSchema read();
+
+    /**
+     * Reads the list of all schema in the current database.
+     *
+     * @return a list of {@link DocumentDbSchema} items for the current database.
+     */
+    List<DocumentDbSchema> list() throws SQLException;
 
     /**
      * Reads the latest version of the specified schema for current database.

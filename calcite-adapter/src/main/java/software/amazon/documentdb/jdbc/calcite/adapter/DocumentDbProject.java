@@ -28,6 +28,7 @@ import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexNode;
+import org.apache.calcite.rex.RexUtil;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -105,7 +106,9 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String outName = DocumentDbRules.getNormalizedIdentifier(pair.right);
-            final String expr = pair.left.accept(translator);
+            final RexNode expandedNode = RexUtil.expandSearch(
+                    implementor.getRexBuilder(), null, pair.left);
+            final String expr = expandedNode.accept(translator);
 
             // Check if we are projecting an existing field or generating a new expression.
             if (pair.left instanceof RexInputRef) {

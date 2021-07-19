@@ -344,12 +344,12 @@
       <argument type='int' />
     </function>
     <function group='operator' name='+' return-type='datetime'>
-      <formula>(%1 + %2)</formula>
+      <formula>TIMESTAMPADD(SECOND, CAST((%2 * 86400) AS BIGINT), %1)</formula>
       <argument type='datetime' />
       <argument type='real' />
     </function>
     <function group='operator' name='+' return-type='date'>
-      <formula>(%1 + %2)</formula>
+      <formula>TIMESTAMPADD(DAY, %2, %1)</formula>
       <argument type='date' />
       <argument type='int' />
     </function>
@@ -365,11 +365,6 @@
     <function group='operator' name='-' return-type='int'>
       <formula>(0 - %1)</formula>
       <argument type='int' />
-    </function>
-    <function group='operator' name='-' return-type='real'>
-      <formula>(%1 - %2)</formula>
-      <argument type='datetime' />
-      <argument type='datetime' />
     </function>
     <function group='operator' name='-' return-type='int'>
       <formula>(%1 - %2)</formula>
@@ -377,14 +372,19 @@
       <argument type='int' />
     </function>
     <function group='operator' name='-' return-type='datetime'>
-      <formula>(%1 - %2)</formula>
+      <formula>TIMESTAMPADD(SECOND, CAST((%2 * -86400) AS BIGINT), %1)</formula>
       <argument type='datetime' />
       <argument type='real' />
     </function>
     <function group='operator' name='-' return-type='date'>
-      <formula>(%1 - %2)</formula>
+      <formula>TIMESTAMPADD(DAY, %2 * -1, %1)</formula>
       <argument type='date' />
       <argument type='int' />
+    </function>
+    <function group='operator' name='-' return-type='real'>
+      <formula>TIMESTAMPDIFF(DAY, %2, %1)</formula>
+      <argument type='datetime' />
+      <argument type='datetime' />
     </function>
     <function group='operator' name='/' return-type='real'>
       <formula>(%1 / %2)</formula>
@@ -476,6 +476,99 @@
       <argument type='bool' />
       <argument type='bool' />
     </function>
+    <function group='date' name='DAY' return-type='int'>
+      <formula>DAYOFMONTH(%1)</formula>
+      <argument type='datetime' />
+    </function>
+    <function group='date' name='MONTH' return-type='int'>
+      <formula>MONTH(%1)</formula>
+      <argument type='datetime' />
+    </function>
+    <!-- Week # is between 0-53 (standard) not 1-52 (Tableau expectation). -->
+    <function group='date' name='WEEK' return-type='int'>
+      <formula>WEEK(%1)</formula>
+      <argument type='datetime' />
+    </function>
+    <function group='date' name='YEAR' return-type='int'>
+      <formula>YEAR(%1)</formula>
+      <argument type='datetime' />
+    </function>
+    <function group='date' name='ISOYEAR' return-type='int'>
+      <formula>EXTRACT(ISOYEAR FROM %1)</formula>
+      <argument type='datetime' />
+    </function>
+    <function group='date' name='ISOWEEKDAY' return-type='int'>
+      <formula>EXTRACT(ISODOW FROM %1)</formula>
+      <argument type='datetime' />
+    </function>
+    <function group='date' name='TODAY' return-type='date'>
+      <formula>CURRENT_DATE</formula>
+    </function>
+    <function group='date' name='NOW' return-type='datetime'>
+      <formula>CURRENT_TIMESTAMP</formula>
+    </function>
+    <function group='string' name='MID' return-type='str'>
+      <formula>SUBSTRING(%1, %2)</formula>
+      <argument type='str' />
+      <argument type='int' />
+   </function>
+   <function group='string' name='MID' return-type='str'>
+      <formula>SUBSTRING(%1, %2, %3)</formula>
+      <argument type='str' />
+      <argument type='int' />
+      <argument type='int' />
+    </function>
+    <date-function name='DATEADD' return-type='datetime'>
+      <formula>TIMESTAMPADD(%1, %2, %3)</formula>
+      <argument type='localstr' />
+      <argument type='int' />
+      <argument type='datetime' />
+    </date-function>
+    <date-function name='DATEDIFF' return-type='int'>
+      <formula>TIMESTAMPDIFF(%1, %2, %3)</formula>
+      <formula part='year'>CAST( EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) - EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) AS BIGINT)</formula>
+      <formula part='quarter'>CAST( (4 * EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) + EXTRACT(QUARTER FROM CAST(%3 AS TIMESTAMP))) - (4 * EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) + EXTRACT(QUARTER FROM CAST(%2 AS TIMESTAMP))) AS BIGINT)</formula>
+      <formula part='month'>CAST( (12 * EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) + EXTRACT(MONTH FROM CAST(%3 AS TIMESTAMP))) - (12 * EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) + EXTRACT(MONTH FROM CAST(%2 AS TIMESTAMP))) AS BIGINT)</formula>
+      <argument type='localstr' />
+      <argument type='datetime' />
+      <argument type='datetime' />
+    </date-function>
+    <!-- DATENAME is not supported syntax. Emulate by casting datepart to string. -->
+    <date-function name='DATENAME' return-type='str'>
+      <formula>CAST(EXTRACT(%1 FROM %2) AS VARCHAR)</formula>
+      <formula part='year'>CAST(YEAR(%2) AS VARCHAR)</formula>
+      <formula part='quarter'>CAST(QUARTER(%2) AS VARCHAR)</formula>
+      <formula part='month'>MONTHNAME(%2)</formula>
+      <formula part='dayofyear'>CAST(DAYOFYEAR(%2) AS VARCHAR)</formula>
+      <formula part='day'>CAST(DAYOFMONTH(%2) AS VARCHAR)</formula>
+      <formula part='weekday'>DAYNAME(%2)</formula>
+      <formula part='week'>CAST(WEEK(%2) AS VARCHAR)</formula>
+      <formula part='hour'>CAST(HOUR(%2) AS VARCHAR)</formula>
+      <formula part='minute'>CAST(MINUTE(%2) AS VARCHAR)</formula>
+      <formula part='second'>CAST(SECOND(%2) AS VARCHAR)</formula>
+      <argument type='localstr' />
+      <argument type='datetime' />
+    </date-function>
+    <date-function name='DATEPART' return-type='int'>
+      <formula>EXTRACT(%1 FROM %2)</formula>
+      <formula part='year'>YEAR(%2)</formula>
+      <formula part='quarter'>QUARTER(%2)</formula>
+      <formula part='month'>MONTH(%2)</formula>
+      <formula part='dayofyear'>DAYOFYEAR(%2)</formula>
+      <formula part='day'>DAYOFMONTH(%2)</formula>
+      <formula part='weekday'>DAYOFWEEK(%2)</formula>
+      <formula part='week'>WEEK(%2)</formula>
+      <formula part='hour'>HOUR(%2)</formula>
+      <formula part='minute'>MINUTE(%2)</formula>
+      <formula part='second'>SECOND(%2)</formula>
+      <argument type='localstr' />
+      <argument type='datetime' />
+    </date-function>
+    <date-function name='DATETRUNC' return-type='datetime'>
+      <formula>FLOOR(%2 TO %1)</formula>
+      <argument type='localstr' />
+      <argument type='datetime' />
+    </date-function>
   </function-map>
   <supported-aggregations>
     <aggregation value='AGG_COUNT'/>
@@ -484,9 +577,82 @@
     <aggregation value='AGG_AVG'/>
     <aggregation value='AGG_MIN'/>
     <aggregation value='AGG_MAX'/>
+    <aggregation value='AGG_YEAR'/>
+    <aggregation value='AGG_QTR'/>
+    <aggregation value='AGG_MONTH'/>
+    <aggregation value='AGG_DAY'/>
+    <aggregation value='AGG_WEEK'/>
+    <aggregation value='AGG_WEEKDAY'/>
+    <aggregation value='AGG_HOUR'/>
+    <aggregation value='AGG_MINUTE'/>
+    <aggregation value='AGG_SECOND'/>
+    <aggregation value='AGG_ISO_YEAR'/>
+    <aggregation value='AGG_ISO_WEEKDAY'/>
+    <aggregation value='TRUNC_YEAR'/>
+    <aggregation value='TRUNC_QTR'/>
+    <aggregation value='TRUNC_MONTH'/>
+    <aggregation value='TRUNC_DAY'/>
+    <aggregation value='TRUNC_WEEK'/>
+    <aggregation value='TRUNC_HOUR'/>
+    <aggregation value='TRUNC_MINUTE'/>
+    <aggregation value='TRUNC_SECOND'/>
   </supported-aggregations>
   <sql-format>
     <date-literal-escape value='PostgresStyle' />
+    <date-parts>
+      <date-part-group>
+        <!-- Default: used by DATEPART and DATENAME-->
+        <part name='year' value='YEAR' />
+        <part name='quarter' value='QUARTER' />
+        <part name='month' value='MONTH' />
+        <part name='week' value='WEEK' />
+        <part name='weekday' value='DOW' />
+        <part name='dayofyear' value='DOY' />
+        <part name='day' value='DAY' />
+        <part name='hour' value='HOUR' />
+        <part name='minute' value='MINUTE' />
+        <part name='second' value='SECOND' />
+      </date-part-group>
+      <date-part-group>
+        <date-function name='DATEADD' />
+        <part name='year' value='YEAR' />
+        <part name='quarter' value='QUARTER' />
+        <part name='month' value='MONTH' />
+        <part name='week' value='WEEK' />
+        <part name='weekday' value='DAY' />
+        <part name='dayofyear' value='DAY' />
+        <part name='day' value='DAY' />
+        <part name='hour' value='HOUR' />
+        <part name='minute' value='MINUTE' />
+        <part name='second' value='SECOND' />
+      </date-part-group>
+      <date-part-group>
+        <date-function name='DATEDIFF' />
+        <part name='year' value='YEAR' />
+        <part name='quarter' value='QUARTER' />
+        <part name='month' value='MONTH' />
+        <part name='week' value='WEEK' />
+        <part name='weekday' value='DAY' />
+        <part name='dayofyear' value='DAY' />
+        <part name='day' value='DAY' />
+        <part name='hour' value='HOUR' />
+        <part name='minute' value='MINUTE' />
+        <part name='second' value='SECOND' />
+      </date-part-group>
+      <date-part-group>
+        <date-function name='DATETRUNC' />
+        <part name='year' value='YEAR' />
+        <part name='quarter' value='QUARTER' />
+        <part name='month' value='MONTH' />
+        <part name='week' value='WEEK' />
+        <part name='weekday' value='DAY' />
+        <part name='dayofyear' value='DAY' />
+        <part name='day' value='DAY' />
+        <part name='hour' value='HOUR' />
+        <part name='minute' value='MINUTE' />
+        <part name='second' value='SECOND' />
+      </date-part-group>
+    </date-parts>
     <format-date-literal formula="(DATE '%1')" format='yyyy-MM-dd' />
     <format-datetime-literal formula="(TIMESTAMP '%1')" format='yyyy-MM-dd HH:mm:ss.SSS' />
     <format-false literal='FALSE' predicate='FALSE' />

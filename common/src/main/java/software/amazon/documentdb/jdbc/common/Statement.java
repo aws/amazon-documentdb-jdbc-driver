@@ -81,9 +81,13 @@ public abstract class Statement implements java.sql.Statement {
     public void close() throws SQLException {
         if (!this.isClosed.getAndSet(true)) {
             LOGGER.debug("Cancel any running queries.");
-            // TODO: Commented this out as closing statements in tests was throwing an exception
-            //  because cancelQuery() is unimplemented. Implement and uncomment.
-            // cancelQuery();
+            try {
+                cancelQuery();
+            } catch (final SQLException e) {
+                LOGGER.warn(
+                        "Error occurred while closing Statement. Failed to cancel running query: %s",
+                        e.getMessage());
+            }
 
             if (this.resultSet != null) {
                 LOGGER.debug("Close opened result set.");
@@ -216,16 +220,14 @@ public abstract class Statement implements java.sql.Statement {
     @Override
     public void setFetchSize(final int rows) throws SQLException {
         verifyOpen();
-        if (rows < 1) {
+        if (rows < 0) {
             throw SqlError.createSQLException(
                     LOGGER,
                     SqlState.DATA_EXCEPTION,
                     SqlError.INVALID_FETCH_SIZE,
                     rows);
         }
-
-        // Silently truncate to the maximum number of rows that can be retrieved at a time.
-        this.fetchSize = Math.min(rows, getMaxFetchSize());
+        this.fetchSize = rows;
     }
 
     @Override
@@ -437,11 +439,4 @@ public abstract class Statement implements java.sql.Statement {
      * @throws SQLException - if a database exception occurs
      */
     protected abstract void cancelQuery() throws SQLException;
-
-    /**
-     * Gets the maximum number of rows to fetch.
-     * @return A value representing the maximum number of rows to fetch.
-     * @throws SQLException - if a database exception occurs
-     */
-    protected abstract int getMaxFetchSize() throws SQLException;
 }

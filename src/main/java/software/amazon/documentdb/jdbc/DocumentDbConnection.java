@@ -37,6 +37,8 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.concurrent.Executor;
 
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
+
 /**
  * DocumentDb implementation of Connection.
  */
@@ -104,7 +106,7 @@ public class DocumentDbConnection extends Connection
     private void ensureDatabaseMetadata() throws SQLException {
         if (metadata == null) {
             databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
-                    connectionProperties, connectionProperties.getSchemaName(), false);
+                    connectionProperties, connectionProperties.getSchemaName(), VERSION_LATEST_OR_NEW);
             metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
         }
     }
