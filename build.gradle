@@ -47,6 +47,7 @@ shadowJar {
     // Relocate (shadow) the following packages.
     relocate 'org.apache.calcite', 'org.apache.calcite.shadow'
     relocate 'com.google.guava', 'com.google.guava.shadow'
+    relocate 'com.google.common', 'com.google.common.shadow'
     relocate 'org.mongodb', 'org.mongodb.shadow'
     // Remove any unused dependencies (excluding Calcite)
     minimize {
