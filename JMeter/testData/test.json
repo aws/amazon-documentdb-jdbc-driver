@@ -1,0 +1,5 @@
+{ "_id" : {"$numberLong": 1}, "int0": {"$numberLong": 50}, "int1": {"$numberLong": 10}, "string1" : "Hop" }
+{ "_id" : {"$numberLong": 2}, "int0": {"$numberLong": 40}, "int1": {"$numberLong": 20}, "string1" : "Hip" }
+{ "_id" : {"$numberLong": 3}, "int0": {"$numberLong": 30}, "int1": {"$numberLong": 30}, "string1" : "Hop" }
+{ "_id" : {"$numberLong": 4}, "int0": {"$numberLong": 20}, "int1": {"$numberLong": 40}, "string1" : "Hip" }
+{ "_id" : {"$numberLong": 5}, "int0": {"$numberLong": 10}, "int1": {"$numberLong": 50}, "string1" : "Hop" }
