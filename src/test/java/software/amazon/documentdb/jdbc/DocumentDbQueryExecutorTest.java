@@ -16,37 +16,55 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.google.common.collect.ImmutableList;
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.mongodb.MongoClientSettings;
+import com.mongodb.client.FindIterable;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import lombok.SneakyThrows;
+import org.bson.Document;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaException;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
-import java.sql.Types;
-
-import static software.amazon.documentdb.jdbc.DocumentDbStatementTest.getDocumentDbStatement;
+import java.sql.Statement;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
+    private static final String COLLECTION_NAME = "testCollection";
     private static final String TEST_USER = "user";
     private static final String TEST_PASSWORD = "password";
-    private static final DocumentDbConnectionProperties VALID_CONNECTION_PROPERTIES = new DocumentDbConnectionProperties();
+    private static final String QUERY = "SELECT COUNT(*) FROM \"database\".\"testCollection\"";
+    private static final DocumentDbConnectionProperties VALID_CONNECTION_PROPERTIES =
+            new DocumentDbConnectionProperties();
+    private static DocumentDbStatement statement;
+    private ResultSet resultSet;
 
     @BeforeAll
-    @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
-    static void initialize() {
+    @SuppressFBWarnings(
+            value = "HARD_CODE_PASSWORD",
+            justification = "Hardcoded for test purposes only")
+    void initialize() throws SQLException {
         // Add a valid users to the local MongoDB instance.
         createUser(DATABASE_NAME, TEST_USER, TEST_PASSWORD);
         VALID_CONNECTION_PROPERTIES.setUser(TEST_USER);
@@ -54,96 +72,219 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         VALID_CONNECTION_PROPERTIES.setDatabase(DATABASE_NAME);
         VALID_CONNECTION_PROPERTIES.setTlsEnabled("false");
         VALID_CONNECTION_PROPERTIES.setHostname("localhost:" + getMongoPort());
+
+        prepareSimpleConsistentData(DATABASE_NAME, COLLECTION_NAME, 1, TEST_USER, TEST_PASSWORD);
+        final DocumentDbConnection connection = new DocumentDbConnection(VALID_CONNECTION_PROPERTIES);
+        statement =
+                new DocumentDbStatement(
+                        connection,
+                        new MockQueryExecutor(
+                                statement,
+                                VALID_CONNECTION_PROPERTIES,
+                                null,
+                                0,
+                                0));
     }
 
     @AfterEach
-    void afterEach() throws SQLException {
+    void afterAll() throws SQLException {
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(VALID_CONNECTION_PROPERTIES);
         schemaWriter.remove("id");
+        if (resultSet != null) {
+            resultSet.close();
+        }
+    }
+
+    /** Tests that canceling a query before it has been executed fails. */
+    @Test
+    @DisplayName("Tests canceling a query without executing first.")
+    public void testCancelQueryWithoutExecute() {
+        final ExecutorService cancelThread = getCancelThread();
+        final Cancel cancel = launchCancelThread(0, statement, cancelThread);
+        waitCancelToComplete(cancelThread);
+        Assertions.assertEquals(
+                "Cannot cancel query, it is either completed or has not started.",
+                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel)).getMessage());
     }
 
     /**
-     * Lifted from DocumentDbResultSetTest but uses the DocumentDbQueryExecutor to get a result.
-     * Shows that we are getting the correct result set metadata without the Avatica driver.
+     * Tests that canceling a query while it is executing succeeds and that the query execution then
+     * fails because it has been canceled.
      */
     @Test
-    void testGetResultSetMetadataSimple() throws SQLException, DocumentDbSchemaException {
-        final String collectionSimple = "collectionSimple";
-        prepareSimpleConsistentData(DATABASE_NAME, collectionSimple,
-                5, TEST_USER, TEST_PASSWORD);
-        final DocumentDbDatabaseSchemaMetadata databaseMetadata = DocumentDbDatabaseSchemaMetadata
-                .get(VALID_CONNECTION_PROPERTIES, "id", true);
-        final DocumentDbQueryMappingService queryMapper = new DocumentDbQueryMappingService(
-                VALID_CONNECTION_PROPERTIES, databaseMetadata);
-        final DocumentDbStatement statement = getDocumentDbStatement();
-        final DocumentDbQueryExecutor queryExecutor = new DocumentDbQueryExecutor(
-                statement,
-                null,
-                queryMapper,
-                0,
-                0);
-        final ResultSet resultSet = queryExecutor.executeQuery(String.format(
-                "SELECT * FROM \"%s\"", collectionSimple));
-        Assertions.assertNotNull(resultSet);
+    @DisplayName("Tests canceling a query while execution is in progress.")
+    public void testCancelQueryWhileExecuteInProgress() {
+        // Wait 100 milliseconds before attempting to cancel.
+        final ExecutorService cancelThread = getCancelThread();
+        final Cancel cancel = launchCancelThread(100, statement, cancelThread);
 
-        final ResultSetMetaData metadata = resultSet.getMetaData();
-        Assertions.assertEquals(13, metadata.getColumnCount());
-        Assertions.assertEquals(collectionSimple, metadata.getTableName(1));
-        Assertions.assertNull(metadata.getCatalogName(1));
-        Assertions.assertEquals(DATABASE_NAME, metadata.getSchemaName(1));
+        // Check that query was canceled and cancel thread did not throw exception.
+        Assertions.assertEquals(
+                "Query has been canceled.",
+                Assertions.assertThrows(SQLException.class, () -> resultSet = statement.executeQuery(QUERY))
+                        .getMessage());
+        waitCancelToComplete(cancelThread);
+        Assertions.assertDoesNotThrow(() -> cancel.getException());
+    }
 
-        Assertions.assertEquals(collectionSimple + "__id", metadata.getColumnName(1));
-        Assertions.assertEquals(collectionSimple + "__id", metadata.getColumnLabel(1));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(1));
-        Assertions.assertEquals("java.lang.String", metadata.getColumnClassName(1));
-        Assertions.assertEquals(Types.VARCHAR,  metadata.getColumnType(1));
-        Assertions.assertEquals(0, metadata.isNullable(1));
-        Assertions.assertEquals(65536, metadata.getPrecision(1));
-        Assertions.assertEquals(65536, metadata.getColumnDisplaySize(1));
+    /** Tests that canceling a query from two different threads. */
+    @Test
+    @DisplayName("Tests canceling a query from 2 different threads simultaneously.")
+    public void testCancelQueryFromTwoThreads() {
+        // Let 2 threads both wait for 100 milliseconds before attempting to cancel.
+        final ExecutorService cancelThread1 = getCancelThread();
+        final ExecutorService cancelThread2 = getCancelThread();
+        final Cancel cancel1 = launchCancelThread(100, statement, cancelThread1);
+        final Cancel cancel2 = launchCancelThread(100, statement, cancelThread2);
 
-        Assertions.assertTrue(metadata.isReadOnly(1));
-        Assertions.assertTrue(metadata.isSigned(1));
-        Assertions.assertTrue(metadata.isCaseSensitive(1));
-        Assertions.assertFalse(metadata.isWritable(1));
-        Assertions.assertFalse(metadata.isAutoIncrement(1));
-        Assertions.assertFalse(metadata.isCurrency(1));
+        // Check that query was canceled.
+        Assertions.assertEquals(
+                "Query has been canceled.",
+                Assertions.assertThrows(SQLException.class, () -> resultSet = statement.executeQuery(QUERY))
+                        .getMessage());
+        waitCancelToComplete(cancelThread1);
+        waitCancelToComplete(cancelThread2);
 
-        Assertions.assertEquals("fieldDouble", metadata.getColumnName(2));
-        Assertions.assertEquals("DOUBLE", metadata.getColumnTypeName(2));
-        Assertions.assertEquals(1, metadata.isNullable(2));
-        Assertions.assertEquals(0, metadata.getScale(2));
+        // Check that 1 of the threads succeeded while other threw an exception.
+        try {
+            cancel1.getException();
+            // First thread succeeded so second must fail.
+            Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel2));
+        } catch (SQLException e) {
+            // First thread failed so second one must have succeeded.
+            Assertions.assertDoesNotThrow(() -> getCancelException(cancel2));
+        }
+    }
 
-        Assertions.assertEquals("fieldString", metadata.getColumnName(3));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(3));
+    /** Tests that canceling a query after execution has already completed fails. */
+    @Test
+    @DisplayName("Tests canceling query after execution already completes.")
+    public void testCancelQueryAfterExecuteComplete() {
+        // Execute query.
+        Assertions.assertDoesNotThrow(() -> statement.execute(QUERY));
 
-        Assertions.assertEquals("fieldObjectId", metadata.getColumnName(4));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(4));
+        // Launch cancel after execution has already completed.
+        final ExecutorService cancelThread = getCancelThread();
+        final Cancel cancel = launchCancelThread(0, statement, cancelThread);
+        waitCancelToComplete(cancelThread);
+        Assertions.assertEquals(
+                "Cannot cancel query, it is either completed or has not started.",
+                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel)).getMessage());
+    }
 
-        Assertions.assertEquals("fieldBoolean", metadata.getColumnName(5));
-        Assertions.assertEquals("BOOLEAN", metadata.getColumnTypeName(5));
+    /** Tests canceling a query after it has already been canceled. */
+    @Test
+    @DisplayName("Tests canceling a query after it has already been canceled.")
+    public void testCancelQueryTwice() {
+        // Wait 100 milliseconds before attempting to cancel.
+        final ExecutorService cancelThread1 = getCancelThread();
+        final Cancel cancel1 = launchCancelThread(100, statement, cancelThread1);
 
-        Assertions.assertEquals("fieldDate", metadata.getColumnName(6));
-        Assertions.assertEquals("TIMESTAMP", metadata.getColumnTypeName(6));
+        // Check that query was canceled and cancel thread did not throw exception.
+        Assertions.assertEquals(
+                "Query has been canceled.",
+                Assertions.assertThrows(SQLException.class, () -> resultSet = statement.executeQuery(QUERY))
+                        .getMessage());
+        waitCancelToComplete(cancelThread1);
+        Assertions.assertDoesNotThrow(() -> cancel1.getException());
 
-        Assertions.assertEquals("fieldInt", metadata.getColumnName(7));
-        Assertions.assertEquals("INTEGER", metadata.getColumnTypeName(7));
+        // Attempt to cancel again.
+        final ExecutorService cancelThread2 = getCancelThread();
+        final Cancel cancel2 = launchCancelThread(1, statement, cancelThread2);
+        waitCancelToComplete(cancelThread2);
+        Assertions.assertEquals(
+                "Cannot cancel query, it is either completed or has not started.",
+                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel2))
+                        .getMessage());
+    }
 
-        Assertions.assertEquals("fieldLong", metadata.getColumnName(8));
-        Assertions.assertEquals("BIGINT", metadata.getColumnTypeName(8));
+    private ExecutorService getCancelThread() {
+        return Executors.newSingleThreadExecutor(
+                new ThreadFactoryBuilder().setNameFormat("cancelThread").setDaemon(true).build());
+    }
 
-        Assertions.assertEquals("fieldMaxKey", metadata.getColumnName(9));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(9));
+    private Cancel launchCancelThread(
+            final int waitTime, final Statement statement, final ExecutorService cancelThread) {
+        final Cancel cancel1 = new Cancel(statement, waitTime);
+        cancelThread.execute(cancel1);
+        return cancel1;
+    }
 
-        Assertions.assertEquals("fieldMinKey", metadata.getColumnName(10));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(10));
+    private void getCancelException(final Cancel cancel) throws SQLException {
+        cancel.getException();
+    }
 
-        Assertions.assertEquals("fieldNull", metadata.getColumnName(11));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(11));
+    @SneakyThrows
+    private void waitCancelToComplete(final ExecutorService cancelThread) {
+        cancelThread.awaitTermination(10000, TimeUnit.MILLISECONDS);
+    }
 
-        Assertions.assertEquals("fieldBinary", metadata.getColumnName(12));
-        Assertions.assertEquals("VARBINARY", metadata.getColumnTypeName(12));
+    /** Class to cancel query in a separate thread. */
+    private static class Cancel implements Runnable {
+        private final Statement statement;
+        private final int waitTime;
+        private SQLException exception;
 
-        Assertions.assertEquals("fieldDecimal128", metadata.getColumnName(13));
-        Assertions.assertEquals("DECIMAL", metadata.getColumnTypeName(13));
+        Cancel(final Statement statement, final int waitTime) {
+            this.statement = statement;
+            this.waitTime = waitTime;
+        }
+
+        @SneakyThrows
+        @Override
+        public void run() {
+            try {
+                Thread.sleep(waitTime);
+                statement.cancel();
+            } catch (final SQLException e) {
+                exception = e;
+            }
+        }
+
+        /**
+         * Function to get exception if the run call generated one.
+         *
+         * @throws SQLException Exception caught by run.
+         */
+        public void getException() throws SQLException {
+            if (exception != null) {
+                throw exception;
+            }
+        }
+    }
+
+    /**
+     * Identical to actual DocumentDbQueryExecutor but overrides runQuery so we can simulate a long
+     * running query with find instead.
+     */
+    private static class MockQueryExecutor extends DocumentDbQueryExecutor {
+        MockQueryExecutor(
+                final Statement statement,
+                final DocumentDbConnectionProperties connectionProperties,
+                final DocumentDbQueryMappingService queryMapper,
+                final int queryTimeoutSecs,
+                final int maxFetchSize) {
+            super(statement, connectionProperties, queryMapper, queryTimeoutSecs, maxFetchSize);
+        }
+
+        @Override
+        protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
+            final MongoClientSettings settings = VALID_CONNECTION_PROPERTIES.buildMongoClientSettings();
+            final MongoClient client = MongoClients.create(settings);
+            final MongoDatabase database =
+                    client.getDatabase(VALID_CONNECTION_PROPERTIES.getDatabase());
+            final MongoCollection<Document> collection = database.getCollection(COLLECTION_NAME);
+
+            // We use the $where operator to sleep for 5000 milliseconds. This operator
+            // can only be used with find().
+            final Document whereDoc =
+                    new Document("$where", "function(){ return sleep(5000) || true;}");
+            final FindIterable<Document> iterable = collection.find(whereDoc).comment(getQueryId());
+            final MongoCursor<Document> iterator = iterable.iterator();
+            final JdbcColumnMetaData column =
+                    JdbcColumnMetaData.builder().columnLabel("EXPR$0").ordinal(0).build();
+            return new DocumentDbResultSet(
+                    statement, iterator, ImmutableList.of(column), ImmutableList.of("EXPR$0"), client);
+        }
     }
 }

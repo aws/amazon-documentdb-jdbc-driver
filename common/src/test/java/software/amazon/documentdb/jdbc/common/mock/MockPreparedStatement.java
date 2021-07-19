@@ -52,11 +52,6 @@ public class MockPreparedStatement extends PreparedStatement implements java.sql
     }
 
     @Override
-    protected int getMaxFetchSize() throws SQLException {
-        return 0;
-    }
-
-    @Override
     public int getQueryTimeout() throws SQLException {
         return 0;
     }

@@ -23,6 +23,7 @@ import org.apache.commons.beanutils.converters.BigDecimalConverter;
 import org.apache.commons.beanutils.converters.BooleanConverter;
 import org.apache.commons.beanutils.converters.ByteConverter;
 import org.apache.commons.beanutils.converters.DateConverter;
+import org.apache.commons.beanutils.converters.DateTimeConverter;
 import org.apache.commons.beanutils.converters.DoubleConverter;
 import org.apache.commons.beanutils.converters.FloatConverter;
 import org.apache.commons.beanutils.converters.IntegerConverter;
@@ -54,7 +55,7 @@ public class TypeConverters {
                 .put(BigDecimal.class, new BigDecimalConverter(0))
                 .put(Boolean.class, new BooleanConverter(false))
                 .put(boolean.class, new BooleanConverter(false))
-                .put(BsonTimestamp.class, new StringConverter())
+                .put(BsonTimestamp.class, new BsonTimestampConverter())
                 .put(BsonRegularExpression.class, new StringConverter())
                 .put(Byte.class, new ByteConverter(0))
                 .put(byte.class, new ByteConverter(0))
@@ -100,5 +101,45 @@ public class TypeConverters {
                     targetType.getSimpleName());
         }
         return converter;
+    }
+
+    private static class BsonTimestampConverter extends DateTimeConverter {
+
+        /**
+         * Creates a {@link BsonTimestampConverter} with no default value.
+         */
+        public BsonTimestampConverter() {
+            super();
+        }
+
+        /**
+         * Creates a {@link BsonTimestampConverter} with a default value.
+         *
+         * @param defaultValue the default value if source value missing or cannot be converted.
+         */
+        public BsonTimestampConverter(final Object defaultValue) {
+            super(defaultValue);
+        }
+
+        @Override
+        protected <T> T convertToType(final Class<T> targetType, final Object value) throws Exception {
+            if (value instanceof BsonTimestamp) {
+                return super.convertToType(targetType, ((BsonTimestamp) value).getValue());
+            }
+            return super.convertToType(targetType, value);
+        }
+
+        @Override
+        protected String convertToString(final Object value) throws Throwable {
+            if (value instanceof BsonTimestamp) {
+                return super.convertToString(((BsonTimestamp) value).getValue());
+            }
+            return super.convertToString(value);
+        }
+
+        @Override
+        protected Class<?> getDefaultType() {
+            return BsonTimestamp.class;
+        }
     }
 }

@@ -35,6 +35,7 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.USER_HOME_PROPERTY;
 import static software.amazon.documentdb.jdbc.persist.FileSchemaReader.DEFAULT_FOLDER;
 import static software.amazon.documentdb.jdbc.persist.FileSchemaReader.OBJECT_MAPPER;
 import static software.amazon.documentdb.jdbc.persist.FileSchemaReader.getSchemaFile;
@@ -51,7 +52,7 @@ public class FileSchemaWriter implements SchemaWriter {
      * @param sqlName the SQL database name.
      */
     public FileSchemaWriter(final String sqlName) {
-        this(sqlName, Paths.get(System.getProperty("user.home"), DEFAULT_FOLDER));
+        this(sqlName, Paths.get(System.getProperty(USER_HOME_PROPERTY), DEFAULT_FOLDER));
     }
 
     /**

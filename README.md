@@ -7,9 +7,27 @@
 The JDBC driver for the Amazon DocumentDB managed document database provides an 
 SQL-relational interface for developers and BI tool users.
 
+## Security
+
+See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
+## License
+
+This project is licensed under the Apache-2.0 License.
+
+## Documentation
+
+See the [product documentation](src/markdown/index.md) for more detailed information about this driver.
+
 ## Connection String Syntax
 
-`jdbc:documentdb://[<user>[:<password>]@]<hostname>[:<port>]/<database-name>[?<option>=<value>[&<option>=<value>[...]]]`
+```
+jdbc:documentdb://[<user>[:<password>]@]<hostname>[:<port>]/<database-name>[?<option>=<value>[&<option>=<value>[...]]]
+```
+
+## Setup and Usage
+
+To setup and use the DocumentDB JDBC driver, follow [these directions](src/markdown/setup/setup.md).
 
 ### Scheme
 
@@ -171,7 +189,7 @@ encountered.
 
 The following diagram shows the way in which scalar-scalar data type conflicts are resolved.
 
-![Scalar-Scalar Promotion](images/ScalarDataTypePromotion-transparent.png)
+![Scalar-Scalar Promotion](src/markdown/images/ScalarDataTypePromotion-transparent.png)
 
 #### Object and Array Data Type Handling
 
@@ -357,6 +375,29 @@ So the resulting data in the table would look like this...
 | "112233" | "George Jackson" | "\[ \\"Vogue\\", \\"People\\",  \\"USA Today\\" \]" |
 | "112244" | "Joan Starr" | "1" |
 
+### Schema Generation Limitations
+
+The DocumentDB JDBC driver imposes a limit on the length of identifiers at 128 characters. 
+The schema generator may truncate the length of generated identifiers (table names and column names) 
+to ensure they fit that limit.
+   
+## Schema Management
+
+Schema can be managed in the following ways:
+
+- generated
+- removed
+- listed
+- exported
+- imported
+  
+See the [schema management documentation](src/markdown/schema/manage-schema-cli.md) and 
+[table schemas JSON format](src/markdown/schema/table-schemas-json-format.md) for further 
+information.
+
+## Identifier Limitations
+
+The DocumentDB JDBC driver limits the maximum identifier length to 128 characters.
 
 ## ResultSet Limitations
 
@@ -482,6 +523,12 @@ These can be combined as long as the complete set of foreign keys are still pres
 
 This feature allows `INNER` and `LEFT (OUTER) JOINs` .
 
-# Setup and Usage
+### Natural Joins
 
-To setup and use the DocumentDB JDBC driver, follow [these directions](src/markdown/setup/setup.md).
+Natural joins are partially supported (eg. `SELECT * FROM "tableA" NATURAL JOIN "tableB"`). This query will only work if both tables
+are in the same collection, and if there are no matching fields(with the same name) in the two tables other than the primary/foreign key. This is
+because natural joins will join based on any common fields, and joins are currently only supported on complete foreign keys.
+
+### Cross Joins
+
+Cross joins (eg. `SELECT * FROM "tableA" CROSS JOIN "tableB"`) are not supported.

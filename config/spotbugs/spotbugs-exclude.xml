@@ -46,6 +46,9 @@
       <Source name="Statement.java"/>
       <Source name="Connection.java"/>
       <Source name="DocumentDbStatementTest.java"/>
+      <Source name="DocumentDbStatementBasicTest.java"/>
+      <Source name="DocumentDbStatementFilterTest.java"/>
+      <Source name="DocumentDbStatementJoinTest.java"/>
       <Source name="DocumentDbConnection.java"/>
       <Source name="DocumentDbConnection.java"/>
       <Source name="DocumentDbPreparedStatement.java"/>
@@ -88,7 +91,16 @@
     <Bug pattern="COMMAND_INJECTION"/>
   </Match>
   <Match>
-    <Source name="DocumentDbConnectionProperties.java"/>
+    <Or>
+      <Source name="DocumentDbConnectionProperties.java"/>
+      <Source name="DocumentDbMain.java"/>
+    </Or>
     <Bug pattern="PATH_TRAVERSAL_IN"/>
+  </Match>
+  <Match>
+    <Or>
+      <Source name="DocumentDbStatementBasicTest.java"/>
+    </Or>
+    <Bug pattern="RV_RETURN_VALUE_IGNORED"/>
   </Match>
 </FindBugsFilter>

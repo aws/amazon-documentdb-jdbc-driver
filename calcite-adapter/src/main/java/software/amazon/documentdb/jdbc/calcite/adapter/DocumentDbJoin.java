@@ -65,7 +65,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGenerator.combinePath;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.combinePath;
 
 /**
  * Implementation of {@link Join} in DocumentDb.
@@ -320,7 +320,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // 1. primary keys,
         // 2. foreign keys (from another table)
         // 3. columns that are "virtual" (i.e. arrays, structures)
-        return table.getColumnMap().values().stream()
+        final List<DocumentDbSchemaColumn> columns =  table.getColumnMap().values().stream()
                 .filter(c -> !c.isPrimaryKey()
                         && c.getForeignKeyTableName() == null
                         && !(c instanceof DocumentDbMetadataColumn &&
@@ -329,7 +329,8 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                              c.getSqlType() == JdbcType.ARRAY ||
                              c.getSqlType() == JdbcType.JAVA_OBJECT ||
                              c.getSqlType() == JdbcType.NULL))
-                .collect(ImmutableList.toImmutableList());
+                .collect(Collectors.toList());
+        return ImmutableList.copyOf(columns);
     }
 
     /**

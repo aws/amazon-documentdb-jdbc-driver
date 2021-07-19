@@ -30,6 +30,7 @@ import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.linq4j.QueryProvider;
 import org.apache.calcite.rel.type.RelDataTypeSystem;
+import org.apache.calcite.rel.type.RelDataTypeSystemImpl;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.SchemaVersion;
@@ -60,6 +61,8 @@ public class DocumentDbQueryMappingService {
      */
     public DocumentDbQueryMappingService(final DocumentDbConnectionProperties connectionProperties,
             final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
+        // Add MYSQL function support
+        connectionProperties.putIfAbsent("FUN", "standard,mysql");
         this.prepareContext =
                 new DocumentDbPrepareContext(
                         getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
@@ -99,11 +102,25 @@ public class DocumentDbQueryMappingService {
                         .build();
             }
         } catch (Exception e) {
+            // TODO: AD-273 Fix this error handling.
             throw SqlError.createSQLException(
-                    LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql);
+                    LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql,
+                    getExceptionMessages(e));
         }
         // Query could be parsed but cannot be executed in pure MQL (likely involves nested queries).
         throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.UNSUPPORTED_SQL, sql);
+    }
+
+    private String getExceptionMessages(final Throwable e) {
+        final StringBuilder builder = new StringBuilder(e.getMessage());
+        if (e.getSuppressed() != null) {
+            for (Throwable suppressed : e.getSuppressed()) {
+                builder.append(" Additional info: '")
+                .append(getExceptionMessages(suppressed))
+                .append("'");
+            }
+        }
+        return builder.toString();
     }
 
     /**
@@ -118,6 +135,23 @@ public class DocumentDbQueryMappingService {
         final Schema schema = new DocumentDbSchemaFactory().create(databaseMetadata, connectionProperties);
         parentSchema.add(connectionProperties.getDatabase(), schema);
         return CalciteSchema.from(parentSchema);
+    }
+
+    /**
+     * Our own implementation of {@link RelDataTypeSystem}. All settings are the same as
+     * the default unless otherwise overridden.
+     */
+    private static class DocumentDbTypeSystem extends RelDataTypeSystemImpl implements RelDataTypeSystem {
+
+        /**
+         * Returns whether the least restrictive type of a number of CHAR types of different lengths
+         * should be a VARCHAR type.
+         * @return true to be consistent with SQLServer, MySQL and other major DBMS.
+         */
+        @Override
+        public boolean shouldConvertRaggedUnionTypesToVarying() {
+            return true;
+        }
     }
 
     /**
@@ -136,7 +170,7 @@ public class DocumentDbQueryMappingService {
                 final CalciteSchema rootSchema,
                 final String defaultSchema,
                 final DocumentDbConnectionProperties properties) {
-            this.typeFactory = new JavaTypeFactoryImpl(RelDataTypeSystem.DEFAULT);
+            this.typeFactory = new JavaTypeFactoryImpl(new DocumentDbTypeSystem());
             this.config = new CalciteConnectionConfigImpl(properties);
             final long now = System.currentTimeMillis();
             final SchemaVersion schemaVersion = new LongSchemaVersion(now);

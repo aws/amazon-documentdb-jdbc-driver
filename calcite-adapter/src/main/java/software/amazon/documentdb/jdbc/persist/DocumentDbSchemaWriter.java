@@ -33,6 +33,7 @@ import lombok.NonNull;
 import lombok.SneakyThrows;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -62,6 +63,7 @@ import static com.mongodb.client.model.Filters.or;
 import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 import static com.mongodb.client.model.Updates.setOnInsert;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NONE;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.ID_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.MODIFY_DATE_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SCHEMA_NAME_PROPERTY;
@@ -131,8 +133,9 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             final MongoDatabase database = getDatabase(client, properties.getDatabase());
 
             // Get the latest schema from storage.
-            final DocumentDbSchema latestSchema = getSchema(schemaName, 0, database);
-            final int schemaVersion = getSchemaVersion(schema, latestSchema);
+            final DocumentDbSchema latestSchema = getSchema(
+                    schemaName, VERSION_LATEST_OR_NONE, database);
+            final int schemaVersion = getSchemaVersion(schema, latestSchema) + 1;
             final Set<String> tableReferences = getTableReferences(latestSchema);
 
             // Determine which table references to update/delete.
@@ -195,16 +198,20 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             final MongoClient client,
             final boolean supportsMultiDocTransactions,
             final Consumer<ClientSession> process) {
-        final ClientSession session = client.startSession();
+        final ClientSession session = supportsMultiDocTransactions
+                ? client.startSession()
+                : null;
         try {
-            maybeStartTransaction(session, supportsMultiDocTransactions);
+            maybeStartTransaction(session);
             process.accept(session);
-            maybeCommitTransaction(session, supportsMultiDocTransactions);
+            maybeCommitTransaction(session);
         } catch (Exception e) {
-            maybeAbortTransaction(session, supportsMultiDocTransactions);
+            maybeAbortTransaction(session);
             throw e;
         } finally {
-            session.close();
+            if (session != null) {
+                session.close();
+            }
         }
     }
 
@@ -251,7 +258,13 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             // Delete the table schemas associated with this database schema.
             deleteTableSchemas(session, tableSchemasCollection, schema.getTableReferences());
             // Delete the database schema.
-            deleteDatabaseSchema(session, schemasCollection, schemaName, schema.getSchemaVersion());
+            final long numDeleted = deleteDatabaseSchema(
+                    session, schemasCollection, schemaName, schema.getSchemaVersion());
+            if (numDeleted < 1) {
+                throw SqlError.createSQLException(LOGGER,
+                        SqlState.DATA_EXCEPTION,
+                        SqlError.DELETE_SCHEMA_FAILED, schemaName);
+            }
         }
     }
 
@@ -299,7 +312,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
         deletePreviousSchema(session, schemaCollection, tableSchemasCollection,
                 schemaName, tableReferencesToDelete);
         upsertNewSchema(session, schemaCollection, tableSchemasCollection, schemaName,
-                schemaVersion + 1, schema, tableSchemas, tableReferences);
+                schemaVersion, schema, tableSchemas, tableReferences);
     }
 
     private void ensureSchemaCollections(final MongoDatabase database)
@@ -364,9 +377,9 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
                 tableReferencesToDelete.add(tableId);
                 // update schema table references list
                 tableReferences.remove(tableId);
-                tableReferences.add(tableSchema.getId());
-                // write the table schema
             }
+            // write the table schema
+            tableReferences.add(tableSchema.getId());
         }
         return tableReferencesToDelete;
     }
@@ -420,49 +433,58 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
     }
 
     private static void maybeAbortTransaction(
-            final ClientSession session,
-            final boolean supportsMultiDocTransactions) {
-        if (supportsMultiDocTransactions) {
+            final ClientSession session) {
+        if (session != null) {
             session.abortTransaction();
         }
     }
 
     private static void maybeCommitTransaction(
-            final ClientSession session,
-            final boolean supportsMultiDocTransactions) {
-        if (supportsMultiDocTransactions) {
+            final ClientSession session) {
+        if (session != null) {
             session.commitTransaction();
         }
     }
 
     private static void maybeStartTransaction(
-            final ClientSession session,
-            final boolean supportsMultiDocTransactions) {
-        if (supportsMultiDocTransactions) {
+            final ClientSession session) {
+        if (session != null) {
             session.startTransaction();
         }
     }
 
     private static void upsertDatabaseSchema(
-            final @NonNull ClientSession session,
+            final @Nullable ClientSession session,
             final @NonNull MongoCollection<DocumentDbSchema> schemasCollection,
-            final @NonNull DocumentDbSchema schema) {
-        schemasCollection.updateOne(session,
-                getSchemaFilter(schema.getSchemaName(), schema.getSchemaVersion()),
-                getSchemaUpdate(schema),
-                new UpdateOptions().upsert(true));
+            final @NonNull DocumentDbSchema schema) throws SQLException {
+        final Bson schemaFilter = getSchemaFilter(schema.getSchemaName(), schema.getSchemaVersion());
+        final Bson schemaUpdate = getSchemaUpdate(schema);
+        final UpdateOptions upsertOption = new UpdateOptions().upsert(true);
+        final UpdateResult result = session != null
+                ? schemasCollection.updateOne(session, schemaFilter, schemaUpdate, upsertOption)
+                : schemasCollection.updateOne(schemaFilter, schemaUpdate, upsertOption);
+        if (!result.wasAcknowledged()) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.DATA_EXCEPTION,
+                    SqlError.UPSERT_SCHEMA_FAILED,
+                    schema.getSchemaName());
+        }
     }
 
     private static void upsertTableSchema(
-            final @NonNull ClientSession session,
+            final @Nullable ClientSession session,
             final @NonNull MongoCollection<Document> tableSchemasCollection,
             final @NonNull DocumentDbSchemaTable tableSchema,
             final @NonNull String schemaName) throws SQLException {
-        final UpdateResult result = tableSchemasCollection
-                .updateOne(session,
-                        getTableSchemaFilter(tableSchema.getId()),
-                        getTableSchemaUpdate(tableSchema),
-                        new UpdateOptions().upsert(true));
+        final Bson tableSchemaFilter = getTableSchemaFilter(tableSchema.getId());
+        final Bson tableSchemaUpdate = getTableSchemaUpdate(tableSchema);
+        final UpdateOptions upsertOption = new UpdateOptions().upsert(true);
+        final UpdateResult result = session != null
+                ? tableSchemasCollection.updateOne(session,
+                        tableSchemaFilter, tableSchemaUpdate, upsertOption)
+                : tableSchemasCollection.updateOne(
+                        tableSchemaFilter, tableSchemaUpdate, upsertOption);
         if (!result.wasAcknowledged()) {
             throw SqlError.createSQLException(
                     LOGGER,
@@ -472,19 +494,21 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
         }
     }
 
-    private static void deleteDatabaseSchema(
+    private static long deleteDatabaseSchema(
             final ClientSession session,
             final MongoCollection<DocumentDbSchema> schemasCollection,
             final String schemaName,
             final int schemaVersion) throws SQLException {
-        final DeleteResult result;
-        result = schemasCollection.deleteOne(session,
-                getSchemaFilter(schemaName, schemaVersion));
-        if (!result.wasAcknowledged() || result.getDeletedCount() < 1) {
+        final Bson schemaFilter = getSchemaFilter(schemaName, schemaVersion);
+        final DeleteResult result = session != null
+                ? schemasCollection.deleteOne(session, schemaFilter)
+                : schemasCollection.deleteOne(schemaFilter);
+        if (!result.wasAcknowledged()) {
             throw SqlError.createSQLException(LOGGER,
                     SqlState.DATA_EXCEPTION,
                     SqlError.DELETE_SCHEMA_FAILED, schemaName);
         }
+        return result.getDeletedCount();
     }
 
     private static void deleteTableSchemas(
@@ -495,8 +519,10 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
                 .map(DocumentDbSchemaWriter::getTableSchemaFilter)
                 .collect(Collectors.toList());
         if (!tableReferencesFilter.isEmpty()) {
-            final DeleteResult result = tableSchemasCollection
-                    .deleteMany(session, or(tableReferencesFilter));
+            final Bson allTableReferencesFilter = or(tableReferencesFilter);
+            final DeleteResult result = session != null
+                    ? tableSchemasCollection.deleteMany(session, allTableReferencesFilter)
+                    : tableSchemasCollection.deleteMany(allTableReferencesFilter);
             if (!result.wasAcknowledged() || result.getDeletedCount() != tableReferencesFilter
                     .size()) {
                 throw SqlError.createSQLException(LOGGER,
