@@ -1305,7 +1305,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
         doc2.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
                 "\"date\": null}");
 
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
@@ -1325,7 +1325,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     @Test
     @DisplayName("Tests queries filtering by date extract.")
     void testWhereExtract() throws SQLException {
-        final String tableName = "testWhereExtract";
+        final String tableName = "testWhereSqlExtract";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2021-01-01T00:00:00.00Z").toEpochMilli()));
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
