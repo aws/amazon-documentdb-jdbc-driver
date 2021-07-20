@@ -659,7 +659,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
     }
 
     @Test
-    @Disabled("Slight disparity in current time due to repeated determination of time.")
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
     @DisplayName("Tests CURRENT_DATE in WHERE clause.")
     void testWhereCurrentDate() throws SQLException {
         final String dayNameQuery =
@@ -688,7 +688,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
     }
 
     @Test
-    @Disabled("Slight disparity in current time due to repeated determination of time.")
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
     @DisplayName("Tests CURRENT_TIME in WHERE clause.")
     void testWhereCurrentTime() throws SQLException {
         final String dayNameQuery =
@@ -718,7 +718,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
     }
 
     @Test
-    @Disabled("Slight disparity in current time due to repeated determination of time.")
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
     @DisplayName("Tests CURRENT_TIMESTAMP in WHERE clause.")
     void testWhereCurrentTimestamp() throws SQLException {
         final String dayNameQuery =

@@ -1414,30 +1414,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-
-    @Test
-    @DisplayName("Tests queries with date-time addition.")
-    void testWhereDatePlus() throws SQLException {
-        final String tableName = "testWhereTimestampAdd";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
-        doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
-        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
-        doc2.append("date", new BsonDateTime(Instant.parse("2020-01-04T00:00:00.00Z").toEpochMilli()));
-        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
-                "\"date\": null}");
-
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE TIMESTAMPADD(DAY, 3, \"date\") = '2020-01-04'",
-                        DATABASE_NAME, tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
-    }
-
     @Test
     @DisplayName("Tests queries filtering with date diff.")
     void testDateMinus() throws SQLException {
