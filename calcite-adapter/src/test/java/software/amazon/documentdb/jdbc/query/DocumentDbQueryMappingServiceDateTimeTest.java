@@ -771,4 +771,46 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
     }
+
+    @Test
+    @DisplayName("Tests TIMESTAMPADD in WHERE clause.")
+    void testWhereTimestampAdd() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPADD(DAY, 3, \"field\") = '2020-01-04'",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$eq\": [{\"$add\": [\"$field\", {$numberLong: \"259200000\"}]}, {\"$date\": \"2020-01-04T00:00:00Z\"}]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF in WHERE clause.")
+    void testWhereTimestampDiff() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPDIFF(DAY, \"field\", \"field\") = 0",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$eq\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 86400000]}]}, 86400000]}, 0]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
 }

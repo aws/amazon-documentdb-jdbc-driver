@@ -1209,7 +1209,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     @Test
     @DisplayName("Tests queries with NOT combined with OR and AND.")
     void testNotCombinedWithAndOr() throws SQLException {
-        final String tableName = "testNotAndOr";
+        final String tableName = "testWhereNotAndOr";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": true, \n" +
                 "\"field2\": true, \n" +
@@ -1263,7 +1263,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE CURRENT_DATE <> \"date\"",
+                                "WHERE CURRENT_DATE > \"date\"",
                         DATABASE_NAME, tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -1418,11 +1418,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     @Test
     @DisplayName("Tests queries with date-time addition.")
     void testWhereDatePlus() throws SQLException {
-        final String tableName = "testWhereCurrentTimestamp";
+        final String tableName = "testWhereTimestampAdd";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
-        doc2.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        doc2.append("date", new BsonDateTime(Instant.parse("2020-01-04T00:00:00.00Z").toEpochMilli()));
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"date\": null}");
 
@@ -1431,9 +1431,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE CAST(\"date\" AS DATETIME) + 1 > \"date\"",
+                                "WHERE TIMESTAMPADD(DAY, 3, \"date\") = '2020-01-04'",
                         DATABASE_NAME, tableName));
-        // TODO
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
     }
 
     @Test
@@ -1454,8 +1456,10 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "(\"date\" - \"date\") HOUR = 0",
+                                "WHERE TIMESTAMPDIFF(DAY, \"date\", \"date2\") = 2",
                         DATABASE_NAME, tableName));
-        // TODO
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
     }
 }
