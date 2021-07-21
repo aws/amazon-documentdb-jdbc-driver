@@ -758,7 +758,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     @Test
-    @Disabled("Null/undefined not handled correctly for $not.")
     @DisplayName("Tests queries with CASE where a string literal contains '$'.")
     void testCaseWithBooleanColumns() throws SQLException {
         final String tableName = "testCaseWithConflictingStringLiterals";

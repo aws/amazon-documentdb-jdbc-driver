@@ -255,7 +255,7 @@ public final class DocumentDbRules {
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.NOT,
-                    (call, strings) -> getMongoAggregateForOperator(
+                    (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             // Comparison
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.EQUALS,
@@ -451,11 +451,11 @@ public final class DocumentDbRules {
         private static String addNullChecksToQuery(final List<String> strings, final String op) {
             final StringBuilder sb = new StringBuilder("{\"$and\": [");
             sb.append(op);
-            for (int i = 0; i < 2; i++) {
-                if (!strings.get(i).equals("null")) {
+            for (String string : strings) {
+                if (!string.equals("null")) {
                     // The operator {$gt null} filters out any values that are null or undefined.
                     sb.append(",{\"$gt\": [");
-                    sb.append(strings.get(i));
+                    sb.append(string);
                     sb.append(", null]}");
                 }
             }
