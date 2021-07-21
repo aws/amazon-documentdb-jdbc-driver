@@ -446,44 +446,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that calls to EXTRACT can be used in WHERE comparisons.
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests that calls to extract can be used in the WHERE clause.")
-    void testQueryWhereExtract() throws SQLException {
-        final String tableName = "testWhereExtract";
-        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
-        doc1.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE YEAR(\"field\") > 2019",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
-        Assertions.assertFalse(resultSet1.next());
-
-        final ResultSet resultSet2 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE MONTH(\"field\") = 2",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertFalse(resultSet2.next());
-
-        final ResultSet resultSet3 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE DAYOFMONTH(\"field\") IN  (1, 2, 3)",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertTrue(resultSet3.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet3.getTimestamp(2));
-        Assertions.assertFalse(resultSet3.next());
-    }
-
-    /**
      * Tests that calls to timestampAdd can be used in WHERE comparisons.
      * @throws SQLException occurs if query fails.
      */
@@ -1024,5 +986,417 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("101", resultSet2.getString(1));
         Assertions.assertFalse(resultSet2.next());
+    }
+
+    @Test
+    @DisplayName("Tests arithmetic functions in WHERE clause.")
+    void testArithmeticWhere() throws SQLException {
+        final String tableName = "testWhereArithmetic";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 4, \n" +
+                "\"field2\": 3, \n" +
+                "\"field3\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": 2, \n" +
+                "\"field2\": 2 \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": 2, \n" +
+                "\"field2\": 3, \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null, \n" +
+                "\"field2\": 3, \n" +
+                "\"field3\": 1}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" * \"field2\" / \"field3\" + \"field2\" - \"field3\" = 7",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests that queries filtering by modulo work.")
+    void testModuloWhere() throws SQLException {
+        final String tableName = "testWhereModulo";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 5}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": 6}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": 1}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE MOD(\"field\", 3) = 2" +
+                                "OR MOD(8, \"field\") = 2" +
+                                "OR MOD(3, 2) = \"field\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries containing nested OR.")
+    void testNestedOR() throws SQLException {
+        final String tableName = "TestWhereOr";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": true, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 5}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": false, \n" +
+                "\"field2\": false \n" +
+                "\"field3\": 7}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": false, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": false, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 1}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" OR (\"field2\" OR \"field3\" > 6)",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries with nested AND.")
+    void testNestedAND() throws SQLException {
+        final String tableName = "testWhereAnd";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": true, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 7}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": true, \n" +
+                "\"field2\": false \n" +
+                "\"field3\": 7}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": false, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 8}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": false, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 1}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" AND (\"field2\" AND \"field3\" > 6)",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries with nested combined OR and AND.")
+    void testNestedAndOr() throws SQLException {
+        final String tableName = "testWhereAndOrCombined";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": true, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 7, \n" +
+                "\"field4\": false}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": true, \n" +
+                "\"field2\": false \n" +
+                "\"field3\": 7, \n" +
+                "\"field4\": false}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": false, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 8, \n" +
+                "\"field4\": true}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": false, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 1}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE ((\"field\" AND \"field3\" < 10) AND (\"field2\" OR \"field3\" > 6)) OR \"field4\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries with NOT combined with OR and AND.")
+    void testNotCombinedWithAndOr() throws SQLException {
+        final String tableName = "testWhereNotAndOr";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": true, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 7, \n" +
+                "\"field4\": false}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": false, \n" +
+                "\"field2\": false \n" +
+                "\"field3\": 7, \n" +
+                "\"field4\": false}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": false, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 8, \n" +
+                "\"field4\": true}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": false, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 1}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE ((NOT \"field\" AND \"field3\" < 10) AND (NOT \"field2\" OR \"field3\" > 6)) OR \"field4\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("104", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Test queries filtering by CURRENT_DATE.")
+    void testWhereCurrentDate() throws SQLException {
+        final String tableName = "testWhereCurrentDate";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"date\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE CURRENT_DATE > \"date\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries filtering by CURRENT_TIME.")
+    void testCurrentTime() throws SQLException {
+        final String tableName = "testWhereCurrentTime";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"date\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE CURRENT_TIME <> CAST(\"date\" AS TIME)",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries filtering by CURRENT_TIMESTAMP.")
+    void testCurrentTimestamp() throws SQLException {
+        final String tableName = "testWhereCurrentTimestamp";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
+                "\"date\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE CURRENT_TIMESTAMP <> \"date\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries filtering by date extract.")
+    void testWhereExtract() throws SQLException {
+        final String tableName = "testWhereSqlExtract";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("date", new BsonDateTime(Instant.parse("2021-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("date", new BsonDateTime(Instant.parse("2020-02-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+        doc3.append("date", new BsonDateTime(Instant.parse("2020-01-02T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104}");
+        doc4.append("date", new BsonDateTime(Instant.parse("2020-01-01T01:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105}");
+        doc5.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:01:00.00Z").toEpochMilli()));
+        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106}");
+        doc6.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:01.00Z").toEpochMilli()));
+        final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107}");
+        doc7.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108, \n" +
+                "\"date\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE EXTRACT(YEAR FROM \"date\") = 2021" +
+                                "OR EXTRACT(MONTH FROM \"date\") = 2" +
+                                "OR EXTRACT(DAY FROM \"date\") = 2" +
+                                "OR EXTRACT(HOUR FROM \"date\") = 1" +
+                                "OR EXTRACT(MINUTE FROM \"date\") = 1" +
+                                "OR EXTRACT(SECOND FROM \"date\") = 1",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("103", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("104", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("105", resultSet.getString(1));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("106", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries filtering by DAYNAME")
+    void testWhereDayName() throws SQLException {
+        final String tableName = "testWhereDAYNAME";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("date", new BsonDateTime(Instant.parse("2020-01-07T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"date\": null}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE  DAYNAME(\"date\") = 'Tuesday'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries filtering by MONTHNAME")
+    void testWhereMonthName() throws SQLException {
+        final String tableName = "testWhereMonthName";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("date", new BsonDateTime(Instant.parse("2020-02-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"date\": null}");
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE  MONTHNAME(\"date\") = 'February'",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("102", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests queries filtering with date diff.")
+    void testDateMinus() throws SQLException {
+        final String tableName = "testWhereDateMinus";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        doc1.append("date2", new BsonDateTime(Instant.parse("2020-01-03T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        doc2.append("date2", new BsonDateTime(Instant.parse("2020-01-02T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"date\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPDIFF(DAY, \"date\", \"date2\") = 2",
+                        DATABASE_NAME, tableName));
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals("101", resultSet.getString(1));
+        Assertions.assertFalse(resultSet.next());
     }
 }
