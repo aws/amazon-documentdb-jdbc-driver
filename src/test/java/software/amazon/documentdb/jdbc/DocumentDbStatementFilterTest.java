@@ -446,44 +446,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that calls to EXTRACT can be used in WHERE comparisons.
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests that calls to extract can be used in the WHERE clause.")
-    void testQueryWhereExtract() throws SQLException {
-        final String tableName = "testWhereExtract";
-        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
-        doc1.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE YEAR(\"field\") > 2019",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
-        Assertions.assertFalse(resultSet1.next());
-
-        final ResultSet resultSet2 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE MONTH(\"field\") = 2",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertFalse(resultSet2.next());
-
-        final ResultSet resultSet3 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE DAYOFMONTH(\"field\") IN  (1, 2, 3)",
-                        DATABASE_NAME, tableName));
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertTrue(resultSet3.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet3.getTimestamp(2));
-        Assertions.assertFalse(resultSet3.next());
-    }
-
-    /**
      * Tests that calls to timestampAdd can be used in WHERE comparisons.
      * @throws SQLException occurs if query fails.
      */

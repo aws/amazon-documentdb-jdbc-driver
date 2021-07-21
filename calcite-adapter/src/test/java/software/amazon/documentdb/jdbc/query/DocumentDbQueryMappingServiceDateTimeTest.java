@@ -485,7 +485,6 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + " [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
                         + " {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
                         + " 1]}]}, 1]}]}]}}}").toJson(),
-
                 ((BsonDocument) operations.get(0)).toJson());
 
         final String floorDayQuery1 =
