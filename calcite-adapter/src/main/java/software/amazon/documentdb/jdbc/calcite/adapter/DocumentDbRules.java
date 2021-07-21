@@ -452,7 +452,7 @@ public final class DocumentDbRules {
             final StringBuilder sb = new StringBuilder("{\"$and\": [");
             sb.append(op);
             for (String string : strings) {
-                if (!string.equals("null")) {
+                if (!"null".equals(string)) {
                     // The operator {$gt null} filters out any values that are null or undefined.
                     sb.append(",{\"$gt\": [");
                     sb.append(string);
