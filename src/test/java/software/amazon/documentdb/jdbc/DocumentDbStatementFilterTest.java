@@ -720,9 +720,9 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     @Test
-    @DisplayName("Tests queries with CASE where a string literal contains '$'.")
+    @DisplayName("Tests queries with CASE with boolean columns.")
     void testCaseWithBooleanColumns() throws SQLException {
-        final String tableName = "testCaseWithConflictingStringLiterals";
+        final String tableName = "testCaseWithBooleanColumns";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
                 + "\"field\": true }");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
