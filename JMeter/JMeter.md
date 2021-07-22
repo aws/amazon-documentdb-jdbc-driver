@@ -4,20 +4,13 @@
 
 ### Install & Set Up JMeter   
 
-- Download [JMeter](http://jmeter.apache.org/download_jmeter.cgi).
+- Download [JMeter](http://jmeter.apache.org/download_jmeter.cgi) (should be >= version 5.4.1).
 
-- Add the [MySQL JDBC auth plugin](https://docs.mongodb.com/bi-connector/current/reference/auth-plugin-jdbc/) 
-  to the JMeter `/lib` folder.
-
-- Add a [MySQL driver](https://dev.mysql.com/downloads/connector/j/) 
-  `.jar` to the JMeter `/lib` folder. 
-
-- Add the latest DocumentDbDriver `.jar` to the JMeter `/lib` folder.
+- Add the latest DocumentDbDriver `.jar` to `/lib` folder of your JMeter installation.
 
 ### Set Up a Test Cluster
 
-If targeting a cluster other than 
-`performance-cluster.cluster-c9voe85gof13.ca-central-1.docdb.amazonaws.com`,  
+If targeting a cluster other that has not been used for JMeter testing before,  
 you will need to insert the relevant test data beforehand. 
 Use `mongoimport` to insert the data from `/testData`, using the name of each file as the collection name and “jmeter” as the database.
 
@@ -31,26 +24,20 @@ A potential enhancement could be to automate this.
 
 1. Start an SSH tunnel for the target cluster.
 
-1. Click on the `DocumentDb Test Plan element`. 
-    May need to change user variables such as `CONNECTION_STRING`, `USERNAME`, and `PASSWORD` depending on SSH tunnel setup and target cluster.
+1. Click on the `DocumentDb Test Plan` element. 
+   May need to change user variables such as `CONNECTION_STRING`, `USERNAME`, and `PASSWORD` depending on SSH tunnel setup and target cluster.
 
 1. Run the test plan.
 
-### Run Test Plan with Mongo BI Connector
+### Run Test Plan with Other JDBC Driver
 
-1. Open the `DocumentDb_Test_Plan.jmx` file in JMeter. 
-   Click on the DocumentDb Test Plan element and change the following user variables. 
-    
-    - Change `QUERY_FORMAT` from `doc_db` to `mongo_bi`.
-    - Change `CONNECTION_STRING` to MySQL format and include the JDBC authentication plugin. 
-      May be something like: 
-      `jdbc:mysql://127.0.0.1:3307?useSSL=false&authenticationPlugins=org.mongodb.mongosql.auth.plugin.MongoSqlAuthenticationPlugin`
+- It may be useful to run the tests against another data source to confirm expected functionality. 
+  The user variables `CONNECTION_STRING`, `USERNAME`, and `PASSWORD` 
+  can be changed to be used with another driver.
 
-1. Start the Mongo BI Connector and wait enough time for schema to be discovered.  
-   May be something like: 
-   `mongosqld --mongo-uri 'mongodb://127.0.0.1:27017/?connect=direct' -u documentdb -p bqdocumentdblab --mongo-ssl --mongo-sslAllowInvalidHostnames --mongo-sslCAFile rds-combined-ca-bundle.pem --auth`
-
-1. Run test plan.
+- Dependencies of the other driver may need to be setup and/or added to the JMeter `/lib` folder. 
+  Refer to [JMeter documentation](https://jmeter.apache.org/usermanual/get-started.html#opt_jdbc) 
+  and documentation of the specific database vendor for more information.
 
 ## Add Tests
 
@@ -62,11 +49,12 @@ A potential enhancement could be to automate this.
 
 ### Add Test Cases
 
-- To add a query, you need to add a new row in `Test_Plan.csv`. Because the Mongo BI Connector and  
-  the DocumentDB driver use slightly different syntax, there are separate columns for each but 
-  the expected result is the same for both formats.  
+- To add a query, you need to add a new row in `Test_Plan.csv`. 
+
+- Populate the `query` column with the query to be executed, the `result` column with the 
+  expected result set, and the `test_name` column with a descriptive name for the query.
   
-- To keep results uniform between the Mongo BI connector and DocumentDB driver:
+- To keep results uniform across different data sources for easier comparisons:
 
     - Columns are ordered explicitly instead of using `SELECT *`  so column order is deterministic.
 

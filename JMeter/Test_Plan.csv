@@ -1,21 +1,21 @@
-docdb_query,mongo_bi_query,result,test_name
-"SELECT ""test__id"" as ""_id"", ""int0"", ""int1"", ""string1"" FROM ""jmeter"".""test"" ORDER BY ""test__id"" LIMIT 5","SELECT `_id`, `int0`, `int1`, `string1` FROM `jmeter`.`test` ORDER BY `_id` LIMIT 5","_id	int0	int1	string1
-1	50	10	Hop
-2	40	20	Hip
-3	30	30	Hop
-4	20	40	Hip
-5	10	50	Hop
+query,result,test_name
+"SELECT int0, int1, string1 FROM jmeter.test ORDER BY int1 LIMIT 5","int0	int1	string1
+50	10	Hop
+40	20	Hip
+30	30	Hop
+20	40	Hip
+10	50	Hop
 ",SELECT *
-"SELECT  ""test__id"" as ""_id"", ""int0"", ""int1"", ""string1"" FROM ""jmeter"".""test"" WHERE ""int0"" < 40 ORDER BY ""test__id"" LIMIT 5","SELECT `_id`, `int0`, `int1`, `string1` FROM `jmeter`.`test` WHERE `int0` < 40 ORDER BY `_id` LIMIT 5","_id	int0	int1	string1
-3	30	30	Hop
-4	20	40	Hip
-5	10	50	Hop
+"SELECT int0, int1, string1 FROM jmeter.test WHERE int0 < 40 ORDER BY int1 LIMIT 5","int0	int1	string1
+30	30	Hop
+20	40	Hip
+10	50	Hop
 ",SELECT WHERE
-"SELECT SUM(""int0"") AS ""sum"" FROM ""jmeter"".""test"" GROUP BY ""string1"" ORDER BY ""sum"" ASC LIMIT 5",SELECT SUM(`int0`) AS `sum` FROM `jmeter`.`test` GROUP BY `string1` ORDER BY `sum` ASC LIMIT 5,"sum
+SELECT SUM(int0) AS expr FROM jmeter.test GROUP BY string1 ORDER BY expr ASC LIMIT 5,"expr
 60
 90
 ",SELECT SUM
-"SELECT CASE WHEN (""int0"") < 30 THEN 'yes' ELSE 'no' END AS ""Answer"" FROM ""jmeter"".""test"" GROUP BY CASE WHEN (""int0"") < 30 THEN 'yes' ELSE 'no' END ORDER BY ""Answer""",SELECT CASE WHEN (`int0`) < 30 THEN 'yes' ELSE 'no' END AS `Answer` FROM `jmeter`.`test` GROUP BY CASE WHEN (`int0`) < 30 THEN 'yes' ELSE 'no' END ORDER BY `Answer`,"Answer
+SELECT CASE WHEN (int0) < 30 THEN 'yes' ELSE 'no' END AS expr FROM jmeter.test GROUP BY CASE WHEN (int0) < 30 THEN 'yes' ELSE 'no' END ORDER BY expr,"expr
 no
 yes
 ",SELECT CASE
