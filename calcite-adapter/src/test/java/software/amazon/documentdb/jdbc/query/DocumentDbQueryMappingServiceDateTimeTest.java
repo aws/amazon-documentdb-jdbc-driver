@@ -173,13 +173,16 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                                 + "TIMESTAMPDIFF(HOUR, \"field\", \"field\"), "
                                 + "TIMESTAMPDIFF(MINUTE, \"field\", \"field\"), "
                                 + "TIMESTAMPDIFF(SECOND, \"field\", \"field\"), "
-                                + "TIMESTAMPDIFF(MICROSECOND, \"field\", \"field\") "
+                                + "TIMESTAMPDIFF(MICROSECOND, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(YEAR, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(QUARTER, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(MONTH, \"field\", \"field\")"
                                 + "FROM \"%s\".\"%s\"",
                         DATABASE_NAME, DATE_COLLECTION_NAME);
         result = queryMapper.get(timestampDiffQuery);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
-        Assertions.assertEquals(6, result.getColumnMetaData().size());
+        Assertions.assertEquals(9, result.getColumnMetaData().size());
         Assertions.assertEquals(1, result.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$addFields\":"
@@ -188,8 +191,13 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + " \"EXPR$2\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 3600000]}]}, 3600000]},"
                         + " \"EXPR$3\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 60000]}]}, 60000]},"
                         + " \"EXPR$4\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]},"
-                        + " \"EXPR$5\": {\"$multiply\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]}, 1000000]}}}"),
-                result.getAggregateOperations().get(0));
+                        + " \"EXPR$5\": {\"$multiply\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]}, 1000000]},"
+                        + " \"EXPR$6\": {\"$subtract\": [{\"$year\": \"$field\"}, {\"$year\": \"$field\"}]},"
+                        + " \"EXPR$7\": {\"$subtract\": ["
+                        + "     {\"$add\":[{\"$multiply\": [4, {\"$year\": \"$field\"}]}, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]}, 1, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, 2, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]}, 4, null]}]}]}]}]},"
+                        + "     {\"$add\": [{\"$multiply\": [4, {\"$year\": \"$field\"}]}, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]}, 1, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, 2, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]}, 4, null]}]}]}]}]}]},"
+                        + " \"EXPR$8\": {\"$subtract\": [{\"$add\": [{\"$multiply\": [12, {\"$year\": \"$field\"}]}, {\"$month\": \"$field\"}]}, {\"$add\": [{\"$multiply\": [12, {\"$year\": \"$field\"}]}, {\"$month\": \"$field\"}]}]}}}"),
+        result.getAggregateOperations().get(0));
     }
 
     /**

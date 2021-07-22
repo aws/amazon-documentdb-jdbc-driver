@@ -19,6 +19,8 @@ package software.amazon.documentdb.jdbc.query;
 import com.google.common.collect.ImmutableList;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
+import org.apache.calcite.avatica.util.DateTimeUtils;
+import org.apache.calcite.avatica.util.TimeUnit;
 import org.apache.calcite.config.CalciteConnectionConfig;
 import org.apache.calcite.config.CalciteConnectionConfigImpl;
 import org.apache.calcite.jdbc.CalcitePrepare;
@@ -29,12 +31,29 @@ import org.apache.calcite.jdbc.CalciteSchema;
 import org.apache.calcite.jdbc.JavaTypeFactoryImpl;
 import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.linq4j.QueryProvider;
+import org.apache.calcite.prepare.CalcitePrepareImpl;
+import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeSystem;
 import org.apache.calcite.rel.type.RelDataTypeSystemImpl;
+import org.apache.calcite.rex.RexBuilder;
+import org.apache.calcite.rex.RexCall;
+import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.schema.Schema;
 import org.apache.calcite.schema.SchemaPlus;
 import org.apache.calcite.schema.SchemaVersion;
 import org.apache.calcite.schema.impl.LongSchemaVersion;
+import org.apache.calcite.sql.SqlCall;
+import org.apache.calcite.sql.SqlIntervalQualifier;
+import org.apache.calcite.sql.SqlLiteral;
+import org.apache.calcite.sql.SqlOperator;
+import org.apache.calcite.sql.fun.SqlStdOperatorTable;
+import org.apache.calcite.sql.parser.SqlParserPos;
+import org.apache.calcite.sql.type.SqlTypeName;
+import org.apache.calcite.sql.type.SqlTypeUtil;
+import org.apache.calcite.sql2rel.SqlRexContext;
+import org.apache.calcite.sql2rel.SqlRexConvertlet;
+import org.apache.calcite.sql2rel.SqlRexConvertletTable;
+import org.apache.calcite.sql2rel.StandardConvertletTable;
 import org.apache.calcite.tools.RelRunner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,8 +65,11 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbJdbcMetaDataConverter;
 
+import java.math.BigDecimal;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 public class DocumentDbQueryMappingService {
@@ -68,7 +90,7 @@ public class DocumentDbQueryMappingService {
                         getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
                         connectionProperties.getDatabase(),
                         connectionProperties);
-        this.prepare = CalcitePrepare.DEFAULT_FACTORY.apply();
+        this.prepare = new DocumentDbPrepareImplementation();
     }
 
     /**
@@ -138,8 +160,8 @@ public class DocumentDbQueryMappingService {
     }
 
     /**
-     * Our own implementation of {@link RelDataTypeSystem}. All settings are the same as
-     * the default unless otherwise overridden.
+     * Our own implementation of {@link RelDataTypeSystem}.
+     * All settings are the same as the default unless otherwise overridden.
      */
     private static class DocumentDbTypeSystem extends RelDataTypeSystemImpl implements RelDataTypeSystem {
 
@@ -151,6 +173,101 @@ public class DocumentDbQueryMappingService {
         @Override
         public boolean shouldConvertRaggedUnionTypesToVarying() {
             return true;
+        }
+    }
+
+    /**
+     * Our own implementation of {@link CalcitePrepare}.
+     * Extends {@link org.apache.calcite.prepare.CalcitePrepareImpl}.
+     * All settings are the same as the default unless otherwise overridden.
+     */
+    private static class DocumentDbPrepareImplementation extends CalcitePrepareImpl implements CalcitePrepare {
+
+        @Override
+        protected SqlRexConvertletTable createConvertletTable() {
+            return DocumentDbConvertletTable.INSTANCE;
+        }
+    }
+
+    /**
+     * Our own implementation of {@link SqlRexConvertletTable}.
+     * Behaviour is the same as {@link StandardConvertletTable} unless operator is part of custom map.
+     */
+    private static final class DocumentDbConvertletTable implements SqlRexConvertletTable {
+
+        public static final DocumentDbConvertletTable INSTANCE = new DocumentDbConvertletTable();
+        private final Map<SqlOperator, SqlRexConvertlet> customCovertlets = new HashMap<>();
+
+        private DocumentDbConvertletTable() {
+            customCovertlets.put(SqlStdOperatorTable.TIMESTAMP_DIFF, new DocumentDbTimestampDiffConvertlet());
+        }
+
+        @Override
+        public SqlRexConvertlet get(final SqlCall call) {
+            // Check if we override the operator conversion. Otherwise use standard conversion.
+            final SqlOperator op = call.getOperator();
+            final SqlRexConvertlet convertlet = customCovertlets.get(op);
+            if (convertlet != null) {
+                return convertlet;
+            }
+
+            return StandardConvertletTable.INSTANCE.get(call);
+        }
+
+        /**
+         * Replaces the TimestampDiffConvertlet in {@link StandardConvertletTable}.
+         * Overrides the translation of TIMESTAMPDIFF for YEAR, QUARTER, and MONTH.
+         * Implementation copied from original but adds lines 259-261.
+         */
+        private static class DocumentDbTimestampDiffConvertlet implements SqlRexConvertlet {
+            public RexNode convertCall(final SqlRexContext cx, final SqlCall call) {
+                // TIMESTAMPDIFF(unit, t1, t2) => (t2 - t1) UNIT
+                final RexBuilder rexBuilder = cx.getRexBuilder();
+                final SqlLiteral unitLiteral = call.operand(0);
+                TimeUnit unit = unitLiteral.symbolValue(TimeUnit.class);
+                final SqlTypeName sqlTypeName = unit == TimeUnit.NANOSECOND
+                        ? SqlTypeName.BIGINT
+                        : SqlTypeName.INTEGER;
+                final BigDecimal multiplier;
+                final BigDecimal divider;
+                switch (unit) {
+                    case MICROSECOND:
+                    case MILLISECOND:
+                    case NANOSECOND:
+                    case WEEK:
+                        multiplier = BigDecimal.valueOf(DateTimeUtils.MILLIS_PER_SECOND);
+                        divider = unit.multiplier;
+                        unit = TimeUnit.SECOND;
+                        break;
+                    default:
+                        multiplier = BigDecimal.ONE;
+                        divider = BigDecimal.ONE;
+                }
+                final SqlIntervalQualifier qualifier =
+                        new SqlIntervalQualifier(unit, null, SqlParserPos.ZERO);
+                final RexNode op2 = cx.convertExpression(call.operand(2));
+                final RexNode op1 = cx.convertExpression(call.operand(1));
+                final RelDataType intervalType =
+                        cx.getTypeFactory().createTypeWithNullability(
+                                cx.getTypeFactory().createSqlIntervalType(qualifier),
+                                op1.getType().isNullable() || op2.getType().isNullable());
+                final RexCall rexCall = (RexCall) rexBuilder.makeCall(
+                        intervalType, SqlStdOperatorTable.MINUS_DATE,
+                        ImmutableList.of(op2, op1));
+                final RelDataType intType =
+                        cx.getTypeFactory().createTypeWithNullability(
+                                cx.getTypeFactory().createSqlType(sqlTypeName),
+                                SqlTypeUtil.containsNullable(rexCall.getType()));
+
+                // If dealing with year, quarter, or month we will calculate the difference using date parts
+                // and do not need any integer division.
+                if (unit == TimeUnit.YEAR || unit == TimeUnit.QUARTER || unit == TimeUnit.MONTH) {
+                    return rexBuilder.makeReinterpretCast(intType, rexCall, rexBuilder.makeLiteral(false));
+                }
+
+                final RexNode e = rexBuilder.makeCast(intType, rexCall);
+                return rexBuilder.multiplyDivide(e, multiplier, divider);
+            }
         }
     }
 

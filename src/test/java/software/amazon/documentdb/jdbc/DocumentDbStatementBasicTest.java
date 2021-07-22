@@ -426,15 +426,16 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * @throws SQLException occurs if query fails.
      */
     @Test
-    @DisplayName("Tests TIMESTAMPADD() with different intervals.")
-    void testQueryTimestampAdd() throws SQLException {
-        final String tableName = "testTimestampAdd";
+    @DisplayName("Tests TIMESTAMPADD() and TIMESTAMPDIFF() with different intervals.")
+    void testQueryTimestampAddDiff() throws SQLException {
+        final String tableName = "testTimestampAddDiff";
         final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
         final long weekAfterDateTime = Instant.parse("2020-02-29T00:00:00.00Z").toEpochMilli();
         final long dayAfterDateTime = Instant.parse("2020-02-23T00:00:00.00Z").toEpochMilli();
         final long hourAfterDateTime =  Instant.parse("2020-02-22T01:00:00.00Z").toEpochMilli();
         final long minuteAfterDateTime = Instant.parse("2020-02-22T00:01:00.00Z").toEpochMilli();
         final long secondAfterDateTime =  Instant.parse("2020-02-22T00:00:01.00Z").toEpochMilli();
+        final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         doc1.append("fieldWeekAfter", new BsonDateTime(weekAfterDateTime));
@@ -442,6 +443,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         doc1.append("fieldHourAfter", new BsonDateTime(hourAfterDateTime));
         doc1.append("fieldMinuteAfter", new BsonDateTime(minuteAfterDateTime));
         doc1.append("fieldSecondAfter", new BsonDateTime(secondAfterDateTime));
+        doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
         insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
                 new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
@@ -598,6 +600,33 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet16.next());
         Assertions.assertEquals(1000000, resultSet16.getLong(1));
         Assertions.assertFalse(resultSet16.next());
+
+        // Difference of 12 months in YEAR
+        final ResultSet resultSet17 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(YEAR, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet17);
+        Assertions.assertTrue(resultSet17.next());
+        Assertions.assertEquals(1, resultSet17.getLong(1));
+        Assertions.assertFalse(resultSet17.next());
+
+        // Difference of 12 months in QUARTER
+        final ResultSet resultSet18 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(QUARTER, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet18);
+        Assertions.assertTrue(resultSet18.next());
+        Assertions.assertEquals(4, resultSet18.getLong(1));
+        Assertions.assertFalse(resultSet18.next());
+
+        // Difference of 12 months in MONTH
+        final ResultSet resultSet19 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(MONTH, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet19);
+        Assertions.assertTrue(resultSet19.next());
+        Assertions.assertEquals(12, resultSet19.getLong(1));
+        Assertions.assertFalse(resultSet19.next());
     }
 
     /**
