@@ -1587,4 +1587,26 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{\"$addFields\": {\"EXPR$0\": {\"$substrCP\": [\"$array.field\", {\"$subtract\": [\"$array.field2\", 1]}, {\"$subtract\": [\"$array.field1\", \"$array.field2\"]}]}}}"),
                 result.getAggregateOperations().get(5));
     }
+
+    @Test
+    @DisplayName("Tests that unquoted identifiers retain their casing but are evaluated case-sensitively.")
+    void testQueryWithUnquotedIdentifiers() throws SQLException {
+        final String correctCasing =
+                String.format("SELECT * FROM %s.%s", DATABASE_NAME, COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result = queryMapper.get(correctCasing);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(0, result.getAggregateOperations().size());
+
+        final String incorrectCasing =
+                String.format("SELECT * FROM %s.%s", DATABASE_NAME, COLLECTION_NAME.toUpperCase());
+        Assertions.assertEquals(
+                "Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'.\n"
+                        + " Reason: 'From line 1, column 15 to line 1, column 37:"
+                        + " Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'",
+                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(incorrectCasing))
+                        .getMessage());
+    }
+
 }
