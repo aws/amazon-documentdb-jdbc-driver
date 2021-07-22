@@ -1765,6 +1765,94 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         "Additional info: 'Translation of FLOOR(12.34:DECIMAL(4, 2)) is not supported by DocumentDbRules''"));
     }
 
+    /**
+     * Test that queries selecting a boolean expression with NOT work.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Test that queries selecting boolean expressions with NOT are correct.")
+    void testQueryWithNot() throws SQLException {
+        final String tableName = "testQueryWithNot";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field1\": true, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field1\": true, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 5}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field1\": false, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 5}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT NOT (\"field1\"), " +
+                                "NOT (\"field1\" AND \"field2\"), " +
+                                "NOT (\"field1\" OR \"field2\"), " +
+                                "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.getBoolean(1));
+        Assertions.assertTrue(resultSet.getBoolean(2));
+        Assertions.assertFalse(resultSet.getBoolean(3));
+        Assertions.assertTrue(resultSet.getBoolean(4));
+
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.getBoolean(1));
+        Assertions.assertFalse(resultSet.getBoolean(2));
+        Assertions.assertFalse(resultSet.getBoolean(3));
+        Assertions.assertFalse(resultSet.getBoolean(4));
+
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.getBoolean(1));
+        Assertions.assertTrue(resultSet.getBoolean(2));
+        Assertions.assertTrue(resultSet.getBoolean(3));
+        Assertions.assertTrue(resultSet.getBoolean(4));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Test that queries selecting a boolean expression with NOT from nulls.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @Disabled("AD-267: Boolean expressions do not treat nulls correctly.")
+    @DisplayName("Test that queries selecting a boolean expression with NOT from nulls are correct.")
+    void testQueryWithNotNulls() throws SQLException {
+        final String tableName = "testQueryWithNotNulls";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field1\": true, \n" + // Added this document only for metadata
+                "\"field2\": true, \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT NOT (\"field1\"), " +
+                                "NOT (\"field1\" AND \"field2\"), " +
+                                "NOT (\"field1\" OR \"field2\"), " +
+                                "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertNull(resultSet.getString(1));
+        Assertions.assertNull(resultSet.getString(2));
+        Assertions.assertNull(resultSet.getString(3));
+        Assertions.assertNull(resultSet.getString(4));
+        Assertions.assertFalse(resultSet.next());
+    }
+
     private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
         return OffsetDateTime.of(
                 offsetDateTime.getYear(), monthValue, 1,
