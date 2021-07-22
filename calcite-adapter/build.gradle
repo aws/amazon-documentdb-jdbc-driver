@@ -204,7 +204,7 @@ dependencies {
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.29'
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.26.0'
     implementation group: 'org.codehaus.janino', name: 'commons-compiler', version: '3.0.17'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.3.0'
 
     compileOnly         'org.projectlombok:lombok:1.18.16'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
