@@ -211,7 +211,7 @@ dependencies {
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
 
-    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
 }
 
 test {
