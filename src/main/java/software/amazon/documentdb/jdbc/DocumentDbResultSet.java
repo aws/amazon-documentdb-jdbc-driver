@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc;
 
 import com.google.common.collect.ImmutableList;
-import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCursor;
 import org.bson.Document;
 import org.bson.types.Binary;
@@ -45,7 +44,6 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
     private final MongoCursor<Document> iterator;
     private Document current;
     private final List<String> paths;
-    private final MongoClient client;
 
     /**
      * DocumentDbResultSet constructor, initializes super class.
@@ -54,21 +52,18 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
             final Statement statement,
             final MongoCursor<Document> iterator,
             final ImmutableList<JdbcColumnMetaData> columnMetaData,
-            final List<String> paths,
-            final MongoClient client) throws SQLException {
+            final List<String> paths) throws SQLException {
         super(statement, columnMetaData, true);
         this.iterator = iterator;
 
         // Set fetch size to be fetch size of statement if it exists. Otherwise, use default.
         this.fetchSize = statement != null ? statement.getFetchSize() : DEFAULT_FETCH_SIZE;
         this.paths = paths;
-        this.client = client;
     }
 
     @Override
     protected void doClose() {
         iterator.close();
-        client.close();
     }
 
     /**
