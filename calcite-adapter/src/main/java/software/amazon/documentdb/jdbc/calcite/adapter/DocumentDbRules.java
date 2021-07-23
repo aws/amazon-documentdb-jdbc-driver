@@ -198,7 +198,7 @@ public final class DocumentDbRules {
         private final JavaTypeFactory typeFactory;
         private final List<String> inFields;
 
-        static final Map<SqlOperator, String> MONGO_OPERATORS =
+        private static final Map<SqlOperator, String> MONGO_OPERATORS =
                 new HashMap<>();
         private static final Map<SqlOperator,
                 BiFunction<RexCall, List<String>, String>> REX_CALL_TO_MONGO_MAP = new HashMap<>();
