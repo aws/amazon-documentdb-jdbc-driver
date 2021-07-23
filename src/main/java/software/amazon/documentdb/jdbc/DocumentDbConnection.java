@@ -21,7 +21,6 @@ import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
-import lombok.SneakyThrows;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,8 +48,8 @@ public class DocumentDbConnection extends Connection
             LoggerFactory.getLogger(DocumentDbConnection.class.getName());
 
     private final DocumentDbConnectionProperties connectionProperties;
-    private DocumentDbDatabaseMetaData metadata;
-    private DocumentDbDatabaseSchemaMetadata databaseMetadata;
+    private final DocumentDbDatabaseMetaData metadata;
+    private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private MongoClient mongoClient = null;
     private MongoDatabase mongoDatabase = null;
 
@@ -62,6 +61,9 @@ public class DocumentDbConnection extends Connection
         super(connectionProperties);
         this.connectionProperties = connectionProperties;
         initializeClients(connectionProperties);
+        databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
+                connectionProperties, connectionProperties.getSchemaName(), VERSION_LATEST_OR_NEW);
+        metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
     }
 
     @Override
@@ -96,24 +98,12 @@ public class DocumentDbConnection extends Connection
         }
     }
 
-    @SneakyThrows
     @Override
-    public DatabaseMetaData getMetaData() throws SQLException {
-        ensureDatabaseMetadata();
+    public DatabaseMetaData getMetaData() {
         return metadata;
     }
 
-    private void ensureDatabaseMetadata() throws SQLException {
-        if (metadata == null) {
-            databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
-                    connectionProperties, connectionProperties.getSchemaName(), VERSION_LATEST_OR_NEW);
-            metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
-        }
-    }
-
-    DocumentDbDatabaseSchemaMetadata getDatabaseMetadata()
-            throws SQLException {
-        ensureDatabaseMetadata();
+    DocumentDbDatabaseSchemaMetadata getDatabaseMetadata() {
         return databaseMetadata;
     }
 
