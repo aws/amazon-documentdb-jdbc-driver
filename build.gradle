@@ -263,5 +263,5 @@ dependencies {
     testImplementation      group: 'org.mockito', name: 'mockito-core', version: '2.1.0'
     testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.0'
 
-    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
 }
