@@ -253,7 +253,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     testImplementation(testFixtures(project(':common')))
-    testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
+    testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1u2'
     testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
