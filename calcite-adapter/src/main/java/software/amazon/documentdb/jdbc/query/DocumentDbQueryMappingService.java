@@ -85,6 +85,9 @@ public class DocumentDbQueryMappingService {
             final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
         // Add MYSQL function support
         connectionProperties.putIfAbsent("FUN", "standard,mysql");
+        // Leave unquoted identifiers in their original case. Identifiers are still case-sensitive
+        // but do not need to be quoted
+        connectionProperties.putIfAbsent("UNQUOTEDCASING", "UNCHANGED");
         this.prepareContext =
                 new DocumentDbPrepareContext(
                         getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),

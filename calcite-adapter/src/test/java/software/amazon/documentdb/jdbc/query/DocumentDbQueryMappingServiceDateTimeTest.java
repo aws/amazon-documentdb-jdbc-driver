@@ -17,16 +17,21 @@
 package software.amazon.documentdb.jdbc.query;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.bson.BsonArray;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
+import org.bson.BsonInt64;
+import org.bson.BsonString;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbFilter;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
@@ -599,5 +604,220 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + "     {\"$dateFromString\": {\"dateString\": {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-10-01T00:00:00Z\"}}}},"
                         + "   null]}]}]}]}}}").toJson(),
                 ((BsonDocument) operations3.get(0)).toJson());
+    }
+
+    @Test
+    @DisplayName("Tests MONTHNAME in WHERE clause.")
+    void testWhereMonthName() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE MONTHNAME(\"field\") = 'February'",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$eq\": [{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 1]}, \"January\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 2]}, \"February\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 3]}, \"March\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 4]}, \"April\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 5]}, \"May\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 6]}, \"June\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 7]}, \"July\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 8]}, \"August\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 9]}, \"September\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 10]}, \"October\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 11]}, \"November\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 12]}, \"December\"," +
+                        " null]}]}]}]}]}]}]}]}]}]}]}]}, \"February\"]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @DisplayName("Tests DAYNAME in WHERE clause.")
+    void testWhereDayName() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE DAYNAME(\"field\") = 'Tuesday'",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$eq\": [{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 1]}, \"Sunday\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 2]}, \"Monday\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 3]}, \"Tuesday\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 4]}, \"Wednesday\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 5]}, \"Thursday\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 6]}, \"Friday\", " +
+                        "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 7]}, \"Saturday\"," +
+                        " null]}]}]}]}]}]}]}, \"Tuesday\"]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
+    @DisplayName("Tests CURRENT_DATE in WHERE clause.")
+    void testWhereCurrentDate() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> CURRENT_DATE",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        final BsonDocument rootDoc = context.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
+                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+        Assertions.assertNotNull(cstDateTime);
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, {\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
+    @DisplayName("Tests CURRENT_TIME in WHERE clause.")
+    void testWhereCurrentTime() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE CAST(\"field\" AS TIME) <> CURRENT_TIME",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        final BsonDocument rootDoc = context.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
+                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+        Assertions.assertNotNull(cstDateTime);
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, " +
+                        "{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
+    @DisplayName("Tests CURRENT_TIMESTAMP in WHERE clause.")
+    void testWhereCurrentTimestamp() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE CAST(\"field\" as TIMESTAMP) <> CURRENT_TIMESTAMP",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        final BsonDocument rootDoc = context.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
+                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+        Assertions.assertNotNull(cstDateTime);
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, " +
+                        "{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @DisplayName("Tests date extract in WHERE clause.")
+    void testWhereExtract() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE EXTRACT(YEAR FROM \"field\") = 2021",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        final BsonArray array = new BsonArray();
+        array.add(new BsonDocument("$year", new BsonString("$field")));
+        array.add(new BsonInt64(2021));
+        final BsonDocument doc =  new BsonDocument("$addFields",
+                new BsonDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1),
+                        new BsonDocument("$eq", array)));
+        Assertions.assertEquals(doc, operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @DisplayName("Tests TIMESTAMPADD in WHERE clause.")
+    void testWhereTimestampAdd() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPADD(DAY, 3, \"field\") = '2020-01-04'",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$eq\": [{\"$add\": [\"$field\", {$numberLong: \"259200000\"}]}, {\"$date\": \"2020-01-04T00:00:00Z\"}]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF in WHERE clause.")
+    void testWhereTimestampDiff() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPDIFF(DAY, \"field\", \"field\") = 0",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$eq\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 86400000]}]}, 86400000]}, 0]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
     }
 }
