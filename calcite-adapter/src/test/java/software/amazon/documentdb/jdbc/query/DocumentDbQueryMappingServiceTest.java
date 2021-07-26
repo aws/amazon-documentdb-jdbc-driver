@@ -1835,10 +1835,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
 
         final String incorrectCasing =
                 String.format("SELECT * FROM %s.%s", DATABASE_NAME, COLLECTION_NAME.toUpperCase());
-        Assertions.assertEquals(
-                "Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'.\n"
+        Assertions.assertEquals(String.format(
+                "Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'.%n"
                         + " Reason: 'From line 1, column 15 to line 1, column 37:"
-                        + " Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'",
+                        + " Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'"),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(incorrectCasing))
                         .getMessage());
     }
