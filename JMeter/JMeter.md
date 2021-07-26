@@ -35,7 +35,7 @@ A potential enhancement could be to automate this.
 
 1. Start an SSH tunnel for target cluster. 
 
-1. Run the .jmx file. 
+1. Run the `DocumentDb_Test_Plan.jmx` file. 
    Pass connection string (`JconnectionString`), username(`Jusername`), and password(`Jpassword`) as parameters. Connection string and username 
    may be omitted as they have default values but password is required. 
    Example: 
