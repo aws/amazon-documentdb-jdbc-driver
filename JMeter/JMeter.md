@@ -18,16 +18,30 @@ A potential enhancement could be to automate this.
 
 ## Run Tests
 
-### Run Test Plan with DocumentDb Driver
+### Run Test Plan with DocumentDb Driver 
+
+#### GUI
 
 1. Open the `DocumentDb_Test_Plan.jmx` file in JMeter.
 
 1. Start an SSH tunnel for the target cluster.
 
 1. Click on the `DocumentDb Test Plan` element. 
-   May need to change user variables such as `CONNECTION_STRING`, `USERNAME`, and `PASSWORD` depending on SSH tunnel setup and target cluster.
+   Change user variables `CONNECTION_STRING`, `USERNAME`, and `PASSWORD` depending on SSH tunnel setup and target cluster.
 
-1. Run the test plan.
+1. Run the test plan. 
+
+#### Command-line 
+
+1. Start an SSH tunnel for target cluster. 
+
+1. Run the .jmx file. 
+   Pass connection string (`JconnectionString`), username(`Jusername`), and password(`Jpassword`) as parameters. Connection string and username 
+   may be omitted as they have default values but password is required. 
+   Example: 
+
+   ``` 
+   ./jmeter.sh -n -t DocumentDb_Test_Plan.jmx -Jpassword=<password>
 
 ### Run Test Plan with Other JDBC Driver
 
