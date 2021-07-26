@@ -422,13 +422,13 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that TIMESTAMPADD() works for intervals that can be converted to ms.
+     * Tests TIMESTAMPADD() and TIMESTAMPDIFF() for intervals that can be converted to ms.
      * @throws SQLException occurs if query fails.
      */
     @Test
-    @DisplayName("Tests TIMESTAMPADD() with different intervals.")
-    void testQueryTimestampAdd() throws SQLException {
-        final String tableName = "testTimestampAdd";
+    @DisplayName("Tests TIMESTAMPADD() and TIMESTAMPDIFF() with different intervals.")
+    void testQueryTimestampAddDiff() throws SQLException {
+        final String tableName = "testTimestampAddDiff";
         final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
         final long weekAfterDateTime = Instant.parse("2020-02-29T00:00:00.00Z").toEpochMilli();
         final long dayAfterDateTime = Instant.parse("2020-02-23T00:00:00.00Z").toEpochMilli();
@@ -598,6 +598,87 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet16.next());
         Assertions.assertEquals(1000000, resultSet16.getLong(1));
         Assertions.assertFalse(resultSet16.next());
+    }
+
+    /**
+     * Tests TIMESTAMPDIFF() for YEAR.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF() for YEAR.")
+    void testQueryTimestampDiffYear() throws SQLException {
+        final String tableName = "testTimestampDiffYear";
+        final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
+        final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        // Difference of 12 months in YEAR
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(YEAR, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(1, resultSet.getLong(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests TIMESTAMPADD() for QUARTER.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF() for QUARTER.")
+    void testQueryTimestampDiffQuarter() throws SQLException {
+        final String tableName = "testTimestampDiffQuarter";
+        final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
+        final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        // Difference of 12 months in QUARTER
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(QUARTER, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(4, resultSet.getLong(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests TIMESTAMPADD() for MONTH.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF() for MONTH.")
+    void testQueryTimestampDiffMonth() throws SQLException {
+        final String tableName = "testTimestampDiffMonth";
+        final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
+        final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        // Difference of 12 months in MONTH
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(MONTH, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(12, resultSet.getLong(1));
+        Assertions.assertFalse(resultSet.next());
     }
 
     /**
