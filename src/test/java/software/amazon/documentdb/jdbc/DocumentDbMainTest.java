@@ -321,10 +321,11 @@ class DocumentDbMainTest {
             output.setLength(0);
             DocumentDbMain.handleCommandLine(args, output);
             Assertions.assertEquals(String.format(
-                    "Name=%1$s, Version=1, SQL Name=integration%n"
-                            + "Name=%2$s, Version=1, SQL Name=integration%n",
+                    "Name=%1$s, Version=1, SQL Name=%3$s%n"
+                            + "Name=%2$s, Version=1, SQL Name=%3$s%n",
                     DEFAULT_SCHEMA_NAME,
-                    CUSTOM_SCHEMA_NAME),
+                    CUSTOM_SCHEMA_NAME,
+                    testEnvironment.getDatabaseName()),
                     output.toString().replaceAll(", Modified=.*", ""));
 
             // Ensure listing schemas doesn't create a new schema
