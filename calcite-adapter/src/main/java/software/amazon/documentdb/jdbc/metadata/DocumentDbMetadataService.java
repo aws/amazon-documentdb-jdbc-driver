@@ -91,6 +91,7 @@ public class DocumentDbMetadataService {
             final DocumentDbConnectionProperties properties,
             final String schemaName,
             final int schemaVersion) throws SQLException {
+        final Instant beginRetrieval = Instant.now();
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
         final Map<String, DocumentDbSchemaTable> tableMap = new LinkedHashMap<>();
 
@@ -103,17 +104,31 @@ public class DocumentDbMetadataService {
             case VERSION_LATEST_OR_NEW:
                 // If latest exist, return it.
                 if (schema != null) {
+                    LOGGER.info("Attempting to retrieve latest latest metadata.");
+                    LOGGER.info(String.format("Successfully retrieved metadata in %d ms.",
+                            Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
                     return schema;
                 }
                 // Otherwise, fall through to create new.
+                LOGGER.info("Existing metadata not found, will generate new metadata instead.");
             case VERSION_NEW:
                 // Get a new version.
+                LOGGER.info("Beginning generation of new metadata.");
+                final Instant beginGeneration = Instant.now();
+
                 lookupVersion = schema != null ? schema.getSchemaVersion() + 1 : 1;
                 schema = getNewDatabaseMetadata(properties, schemaName, lookupVersion, tableMap);
+                LOGGER.info(String.format("Successfully generated metadata in %d ms.",
+                        Instant.now().toEpochMilli() - beginGeneration.toEpochMilli()));
                 return schema;
             case VERSION_LATEST_OR_NONE:
             default:
                 // Return specific version or null.
+                LOGGER.info(String.format("Attempting to find schema %s.", schemaName));
+                if (schema != null) {
+                    LOGGER.info(String.format("Retrieved schema %s version %d in %d ms.",
+                            schemaName, schemaVersion, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
+                }
                 return schema;
         }
     }

@@ -61,6 +61,17 @@ public class DocumentDbConnection extends Connection
             throws SQLException {
         super(connectionProperties);
         this.connectionProperties = connectionProperties;
+        if (LOGGER.isDebugEnabled()) {
+            final StringBuilder sb = new StringBuilder();
+            sb.append("Creating connection with following properties:");
+            for (String propertyName : connectionProperties.stringPropertyNames()) {
+                if (!propertyName.equals(DocumentDbConnectionProperty.PASSWORD.getName())) {
+                    sb.append(String.format("\nConnection property %s=%s",
+                            propertyName, connectionProperties.get(propertyName).toString()));
+                }
+            }
+            LOGGER.debug(sb.toString());
+        }
         initializeClients(connectionProperties);
     }
 
@@ -137,7 +148,7 @@ public class DocumentDbConnection extends Connection
 
     @Override
     public java.sql.Statement createStatement(final int resultSetType,
-            final int resultSetConcurrency)
+                                              final int resultSetConcurrency)
             throws SQLException {
 
         verifyOpen();

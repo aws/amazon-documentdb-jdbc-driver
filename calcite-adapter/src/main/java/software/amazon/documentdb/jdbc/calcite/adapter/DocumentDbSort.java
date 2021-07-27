@@ -29,6 +29,9 @@ import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -37,6 +40,9 @@ import java.util.List;
  * relational expression in MongoDB.
  */
 public class DocumentDbSort extends Sort implements DocumentDbRel {
+
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(DocumentDbSort.class.getName());
 
     /**
      * Creates a new {@link DocumentDbSort}
@@ -98,6 +104,7 @@ public class DocumentDbSort extends Sort implements DocumentDbRel {
             implementor.add(null,
                     "{$limit: " + ((RexLiteral) fetch).getValue() + "}");
         }
+        LOGGER.info("Created sort and row limit stages of pipeline.");
     }
 
     private static int direction(final RelFieldCollation fieldCollation) {

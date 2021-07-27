@@ -36,6 +36,7 @@ import software.amazon.documentdb.jdbc.query.DocumentDbMqlQueryContext;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -157,12 +158,15 @@ public class DocumentDbQueryExecutor {
      */
     @VisibleForTesting
     protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
+        final Instant beginTranslation = Instant.now();
+        LOGGER.info("Begin translating query.");
         final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql);
-
+        LOGGER.info(String.format("Took %d ms to translate query.",
+                Instant.now().toEpochMilli() - beginTranslation.toEpochMilli()));
         if (!(statement.getConnection() instanceof DocumentDbConnection)) {
             throw new SQLException("Unexpected operation state.");
         }
-
+        final Instant beginExecution = Instant.now();
         final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
         final DocumentDbConnectionProperties properties = connection.getConnectionProperties();
         final MongoClientSettings settings = properties.buildMongoClientSettings();
@@ -182,6 +186,9 @@ public class DocumentDbQueryExecutor {
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
+        LOGGER.info(String.format("Took %d ms to execute query.",
+                Instant.now().toEpochMilli() - beginExecution.toEpochMilli()));
+        LOGGER.debug("Query executed: " + queryContext.getAggregateOperations().toString());
         return new DocumentDbResultSet(
                 this.statement,
                 iterator,

@@ -27,6 +27,8 @@ import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexUtil;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Implementation of a {@link Filter}
@@ -39,6 +41,9 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
      * where clause.
      */
     public static final String BOOLEAN_FLAG_FIELD = "\"placeholderField1F84EB1G3K47\"";
+
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(DocumentDbFilter.class.getName());
 
     /**
      * Creates a new {@link DocumentDbFilter}
@@ -84,6 +89,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
                                 mongoImplementor.getMetadataTable()));
         final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
         final String match = expandedCondition.accept(rexToMongoTranslator);
+        LOGGER.info("Created filter stages of pipeline.");
         implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
         implementor.add(null, "{\"$match\": {" + BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}");
         implementor.add(null, "{\"$project\": {" + BOOLEAN_FLAG_FIELD + ":0}}");
