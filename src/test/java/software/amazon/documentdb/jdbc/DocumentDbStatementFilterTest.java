@@ -22,6 +22,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt64;
 import org.bson.BsonMinKey;
+import org.bson.BsonString;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
@@ -1398,5 +1399,76 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests that setMaxRows limits the number of rows returned in result set.")
+    void testSetMaxRows() throws SQLException {
+        final String collection = "testSetMaxRows";
+        final BsonDocument[] documents = new BsonDocument[10];
+        final int totalNumberDocuments = 10;
+        final int maxRows = 5;
+        for (int i = 0; i < totalNumberDocuments; i++) {
+            documents[i] = new BsonDocument("field", new BsonString("value"));
+        }
+        insertBsonDocuments(collection, DATABASE_NAME, USER, PASSWORD, documents);
+        final Statement statement = getDocumentDbStatement();
+
+        // Don't set max rows
+        ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        int actualRowCount = 0;
+        while (resultSet.next()) {
+            actualRowCount++;
+        }
+        Assertions.assertEquals(0, statement.getMaxRows());
+        Assertions.assertEquals(totalNumberDocuments, actualRowCount);
+
+        // Set max rows < actual
+        statement.setMaxRows(maxRows);
+        resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        actualRowCount = 0;
+        while (resultSet.next()) {
+            actualRowCount++;
+        }
+        Assertions.assertEquals(maxRows, statement.getMaxRows());
+        Assertions.assertEquals(maxRows, actualRowCount);
+
+        // Set unlimited
+        statement.setMaxRows(0);
+        resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+        actualRowCount = 0;
+        while (resultSet.next()) {
+            actualRowCount++;
+        }
+        Assertions.assertEquals(0, statement.getMaxRows());
+        Assertions.assertEquals(totalNumberDocuments, actualRowCount);
+
+        // Set max rows > SQL LIMIT
+        int limit = maxRows - 1;
+        statement.setMaxRows(maxRows);
+        resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", DATABASE_NAME, collection, limit));
+        actualRowCount = 0;
+        while (resultSet.next()) {
+            actualRowCount++;
+        }
+        Assertions.assertEquals(maxRows, statement.getMaxRows());
+        Assertions.assertEquals(limit, actualRowCount);
+
+        // Set max rows < SQL LIMIT
+        limit = maxRows + 1;
+        statement.setMaxRows(maxRows);
+        resultSet = statement.executeQuery(
+                String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", DATABASE_NAME, collection, limit));
+        actualRowCount = 0;
+        while (resultSet.next()) {
+            actualRowCount++;
+        }
+        Assertions.assertEquals(maxRows, statement.getMaxRows());
+        Assertions.assertEquals(maxRows, actualRowCount);
+
     }
 }
