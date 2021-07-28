@@ -52,8 +52,8 @@ public class DocumentDbPreparedStatement extends PreparedStatement
     }
 
     @Override
-    protected void cancelQuery() throws SQLException {
-        queryExecutor.cancelQuery();
+    protected void cancelQuery(final boolean isClosing) throws SQLException {
+        queryExecutor.cancelQuery(isClosing);
     }
 
     @Override

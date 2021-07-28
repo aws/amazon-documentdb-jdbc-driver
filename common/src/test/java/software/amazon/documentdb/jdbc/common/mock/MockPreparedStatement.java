@@ -47,7 +47,7 @@ public class MockPreparedStatement extends PreparedStatement implements java.sql
     }
 
     @Override
-    protected void cancelQuery() throws SQLException {
+    protected void cancelQuery(final boolean isClosing) throws SQLException {
 
     }
 

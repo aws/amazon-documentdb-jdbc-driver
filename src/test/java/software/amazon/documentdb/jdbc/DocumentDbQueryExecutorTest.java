@@ -145,15 +145,9 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         waitCancelToComplete(cancelThread1);
         waitCancelToComplete(cancelThread2);
 
-        // Check that 1 of the threads succeeded while other threw an exception.
-        try {
-            cancel1.getException();
-            // First thread succeeded so second must fail.
-            Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel2));
-        } catch (SQLException e) {
-            // First thread failed so second one must have succeeded.
-            Assertions.assertDoesNotThrow(() -> getCancelException(cancel2));
-        }
+        // Check that both threads succeed.
+        Assertions.assertDoesNotThrow(() -> getCancelException(cancel1));
+        Assertions.assertDoesNotThrow(() -> getCancelException(cancel2));
     }
 
     /** Tests that canceling a query after execution has already completed fails. */
