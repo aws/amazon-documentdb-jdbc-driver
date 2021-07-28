@@ -227,7 +227,7 @@ public class DocumentDbTableSchemaGenerator {
                 .columns(columnMap)
                 .build();
         if (LOGGER.isDebugEnabled() && !tableMap.containsKey(metadataTable.getSqlName())) {
-            LOGGER.debug(String.format("2Added schema for table %s.", metadataTable.getSqlName()));
+            LOGGER.debug(String.format("Added schema for table %s.", metadataTable.getSqlName()));
         }
         tableMap.put(metadataTable.getSqlName(), metadataTable);
     }
