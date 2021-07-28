@@ -60,5 +60,5 @@ The Amazon DocumentDB JDBC driver has a number of important limitations. See the
 ## Troubleshooting Guide
 
 If you're having an issue using the Amazon DocumentDB JDBC driver, consult the 
-[Troubleshooting Guide](src/markdown/support/trouble-shooting.md) to see if has a solution for 
+[Troubleshooting Guide](src/markdown/support/troubleshooting-guide.md) to see if has a solution for 
 your issue.

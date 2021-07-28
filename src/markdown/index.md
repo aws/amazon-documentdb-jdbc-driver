@@ -23,7 +23,7 @@ This project is licensed under the Apache-2.0 License.
 - SQL and JDBC Compatibility
     - [SQL and JDBC Support and Limitations](sql/sql-jdbc-limitations.md)
 - Support
-    - [Troubleshooting Guide](support/trouble-shooting.md)
+    - [Troubleshooting Guide](support/troubleshooting-guide.md)
   
 ## Getting Started
 
@@ -73,5 +73,5 @@ The Amazon DocumentDB JDBC driver has a number of important limitations. See the
 ## Troubleshooting Guide
 
 If you're having an issue using the Amazon DocumentDB JDBC driver, consult the
-[Troubleshooting Guide](support/trouble-shooting.md) to see if has a solution for
+[Troubleshooting Guide](support/troubleshooting-guide.md) to see if has a solution for
 your issue.
