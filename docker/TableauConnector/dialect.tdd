@@ -526,9 +526,6 @@
     </date-function>
     <date-function name='DATEDIFF' return-type='int'>
       <formula>TIMESTAMPDIFF(%1, %2, %3)</formula>
-      <formula part='year'>CAST( EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) - EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) AS BIGINT)</formula>
-      <formula part='quarter'>CAST( (4 * EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) + EXTRACT(QUARTER FROM CAST(%3 AS TIMESTAMP))) - (4 * EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) + EXTRACT(QUARTER FROM CAST(%2 AS TIMESTAMP))) AS BIGINT)</formula>
-      <formula part='month'>CAST( (12 * EXTRACT(YEAR FROM CAST(%3 AS TIMESTAMP)) + EXTRACT(MONTH FROM CAST(%3 AS TIMESTAMP))) - (12 * EXTRACT(YEAR FROM CAST(%2 AS TIMESTAMP)) + EXTRACT(MONTH FROM CAST(%2 AS TIMESTAMP))) AS BIGINT)</formula>
       <argument type='localstr' />
       <argument type='datetime' />
       <argument type='datetime' />

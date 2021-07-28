@@ -169,8 +169,8 @@ public class DocumentDbQueryExecutor {
         final Instant beginExecution = Instant.now();
         final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
         final DocumentDbConnectionProperties properties = connection.getConnectionProperties();
-        final MongoClientSettings settings = properties.buildMongoClientSettings();
-        final MongoClient client = MongoClients.create(settings);
+        final MongoClient client = connection.getMongoClient();
+
         final MongoDatabase database = client.getDatabase(properties.getDatabase());
         final MongoCollection<Document> collection = database
                 .getCollection(queryContext.getCollectionName());
@@ -193,8 +193,7 @@ public class DocumentDbQueryExecutor {
                 this.statement,
                 iterator,
                 columnMetaData,
-                queryContext.getPaths(),
-                client);
+                queryContext.getPaths());
     }
 
     private void resetQueryState() {
