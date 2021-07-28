@@ -42,6 +42,7 @@ A potential enhancement could be to automate this.
 
    ``` 
    ./jmeter.sh -n -t DocumentDb_Test_Plan.jmx -Jpassword=<password>
+   ```
 
 ### Run Test Plan with Other JDBC Driver
 
