@@ -66,7 +66,7 @@ public class DocumentDbConnection extends Connection
             sb.append("Creating connection with following properties:");
             for (String propertyName : connectionProperties.stringPropertyNames()) {
                 if (!propertyName.equals(DocumentDbConnectionProperty.PASSWORD.getName())) {
-                    sb.append(String.format("\nConnection property %s=%s",
+                    sb.append(String.format("%n        Connection property %s=%s",
                             propertyName, connectionProperties.get(propertyName).toString()));
                 }
             }

@@ -100,6 +100,9 @@ public class DocumentDbTableSchemaGenerator {
                                 c -> c,
                                 (o, d) -> o,
                                 LinkedHashMap::new));
+                if (LOGGER.isDebugEnabled() && !tableMap.containsKey(table.getSqlName())) {
+                    LOGGER.debug(String.format("Added schema for table %s.", table.getSqlName()));
+                }
                 tableMap.put(table.getSqlName(), DocumentDbMetadataTable.builder()
                         .sqlName(table.getSqlName())
                         .collectionName(table.getCollectionName())
@@ -224,8 +227,10 @@ public class DocumentDbTableSchemaGenerator {
                 .collectionName(collectionName)
                 .columns(columnMap)
                 .build();
+        if (LOGGER.isDebugEnabled() && !tableMap.containsKey(metadataTable.getSqlName())) {
+            LOGGER.debug(String.format("2Added schema for table %s.", metadataTable.getSqlName()));
+        }
         tableMap.put(metadataTable.getSqlName(), metadataTable);
-        LOGGER.debug(String.format("Added schema for table %s.", metadataTable.getSqlName()));
     }
 
     /**
@@ -450,8 +455,10 @@ public class DocumentDbTableSchemaGenerator {
                 .collectionName(collectionName)
                 .columns(columnMap)
                 .build();
+        if (LOGGER.isDebugEnabled() && !tableMap.containsKey(metadataTable.getSqlName())) {
+            LOGGER.debug(String.format("Added schema for table %s.", metadataTable.getSqlName()));
+        }
         tableMap.put(metadataTable.getSqlName(), metadataTable);
-        LOGGER.debug(String.format("Added schema for table %s.", metadataTable.getSqlName()));
     }
 
     /**

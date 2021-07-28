@@ -189,7 +189,8 @@ public class DocumentDbQueryExecutor {
                 .copyOf(queryContext.getColumnMetaData());
         LOGGER.info(String.format("Took %d ms to execute query.",
                 Instant.now().toEpochMilli() - beginExecution.toEpochMilli()));
-        LOGGER.debug("Query executed: " + queryContext.getAggregateOperations().toString());
+        LOGGER.debug(String.format("Query executed on collection %s with following pipeline operations: %s",
+                queryContext.getCollectionName(), queryContext.getAggregateOperations().toString()));
         return new DocumentDbResultSet(
                 this.statement,
                 iterator,
