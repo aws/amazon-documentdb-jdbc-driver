@@ -55,8 +55,10 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.Month;
 import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -240,9 +242,6 @@ public final class DocumentDbRules {
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MINUS,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MINUS_DATE,
-                    (call, strings) -> getMongoAggregateForOperator(
-                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE_INTEGER,
                     RexToMongoTranslator::getMongoAggregateForIntegerDivide);
             // Boolean
@@ -253,7 +252,7 @@ public final class DocumentDbRules {
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.NOT,
-                    (call, strings) -> getMongoAggregateForOperator(
+                    (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             // Comparison
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.EQUALS,
@@ -278,10 +277,10 @@ public final class DocumentDbRules {
 
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NULL,
                     (call, strings) -> getMongoAggregateForNullOperator(
-                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
+                            strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NOT_NULL,
                     (call, strings) -> getMongoAggregateForNullOperator(
-                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
+                            strings, MONGO_OPERATORS.get(call.getOperator())));
 
             // Date operations
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_DATE, DateFunctionTranslator::translateCurrentTimestamp);
@@ -291,12 +290,15 @@ public final class DocumentDbRules {
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.EXTRACT, DateFunctionTranslator::translateExtract);
             REX_CALL_TO_MONGO_MAP.put(SqlLibraryOperators.DAYNAME, DateFunctionTranslator::translateDayName);
             REX_CALL_TO_MONGO_MAP.put(SqlLibraryOperators.MONTHNAME, DateFunctionTranslator::translateMonthName);
+            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.FLOOR, DateFunctionTranslator::translateFloor);
+            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MINUS_DATE, DateFunctionTranslator::translateDateDiff);
+
             // CASE, ITEM
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CASE, RexToMongoTranslator::getMongoAggregateForCase);
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.ITEM, RexToMongoTranslator::getMongoAggregateForItem);
 
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.SUBSTRING,
-                    (call, strings) -> getMongoAggregateForSubstringOperator(call, strings));
+                    RexToMongoTranslator::getMongoAggregateForSubstringOperator);
         }
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
@@ -372,10 +374,7 @@ public final class DocumentDbRules {
         }
 
         private static String getMongoAggregateForIntegerDivide(final RexCall call, final List<String> strings) {
-            // TODO: when $trunc is supported in DocumentDB, add back.
-            //final String intDivideOptFormat = "{ \"$trunc\": [ {\"$divide\": [%s]}, 0 ]}";
-            final String intDivideOptFormat = "{\"$divide\": [%s]}";
-            return String.format(intDivideOptFormat, Util.commaList(strings));
+            return getIntegerDivisionOperation(strings.get(0), strings.get(1));
         }
 
         private static String getMongoAggregateForCase(
@@ -431,21 +430,15 @@ public final class DocumentDbRules {
             return addNullChecksToQuery(strings, op);
         }
 
-        @SneakyThrows
-        private static String getMongoAggregateForOperator(
-                final RexCall call,
+        private static String getMongoAggregateForNullOperator(
                 final List<String> strings,
                 final String stdOperator) {
-            verifySupportedType(call);
-            return "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
-        }
-
-        private static String getMongoAggregateForNullOperator(final RexCall call, final List<String> strings,
-                                                               final String stdOperator) {
             return "{" + stdOperator + ": [" + strings.get(0) + ", null]}";
         }
 
-        private static String getMongoAggregateForSubstringOperator(final RexCall call, final List<String> strings) {
+        private static String getMongoAggregateForSubstringOperator(
+                final RexCall call,
+                final List<String> strings) {
             final List<String> inputs = new ArrayList<>(strings);
             inputs.set(1, "{$subtract: [" + inputs.get(1) + ", 1]}"); // Conversion from one-indexed to zero-indexed
             if (inputs.size() == 2) {
@@ -454,32 +447,20 @@ public final class DocumentDbRules {
             return "{$substrCP: [" + Util.commaList(inputs) + "]}";
         }
 
-        private static void verifySupportedType(final RexCall call)
-                throws SQLFeatureNotSupportedException {
-            if (call.type.getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
-                    || call.type.getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
-                throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
-                        SqlError.UNSUPPORTED_CONVERSION,
-                        call.type.getSqlTypeName().getName(),
-                        SqlTypeName.TIMESTAMP.getName());
-            }
-        }
-
         private static String addNullChecksToQuery(final List<String> strings, final String op) {
             final StringBuilder sb = new StringBuilder("{\"$and\": [");
             sb.append(op);
-            for (int i = 0; i < 2; i++) {
-                if (!strings.get(i).equals("null")) {
+            for (String string : strings) {
+                if (!"null".equals(string)) {
                     // The operator {$gt null} filters out any values that are null or undefined.
                     sb.append(",{\"$gt\": [");
-                    sb.append(strings.get(i));
+                    sb.append(string);
                     sb.append(", null]}");
                 }
             }
             sb.append("]}");
             return sb.toString();
         }
-
     }
 
     private static String stripQuotes(final String s) {
@@ -488,10 +469,44 @@ public final class DocumentDbRules {
                 : s;
     }
 
+    @SneakyThrows
+    private static String getMongoAggregateForOperator(
+            final RexCall call,
+            final List<String> strings,
+            final String stdOperator) {
+        verifySupportedType(call);
+        return "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
+    }
+
+    private static void verifySupportedType(final RexCall call)
+            throws SQLFeatureNotSupportedException {
+        if (call.type.getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
+                || call.type.getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
+            throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
+                    SqlError.UNSUPPORTED_CONVERSION,
+                    call.type.getSqlTypeName().getName(),
+                    SqlTypeName.TIMESTAMP.getName());
+        }
+    }
+
+    private static String getIntegerDivisionOperation(final String value, final String divisor) {
+        // TODO: when $trunc is supported in DocumentDB, add back.
+        //final String intDivideOptFormat = "{ \"$trunc\": [ {\"$divide\": [%s]}, 0 ]}";
+        // NOTE: $mod, $subtract, and $divide - together, perform integer division
+        final String modulo = String.format(
+                "{\"$mod\": [%s, %s]}", value, divisor);
+        final String subtractRemainder = String.format(
+                "{\"$subtract\": [%s, %s]}", value, modulo);
+        return String.format(
+                "{\"$divide\": [%s, %s]}", subtractRemainder, divisor);
+    }
+
     private static class DateFunctionTranslator {
 
         private static final Map<TimeUnitRange, String> DATE_PART_OPERATORS =
                 new HashMap<>();
+        private static final Instant FIRST_DAY_OF_WEEK_AFTER_EPOCH =
+                Instant.parse("1970-01-05T00:00:00Z");
 
         static {
             // Date part operators
@@ -517,27 +532,75 @@ public final class DocumentDbRules {
             return "{ \"$add\":" + "[" + Util.commaList(strings) + "]}";
         }
 
+        private static String translateDateDiff(final RexCall call, final List<String> strings) {
+            final TimeUnitRange interval = call.getType().getIntervalQualifier().timeUnitRange;
+            switch (interval) {
+                case YEAR:
+                    return formatDateDiffYear(strings);
+                case QUARTER:
+                case MONTH:
+                    return formatDateDiffMonth(strings, interval);
+                default:
+                    return getMongoAggregateForOperator(
+                            call,
+                            strings,
+                            RexToMongoTranslator.MONGO_OPERATORS.get(SqlStdOperatorTable.MINUS_DATE));
+            }
+        }
+
+        private static String formatDateDiffYear(final List<String> strings) {
+            final String dateDiffYearFormat =
+                    "{'$subtract': [{'$year': %1$s}, {'$year': %2$s}]}";
+            return String.format(dateDiffYearFormat, strings.get(0), strings.get(1));
+        }
+
+        private static String formatDateDiffMonth(final List<String> strings, final TimeUnitRange timeUnitRange) {
+            final String yearPartMultiplier = timeUnitRange == timeUnitRange.QUARTER ? "4" : "12";
+            final String monthPart1 =
+                    timeUnitRange == timeUnitRange.QUARTER
+                            ? translateExtractQuarter(strings.get(0))
+                            : String.format("{'$month': %s}", strings.get(0));
+            final String monthPart2 =
+                    timeUnitRange == timeUnitRange.QUARTER
+                            ? translateExtractQuarter(strings.get(1))
+                            : String.format("{'$month': %s}", strings.get(1));
+            final String dateDiffMonthFormat =
+                    "{'$subtract': [ "
+                            + "{'$add': [ "
+                            + "{'$multiply': [%1$s, {'$year': %2$s}]}, "
+                            + "%4$s]}, "
+                            + "{'$add': [ "
+                            + "{'$multiply': [%1$s, {'$year': %3$s}]}, "
+                            + "%5$s]}]}";
+            return String.format(
+                    dateDiffMonthFormat,
+                    yearPartMultiplier,
+                    strings.get(0),
+                    strings.get(1),
+                    monthPart1,
+                    monthPart2);
+        }
+
         private static String translateExtract(final RexCall call, final List<String> strings) {
             // The first argument to extract is the interval (literal)
             // and the second argument is the date (can be any node evaluating to a date).
             final RexLiteral literal = (RexLiteral) call.getOperands().get(0);
             final TimeUnitRange range = literal.getValueAs(TimeUnitRange.class);
 
-            // TODO: Check for unsupported time unit (ex: quarter) and emulate in some other way.
             if (range == TimeUnitRange.QUARTER) {
-                return translateExtractQuarter(strings);
+                return translateExtractQuarter(strings.get(1));
             }
             return "{ " + quote(DATE_PART_OPERATORS.get(range)) + ": " + strings.get(1) + "}";
         }
 
-        private static String translateExtractQuarter(final List<String> strings) {
+        private static String translateExtractQuarter(final String date) {
             final String extractQuarterFormatString =
                     "{'$cond': [{'$lte': [{'$month': %1$s}, 3]}, 1,"
                             + " {'$cond': [{'$lte': [{'$month': %1$s}, 6]}, 2,"
                             + " {'$cond': [{'$lte': [{'$month': %1$s}, 9]}, 3,"
                             + " {'$cond': [{'$lte': [{'$month': %1$s}, 12]}, 4,"
                             + " null]}]}]}]}";
-            return String.format(extractQuarterFormatString, strings.get(1));
+            return String.format(extractQuarterFormatString, date);
         }
 
         public static String translateDayName(final RexCall rexCall, final List<String> strings) {
@@ -590,6 +653,128 @@ public final class DocumentDbRules {
                     Month.NOVEMBER.getDisplayName(TextStyle.FULL, Locale.getDefault()),
                     Month.DECEMBER.getDisplayName(TextStyle.FULL, Locale.getDefault()),
                     strings.get(0));
+        }
+
+        @SneakyThrows
+        private static String translateFloor(final RexCall rexCall, final List<String> strings) {
+            // TODO: Add support for integer floor with one operand
+            if (rexCall.operands.size() != 2) {
+                return null;
+            }
+
+            // NOTE: Required for getting FLOOR of date-time
+            final RexNode operand2 = rexCall.operands.get(1);
+            if (!(operand2.isA(SqlKind.LITERAL)
+                    && operand2.getType().getSqlTypeName() == SqlTypeName.SYMBOL
+                    && (((RexLiteral) operand2).getValue() instanceof TimeUnitRange))) {
+                return null;
+            }
+            final RexLiteral literal = (RexLiteral) operand2;
+            final TimeUnitRange timeUnitRange = literal.getValueAs(TimeUnitRange.class);
+            switch (timeUnitRange) {
+                case YEAR:
+                case MONTH:
+                    return formatYearMonthFloorOperation(strings, timeUnitRange);
+                case QUARTER:
+                    return formatQuarterFloorOperation(strings);
+                case WEEK:
+                case DAY:
+                case HOUR:
+                case MINUTE:
+                case SECOND:
+                case MILLISECOND:
+                    return formatMillisecondFloorOperation(strings, timeUnitRange);
+                default:
+                    throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
+                            SqlError.UNSUPPORTED_PROPERTY, timeUnitRange.toString());
+            }
+        }
+
+        private static String formatYearMonthFloorOperation(
+                final List<String> strings,
+                final TimeUnitRange timeUnitRange) {
+            final String monthFormat = timeUnitRange == TimeUnitRange.YEAR ? "01" : "%m";
+            return formatYearMonthFloorOperation(strings.get(0), monthFormat);
+        }
+
+        private static String formatYearMonthFloorOperation(
+                final String dateOperand,
+                final String monthFormat) {
+            final String yearFormat = "%Y";
+            return String.format(
+                    "{'$dateFromString': {'dateString':"
+                            + " {'$dateToString':"
+                            + " {'date': %1$s, 'format': '%2$s-%3$s-01T00:00:00Z'}}}}",
+                    dateOperand, yearFormat, monthFormat);
+        }
+
+        private static String formatMillisecondFloorOperation(
+                final List<String> strings,
+                final TimeUnitRange timeUnitRange) throws SQLFeatureNotSupportedException {
+
+            final Instant baseDate = timeUnitRange == TimeUnitRange.WEEK
+                    ? FIRST_DAY_OF_WEEK_AFTER_EPOCH // Monday (or first day of week)
+                    : Instant.EPOCH;
+            final long divisorLong = getDivisorValueForNumericFloor(timeUnitRange);
+            final String divisor = String.format(
+                    "{\"$numberLong\": \"%d\"}", divisorLong);
+            final String subtract = String.format(
+                    "{\"$subtract\": [%s, {\"$date\": {\"$numberLong\": \"%d\"}}]}",
+                    strings.get(0), baseDate.toEpochMilli());
+            final String divide = getIntegerDivisionOperation(subtract, divisor);
+            final String multiply =  String.format(
+                    "{\"$multiply\": [%s, %s]}", divisor, divide);
+            return String.format(
+                    "{\"$add\": [{\"$date\": {\"$numberLong\": \"%d\"}}, %s]}",
+                    baseDate.toEpochMilli(), multiply);
+        }
+
+        private static String formatQuarterFloorOperation(final List<String> strings) {
+            final String truncateQuarterFormatString =
+                    "{'$cond': [{'$lte': [{'$month': %1$s}, 3]}, %2$s,"
+                            + " {'$cond': [{'$lte': [{'$month': %1$s}, 6]}, %3$s,"
+                            + " {'$cond': [{'$lte': [{'$month': %1$s}, 9]}, %4$s,"
+                            + " {'$cond': [{'$lte': [{'$month': %1$s}, 12]}, %5$s,"
+                            + " null]}]}]}]}";
+            final String monthFormatJanuary = "01";
+            final String monthFormatApril = "04";
+            final String monthFormatJuly = "07";
+            final String monthFormatOctober = "10";
+            return String.format(truncateQuarterFormatString,
+                    strings.get(0),
+                    formatYearMonthFloorOperation(strings.get(0), monthFormatJanuary),
+                    formatYearMonthFloorOperation(strings.get(0), monthFormatApril),
+                    formatYearMonthFloorOperation(strings.get(0), monthFormatJuly),
+                    formatYearMonthFloorOperation(strings.get(0), monthFormatOctober));
+        }
+
+        private static long getDivisorValueForNumericFloor(final TimeUnitRange timeUnitRange)
+                throws SQLFeatureNotSupportedException {
+            final long divisorLong;
+            switch (timeUnitRange) {
+                case WEEK:
+                    divisorLong = ChronoUnit.WEEKS.getDuration().toMillis();
+                    break;
+                case DAY:
+                    divisorLong = ChronoUnit.DAYS.getDuration().toMillis();
+                    break;
+                case HOUR:
+                    divisorLong = ChronoUnit.HOURS.getDuration().toMillis();
+                    break;
+                case MINUTE:
+                    divisorLong = ChronoUnit.MINUTES.getDuration().toMillis();
+                    break;
+                case SECOND:
+                    divisorLong = ChronoUnit.SECONDS.getDuration().toMillis();
+                    break;
+                case MILLISECOND:
+                    divisorLong = 1;
+                    break;
+                default:
+                    throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
+                            SqlError.UNSUPPORTED_PROPERTY, timeUnitRange.toString());
+            }
+            return divisorLong;
         }
     }
 

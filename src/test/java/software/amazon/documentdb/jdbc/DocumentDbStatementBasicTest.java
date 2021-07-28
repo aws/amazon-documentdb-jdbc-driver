@@ -95,7 +95,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertArrayEquals(
                     expectedBytes, blob.getBytes(1, (int) blob.length()));
             final byte[] actualBytes = new byte[(int) blob.length()];
-            resultSet.getBinaryStream("fieldBinary").read(actualBytes);
+            Assertions.assertEquals(3,
+                    resultSet.getBinaryStream("fieldBinary").read(actualBytes));
             Assertions.assertArrayEquals(expectedBytes, actualBytes);
 
             count++;
@@ -421,19 +422,19 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests that TIMESTAMPADD() works for intervals that can be converted to ms.
+     * Tests TIMESTAMPADD() and TIMESTAMPDIFF() for intervals that can be converted to ms.
      * @throws SQLException occurs if query fails.
      */
     @Test
-    @DisplayName("Tests TIMESTAMPADD() with different intervals.")
-    void testQueryTimestampAdd() throws SQLException {
-        final String tableName = "testTimestampAdd";
-        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
-        final long weekAfterDateTime = Instant.parse("2020-01-08T00:00:00.00Z").toEpochMilli();
-        final long dayAfterDateTime = Instant.parse("2020-01-02T00:00:00.00Z").toEpochMilli();
-        final long hourAfterDateTime =  Instant.parse("2020-01-01T01:00:00.00Z").toEpochMilli();
-        final long minuteAfterDateTime = Instant.parse("2020-01-01T00:01:00.00Z").toEpochMilli();
-        final long secondAfterDateTime =  Instant.parse("2020-01-01T00:00:01.00Z").toEpochMilli();
+    @DisplayName("Tests TIMESTAMPADD() and TIMESTAMPDIFF() with different intervals.")
+    void testQueryTimestampAddDiff() throws SQLException {
+        final String tableName = "testTimestampAddDiff";
+        final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
+        final long weekAfterDateTime = Instant.parse("2020-02-29T00:00:00.00Z").toEpochMilli();
+        final long dayAfterDateTime = Instant.parse("2020-02-23T00:00:00.00Z").toEpochMilli();
+        final long hourAfterDateTime =  Instant.parse("2020-02-22T01:00:00.00Z").toEpochMilli();
+        final long minuteAfterDateTime = Instant.parse("2020-02-22T00:01:00.00Z").toEpochMilli();
+        final long secondAfterDateTime =  Instant.parse("2020-02-22T00:00:01.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         doc1.append("fieldWeekAfter", new BsonDateTime(weekAfterDateTime));
@@ -447,12 +448,21 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
         // Add 1 day to a date column.
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT TIMESTAMPADD(DAY"
+                String.format("SELECT TIMESTAMPADD(WEEK"
                         + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet.getTimestamp(1));
+        Assertions.assertEquals(new Timestamp(weekAfterDateTime), resultSet.getTimestamp(1));
         Assertions.assertFalse(resultSet.next());
+
+        // Add 1 day to a date column.
+        final ResultSet resultSet1 = statement.executeQuery(
+                String.format("SELECT TIMESTAMPADD(DAY"
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet1.getTimestamp(1));
+        Assertions.assertFalse(resultSet1.next());
 
         // Add 1 hour to a date column.
         final ResultSet resultSet2 = statement.executeQuery(
@@ -484,7 +494,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Add 1 day to a date literal.
         final ResultSet resultSet5 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(DAY"
-                        + ", 1, TIMESTAMP '2020-01-01 00:00:00' ) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, TIMESTAMP '2020-02-22 00:00:00' ) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet5);
         Assertions.assertTrue(resultSet5.next());
         Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet5.getTimestamp(1));
@@ -496,7 +506,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         + ", 1, \"field\")) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
         Assertions.assertNotNull(resultSet6);
         Assertions.assertTrue(resultSet6.next());
-        Assertions.assertEquals(2, resultSet6.getInt(1));
+        Assertions.assertEquals(23, resultSet6.getInt(1));
         Assertions.assertFalse(resultSet6.next());
 
         // Difference of DAY
@@ -588,6 +598,87 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet16.next());
         Assertions.assertEquals(1000000, resultSet16.getLong(1));
         Assertions.assertFalse(resultSet16.next());
+    }
+
+    /**
+     * Tests TIMESTAMPDIFF() for YEAR.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF() for YEAR.")
+    void testQueryTimestampDiffYear() throws SQLException {
+        final String tableName = "testTimestampDiffYear";
+        final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
+        final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        // Difference of 12 months in YEAR
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(YEAR, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(1, resultSet.getLong(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests TIMESTAMPADD() for QUARTER.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF() for QUARTER.")
+    void testQueryTimestampDiffQuarter() throws SQLException {
+        final String tableName = "testTimestampDiffQuarter";
+        final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
+        final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        // Difference of 12 months in QUARTER
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(QUARTER, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(4, resultSet.getLong(1));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests TIMESTAMPADD() for MONTH.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF() for MONTH.")
+    void testQueryTimestampDiffMonth() throws SQLException {
+        final String tableName = "testTimestampDiffMonth";
+        final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
+        final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        // Difference of 12 months in MONTH
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT TIMESTAMPDIFF(MONTH, \"field\", \"fieldYearAfter\")"
+                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(12, resultSet.getLong(1));
+        Assertions.assertFalse(resultSet.next());
     }
 
     /**
@@ -982,7 +1073,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 final OffsetDateTime currentDateTime = Instant.now().atOffset(ZoneOffset.UTC);
                 final long diffInMilliSeconds = actualDateTime
                         .until(currentDateTime, ChronoUnit.MILLIS);
-                Assertions.assertTrue(diffInMilliSeconds > 0 && diffInMilliSeconds < 2000);
+                Assertions.assertTrue(diffInMilliSeconds >= 0);
+                Assertions.assertTrue(diffInMilliSeconds < 1000);
                 Assertions.assertFalse(testResultSet.next());
                 return null;
             } catch (SQLException e) {
@@ -1570,5 +1662,293 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("ab", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Tests for queries FLOOR(... TO ...) in select clause.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Tests for queries FLOOR(... TO ...) in select clause.")
+    void testQuerySelectFloorForDate() throws SQLException {
+        final String tableName = "testQuerySelectFloorForDate";
+        final Instant dateTime = Instant.parse("2020-02-03T12:34:56.78Z");
+        final OffsetDateTime offsetDateTime = dateTime.atOffset(ZoneOffset.UTC);
+        final Instant epochDateTime = Instant.EPOCH;
+        final OffsetDateTime offsetEpochDateTime = epochDateTime.atOffset(ZoneOffset.UTC);
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime.toEpochMilli()));
+        doc1.append("fieldEpoch", new BsonDateTime(epochDateTime.toEpochMilli()));
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1});
+        final Statement statement = getDocumentDbStatement();
+
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT"
+                                + " FLOOR(\"field\" TO YEAR),"
+                                + " FLOOR(\"field\" TO MONTH),"
+                                + " FLOOR(\"field\" TO QUARTER),"
+                                + " FLOOR(\"field\" TO DAY),"
+                                + " FLOOR(\"field\" TO HOUR),"
+                                + " FLOOR(\"field\" TO MINUTE),"
+                                + " FLOOR(\"field\" TO SECOND),"
+                                + " FLOOR(\"field\" TO MILLISECOND),"
+                                + " FLOOR(\"fieldEpoch\" TO YEAR),"
+                                + " FLOOR(\"fieldEpoch\" TO MONTH),"
+                                + " FLOOR(\"fieldEpoch\" TO QUARTER),"
+                                + " FLOOR(\"fieldEpoch\" TO DAY),"
+                                + " FLOOR(\"fieldEpoch\" TO HOUR),"
+                                + " FLOOR(\"fieldEpoch\" TO MINUTE),"
+                                + " FLOOR(\"fieldEpoch\" TO SECOND),"
+                                + " FLOOR(\"fieldEpoch\" TO MILLISECOND),"
+                                + " FLOOR(NULL TO MILLISECOND)"
+                                + " FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 1),
+                resultSet.getTimestamp(1).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, offsetDateTime.getMonthValue()),
+                resultSet.getTimestamp(2).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 1),
+                resultSet.getTimestamp(3).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet.getTimestamp(4).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.HOURS),
+                resultSet.getTimestamp(5).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.MINUTES),
+                resultSet.getTimestamp(6).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.SECONDS),
+                resultSet.getTimestamp(7).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.MILLIS),
+                resultSet.getTimestamp(8).getTime());
+
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetEpochDateTime, 1),
+                resultSet.getTimestamp(9).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetEpochDateTime, offsetEpochDateTime.getMonthValue()),
+                resultSet.getTimestamp(10).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetEpochDateTime, 1),
+                resultSet.getTimestamp(11).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.DAYS),
+                resultSet.getTimestamp(12).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.HOURS),
+                resultSet.getTimestamp(13).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.MINUTES),
+                resultSet.getTimestamp(14).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.SECONDS),
+                resultSet.getTimestamp(15).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(epochDateTime, ChronoUnit.MILLIS),
+                resultSet.getTimestamp(16).getTime());
+        Assertions.assertNull(resultSet.getTimestamp(17));
+        Assertions.assertFalse(resultSet.next());
+
+        // Test WEEK (to Monday) truncation
+        final ResultSet resultSet1 = statement.executeQuery(String.format(
+                "SELECT"
+                        + " FLOOR(\"field\" TO WEEK)," // Monday
+                        + " FLOOR(TIMESTAMPADD(DAY, 1, \"field\") TO WEEK)," // Tuesday
+                        + " FLOOR(TIMESTAMPADD(DAY, 2, \"field\") TO WEEK)," // Wednesday
+                        + " FLOOR(TIMESTAMPADD(DAY, 3, \"field\") TO WEEK)," // Thursday
+                        + " FLOOR(TIMESTAMPADD(DAY, 4, \"field\") TO WEEK)," // Friday
+                        + " FLOOR(TIMESTAMPADD(DAY, 5, \"field\") TO WEEK)," // Saturday
+                        + " FLOOR(TIMESTAMPADD(DAY, 6, \"field\") TO WEEK)," // Sunday
+                        + " FLOOR(TIMESTAMPADD(DAY, 7, \"field\") TO WEEK)," // Next week
+                        + " FLOOR(NULL TO WEEK)" // NULL
+                        + " FROM \"%s\".\"%s\"",
+                DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(1).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(2).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(3).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(4).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(5).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(6).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
+                resultSet1.getTimestamp(7).getTime());
+        // Next week
+        Assertions.assertEquals(
+                getTruncatedTimestamp(
+                        dateTime
+                                .atOffset(ZoneOffset.UTC)
+                                .plus(1, ChronoUnit.WEEKS)
+                                .toInstant(), ChronoUnit.DAYS),
+                resultSet1.getTimestamp(8).getTime());
+        Assertions.assertNull(resultSet1.getTimestamp(9));
+        Assertions.assertFalse(resultSet1.next());
+
+        // Test QUARTER truncation
+        final ResultSet resultSet2 = statement.executeQuery(String.format(
+                "SELECT %n"
+                        + " FLOOR(\"field\" TO QUARTER), %n"
+                        + " FLOOR(TIMESTAMPADD(DAY, 100, \"field\") TO QUARTER), %n"
+                        + " FLOOR(TIMESTAMPADD(DAY, 200, \"field\") TO QUARTER), %n"
+                        + " FLOOR(TIMESTAMPADD(DAY, 300, \"field\") TO QUARTER), %n"
+                        + " FLOOR(NULL TO QUARTER) %n"
+                        + " FROM \"%s\".\"%s\"",
+                DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 1), // Jan. 01
+                resultSet2.getTimestamp(1).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 4), // Apr. 01
+                resultSet2.getTimestamp(2).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 7), // Jul. 01
+                resultSet2.getTimestamp(3).getTime());
+        Assertions.assertEquals(
+                getTruncatedTimestamp(offsetDateTime, 10), // Oct. 01
+                resultSet2.getTimestamp(4).getTime());
+        Assertions.assertNull(resultSet2.getTimestamp(5)); // NULL
+        Assertions.assertFalse(resultSet2.next());
+
+        // Don't support FLOOR for numeric, yet.
+        final String errorMessage = Assertions.assertThrows(
+                SQLException.class,
+                () -> statement.executeQuery(
+                        String.format("SELECT FLOOR(12.34) FROM \"%s\".\"%s\"",
+                                DATABASE_NAME, tableName))).getMessage();
+        Assertions.assertTrue(
+                errorMessage.startsWith(
+                        "Unable to parse SQL 'SELECT FLOOR(12.34) FROM \"database\".\"testQuerySelectFloorForDate\"'.")
+                && errorMessage.endsWith(
+                        "Additional info: 'Translation of FLOOR(12.34:DECIMAL(4, 2)) is not supported by DocumentDbRules''"));
+    }
+
+    /**
+     * Test that queries selecting a boolean expression with NOT work.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @DisplayName("Test that queries selecting boolean expressions with NOT are correct.")
+    void testQueryWithNot() throws SQLException {
+        final String tableName = "testQueryWithNot";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field1\": true, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field1\": true, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": 5}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field1\": false, \n" +
+                "\"field2\": false, \n" +
+                "\"field3\": 5}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2, doc3});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT NOT (\"field1\"), " +
+                                "NOT (\"field1\" AND \"field2\"), " +
+                                "NOT (\"field1\" OR \"field2\"), " +
+                                "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.getBoolean(1));
+        Assertions.assertTrue(resultSet.getBoolean(2));
+        Assertions.assertFalse(resultSet.getBoolean(3));
+        Assertions.assertTrue(resultSet.getBoolean(4));
+
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertFalse(resultSet.getBoolean(1));
+        Assertions.assertFalse(resultSet.getBoolean(2));
+        Assertions.assertFalse(resultSet.getBoolean(3));
+        Assertions.assertFalse(resultSet.getBoolean(4));
+
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.getBoolean(1));
+        Assertions.assertTrue(resultSet.getBoolean(2));
+        Assertions.assertTrue(resultSet.getBoolean(3));
+        Assertions.assertTrue(resultSet.getBoolean(4));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    /**
+     * Test that queries selecting a boolean expression with NOT from nulls.
+     * @throws SQLException occurs if query fails.
+     */
+    @Test
+    @Disabled("AD-267: Boolean expressions do not treat nulls correctly.")
+    @DisplayName("Test that queries selecting a boolean expression with NOT from nulls are correct.")
+    void testQueryWithNotNulls() throws SQLException {
+        final String tableName = "testQueryWithNotNulls";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field1\": true, \n" + // Added this document only for metadata
+                "\"field2\": true, \n" +
+                "\"field3\": 1}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": null}");
+
+        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+                new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT NOT (\"field1\"), " +
+                                "NOT (\"field1\" AND \"field2\"), " +
+                                "NOT (\"field1\" OR \"field2\"), " +
+                                "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertNull(resultSet.getString(1));
+        Assertions.assertNull(resultSet.getString(2));
+        Assertions.assertNull(resultSet.getString(3));
+        Assertions.assertNull(resultSet.getString(4));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
+        return OffsetDateTime.of(
+                offsetDateTime.getYear(), monthValue, 1,
+                0, 0, 0, 0,
+                ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli();
+    }
+
+    private long getTruncatedTimestamp(final Instant dateTime, final ChronoUnit chronoUnit) {
+        return dateTime
+                .atOffset(ZoneOffset.UTC)
+                .truncatedTo(chronoUnit)
+                .toInstant()
+                .toEpochMilli();
     }
 }

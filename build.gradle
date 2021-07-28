@@ -9,7 +9,7 @@ plugins {
 }
 
 group 'software.amazon.documentdb.jdbc'
-version '1.0.0-beta.4'
+version '1.0.0-beta.6'
 description 'documentdb-jdbc-driver'
 
 java {
@@ -47,6 +47,7 @@ shadowJar {
     // Relocate (shadow) the following packages.
     relocate 'org.apache.calcite', 'org.apache.calcite.shadow'
     relocate 'com.google.guava', 'com.google.guava.shadow'
+    relocate 'com.google.common', 'com.google.common.shadow'
     relocate 'org.mongodb', 'org.mongodb.shadow'
     // Remove any unused dependencies (excluding Calcite)
     minimize {
@@ -241,7 +242,7 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.3'
     implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.12.3'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-    implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.29'
+    implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
@@ -256,11 +257,11 @@ dependencies {
     testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
-    testImplementation      group: 'junit', name: 'junit', version: '4.12'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.0'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.0'
-    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '2.1.0'
-    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.0'
+    testImplementation      group: 'junit', name: 'junit', version: '4.13.2'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.7.2'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.7.2'
+    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '3.11.2'
+    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.7.2'
 
-    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
 }

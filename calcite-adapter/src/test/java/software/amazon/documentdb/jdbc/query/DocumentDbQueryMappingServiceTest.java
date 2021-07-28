@@ -19,7 +19,6 @@ package software.amazon.documentdb.jdbc.query;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
-import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -36,7 +35,6 @@ import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.List;
 
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
@@ -1410,377 +1408,6 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(0, result.getAggregateOperations().size());
     }
 
-    /**
-     * Tests TIMESTAMPADD() and EXTRACT().
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests TIMESTAMPADD() and EXTRACT().")
-    void testDateFunctions() throws SQLException {
-        final String timestampAddQuery =
-                String.format(
-                        "SELECT "
-                                + "TIMESTAMPADD(WEEK, 1, \"field\"), "
-                                + "TIMESTAMPADD(DAY, 2, \"field\"), "
-                                + "TIMESTAMPADD(HOUR, 3, \"field\"), "
-                                + "TIMESTAMPADD(MINUTE, 4, \"field\"), "
-                                + "TIMESTAMPADD(SECOND, 5, \"field\"), "
-                                + "TIMESTAMPADD(MICROSECOND, 6, \"field\") "
-                                + "FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        DocumentDbMqlQueryContext result = queryMapper.get(timestampAddQuery);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
-        Assertions.assertEquals(6, result.getColumnMetaData().size());
-        Assertions.assertEquals(1, result.getAggregateOperations().size());
-    Assertions.assertEquals(
-        BsonDocument.parse(
-            "{\"$addFields\": "
-                    + "{\"EXPR$0\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"604800000\" }, 1]}]}, "
-                    + "\"EXPR$1\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"86400000\"}, 2]}]}, "
-                    + "\"EXPR$2\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"3600000\"}, 3]}]}, "
-                    + "\"EXPR$3\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"60000\"}, 4]}]}, "
-                    + "\"EXPR$4\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$multiply\": [ {\"$numberLong\": \"1000\"}, 5]}]}, "
-                    + "\"EXPR$5\": "
-                            + "{\"$add\": "
-                                    + "[\"$field\", "
-                                    + "{\"$divide\": [{\"$multiply\": [{\"$numberLong\": \"1\"}, 6]}, 1000]}]}}}"),
-        result.getAggregateOperations().get(0));
-
-        final String extractQuery =
-                String.format(
-                        "SELECT "
-                                + "YEAR(\"field\"), "
-                                + "MONTH(\"field\"),"
-                                + "WEEK(\"field\"),"
-                                + "DAYOFMONTH(\"field\"),"
-                                + "DAYOFWEEK(\"field\"),"
-                                + "DAYOFYEAR(\"field\"),"
-                                + "HOUR(\"field\"),"
-                                + "MINUTE(\"field\"),"
-                                + "SECOND(\"field\"),"
-                                + "QUARTER(\"field\")"
-                                + "FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        result = queryMapper.get(extractQuery);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
-        Assertions.assertEquals(10, result.getColumnMetaData().size());
-        Assertions.assertEquals(1, result.getAggregateOperations().size());
-        Assertions.assertEquals(
-                BsonDocument.parse(
-                    "{\"$addFields\":"
-                            + " {\"EXPR$0\": {\"$year\": \"$field\"},"
-                            + " \"EXPR$1\": {\"$month\": \"$field\"},"
-                            + " \"EXPR$2\": {\"$week\": \"$field\"},"
-                            + " \"EXPR$3\": {\"$dayOfMonth\": \"$field\"},"
-                            + " \"EXPR$4\": {\"$dayOfWeek\": \"$field\"},"
-                            + " \"EXPR$5\": {\"$dayOfYear\": \"$field\"},"
-                            + " \"EXPR$6\": {\"$hour\": \"$field\"},"
-                            + " \"EXPR$7\": {\"$minute\": \"$field\"},"
-                            + " \"EXPR$8\": {\"$second\": \"$field\"},"
-                            + " \"EXPR$9\":"
-                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]}, 1,"
-                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, 2,"
-                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3,"
-                                + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]}, 4,"
-                                + " null]}]}]}]}}}"),
-        result.getAggregateOperations().get(0));
-
-        final String timestampDiffQuery =
-                String.format(
-                        "SELECT "
-                                + "TIMESTAMPDIFF(WEEK, \"field\", \"field\"), "
-                                + "TIMESTAMPDIFF(DAY, \"field\", \"field\"), "
-                                + "TIMESTAMPDIFF(HOUR, \"field\", \"field\"), "
-                                + "TIMESTAMPDIFF(MINUTE, \"field\", \"field\"), "
-                                + "TIMESTAMPDIFF(SECOND, \"field\", \"field\"), "
-                                + "TIMESTAMPDIFF(MICROSECOND, \"field\", \"field\") "
-                                + "FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        result = queryMapper.get(timestampDiffQuery);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
-        Assertions.assertEquals(6, result.getColumnMetaData().size());
-        Assertions.assertEquals(1, result.getAggregateOperations().size());
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\":"
-                        + " {\"EXPR$0\":"
-                            + " {\"$divide\":"
-                                + " [{\"$divide\":"
-                                    + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}, 604800]},"
-                        + " \"EXPR$1\":"
-                            + " {\"$divide\":"
-                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 86400000]},"
-                        + " \"EXPR$2\":"
-                            + " {\"$divide\":"
-                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 3600000]},"
-                        + " \"EXPR$3\":"
-                            + " {\"$divide\":"
-                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 60000]},"
-                        + " \"EXPR$4\":"
-                            + " {\"$divide\":"
-                                + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]},"
-                        + " \"EXPR$5\":"
-                            + " {\"$multiply\":"
-                                + " [{\"$divide\":"
-                                    + " [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}, 1000000]}}}"),
-                result.getAggregateOperations().get(0));
-    }
-
-    /**
-     * Tests CURRENT_TIMESTAMP, CURRENT_DATE, and CURRENT_TIME.
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests CURRENT_TIMESTAMP, CURRENT_DATE, and CURRENT_TIME.")
-    void testCurrentTimestampFunctions() throws SQLException {
-        final String currentTimestampQuery =
-                String.format(
-                        "SELECT CURRENT_TIMESTAMP AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        final DocumentDbMqlQueryContext result1 = queryMapper.get(currentTimestampQuery);
-        Assertions.assertNotNull(result1);
-        Assertions.assertEquals(DATE_COLLECTION_NAME, result1.getCollectionName());
-        Assertions.assertEquals(1, result1.getColumnMetaData().size());
-        Assertions.assertEquals(1, result1.getAggregateOperations().size());
-        BsonDocument rootDoc = result1.getAggregateOperations()
-                .get(0).toBsonDocument(BsonDocument.class, null);
-        Assertions.assertNotNull(rootDoc);
-        BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
-        Assertions.assertNotNull(addFieldsDoc);
-        BsonDateTime cstDateTime = addFieldsDoc.getDateTime("cts");
-        Assertions.assertNotNull(cstDateTime);
-        BsonDocument expectedDoc = BsonDocument.parse(
-                "{\"$addFields\": "
-                        + "{\"cts\": "
-                        + "{\"$date\": "
-                        + "{\"$numberLong\": "
-                        + "\"" + cstDateTime.getValue() + "\""
-                        + "}}}}");
-        Assertions.assertEquals(
-                expectedDoc,
-                result1.getAggregateOperations().get(0));
-
-        final String currentDateQuery =
-                String.format(
-                        "SELECT CURRENT_DATE AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        final DocumentDbMqlQueryContext result2 = queryMapper.get(currentDateQuery);
-        Assertions.assertNotNull(result2);
-        Assertions.assertEquals(DATE_COLLECTION_NAME, result2.getCollectionName());
-        Assertions.assertEquals(1, result2.getColumnMetaData().size());
-        Assertions.assertEquals(1, result2.getAggregateOperations().size());
-        rootDoc = result2.getAggregateOperations()
-                .get(0).toBsonDocument(BsonDocument.class, null);
-        Assertions.assertNotNull(rootDoc);
-        addFieldsDoc = rootDoc.getDocument("$addFields");
-        Assertions.assertNotNull(addFieldsDoc);
-        cstDateTime = addFieldsDoc.getDateTime("cts");
-        Assertions.assertNotNull(cstDateTime);
-        expectedDoc = BsonDocument.parse(
-                "{\"$addFields\": "
-                        + "{\"cts\": "
-                        + "{\"$date\": "
-                        + "{\"$numberLong\": "
-                        + "\"" + cstDateTime.getValue() + "\""
-                        + "}}}}");
-        Assertions.assertEquals(
-                expectedDoc,
-                result2.getAggregateOperations().get(0));
-
-        final String currentTimeQuery =
-                String.format(
-                        "SELECT CURRENT_TIME AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        final DocumentDbMqlQueryContext result3 = queryMapper.get(currentTimeQuery);
-        Assertions.assertNotNull(result3);
-        Assertions.assertEquals(DATE_COLLECTION_NAME, result3.getCollectionName());
-        Assertions.assertEquals(1, result3.getColumnMetaData().size());
-        Assertions.assertEquals(1, result3.getAggregateOperations().size());
-        rootDoc = result3.getAggregateOperations()
-                .get(0).toBsonDocument(BsonDocument.class, null);
-        Assertions.assertNotNull(rootDoc);
-        addFieldsDoc = rootDoc.getDocument("$addFields");
-        Assertions.assertNotNull(addFieldsDoc);
-        cstDateTime = addFieldsDoc.getDateTime("cts");
-        Assertions.assertNotNull(cstDateTime);
-        expectedDoc = BsonDocument.parse(
-                "{\"$addFields\": "
-                        + "{\"cts\": "
-                        + "{\"$date\": "
-                        + "{\"$numberLong\": "
-                        + "\"" + cstDateTime.getValue() + "\""
-                        + "}}}}");
-        Assertions.assertEquals(
-                expectedDoc,
-                result3.getAggregateOperations().get(0));
-    }
-
-    /**
-     * Tests TIMESTAMPADD for MONTH, YEAR or QUARTER.
-     */
-    @Test
-    @DisplayName("Tests TIMESTAMPADD for MONTH, YEAR or QUARTER.")
-    void testTimestampAddMonthYearFunction() {
-        final String timestampAddQuery8 =
-                String.format(
-                        "SELECT TIMESTAMPADD(MONTH, 10, \"field\") AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        Assertions.assertEquals(String.format("Unable to parse SQL"
-                        + " 'SELECT TIMESTAMPADD(MONTH, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
-                        + " Reason: 'Conversion between the source type (INTERVAL_MONTH) and the target type (TIMESTAMP) is not supported.'"),
-                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery8))
-                .getMessage());
-
-        final String timestampAddQuery9 =
-                String.format(
-                        "SELECT TIMESTAMPADD(YEAR, 10, \"field\") AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        Assertions.assertEquals(String.format("Unable to parse SQL"
-                        + " 'SELECT TIMESTAMPADD(YEAR, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
-                        + " Reason: 'Conversion between the source type (INTERVAL_YEAR) and the target type (TIMESTAMP) is not supported.'"),
-                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery9))
-                        .getMessage());
-
-        final String timestampAddQuery10 =
-                String.format(
-                        "SELECT TIMESTAMPADD(QUARTER, 10, \"field\") AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        Assertions.assertEquals(String.format("Unable to parse SQL"
-                        + " 'SELECT TIMESTAMPADD(QUARTER, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
-                        + " Reason: 'Conversion between the source type (INTERVAL_MONTH) and the target type (TIMESTAMP) is not supported.'"),
-                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery10))
-                        .getMessage());
-    }
-
-    /**
-     * Tests DAYNAME.
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests DAYNAME.")
-    void testDayName() throws SQLException {
-        final String dayNameQuery =
-                String.format(
-                        "SELECT DAYNAME(\"field\") AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
-        Assertions.assertNotNull(context);
-        final List<Bson> operations = context.getAggregateOperations();
-        Assertions.assertEquals(1, operations.size());
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": {\"cts\":"
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 1]}, \"Sunday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 2]}, \"Monday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 3]}, \"Tuesday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 4]}, \"Wednesday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 5]}, \"Thursday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 6]}, \"Friday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 7]}, \"Saturday\","
-                        + " null]}]}]}]}]}]}]}}}"), operations.get(0));
-
-        final String dayNameQuery2 =
-                String.format(
-                        "SELECT DAYNAME(NULL) AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        final DocumentDbMqlQueryContext context2 = queryMapper.get(dayNameQuery2);
-        Assertions.assertNotNull(context2);
-        final List<Bson> operations2 = context2.getAggregateOperations();
-        Assertions.assertEquals(1, operations2.size());
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": {\"cts\":"
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 1]}, \"Sunday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 2]}, \"Monday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 3]}, \"Tuesday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 4]}, \"Wednesday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 5]}, \"Thursday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 6]}, \"Friday\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 7]}, \"Saturday\","
-                        + " null]}]}]}]}]}]}]}}}"), operations2.get(0));
-    }
-
-    /**
-     * Tests MONTHNAME.
-     * @throws SQLException occurs if query fails.
-     */
-    @Test
-    @DisplayName("Tests MONTHNAME.")
-    void testMonthName() throws SQLException {
-        final String dayNameQuery =
-                String.format(
-                        "SELECT MONTHNAME(\"field\") AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
-        Assertions.assertNotNull(context);
-        final List<Bson> operations = context.getAggregateOperations();
-        Assertions.assertEquals(1, operations.size());
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": {\"cts\":"
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 1]}, \"January\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 2]}, \"February\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 3]}, \"March\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 4]}, \"April\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 5]}, \"May\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 6]}, \"June\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 7]}, \"July\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 8]}, \"August\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 9]}, \"September\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 10]}, \"October\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 11]}, \"November\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 12]}, \"December\","
-                        + " null]}]}]}]}]}]}]}]}]}]}]}]}}}"), operations.get(0));
-
-        final String dayNameQuery2 =
-                String.format(
-                        "SELECT MONTHNAME(NULL) AS \"cts\""
-                                + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, DATE_COLLECTION_NAME);
-        final DocumentDbMqlQueryContext context2 = queryMapper.get(dayNameQuery2);
-        Assertions.assertNotNull(context2);
-        final List<Bson> operations2 = context2.getAggregateOperations();
-        Assertions.assertEquals(1, operations2.size());
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": {\"cts\":"
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 1]}, \"January\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 2]}, \"February\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 3]}, \"March\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 4]}, \"April\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 5]}, \"May\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 6]}, \"June\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 7]}, \"July\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 8]}, \"August\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 9]}, \"September\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 10]}, \"October\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 11]}, \"November\","
-                        + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 12]}, \"December\","
-                        + " null]}]}]}]}]}]}]}]}]}]}]}]}}}"), operations2.get(0));
-    }
-
     @Test
     @DisplayName("Test queries with WHERE f1 IN (c1, c2...)")
     void testQueryWithIn() throws SQLException {
@@ -1922,7 +1549,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     }
 
     @Test
-    @DisplayName("Tests queries with containing expressions works.")
+    @DisplayName("Tests queries with substring containing expressions works.")
     void testQuerySubstringExpr() throws SQLException {
         final String query =
                 String.format(
@@ -1960,4 +1587,260 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         "{\"$addFields\": {\"EXPR$0\": {\"$substrCP\": [\"$array.field\", {\"$subtract\": [\"$array.field2\", 1]}, {\"$subtract\": [\"$array.field1\", \"$array.field2\"]}]}}}"),
                 result.getAggregateOperations().get(5));
     }
+
+    @Test
+    @DisplayName("Tests queries with where clause containing arithmetic.")
+    void testQueryArithmeticWhere() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" * \"field1\" / \"field2\" + \"field1\" - \"field2\" = 7",
+                        DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$eq\": [{\"$subtract\": [{\"$add\": [{\"$divide\": [{\"$multiply\": [\"$array.field\", \"$array.field1\"]}, \"$array.field2\"]}, \"$array.field1\"]}, \"$array.field2\"]}, 7]}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests queries with where clause containing modulo.")
+    void testQueryModuloWhere() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE MOD(\"field\", 3) = 2" +
+                                "OR MOD(8, \"field\") = 2" +
+                                "OR MOD(3, 2) = \"field\"",
+                        DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$or\": [{\"$eq\": [{\"$mod\": [\"$array.field\", 3]}, 2]}, {\"$eq\": [{\"$mod\": [8, \"$array.field\"]}, 2]}, {\"$eq\": [1, \"$array.field\"]}]}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests queries with where clause containing nested OR.")
+    void testQueryWhereNestedOr() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" > 0 OR (\"field1\" > 0OR \"field2\" > 6)",
+                        DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$or\": [" +
+                                "{\"$and\": [{\"$gt\": [\"$array.field\", 0]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [0, null]}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field1\", 0]}, {\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [0, null]}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field2\", 6]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [6, null]}]}]}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests queries with where clause containing nested AND.")
+    void testQueryWhereNestedAnd() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" > 0 AND (\"field1\" > 0 AND \"field2\" > 6)",
+                        DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$and\": [" +
+                                "{\"$and\": [{\"$gt\": [\"$array.field\", 0]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [0, null]}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field1\", 0]}, {\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [0, null]}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field2\", 6]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [6, null]}]}]}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests queries with where clause containing nested combined OR and AND.")
+    void testQueryWhereNestedAndOr() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE ((\"field\" > 0 AND \"field2\" < 10) AND (\"field1\" > 0 OR \"field2\" > 6)) OR \"field2\" > 0",
+                        DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$or\": [{\"$and\": [" +
+                                "{\"$and\": [{\"$gt\": [\"$array.field\", 0]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [0, null]}]}, " +
+                                "{\"$and\": [{\"$lt\": [\"$array.field2\", 10]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [10, null]}]}, " +
+                                "{\"$or\": [{\"$and\": [{\"$gt\": [\"$array.field1\", 0]}, {\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [0, null]}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field2\", 6]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [6, null]}]}]}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field2\", 0]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [0, null]}]}]}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests queries with where clause containing nested combined NOT, OR, and AND.")
+    void testQueryWhereNotAndOr() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE ((NOT \"field\" > 0 AND \"field2\" < 10) AND (NOT \"field1\" > 0 OR \"field2\" > 6)) OR \"field2\" > 0",
+                        DATABASE_NAME, COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$or\": [{\"$and\": [" +
+                                "{\"$and\": [{\"$lte\": [\"$array.field\", 0]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [0, null]}]}, " +
+                                "{\"$and\": [{\"$lt\": [\"$array.field2\", 10]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [10, null]}]}, " +
+                                "{\"$or\": [{\"$and\": [{\"$lte\": [\"$array.field1\", 0]}, {\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [0, null]}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field2\", 6]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [6, null]}]}]}]}, " +
+                                "{\"$and\": [{\"$gt\": [\"$array.field2\", 0]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [0, null]}]}]}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests that unquoted identifiers retain their casing but are evaluated case-sensitively.")
+    void testQueryWithUnquotedIdentifiers() throws SQLException {
+        final String correctCasing =
+                String.format("SELECT * FROM %s.%s", DATABASE_NAME, COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result = queryMapper.get(correctCasing);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(0, result.getAggregateOperations().size());
+
+        final String incorrectCasing =
+                String.format("SELECT * FROM %s.%s", DATABASE_NAME, COLLECTION_NAME.toUpperCase());
+        Assertions.assertEquals(String.format(
+                "Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'.%n"
+                        + " Reason: 'From line 1, column 15 to line 1, column 37:"
+                        + " Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'"),
+                Assertions.assertThrows(SQLException.class, () -> queryMapper.get(incorrectCasing))
+                        .getMessage());
+    }
+
 }

@@ -24,9 +24,10 @@ import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
+import org.bson.BsonDocument;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
@@ -125,7 +126,6 @@ public class DocumentDbQueryExecutor {
                             SqlState.OPERATION_CANCELED,
                             SqlError.QUERY_CANCELED);
                 }
-                resetQueryState();
             }
             return resultSet;
         } catch (final SQLException e) {
@@ -135,19 +135,19 @@ public class DocumentDbQueryExecutor {
                 if (e instanceof MongoException
                         && ((MongoException) e).getCode() == OPERATION_CANCELLED_CODE
                         && queryState.equals(QueryState.CANCELED)) {
-                    resetQueryState();
                     throw SqlError.createSQLException(
                             LOGGER,
                             SqlState.OPERATION_CANCELED,
                             SqlError.QUERY_CANCELED);
                 } else {
-                    resetQueryState();
                     throw SqlError.createSQLException(
                             LOGGER,
                             SqlState.CONNECTION_EXCEPTION,
                             SqlError.QUERY_FAILED, e);
                 }
             }
+        } finally {
+            resetQueryState();
         }
     }
 
@@ -166,29 +166,36 @@ public class DocumentDbQueryExecutor {
 
         final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
         final DocumentDbConnectionProperties properties = connection.getConnectionProperties();
-        final MongoClientSettings settings = properties.buildMongoClientSettings();
-        final MongoClient client = MongoClients.create(settings);
+        final MongoClient client = connection.getMongoClient();
+
         final MongoDatabase database = client.getDatabase(properties.getDatabase());
         final MongoCollection<Document> collection = database
                 .getCollection(queryContext.getCollectionName());
-        AggregateIterable<Document> iterable = collection
-                .aggregate(queryContext.getAggregateOperations());
+
+        // Only add limit if maxRows is non-zero.
+        final List<Bson> aggregateOperations = queryContext.getAggregateOperations();
+        final long maxRows = statement.getLargeMaxRows();
+        if (maxRows > 0) {
+            // Use push-down to apply maxRows limit.
+            aggregateOperations.add(BsonDocument.parse(
+                    String.format("{\"$limit\": {\"$numberLong\": \"%d\"}}", maxRows)));
+        }
+
+        AggregateIterable<Document> iterable = collection.aggregate(aggregateOperations);
         if (getQueryTimeout() > 0) {
             iterable = iterable.maxTime(getQueryTimeout(), TimeUnit.SECONDS);
         }
         if (getFetchSize() > 0) {
             iterable = iterable.batchSize(getFetchSize());
         }
-        final MongoCursor<Document> iterator = iterable.iterator();
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
         return new DocumentDbResultSet(
                 this.statement,
-                iterator,
+                iterable.iterator(),
                 columnMetaData,
-                queryContext.getPaths(),
-                client);
+                queryContext.getPaths());
     }
 
     private void resetQueryState() {
@@ -221,7 +228,7 @@ public class DocumentDbQueryExecutor {
                         SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
             }
 
-            // If there is more than 1 result then more than 1 operations have been given same id
+            // If there is more than 1 result then more than 1 operations have been given same id,
             // and we do not know which to cancel.
             if (ops.size() != 1) {
                 throw SqlError.createSQLException(

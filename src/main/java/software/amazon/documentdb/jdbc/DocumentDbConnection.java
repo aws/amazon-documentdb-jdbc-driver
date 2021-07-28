@@ -103,6 +103,10 @@ public class DocumentDbConnection extends Connection
         return metadata;
     }
 
+    public MongoClient getMongoClient() {
+        return mongoClient;
+    }
+
     private void ensureDatabaseMetadata() throws SQLException {
         if (metadata == null) {
             databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(

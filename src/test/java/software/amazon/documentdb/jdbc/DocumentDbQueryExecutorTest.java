@@ -284,7 +284,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
             final JdbcColumnMetaData column =
                     JdbcColumnMetaData.builder().columnLabel("EXPR$0").ordinal(0).build();
             return new DocumentDbResultSet(
-                    statement, iterator, ImmutableList.of(column), ImmutableList.of("EXPR$0"), client);
+                    statement, iterator, ImmutableList.of(column), ImmutableList.of("EXPR$0"));
         }
     }
 }
