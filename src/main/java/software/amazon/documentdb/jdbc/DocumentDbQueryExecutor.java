@@ -159,6 +159,7 @@ public class DocumentDbQueryExecutor {
     @VisibleForTesting
     protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
         final Instant beginTranslation = Instant.now();
+        LOGGER.debug(String.format("SQL query: %s", sql));
         LOGGER.info("Begin translating query.");
         final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql);
         LOGGER.info(String.format("Took %d ms to translate query.",
