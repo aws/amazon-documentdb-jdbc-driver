@@ -10,7 +10,7 @@
 
 ### Set Up a Test Cluster
 
-If targeting a cluster other that has not been used for JMeter testing before,  
+If targeting a cluster that has not been used for JMeter testing before,  
 you will need to insert the relevant test data beforehand. 
 Use `mongoimport` to insert the data from `/testData`, using the name of each file as the collection name and “jmeter” as the database.
 
@@ -36,7 +36,7 @@ A potential enhancement could be to automate this.
 1. Start an SSH tunnel for target cluster. 
 
 1. Run the `DocumentDb_Test_Plan.jmx` file. 
-   Pass connection string (`JconnectionString`), username(`Jusername`), and password(`Jpassword`) as parameters. Connection string and username 
+   Pass connection string (`-JconnectionString`), username(`-Jusername`), and password(`-Jpassword`) as parameters. Connection string and username 
    may be omitted as they have default values but password is required. 
    Example: 
 
