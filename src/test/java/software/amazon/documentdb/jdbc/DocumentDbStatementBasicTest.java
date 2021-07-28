@@ -1073,7 +1073,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 final OffsetDateTime currentDateTime = Instant.now().atOffset(ZoneOffset.UTC);
                 final long diffInMilliSeconds = actualDateTime
                         .until(currentDateTime, ChronoUnit.MILLIS);
-                Assertions.assertTrue(diffInMilliSeconds > 0 && diffInMilliSeconds < 2000);
+                Assertions.assertTrue(diffInMilliSeconds >= 0);
+                Assertions.assertTrue(diffInMilliSeconds < 1000);
                 Assertions.assertFalse(testResultSet.next());
                 return null;
             } catch (SQLException e) {
