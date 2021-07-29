@@ -163,7 +163,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final ExecutorService cancelThread = getCancelThread();
         final Cancel cancel = launchCancelThread(0, statement, cancelThread);
         waitCancelToComplete(cancelThread);
-        final SQLException exception =getCancelException(cancel);
+        final SQLException exception = getCancelException(cancel);
         Assertions.assertNotNull(exception);
         Assertions.assertEquals(
                 "Cannot cancel query, it is either completed or has not started.",
