@@ -22,6 +22,8 @@ This project is licensed under the Apache-2.0 License.
     - [Table Schemas JSON Format](schema/table-schemas-json-format.md)
 - SQL and JDBC Compatibility
     - [SQL and JDBC Support and Limitations](sql/sql-jdbc-limitations.md)
+- Support
+    - [Troubleshooting Guide](support/troubleshooting-guide.md)
   
 ## Getting Started
 
@@ -66,4 +68,10 @@ information.
 ## SQL and JDBC Limitations
 
 The Amazon DocumentDB JDBC driver has a number of important limitations. See the
-[SQL and JDBC limitations documentation](sql/sql-jdbc-limitations.md) for mor information.
+[SQL and JDBC limitations documentation](sql/sql-jdbc-limitations.md) for more information.
+
+## Troubleshooting Guide
+
+If you're having an issue using the Amazon DocumentDB JDBC driver, consult the
+[Troubleshooting Guide](support/troubleshooting-guide.md) to see if has a solution for
+your issue.
