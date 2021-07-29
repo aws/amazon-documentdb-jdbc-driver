@@ -82,15 +82,19 @@ public class DocumentDbQueryExecutor {
      * This function wraps query cancellation and ensures query state is kept consistent.
      *
      * @throws SQLException If query cancellation fails or cannot be executed.
+     * @param isClosing An indicator for whether the statement is closing.
      */
-    protected void cancelQuery() throws SQLException {
+    protected void cancelQuery(final boolean isClosing) throws SQLException {
         synchronized (queryStateLock) {
-            if (queryState.equals(QueryState.NOT_STARTED)) {
+            if (queryState.equals(QueryState.CANCELED)) {
+                return;
+            } else if (queryState.equals(QueryState.NOT_STARTED)) {
+                if (isClosing) {
+                    return;
+                }
                 throw SqlError.createSQLException(
-                        LOGGER, SqlState.OPERATION_CANCELED, SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
-            } else if (queryState.equals(QueryState.CANCELED)) {
-                throw SqlError.createSQLException(
-                        LOGGER, SqlState.OPERATION_CANCELED, SqlError.QUERY_CANCELED);
+                        LOGGER, SqlState.OPERATION_CANCELED,
+                        SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
             }
             performCancel();
             queryState = QueryState.CANCELED;

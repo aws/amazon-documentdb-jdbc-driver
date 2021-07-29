@@ -1935,6 +1935,13 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    @Test
+    @DisplayName("Tests closing a Statement will not cause exception for cancelQuery.")
+    void testCloseStatement() throws SQLException {
+        final Statement statement = getDocumentDbStatement();
+        Assertions.assertDoesNotThrow(statement::close);
+    }
+
     private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
         return OffsetDateTime.of(
                 offsetDateTime.getYear(), monthValue, 1,
