@@ -16,6 +16,8 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.Session;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
@@ -53,6 +55,7 @@ public class DocumentDbConnection extends Connection
     private DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private MongoClient mongoClient = null;
     private MongoDatabase mongoDatabase = null;
+    private Session session;
 
     /**
      * DocumentDbConnection constructor, initializes super class.
@@ -61,7 +64,80 @@ public class DocumentDbConnection extends Connection
             throws SQLException {
         super(connectionProperties);
         this.connectionProperties = connectionProperties;
+        this.session = initializeSshTunnel(connectionProperties);
         initializeClients(connectionProperties);
+    }
+
+    /**
+     * Initializes the SSH session and creates a port forwarding tunnel.
+     *
+     * @param connectionProperties the {@link DocumentDbConnectionProperties} connection properties.
+     * @return a {@link Session} session. This session must be closed by calling the
+     *          {@link Session#disconnect()} method.
+     * @throws SQLException if unable to create SSH session or create the port forwarding tunnel.
+     */
+    public static Session initializeSshTunnel(final DocumentDbConnectionProperties connectionProperties)
+            throws SQLException {
+        try {
+            // Example:
+            //ssh -f -i ~/.ssh/docdb-sshtunnel.pem -N -L 27019:sample-cluster.cluster-clq6grcezxsp.us-east-1.docdb.amazonaws.com:27017 ec2-user@ec2-54-87-111-63.compute-1.amazonaws.com
+
+            final JSch jSch = new JSch();
+
+            // ********** Add identity for private key. **********
+            // sshPrivateKey=<privateKeyFileLocation>, sshPrivateKeyPassphrase=<passphrase>
+            // Add support for using `~` to indicate the home directory.
+            final String privateKey = "C:\\Users\\bruce.irschick\\secrets\\docdb-sshtunnel.pem";
+            // If passPhrase protected, will need to provide this, too.
+            final String passPhrase = null;
+            jSch.addIdentity(privateKey, passPhrase);
+
+            // ********** Create an SSH session. **********
+            // sshUsername=<ssh-username>, sshHostname=<ssh-hostname>, sshPort=<ssh-port> [22]
+            // Typically, this can be defaulted to 22
+            final int sshPort = 22;
+            // Need the user to provide the next three values where sshUsername and sshHost could
+            // be combined as <sshUsername>@<sshHost>
+            final String sshUsername = "ec2-user";
+            final String sshHost = "ec2-54-87-111-63.compute-1.amazonaws.com";
+            final Session session = jSch.getSession(sshUsername, sshHost, sshPort);
+
+            // ********** Connect the session. **********
+            final boolean strictHostKeyChecking = false;
+            if (!strictHostKeyChecking) {
+                // This side-steps the issue of populating the `known_hosts` file.
+                // sshStrictHostKeyChecking=<yes|no> [yes]
+                session.setConfig("StrictHostKeyChecking", "no");
+            } else {
+                // This could be defaulted to `~/.ssh/known_hosts`.
+                // sshKnownHostsFilename=<ssh-known-hosts> [~/.ssh/known_hosts]
+                final String knowHostsFilename = "C:\\Users\\bruce.irschick\\.ssh\\known_hosts";
+                jSch.setKnownHosts(knowHostsFilename);
+                // The default behaviour of `ssh-keyscan` is to hash known hosts and use
+                // algorithm `ecdsa-sha2-nistp256`.
+                session.setConfig("HashKnownHosts", "yes");
+                // TODO: Need to scan the known_hosts files to determine how the host is encoded.
+                session.setConfig("server_host_key", "ecdsa-sha2-nistp256");
+            }
+            session.connect();
+
+            // ********** Setup port forwarding. **********
+            // Can take these next two from the connection.getHostname()
+            final String clusterHost = "sample-cluster.cluster-clq6grcezxsp.us-east-1.docdb.amazonaws.com";
+            final int remoteForwardPort = 27017;
+            // This port number could be allocated (pass 0) instead of supplied or hard-coded to be
+            // the same as the remote port number.
+            final int localForwardPort = 27019;
+            session.setPortForwardingL(
+                    localForwardPort,
+                    clusterHost,
+                    remoteForwardPort);
+
+            // ********** Return the session. **********
+            return session;
+        } catch (Exception e) {
+            throw new SQLException(e.getMessage(), e);
+        }
     }
 
     @Override
@@ -93,6 +169,10 @@ public class DocumentDbConnection extends Connection
         if (mongoClient != null) {
             mongoClient.close();
             mongoClient = null;
+        }
+        if (session != null) {
+            session.disconnect();
+            session = null;
         }
     }
 
