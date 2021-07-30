@@ -159,11 +159,12 @@ public class DocumentDbQueryExecutor {
     @VisibleForTesting
     protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
         final Instant beginTranslation = Instant.now();
-        LOGGER.debug(String.format("SQL query: %s", sql));
-        LOGGER.info("Begin translating query.");
+
+        LOGGER.info("Query {}: Beginning translation of query.", queryId);
+        LOGGER.debug("Query {}: {}", queryId, sql);
         final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql);
-        LOGGER.info(String.format("Took %d ms to translate query.",
-                Instant.now().toEpochMilli() - beginTranslation.toEpochMilli()));
+        LOGGER.info("Query {}: Took {} ms to translate query.", queryId,
+                Instant.now().toEpochMilli() - beginTranslation.toEpochMilli());
         if (!(statement.getConnection() instanceof DocumentDbConnection)) {
             throw new SQLException("Unexpected operation state.");
         }
@@ -187,10 +188,10 @@ public class DocumentDbQueryExecutor {
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
-        LOGGER.info(String.format("Took %d ms to execute query.",
-                Instant.now().toEpochMilli() - beginExecution.toEpochMilli()));
-        LOGGER.debug(String.format("Query executed on collection %s with following pipeline operations: %s",
-                queryContext.getCollectionName(), queryContext.getAggregateOperations().toString()));
+        LOGGER.info("Query {}: Took {} ms to execute query.", queryId,
+                Instant.now().toEpochMilli() - beginExecution.toEpochMilli());
+        LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
+                queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
         return new DocumentDbResultSet(
                 this.statement,
                 iterator,

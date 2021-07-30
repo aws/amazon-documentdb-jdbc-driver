@@ -89,10 +89,14 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
                                 mongoImplementor.getMetadataTable()));
         final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
         final String match = expandedCondition.accept(rexToMongoTranslator);
-        LOGGER.info("Created filter stages of pipeline.");
         implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
         implementor.add(null, "{\"$match\": {" + BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}");
         implementor.add(null, "{\"$project\": {" + BOOLEAN_FLAG_FIELD + ":0}}");
+        LOGGER.info("Created filter stages of pipeline.");
+        LOGGER.debug("Pipeline stages added: {}",
+                implementor.getList().stream()
+                        .map(c -> c.right)
+                        .toArray());
     }
 
     /*

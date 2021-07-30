@@ -573,6 +573,10 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         }
         implementor.add(null, String.valueOf(Aggregates.unwind("$" + rightMatches, opts)));
         LOGGER.debug("Created join stages of pipeline.");
+        LOGGER.debug("Pipeline stages added: {}",
+                implementor.getList().stream()
+                        .map(c -> c.right)
+                        .toArray());
     }
 
     /**

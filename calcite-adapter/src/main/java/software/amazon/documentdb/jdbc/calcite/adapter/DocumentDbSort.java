@@ -105,6 +105,10 @@ public class DocumentDbSort extends Sort implements DocumentDbRel {
                     "{$limit: " + ((RexLiteral) fetch).getValue() + "}");
         }
         LOGGER.info("Created sort and row limit stages of pipeline.");
+        LOGGER.debug("Pipeline stages added: {}",
+                implementor.getList().stream()
+                        .map(c -> c.right)
+                        .toArray());
     }
 
     private static int direction(final RelFieldCollation fieldCollation) {

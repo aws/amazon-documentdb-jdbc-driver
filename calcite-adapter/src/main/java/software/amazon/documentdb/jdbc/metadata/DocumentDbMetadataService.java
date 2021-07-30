@@ -104,13 +104,13 @@ public class DocumentDbMetadataService {
             case VERSION_LATEST_OR_NEW:
                 // If latest exist, return it.
                 if (schema != null) {
-                    LOGGER.info("Attempting to retrieve latest metadata.");
-                    LOGGER.info(String.format("Successfully retrieved metadata in %d ms.",
-                            Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
+                    LOGGER.info(String.format("Successfully retrieved metadata schema %s in %d ms.",
+                            schemaName, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
                     return schema;
                 }
                 // Otherwise, fall through to create new.
-                LOGGER.info("Existing metadata not found, will generate new metadata instead.");
+                LOGGER.info(String.format("Existing metadata not found for schema %s, will generate new metadata instead for database %s.",
+                        schemaName, properties.getDatabase()));
                 return getNewSchema(properties, schemaName, tableMap, 1);
             case VERSION_NEW:
                 final int newVersionNumber = schema != null ? schema.getSchemaVersion() + 1 : 1;
@@ -118,7 +118,6 @@ public class DocumentDbMetadataService {
             case VERSION_LATEST_OR_NONE:
             default:
                 // Return specific version or null.
-                LOGGER.info(String.format("Attempting to find schema %s.", schemaName));
                 if (schema != null) {
                     LOGGER.info(String.format("Retrieved schema %s version %d in %d ms.",
                             schemaName, schemaVersion, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
@@ -132,11 +131,12 @@ public class DocumentDbMetadataService {
                                                  final Map<String, DocumentDbSchemaTable> tableMap,
                                                  final int versionNumber) throws SQLException {
         // Get a new version.
-        LOGGER.info("Beginning generation of new metadata.");
+        LOGGER.debug("Beginning generation of new metadata.");
         final Instant beginGeneration = Instant.now();
+        final DocumentDbSchema schema = getNewDatabaseMetadata(properties, schemaName, versionNumber, tableMap);
         LOGGER.info(String.format("Successfully generated metadata in %d ms.",
                 Instant.now().toEpochMilli() - beginGeneration.toEpochMilli()));
-        return getNewDatabaseMetadata(properties, schemaName, versionNumber, tableMap);
+        return schema;
     }
 
     private static LinkedHashMap<String, DocumentDbSchemaTable> buildTableMapById(

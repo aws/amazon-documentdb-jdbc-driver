@@ -143,6 +143,10 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
             implementor.add(op.left, op.right);
         }
         LOGGER.info("Created projection stages of pipeline.");
+        LOGGER.debug("Pipeline stages added: {}",
+                implementor.getList().stream()
+                        .map(c -> c.right)
+                        .toArray());
 
         // Set the metadata table with the updated column map.
         final DocumentDbSchemaTable metadata = DocumentDbMetadataTable.builder()

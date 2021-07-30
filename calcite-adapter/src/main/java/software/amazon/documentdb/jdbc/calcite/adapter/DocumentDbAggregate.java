@@ -182,6 +182,10 @@ public class DocumentDbAggregate
         implementor.setDocumentDbTable(
                 new DocumentDbTable(implementor.getDocumentDbTable().getCollectionName(), metadata));
         LOGGER.info("Created aggregation stages of pipeline.");
+        LOGGER.debug("Pipeline stages added: {}",
+                implementor.getList().stream()
+                        .map(c -> c.right)
+                        .toArray());
         // DocumentDB: modified - end
     }
 
