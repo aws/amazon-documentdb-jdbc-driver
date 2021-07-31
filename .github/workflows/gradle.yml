@@ -35,6 +35,8 @@ jobs:
       TRUSTSTORE_PASSWORD: ${{secrets.TRUSTSTORE_PASSWORD}}
       DOC_DB_USER_NAME: ${{secrets.DOC_DB_USER_NAME}}
       DOC_DB_PASSWORD: ${{secrets.DOC_DB_PASSWORD}}
+      DOC_DB_USER: ${{secrets.DOC_DB_USER}}
+      DOC_DB_HOST: ${{secrets.DOC_DB_HOST}}
       OMIT_DOCUMENTDB: ${{ github.event.inputs.testWithoutDocumnetDb || '0' }}
       RUN_REMOTE_INTEGRATION_TESTS: ${{ github.event.inputs.testWithoutDocumnetDb && 'false' || 'true' }}
       DOC_DB_LOCAL_PORT: 27019
