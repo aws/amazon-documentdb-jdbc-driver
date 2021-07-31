@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
@@ -252,5 +254,32 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         Assertions.assertTrue(tableTypes.next());
         Assertions.assertEquals("TABLE", tableTypes.getString(1));
         Assertions.assertFalse(tableTypes.next());
+    }
+
+    @Test
+    @DisplayName("Tests SSH tunnel options")
+    void testSshTunnelOptions() throws SQLException {
+        final String docDbUserProperty = "DOC_DB_USER";
+        final String docDbHostProperty = "DOC_DB_HOST";
+        final DocumentDbTestEnvironment environment = DocumentDbTestEnvironmentFactory
+                .getDocumentDb40SshTunnelEnvironment();
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(environment.getJdbcConnectionString());
+
+        final String docDbRemoteHost = System.getenv(docDbHostProperty);
+        final String docDbSshUserAndHost = System.getenv(docDbUserProperty);
+        final int userSeparatorIndex = docDbSshUserAndHost.indexOf('@');
+        final String sshUser = docDbSshUserAndHost.substring(0, userSeparatorIndex);
+        final String sshHostname = docDbSshUserAndHost.substring(userSeparatorIndex + 1);
+
+        properties.setHostname(docDbRemoteHost);
+        properties.setSshUser(sshUser);
+        properties.setSshHostname(sshHostname);
+        properties.setSshPrivateKeyFile("~/certs/docdb-sshtunnel.pem");
+        properties.setSshStrictHostKeyChecking(false);
+
+        final Connection connection = DriverManager.getConnection("jdbc:documentdb:", properties);
+        Assertions.assertTrue(connection instanceof DocumentDbConnection);
+        Assertions.assertTrue(connection.isValid(10));
     }
 }

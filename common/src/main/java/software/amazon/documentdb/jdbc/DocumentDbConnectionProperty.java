@@ -54,7 +54,22 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
     TLS_CA_FILE("tlsCAFile", "",
             "The path to the Certificate Authority (CA) '.pem' file."),
     SCHEMA_NAME("schemaName", "_default",
-            "The name of the stored schema to use.");
+            "The name of the stored schema to use."),
+    SSH_USER("sshUser", "",
+            "The user name for the SSH tunnel."),
+    SSH_HOSTNAME("sshHost", "",
+            "The host name for the SSH tunnel. Optionally the SSH tunnel port number can be "
+                    + "provided using the syntax '<ssh-host>:<port>'. The default port is '22'."),
+    SSH_PRIVATE_KEY_FILE("sshPrivateKeyFile", "",
+            "The path to the private key file for the SSH tunnel."),
+    SSH_PRIVATE_KEY_PASSPHRASE("sshPrivateKeyPassphrase", "",
+            "If the SSH tunnel private key file is passphrase protected, "
+                    + "provide the passphrase using this option."),
+    SSH_STRICT_HOST_KEY_CHECKING("sshStrictHostKeyChecking", "false",
+            "If true, the 'known_hosts' file is checked to ensure the target host is trusted when creating the SSH tunnel. If false, the target host is not checked. Default is 'false'."),
+    SSH_KNOWN_HOSTS_FILE("sshKnownHostsFile", "",
+            "The path to the 'known_hosts' file used for checking the target host for the SSH tunnel when option 'sshStrictHostKeyChecking' is 'true'. Default is '~/.ssh/known_hosts'."),
+    ;
 
     // Unsupported MongoDB connection properties that will be ignored but should have warnings.
     private static final String[] UNSUPPORTED_MONGO_DB_PROPERTIES = {
@@ -166,7 +181,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
         return Arrays.asList(UNSUPPORTED_MONGO_DB_PROPERTIES).contains(name);
     }
 
-    protected static DocumentDbConnectionProperty getPropertyFromKey(final String key) {
+    static DocumentDbConnectionProperty getPropertyFromKey(final String key) {
         for (DocumentDbConnectionProperty connectionProperty: DocumentDbConnectionProperty.values()) {
             if (connectionProperty.getName().equals(key)) {
                 return connectionProperty;
