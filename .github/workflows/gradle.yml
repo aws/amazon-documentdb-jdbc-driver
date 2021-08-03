@@ -65,7 +65,7 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle with local and optional remote DocumentDB tests
       run: |
-        ./gradlew build -PrunRemoteIntegrationTests=$RUN_REMOTE_INTEGRATION_TESTS
+        ./gradlew build -PrunRemoteIntegrationTests=$RUN_REMOTE_INTEGRATION_TESTS -d
     - name: Aggregate Reports
       run: |
         cp -R common/build/test-results/test/* build/test-results/test
