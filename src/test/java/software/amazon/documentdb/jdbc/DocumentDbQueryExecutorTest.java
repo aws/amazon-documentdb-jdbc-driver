@@ -102,9 +102,11 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final ExecutorService cancelThread = getCancelThread();
         final Cancel cancel = launchCancelThread(0, statement, cancelThread);
         waitCancelToComplete(cancelThread);
+        final SQLException exception = getCancelException(cancel);
+        Assertions.assertNotNull(exception);
         Assertions.assertEquals(
                 "Cannot cancel query, it is either completed or has not started.",
-                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel)).getMessage());
+                exception.getMessage());
     }
 
     /**
@@ -124,7 +126,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 Assertions.assertThrows(SQLException.class, () -> resultSet = statement.executeQuery(QUERY))
                         .getMessage());
         waitCancelToComplete(cancelThread);
-        Assertions.assertDoesNotThrow(() -> cancel.getException());
+        Assertions.assertNull(cancel.getException(), () -> cancel.getException().getMessage());
     }
 
     /** Tests that canceling a query from two different threads. */
@@ -145,15 +147,9 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         waitCancelToComplete(cancelThread1);
         waitCancelToComplete(cancelThread2);
 
-        // Check that 1 of the threads succeeded while other threw an exception.
-        try {
-            cancel1.getException();
-            // First thread succeeded so second must fail.
-            Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel2));
-        } catch (SQLException e) {
-            // First thread failed so second one must have succeeded.
-            Assertions.assertDoesNotThrow(() -> getCancelException(cancel2));
-        }
+        // Check that both threads succeed.
+        Assertions.assertNull(getCancelException(cancel1), () -> cancel1.getException().getMessage());
+        Assertions.assertNull(getCancelException(cancel2), () -> cancel2.getException().getMessage());
     }
 
     /** Tests that canceling a query after execution has already completed fails. */
@@ -167,9 +163,11 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final ExecutorService cancelThread = getCancelThread();
         final Cancel cancel = launchCancelThread(0, statement, cancelThread);
         waitCancelToComplete(cancelThread);
+        final SQLException exception = getCancelException(cancel);
+        Assertions.assertNotNull(exception);
         Assertions.assertEquals(
                 "Cannot cancel query, it is either completed or has not started.",
-                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel)).getMessage());
+                exception.getMessage());
     }
 
     /** Tests canceling a query after it has already been canceled. */
@@ -186,16 +184,17 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 Assertions.assertThrows(SQLException.class, () -> resultSet = statement.executeQuery(QUERY))
                         .getMessage());
         waitCancelToComplete(cancelThread1);
-        Assertions.assertDoesNotThrow(() -> cancel1.getException());
+        Assertions.assertNull(cancel1.getException(), () -> cancel1.getException().getMessage());
 
         // Attempt to cancel again.
         final ExecutorService cancelThread2 = getCancelThread();
         final Cancel cancel2 = launchCancelThread(1, statement, cancelThread2);
         waitCancelToComplete(cancelThread2);
+        final SQLException exception = getCancelException(cancel2);
+        Assertions.assertNotNull(exception);
         Assertions.assertEquals(
                 "Cannot cancel query, it is either completed or has not started.",
-                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel2))
-                        .getMessage());
+                exception.getMessage());
     }
 
     private ExecutorService getCancelThread() {
@@ -210,8 +209,8 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         return cancel1;
     }
 
-    private void getCancelException(final Cancel cancel) throws SQLException {
-        cancel.getException();
+    private SQLException getCancelException(final Cancel cancel) {
+        return cancel.getException();
     }
 
     @SneakyThrows
@@ -243,19 +242,15 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
 
         /**
          * Function to get exception if the run call generated one.
-         *
-         * @throws SQLException Exception caught by run.
          */
-        public void getException() throws SQLException {
-            if (exception != null) {
-                throw exception;
-            }
+        public SQLException getException()  {
+            return exception;
         }
     }
 
     /**
-     * Identical to actual DocumentDbQueryExecutor but overrides runQuery so we can simulate a long
-     * running query with find instead.
+     * Identical to actual DocumentDbQueryExecutor but overrides runQuery, so we can simulate a
+     * long-running query with find instead.
      */
     private static class MockQueryExecutor extends DocumentDbQueryExecutor {
         MockQueryExecutor(

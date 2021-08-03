@@ -1073,7 +1073,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 final OffsetDateTime currentDateTime = Instant.now().atOffset(ZoneOffset.UTC);
                 final long diffInMilliSeconds = actualDateTime
                         .until(currentDateTime, ChronoUnit.MILLIS);
-                Assertions.assertTrue(diffInMilliSeconds > 0 && diffInMilliSeconds < 2000);
+                Assertions.assertTrue(diffInMilliSeconds >= 0);
+                Assertions.assertTrue(diffInMilliSeconds < 1000);
                 Assertions.assertFalse(testResultSet.next());
                 return null;
             } catch (SQLException e) {
@@ -1932,6 +1933,13 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertNull(resultSet.getString(3));
         Assertions.assertNull(resultSet.getString(4));
         Assertions.assertFalse(resultSet.next());
+    }
+
+    @Test
+    @DisplayName("Tests closing a Statement will not cause exception for cancelQuery.")
+    void testCloseStatement() throws SQLException {
+        final Statement statement = getDocumentDbStatement();
+        Assertions.assertDoesNotThrow(statement::close);
     }
 
     private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {

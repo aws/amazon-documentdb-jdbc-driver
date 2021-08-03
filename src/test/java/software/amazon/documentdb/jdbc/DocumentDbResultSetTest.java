@@ -83,7 +83,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
     @BeforeAll
     @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
-    static void initialize() throws SQLException {
+    static void initialize() {
         // Add a valid users to the local MongoDB instance.
         client = createMongoClient("admin", "admin", "admin");
         createUser(DATABASE_NAME, TEST_USER, TEST_PASSWORD);
@@ -91,7 +91,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
     @BeforeEach
     void init() throws SQLException {
-        MockitoAnnotations.initMocks(this);
+        MockitoAnnotations.openMocks(this);
         Mockito.when(mockStatement.getFetchSize()).thenReturn(MOCK_FETCH_SIZE);
     }
 

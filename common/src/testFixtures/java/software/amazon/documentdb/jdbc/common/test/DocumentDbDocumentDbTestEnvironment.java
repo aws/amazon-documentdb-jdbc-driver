@@ -16,7 +16,13 @@
 
 package software.amazon.documentdb.jdbc.common.test;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoDatabase;
+import org.bson.BsonDocument;
 import org.bson.BsonType;
+
+import java.sql.SQLException;
+import java.util.UUID;
 
 public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestEnvironment {
 
@@ -30,7 +36,7 @@ public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestE
     private static final String DOC_DB_INTEGRATION_DATABASE = "integration";
     private static final String RESTRICTED_USERNAME = "docDbRestricted";
 
-    private final String databaseName;
+    private String databaseName;
     private final int port;
 
     DocumentDbDocumentDbTestEnvironment() {
@@ -39,17 +45,26 @@ public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestE
                 System.getenv(DOC_DB_PASSWORD_PROPERTY),
                 RESTRICTED_USERNAME,
                 DOC_DB_CONNECTION_OPTIONS);
-        databaseName = DOC_DB_INTEGRATION_DATABASE;
+        databaseName = null;
         port = getInteger(System.getenv(DOC_DB_LOCAL_PORT_PROPERTY), DEFAULT_PORT);
     }
 
     @Override
     protected boolean startEnvironment() {
+        databaseName = UUID.randomUUID().toString();
         return false;
     }
 
     @Override
     protected boolean stopEnvironment() {
+        try (MongoClient client = createMongoClient()) {
+            final MongoDatabase database = client.getDatabase(getDatabaseName());
+            database.runCommand(BsonDocument.parse("{ \"dropDatabase\": 1 }"));
+        } catch (SQLException ex) {
+            // Ignore
+        } finally {
+            databaseName = null;
+        }
         return false;
     }
 
