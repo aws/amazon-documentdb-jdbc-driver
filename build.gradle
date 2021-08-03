@@ -53,6 +53,7 @@ shadowJar {
     minimize {
         exclude(dependency('org.apache.calcite::'))
         exclude(dependency('org.slf4j.*::'))
+        exclude(dependency('com.jcraft::'))
     }
 }
 

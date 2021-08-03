@@ -63,6 +63,8 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
 
+    private int sshlocalPort = 0;
+
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
      *
@@ -512,7 +514,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return a MongoClientSettings object.
      */
     public MongoClientSettings buildMongoClientSettings() {
-        return buildMongoClientSettings(0, null);
+        return buildMongoClientSettings(null);
     }
 
     /**
@@ -522,18 +524,17 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return a MongoClientSettings object.
      */
     public MongoClientSettings buildMongoClientSettings(final int sshLocalPort) {
-        return buildMongoClientSettings(sshLocalPort, null);
+        setSshLocalPort(sshLocalPort);
+        return buildMongoClientSettings(null);
     }
 
     /**
      * Builds the MongoClientSettings from properties.
      *
-     * @param sshLocalPort the local port number for the SSH tunnel.
      * @param serverMonitorListener the server monitor listener
      * @return a MongoClientSettings object.
      */
     public MongoClientSettings buildMongoClientSettings(
-            final int sshLocalPort,
             final ServerMonitorListener serverMonitorListener) {
 
         final MongoClientSettings.Builder clientSettingsBuilder = MongoClientSettings.builder();
@@ -551,7 +552,7 @@ public class DocumentDbConnectionProperties extends Properties {
         applyServerSettings(clientSettingsBuilder, serverMonitorListener);
 
         // Set the cluster configuration.
-        applyClusterSettings(clientSettingsBuilder, sshLocalPort);
+        applyClusterSettings(clientSettingsBuilder, getSshLocalPort());
 
         // Set the socket configuration.
         applySocketSettings(clientSettingsBuilder);
@@ -619,6 +620,18 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getTlsCAFilePath() != null) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_CA_FILE, getTlsCAFilePath());
+        }
+        if (getSchemaName() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SCHEMA_NAME, getSchemaName());
+        }
+        if (getSshUser() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_USER, getSshUser());
+        }
+        if (getSshHostname() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_HOSTNAME, getSshHostname());
+        }
+        if (getSshPrivateKeyFile() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE, getSshPrivateKeyFile());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,
@@ -1072,6 +1085,14 @@ public class DocumentDbConnectionProperties extends Properties {
             LOGGER.warn("Property {{}} was ignored as it was not a valid schema storage type.", key, e);
         }
         return property;
+    }
+
+    private void setSshLocalPort(final int sshLocalPort) {
+        this.sshlocalPort = sshLocalPort;
+    }
+
+    private int getSshLocalPort() {
+        return sshlocalPort;
     }
 
     /**
