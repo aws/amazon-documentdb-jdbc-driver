@@ -35,13 +35,6 @@
         </conditions>
     </field>
 
-    <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames" value-type="boolean" category="authentication" default-value="false">
-        <boolean-options>
-            <false-value value="false" />
-            <true-value value="true" />
-        </boolean-options>
-    </field>
-
     <field name="v-ssh-tunnel" label="Use SSH Tunnel" value-type="boolean" category="authentication" default-value="true" optional="false">
         <boolean-options>
             <false-value value="false" />
@@ -65,6 +58,16 @@
         <conditions>
             <condition field="v-ssh-tunnel" value="true" />
         </conditions>
+    </field>
+
+    <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames" value-type="boolean" category="authentication" default-value="true">
+        <conditions>
+            <condition field="v-ssh-tunnel" value="true" />
+        </conditions>
+        <boolean-options>
+            <false-value value="false" />
+            <true-value value="true" />
+        </boolean-options>
     </field>
 
     <!-- Advanced tab. -->
