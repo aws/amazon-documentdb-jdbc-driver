@@ -27,13 +27,13 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
 

@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 import java.io.IOException;
 import java.sql.Blob;
@@ -49,8 +50,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 import java.util.regex.Pattern;
-
-import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 

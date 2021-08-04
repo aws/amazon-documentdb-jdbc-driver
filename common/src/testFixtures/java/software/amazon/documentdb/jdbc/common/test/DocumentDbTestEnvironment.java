@@ -86,7 +86,9 @@ public interface DocumentDbTestEnvironment {
             final int recordCount);
 
     /**
-     *
+     * Inserts array of documents into target collection.
+     * @param collectionName the collection to populate.
+     * @param documents the documents to add.
      */
     void insertBsonDocuments(
             final String collectionName,

@@ -19,8 +19,6 @@ package software.amazon.documentdb.jdbc;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import java.util.Arrays;
-import java.util.stream.Stream;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -35,12 +33,11 @@ import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.stream.Stream;
 
 class DocumentDbStatementTest {
 
     private DocumentDbTestEnvironment testEnvironment;
-    protected static final String CONNECTION_STRING_TEMPLATE = "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanLimit=1000&scanMethod=%s";
-
 
     @BeforeAll
     static void setup() throws Exception {
@@ -70,10 +67,6 @@ class DocumentDbStatementTest {
 
     protected static Stream<DocumentDbTestEnvironment> getTestEnvironments() {
         return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream();
-    }
-
-    protected static Stream<DocumentDbMetadataScanMethod> getScanMethods() {
-        return Arrays.stream(DocumentDbMetadataScanMethod.values());
     }
 
     protected void setTestEnvironment(final DocumentDbTestEnvironment testEnvironment) {

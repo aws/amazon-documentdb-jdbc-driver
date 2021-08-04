@@ -16,8 +16,6 @@
 
 package software.amazon.documentdb.jdbc;
 
-import static software.amazon.documentdb.jdbc.DocumentDbStatementTest.CONNECTION_STRING_TEMPLATE;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -47,6 +45,7 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
     private static final String USER = "user";
     private static final String PASSWORD = "password";
+    private static final String CONNECTION_STRING_TEMPLATE = "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanLimit=1000&scanMethod=%s";
 
     @BeforeAll
     static void initialize()  {

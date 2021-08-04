@@ -28,10 +28,8 @@ public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestE
 
     private static final int DEFAULT_PORT = 27019;
     private static final String DOC_DB_HOST_LOCAL = "localhost";
-    //private static final String DOC_DB_USER_NAME_PROPERTY = "DOC_DB_USER_NAME";
-    //private static final String DOC_DB_PASSWORD_PROPERTY = "DOC_DB_PASSWORD";
-    private static final String DOC_DB_USER_NAME_PROPERTY = "documentdb";
-    private static final String DOC_DB_PASSWORD_PROPERTY = "bqdocumentdblab";
+    private static final String DOC_DB_USER_NAME_PROPERTY = "DOC_DB_USER_NAME";
+    private static final String DOC_DB_PASSWORD_PROPERTY = "DOC_DB_PASSWORD";
     private static final String DOC_DB_LOCAL_PORT_PROPERTY = "DOC_DB_LOCAL_PORT";
 
     private static final String DOC_DB_CONNECTION_OPTIONS = "?tls=true&tlsAllowInvalidHostnames=true&scanMethod=random";
@@ -43,8 +41,8 @@ public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestE
 
     DocumentDbDocumentDbTestEnvironment() {
         super(DOC_DB_HOST_LOCAL,
-                DOC_DB_USER_NAME_PROPERTY,
-                DOC_DB_PASSWORD_PROPERTY,
+                System.getenv(DOC_DB_USER_NAME_PROPERTY),
+                System.getenv(DOC_DB_PASSWORD_PROPERTY),
                 RESTRICTED_USERNAME,
                 DOC_DB_CONNECTION_OPTIONS);
         databaseName = null;
