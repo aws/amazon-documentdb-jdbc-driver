@@ -86,15 +86,20 @@ public class DocumentDbQueryExecutor {
      */
     protected void cancelQuery(final boolean isClosing) throws SQLException {
         synchronized (queryStateLock) {
-            if (queryState.equals(QueryState.CANCELED)) {
-                return;
-            } else if (queryState.equals(QueryState.NOT_STARTED)) {
+            if (queryState.equals(QueryState.NOT_STARTED)) {
                 if (isClosing) {
                     return;
                 }
                 throw SqlError.createSQLException(
                         LOGGER, SqlState.OPERATION_CANCELED,
                         SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
+            } else if (queryState.equals(QueryState.CANCELED)) {
+                if (isClosing) {
+                    return;
+                }
+                throw SqlError.createSQLException(
+                        LOGGER, SqlState.OPERATION_CANCELED,
+                        SqlError.QUERY_CANCELED);
             }
             performCancel();
             queryState = QueryState.CANCELED;

@@ -136,20 +136,25 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         // Let 2 threads both wait for 100 milliseconds before attempting to cancel.
         final ExecutorService cancelThread1 = getCancelThread();
         final ExecutorService cancelThread2 = getCancelThread();
-        final Cancel cancel1 = launchCancelThread(100, statement, cancelThread1);
+        final Cancel cancel1 = launchCancelThread(500, statement, cancelThread1);
         final Cancel cancel2 = launchCancelThread(100, statement, cancelThread2);
 
         // Check that query was canceled.
         Assertions.assertEquals(
                 "Query has been canceled.",
-                Assertions.assertThrows(SQLException.class, () -> resultSet = statement.executeQuery(QUERY))
+                Assertions.assertThrows(SQLException.class,
+                                () -> resultSet = statement.executeQuery(QUERY))
                         .getMessage());
         waitCancelToComplete(cancelThread1);
         waitCancelToComplete(cancelThread2);
 
-        // Check that both threads succeed.
-        Assertions.assertNull(getCancelException(cancel1), () -> cancel1.getException().getMessage());
-        Assertions.assertNull(getCancelException(cancel2), () -> cancel2.getException().getMessage());
+        // Check that 1 of the threads succeeded while other threw an exception.
+        final SQLException exception1 = cancel1.getException();
+        if (exception1 == null) {
+            Assertions.assertNotNull(cancel2.getException());
+        } else {
+            Assertions.assertNotNull(exception1);
+        }
     }
 
     /** Tests that canceling a query after execution has already completed fails. */
