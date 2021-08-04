@@ -20,11 +20,13 @@ import org.bson.BsonDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
 
@@ -33,22 +35,25 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testQueryWithTwoLevelDocument() throws SQLException {
+    @DisplayName("Test querying for a virtual table from a nested document.")
+    @ParameterizedTest(name = "testQueryWithTwoLevelDocument - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithTwoLevelDocument(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1 } }");
         insertBsonDocuments(
-                "testComplexDocument", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
+                "testComplexDocument", new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
         final ResultSet resultSet1 = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, "testComplexDocument"));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testComplexDocument"));
         Assertions.assertNotNull(resultSet1);
 
         // Verify the nested table from the field doc.
         final ResultSet resultSet2 = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, "testComplexDocument_doc"));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testComplexDocument_doc"));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("key", resultSet2.getString("testComplexDocument__id"));
@@ -56,7 +61,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
 
         // Verify PROJECT.
         final ResultSet resultSet3 = statement.executeQuery(String.format(
-                "SELECT \"%s\", \"%s\" FROM \"%s\".\"%s\"", "field", "testComplexDocument__id", DATABASE_NAME, "testComplexDocument_doc"));
+                "SELECT \"%s\", \"%s\" FROM \"%s\".\"%s\"", "field", "testComplexDocument__id", getDatabaseName(), "testComplexDocument_doc"));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertEquals("key", resultSet3.getString("testComplexDocument__id"));
@@ -69,9 +74,9 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                                 "SELECT * FROM \"%s\".\"%s\" "
                                         + "INNER JOIN \"%s\".\"%s\" "
                                         + "ON %s = %s",
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 "testComplexDocument",
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 "testComplexDocument_doc",
                                 "\"testComplexDocument\".\"testComplexDocument__id\"",
                                 "\"testComplexDocument_doc\".\"testComplexDocument__id\""));
@@ -89,20 +94,23 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testQueryWithThreeLevelDocument() throws SQLException {
+    @DisplayName("Test querying for a virtual table from a doubly nested document.")
+    @ParameterizedTest(name = "testQueryWithThreeLevelDocument - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithThreeLevelDocument(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"doc2\" : { \"field2\" : \"value\" } } }");
         insertBsonDocuments(
-                "testComplex3LevelDocument", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
+                "testComplex3LevelDocument", new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
         final ResultSet resultSet1 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testComplex3LevelDocument"));
         Assertions.assertNotNull(resultSet1);
 
@@ -110,7 +118,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testComplex3LevelDocument_doc"));
         Assertions.assertNotNull(resultSet2);
 
@@ -119,7 +127,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 statement.executeQuery(
                         String.format(
                                 "SELECT * FROM \"%s\".\"%s\"",
-                                DATABASE_NAME, "testComplex3LevelDocument_doc_doc2"));
+                                getDatabaseName(), "testComplex3LevelDocument_doc_doc2"));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertEquals("key", resultSet3.getString("testComplex3LevelDocument__id"));
@@ -134,11 +142,11 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                                         + "ON %s = %s "
                                         + "INNER JOIN \"%s\".\"%s\" "
                                         + "ON %s = %s",
-                                DATABASE_NAME, "testComplex3LevelDocument",
-                                DATABASE_NAME, "testComplex3LevelDocument_doc",
+                                getDatabaseName(), "testComplex3LevelDocument",
+                                getDatabaseName(), "testComplex3LevelDocument_doc",
                                 "\"testComplex3LevelDocument\".\"testComplex3LevelDocument__id\"",
                                 "\"testComplex3LevelDocument_doc\".\"testComplex3LevelDocument__id\"",
-                                DATABASE_NAME, "testComplex3LevelDocument_doc_doc2",
+                                getDatabaseName(), "testComplex3LevelDocument_doc_doc2",
                                 "\"testComplex3LevelDocument_doc\".\"testComplex3LevelDocument__id\"",
                                 "\"testComplex3LevelDocument_doc_doc2\".\"testComplex3LevelDocument__id\""));
         Assertions.assertNotNull(resultSet4);
@@ -155,18 +163,21 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testQueryWithScalarArray() throws SQLException {
+    @DisplayName("Test querying for a virtual table from a nested scalar array.")
+    @ParameterizedTest(name = "testQueryWithScalarArray - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithScalarArray(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ 1, 2, 3 ] }");
         insertBsonDocuments(
-                "testScalarArray", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
+                "testScalarArray", new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
         final ResultSet resultSet1 =
                 statement.executeQuery(
-                        String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                        String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testScalarArray"));
         Assertions.assertNotNull(resultSet1);
 
@@ -174,7 +185,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testScalarArray_array"));
         Assertions.assertNotNull(resultSet2);
         for (int i = 0; i < 3; i++) {
@@ -191,9 +202,9 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                                 "SELECT * FROM \"%s\".\"%s\" "
                                         + "INNER JOIN \"%s\".\"%s\" "
                                         + "ON %s = %s",
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 "testScalarArray",
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 "testScalarArray_array",
                                 "\"testScalarArray\".\"testScalarArray__id\"",
                                 "\"testScalarArray_array\".\"testScalarArray__id\""));
@@ -211,20 +222,23 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testQueryWithArrayOfDocuments() throws SQLException {
+    @DisplayName("Tests querying for a virtual table from a nested array of documents.")
+    @ParameterizedTest(name = "testQueryWithArrayOfDocuments - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithArrayOfDocuments(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
         insertBsonDocuments(
-                "testDocumentArray", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
+                "testDocumentArray", new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
         final ResultSet resultSet1 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testDocumentArray"));
         Assertions.assertNotNull(resultSet1);
 
@@ -232,7 +246,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testDocumentArray_array"));
         Assertions.assertNotNull(resultSet2);
         for (int i = 0; i < 2; i++) {
@@ -248,7 +262,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = 2", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = 2", getDatabaseName(),
                                 "testDocumentArray_array"));
         Assertions.assertNotNull(resultSet3);
         int rowCount = 0;
@@ -265,9 +279,9 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                                 "SELECT * FROM \"%s\".\"%s\" "
                                         + "INNER JOIN \"%s\".\"%s\" "
                                         + "ON %s = %s",
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 "testDocumentArray",
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 "testDocumentArray_array",
                                 "\"testDocumentArray\".\"testDocumentArray__id\"",
                                 "\"testDocumentArray_array\".\"testDocumentArray__id\""));
@@ -285,18 +299,21 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testQueryWithTwoLevelArray() throws SQLException {
+    @DisplayName("Test querying for a virtual table from a 2 level array.")
+    @ParameterizedTest(name = "testQueryWithTwoLevelArray - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithTwoLevelArray(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ [1, 2, 3 ], [ 4, 5, 6 ] ]}");
         insertBsonDocuments(
-                "test2LevelArray", DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
+                "test2LevelArray", new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
         final ResultSet resultSet1 =
                 statement.executeQuery(
-                        String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                        String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "test2LevelArray"));
         Assertions.assertNotNull(resultSet1);
 
@@ -304,7 +321,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "test2LevelArray_array"));
         Assertions.assertNotNull(resultSet2);
         int expectedValue = 1;
@@ -323,7 +340,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"array_index_lvl_0\" = 0", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\" WHERE \"array_index_lvl_0\" = 0", getDatabaseName(),
                                 "test2LevelArray_array"));
         Assertions.assertNotNull(resultSet3);
         int rowCount = 0;
@@ -340,9 +357,9 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                                 "SELECT * FROM \"%s\".\"%s\" "
                                         + "INNER JOIN \"%s\".\"%s\" "
                                         + "ON %s = %s",
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 "test2LevelArray",
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 "test2LevelArray_array",
                                 "\"test2LevelArray\".\"test2LevelArray__id\"",
                                 "\"test2LevelArray_array\".\"test2LevelArray__id\""));
@@ -360,22 +377,20 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testQueryWithTwoLevelDocumentWithArray() throws SQLException {
+    @DisplayName("Test querying for a virtual table from a nested array in a nested document.")
+    @ParameterizedTest(name = "testQueryWithTwoLevelDocumentWithArray - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithTwoLevelDocumentWithArray(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"array\" : [1, 2, 3 ] } }");
-        insertBsonDocuments(
-                "testComplexDocumentWithArray",
-                DATABASE_NAME,
-                USER,
-                PASSWORD,
-                new BsonDocument[]{document});
+        insertBsonDocuments("testComplexDocumentWithArray", new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
         final ResultSet resultSet1 =
                 statement.executeQuery(
-                        String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                        String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testComplexDocumentWithArray"));
         Assertions.assertNotNull(resultSet1);
 
@@ -383,7 +398,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testComplexDocumentWithArray_doc"));
         Assertions.assertNotNull(resultSet2);
 
@@ -391,7 +406,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testComplexDocumentWithArray_doc_array"));
         Assertions.assertNotNull(resultSet3);
         for (int i = 0; i < 3; i++) {
@@ -405,7 +420,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet4 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"value\" = 1", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\" WHERE \"value\" = 1", getDatabaseName(),
                                 "testComplexDocumentWithArray_doc_array"));
         Assertions.assertNotNull(resultSet4);
         int rowCount = 0;
@@ -423,11 +438,11 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                                         + "ON %s = %s "
                                         + "INNER JOIN \"%s\".\"%s\" "
                                         + "ON %s = %s",
-                                DATABASE_NAME, "testComplexDocumentWithArray",
-                                DATABASE_NAME, "testComplexDocumentWithArray_doc",
+                                getDatabaseName(), "testComplexDocumentWithArray",
+                                getDatabaseName(), "testComplexDocumentWithArray_doc",
                                 "\"testComplexDocumentWithArray\".\"testComplexDocumentWithArray__id\"",
                                 "\"testComplexDocumentWithArray_doc\".\"testComplexDocumentWithArray__id\"",
-                                DATABASE_NAME, "testComplexDocumentWithArray_doc_array",
+                                getDatabaseName(), "testComplexDocumentWithArray_doc_array",
                                 "\"testComplexDocumentWithArray_doc\".\"testComplexDocumentWithArray__id\"",
                                 "\"testComplexDocumentWithArray_doc_array\".\"testComplexDocumentWithArray__id\""));
         Assertions.assertNotNull(resultSet5);
@@ -444,23 +459,21 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testQueryWithArrayOfDocumentsWithArrays() throws SQLException {
+    @DisplayName("Test querying for a virtual table from a nested array in a document in a nested array.")
+    @ParameterizedTest(name = "testQueryWithArrayOfDocumentsWithArrays - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithArrayOfDocumentsWithArrays(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"array2\" : [ 1, 2, 3 ] }, { \"array2\" : [ 4, 5, 6 ] } ]}");
-        insertBsonDocuments(
-                "testArrayOfDocumentsWithArray",
-                DATABASE_NAME,
-                USER,
-                PASSWORD,
-                new BsonDocument[]{document});
+        insertBsonDocuments("testArrayOfDocumentsWithArray", new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the base table.
         final ResultSet resultSet1 =
                 statement.executeQuery(
-                        String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                        String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testArrayOfDocumentsWithArray"));
         Assertions.assertNotNull(resultSet1);
 
@@ -468,7 +481,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testArrayOfDocumentsWithArray_array"));
         Assertions.assertNotNull(resultSet2);
 
@@ -476,7 +489,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
                                 "testArrayOfDocumentsWithArray_array_array2"));
         Assertions.assertNotNull(resultSet3);
         int expectedValue = 1;
@@ -495,7 +508,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final ResultSet resultSet4 =
                 statement.executeQuery(
                         String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"array_index_lvl_0\" = 0", DATABASE_NAME,
+                                "SELECT * FROM \"%s\".\"%s\" WHERE \"array_index_lvl_0\" = 0", getDatabaseName(),
                                 "testArrayOfDocumentsWithArray_array_array2"));
         Assertions.assertNotNull(resultSet4);
         int rowCount = 0;
@@ -516,11 +529,11 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                                         + "INNER JOIN \"%s\".\"%s\" "
                                         + "ON %s = %s "
                                         + "AND %s = %s",
-                                DATABASE_NAME, "testArrayOfDocumentsWithArray",
-                                DATABASE_NAME, "testArrayOfDocumentsWithArray_array",
+                                getDatabaseName(), "testArrayOfDocumentsWithArray",
+                                getDatabaseName(), "testArrayOfDocumentsWithArray_array",
                                 "\"testArrayOfDocumentsWithArray\".\"testArrayOfDocumentsWithArray__id\"",
                                 "\"testArrayOfDocumentsWithArray_array\".\"testArrayOfDocumentsWithArray__id\"",
-                                DATABASE_NAME, "testArrayOfDocumentsWithArray_array_array2",
+                                getDatabaseName(), "testArrayOfDocumentsWithArray_array_array2",
                                 "\"testArrayOfDocumentsWithArray_array\".\"testArrayOfDocumentsWithArray__id\"",
                                 "\"testArrayOfDocumentsWithArray_array_array2\".\"testArrayOfDocumentsWithArray__id\"",
                                 "\"testArrayOfDocumentsWithArray_array\".\"array_index_lvl_0\"",
@@ -540,8 +553,10 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @DisplayName("Tests that a statement with project, where, group by, having, order, and limit works with same collection joins.")
-    @Test
-    void testComplexQueryWithSameCollectionJoin() throws SQLException {
+    @ParameterizedTest(name = "testComplexQueryWithSameCollectionJoin - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testComplexQueryWithSameCollectionJoin(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String collection = "testComplexQueryJoin";
         final BsonDocument document1 =
                 BsonDocument.parse("{ \"_id\" : \"key0\", \"field\": 0, \"array\": [1, 2, 3, 4, 5] }");
@@ -551,8 +566,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 BsonDocument.parse("{ \"_id\" : \"key2\", \"field\": 0, \"array\": [1, 2] }");
         final BsonDocument document4 =
                 BsonDocument.parse("{ \"_id\" : \"key3\", \"field\": 1, \"array\": [1, 2, 3, 4, 5] }");
-        insertBsonDocuments(
-                collection, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1, document2, document3, document4});
+        insertBsonDocuments(collection, new BsonDocument[]{document1, document2, document3, document4});
         final Statement statement = getDocumentDbStatement();
 
         // Verify that result set has correct values.
@@ -563,8 +577,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                         + "GROUP BY \"%s\".\"%s\" HAVING COUNT(*) > 1"
                         + "ORDER BY \"Count\" DESC LIMIT 1",
                 "field",
-                DATABASE_NAME, collection,
-                DATABASE_NAME, collection + "_array",
+                getDatabaseName(), collection,
+                getDatabaseName(), collection + "_array",
                 collection, collection + "__id",
                 collection + "_array", collection + "__id",
                 "field",
@@ -583,20 +597,21 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @DisplayName("Tests that different join types produce the correct result for tables from same collection.")
-    @Test
-    void testJoinTypesForTablesFromSameCollection() throws SQLException {
+    @ParameterizedTest(name = "testJoinTypesForTablesFromSameCollection - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testJoinTypesForTablesFromSameCollection(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String collection = "testSameCollectionJoin";
         final BsonDocument document1 = BsonDocument.parse("{ \"_id\" : \"key0\", \"doc1\": { \"field\" : 1 } }");
         final BsonDocument document2 = BsonDocument.parse("{ \"_id\" : \"key1\", \"doc2\": { \"field\": 2 } }");
-        insertBsonDocuments(
-                collection, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1, document2});
+        insertBsonDocuments(collection, new BsonDocument[]{document1, document2});
         final Statement statement = getDocumentDbStatement();
 
         // Verify that an inner join will return an empty result set.
         statement.execute(String.format(
                 "SELECT * FROM \"%s\".\"%s\" INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                DATABASE_NAME, collection + "_doc1",
-                DATABASE_NAME, collection + "_doc2",
+                getDatabaseName(), collection + "_doc1",
+                getDatabaseName(), collection + "_doc2",
                 collection + "_doc1", collection + "__id",
                 collection + "_doc2", collection + "__id"));
         final ResultSet resultSet1 = statement.getResultSet();
@@ -606,8 +621,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         // Verify that a left outer join will return 1 row.
         statement.execute(String.format(
                 "SELECT * FROM \"%s\".\"%s\" LEFT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                DATABASE_NAME, collection + "_doc1",
-                DATABASE_NAME, collection + "_doc2",
+                getDatabaseName(), collection + "_doc1",
+                getDatabaseName(), collection + "_doc2",
                 collection + "_doc1", collection + "__id",
                 collection + "_doc2", collection + "__id"));
         final ResultSet resultSet2 = statement.getResultSet();
@@ -622,22 +637,23 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
 
     @Disabled("Incorrect behaviour for right or full joins involving more than 2 virtual tables.")
     @DisplayName("Tests behaviour of right join for tables from the same collection.")
-    @Test
-    void testRightJoinForTablesFromSameCollection() throws SQLException {
+    @ParameterizedTest(name = "testRightJoinForTablesFromSameCollection - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testRightJoinForTablesFromSameCollection(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String collection = "testSameCollectionRightJoin";
         final BsonDocument document1 =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key0\", \"doc1\": { \"field\" : 1 }, \"doc2\": { \"field\": 2 }}");
         final BsonDocument document2 = BsonDocument.parse("{ \"_id\" : \"key1\", \"doc2\": { \"field\": 2 } }");
-        insertBsonDocuments(
-                collection, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1, document2});
+        insertBsonDocuments(collection, new BsonDocument[]{document1, document2});
         final Statement statement = getDocumentDbStatement();
 
         // Verify that a right outer join will return 1 rows.
         statement.execute(String.format(
                 "SELECT * FROM \"%s\".\"%s\" RIGHT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                DATABASE_NAME, collection,
-                DATABASE_NAME, collection + "_doc1",
+                getDatabaseName(), collection,
+                getDatabaseName(), collection + "_doc1",
                 collection, collection + "__id",
                 collection + "_doc1", collection + "__id"));
         final ResultSet resultSet = statement.getResultSet();
@@ -651,15 +667,15 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                         "SELECT * FROM \"%s\".\"%s\" "
                                 + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
                                 + "RIGHT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         collection,
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         collection + "_doc1",
                         collection,
                         collection + "__id",
                         collection + "_doc1",
                         collection + "__id",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         collection + "_doc2",
                         collection + "_doc1",
                         collection + "__id",
@@ -677,9 +693,12 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
+    @Disabled("Relies on $lookup with pipeline.")
     @DisplayName("Tests that a statement with project, where, group by, having, order, and limit works with a different collection join.")
-    @Test
-    void testComplexQueryWithDifferentCollectionJoin() throws SQLException {
+    @ParameterizedTest(name = "testComplexQueryWithDifferentCollectionJoin - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testComplexQueryWithDifferentCollectionJoin(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String collection1 = "testComplexQueryDifferentCollectionJoin1";
         final String collection2 = "testComplexQueryDifferentCollectionJoin2";
         final BsonDocument document1 =
@@ -697,9 +716,9 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final BsonDocument document7 =
                 BsonDocument.parse("{ \"_id\" : \"key2\", \"field\": 0,  \"field2\": 0 }");
         insertBsonDocuments(
-                collection1, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1, document2, document3, document4});
+                collection1, new BsonDocument[]{document1, document2, document3, document4});
         insertBsonDocuments(
-                collection2, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document5, document6, document7});
+                collection2, new BsonDocument[]{document5, document6, document7});
         final Statement statement = getDocumentDbStatement();
 
         // Verify that result set has correct values. Expecting query to single out document3.
@@ -711,8 +730,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                         + "ORDER BY \"Count\" DESC LIMIT 1",
                 collection2 + "__id",
                 "field",
-                DATABASE_NAME, collection1 + "_array",
-                DATABASE_NAME, collection2,
+                getDatabaseName(), collection1 + "_array",
+                getDatabaseName(), collection2,
                 collection1 + "_array", collection1 + "__id",
                 collection2, collection2 + "__id",
                 "field2",
@@ -731,8 +750,10 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
+    @Disabled("Relies on $lookup with pipeline.")
     @DisplayName("Tests that different join types produce the correct result for tables from different collections.")
-    @Test
+    @ParameterizedTest(name = "testJoinTypesForTablesFromDifferentCollection - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
     void testJoinTypesForTablesFromDifferentCollection() throws SQLException {
         final String collection1 = "testDifferentCollectionJoin1";
         final String collection2 = "testDifferentCollectionJoin2";
@@ -742,16 +763,16 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final BsonDocument document2 = BsonDocument.parse(
                 "{ \"_id\" : \"key1\", \"doc\": { \"field\": 1, field3: \"value3\"} }");
         insertBsonDocuments(
-                collection1, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1});
+                collection1, new BsonDocument[]{document1});
         insertBsonDocuments(
-                collection2, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document2});
+                collection2, new BsonDocument[]{document2});
         final Statement statement = getDocumentDbStatement();
 
         // Verify that an inner join will return 1 row where field0 = field.
         statement.execute(String.format(
                 "SELECT * FROM \"%s\".\"%s\" INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                DATABASE_NAME, collection1 + "_array",
-                DATABASE_NAME, collection2 + "_doc",
+                getDatabaseName(), collection1 + "_array",
+                getDatabaseName(), collection2 + "_doc",
                 collection1 + "_array", "field",
                 collection2 + "_doc", "field"));
         final ResultSet resultSet1 = statement.getResultSet();
@@ -765,8 +786,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         // Verify that a left outer join will return 2 rows but only 1 match from the right.
         statement.execute(String.format(
                 "SELECT * FROM \"%s\".\"%s\" LEFT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                DATABASE_NAME, collection1 + "_array",
-                DATABASE_NAME, collection2 + "_doc",
+                getDatabaseName(), collection1 + "_array",
+                getDatabaseName(), collection2 + "_doc",
                 collection1 + "_array", "field",
                 collection2 + "_doc", "field"));
         final ResultSet resultSet2 = statement.getResultSet();
@@ -788,15 +809,17 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
     @DisplayName("Tests querying with projects on a three-level document. Addresses AD-115.")
-    void testProjectionQueryWithThreeLevelDocument() throws SQLException {
+    @ParameterizedTest(name = "testProjectionQueryWithThreeLevelDocument - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testProjectionQueryWithThreeLevelDocument(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testProjectionQueryWithThreeLevelDocument";
         final String keyColumnName = tableName + "__id";
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"doc2\" : { \"field2\" : \"value\" } } }");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
+        insertBsonDocuments(tableName, new BsonDocument[]{document});
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         // Verify the nested table from the field doc2 from the field doc.
@@ -804,7 +827,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 statement.executeQuery(
                         String.format(
                                 "SELECT \"%s__id\" FROM \"%s\".\"%s\"",
-                                tableName, DATABASE_NAME, tableName + "_doc"));
+                                tableName, getDatabaseName(), tableName + "_doc"));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("key", resultSet2.getString(keyColumnName));
@@ -814,7 +837,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 statement.executeQuery(
                         String.format(
                                 "SELECT \"%s__id\" FROM \"%s\".\"%s\"",
-                                tableName, DATABASE_NAME, tableName + "_doc_doc2"));
+                                tableName, getDatabaseName(), tableName + "_doc_doc2"));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertEquals("key", resultSet3.getString(keyColumnName));
@@ -830,15 +853,15 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                                         + "ON \"%s\".\"%s\" = \"%s\".\"%s\"",
                                 tableName,
                                 tableName,
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 tableName,
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 tableName + "_doc",
                                 tableName,
                                 keyColumnName,
                                 tableName + "_doc",
                                 keyColumnName,
-                                DATABASE_NAME,
+                                getDatabaseName(),
                                 tableName + "_doc_doc2",
                                 tableName + "_doc",
                                 keyColumnName,
@@ -858,21 +881,22 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      * Tests queries with natural joins where there are no matching fields other than ID.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests queries with natural joins.")
-    void testNaturalJoin() throws SQLException {
+    @ParameterizedTest(name = "testNaturalJoin - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testNaturalJoin(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testNaturalJoin";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 10, " +
                 "\"sub\": {" +
                 "   \"subField\": 15}}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+                        getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -885,23 +909,24 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      * Tests that natural joins where there is an additional matching column works.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @Disabled("Only joins on foreign keys are supported currently.")
     @DisplayName("Tests queries with natural join where an additional column matches the sub-table.")
-    void testNaturalJoinWithExtraColumn() throws SQLException {
+    @ParameterizedTest(name = "testNaturalJoinWithExtraColumn - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testNaturalJoinWithExtraColumn(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testNaturalJoinWithExtraColumn";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 10, " +
                 "\"sub\": {" +
                 "   \"subField\": 15," +
                 "   \"fieldA\": 10}}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+                        getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -914,23 +939,24 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      * Tests that a cross join with a WHERE clause matching IDs works.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests basic cross-join with WHERE condition.")
-    void testCrossJoinBasic() throws SQLException {
+    @ParameterizedTest(name = "testCrossJoinBasic - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testCrossJoinBasic(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCrossJoinBasic";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 10, " +
                 "\"sub\": {" +
                 "   \"subField\": 15," +
                 "   \"fieldA\": 10}}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\" WHERE " +
                                 "\"testCrossJoinBasic\".\"testCrossJoinBasic__id\" = \"testCrossJoinBasic_sub\".\"testCrossJoinBasic__id\"",
-                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+                        getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -944,10 +970,12 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
      * Tests that a cross join works.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @Disabled("Only joins on foreign keys are supported currently.")
     @DisplayName("Tests cross-join without WHERE condition.")
-    void testCrossJoin() throws SQLException {
+    @ParameterizedTest(name = "testCrossJoin - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testCrossJoin(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCrossJoin";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 10, " +
@@ -959,13 +987,12 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "\"sub\": {" +
                 "   \"subField\": 15," +
                 "   \"fieldA\": 10}}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName, DATABASE_NAME, tableName + "_sub"));
+                        getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));

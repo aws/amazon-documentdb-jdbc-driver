@@ -275,4 +275,18 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
             return value;
         }
     }
+
+    @Override
+    public void insertBsonDocuments(final String collectionName, final BsonDocument[] documents)
+            throws SQLException {
+        try (MongoClient client = createMongoClient()) {
+            final MongoDatabase database = client.getDatabase(getDatabaseName());
+            final MongoCollection<BsonDocument> collection =
+                    database.getCollection(collectionName, BsonDocument.class);
+            for (int count = 0; count < documents.length; count++) {
+                collection.insertOne(documents[count]);
+                Assertions.assertEquals(count + 1, collection.countDocuments());
+            }
+        }
+    }
 }

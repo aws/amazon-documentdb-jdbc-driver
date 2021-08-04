@@ -23,9 +23,8 @@ import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
 import java.sql.Blob;
@@ -51,25 +50,27 @@ import java.util.Locale;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
+
 public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
     /**
      * Tests querying for all data types with all scan methods.
      *
-     * @param method the scan method to use
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      * @throws IOException  occurs if reading an input stream fails.
      */
-    @ParameterizedTest
-    @EnumSource(DocumentDbMetadataScanMethod.class)
-    protected void testQueryWithAllDataTypes(final DocumentDbMetadataScanMethod method) throws SQLException, IOException {
-        final String collectionName = "testDocumentDbDriverTest_" + method.getName();
+    @DisplayName("Tests that all supported data types can be scanned and retrieved.")
+    @ParameterizedTest(name = "testQueryWithAllDataTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    protected void testQueryWithAllDataTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException, IOException {
+        setTestEnvironment(testEnvironment);
+        final String collectionName = "testDocumentDbDriverTest";
         final int recordCount = 10;
-        prepareSimpleConsistentData(DATABASE_NAME, collectionName,
-                recordCount, USER, PASSWORD);
-        final DocumentDbStatement statement = getDocumentDbStatement(method);
+        prepareSimpleConsistentData(collectionName, recordCount);
+        final DocumentDbStatement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collectionName));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collectionName));
         Assertions.assertNotNull(resultSet);
         int count = 0;
         while (resultSet.next()) {
@@ -110,8 +111,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testArrayScalarConflict() throws SQLException {
+    @DisplayName("Tests querying when there is conflict between an array and a scalar.")
+    @ParameterizedTest(name = "testArrayScalarConflict - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testArrayScalarConflict(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key0\", \n" +
@@ -128,17 +132,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments(
-                "testArrayScalarConflict",
-                DATABASE_NAME,
-                USER,
-                PASSWORD,
-                documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments("testArrayScalarConflict", documents.toArray(new BsonDocument[]{}));
 
         final DocumentDbStatement statement = getDocumentDbStatement();
 
         final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, "testArrayScalarConflict_array"));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testArrayScalarConflict_array"));
         for (int i = 0; i < 4; i++) {
             Assertions.assertTrue(resultSet.next());
             final String arrayValue = resultSet.getString("value");
@@ -157,8 +156,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testDocumentScalarConflict() throws SQLException {
+    @DisplayName("Test querying when there is a conflict between a document field and a scalar.")
+    @ParameterizedTest(name = "testDocumentScalarConflict - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testDocumentScalarConflict(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key0\", \n" +
@@ -175,17 +177,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments(
-                "testDocumentScalarConflict",
-                DATABASE_NAME,
-                USER,
-                PASSWORD,
-                documents.toArray(new BsonDocument[]{}));
-
+        insertBsonDocuments("testDocumentScalarConflict", documents.toArray(new BsonDocument[]{}));
         final DocumentDbStatement statement = getDocumentDbStatement();
-
         final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, "testDocumentScalarConflict"));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testDocumentScalarConflict"));
         for (int i = 0; i < 2; i++) {
             Assertions.assertTrue(resultSet.next());
             final String arrayValue = resultSet.getString("doc");
@@ -204,8 +199,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testArrayDocumentConflict() throws SQLException {
+    @DisplayName("Test querying when there is a conflict between a document field and an array.")
+    @ParameterizedTest(name = "testArrayDocumentConflict - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testArrayDocumentConflict(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key0\", \n" +
@@ -222,17 +220,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments(
-                "testArrayDocumentConflict",
-                DATABASE_NAME,
-                USER,
-                PASSWORD,
-                documents.toArray(new BsonDocument[]{}));
-
+        insertBsonDocuments("testArrayDocumentConflict", documents.toArray(new BsonDocument[]{}));
         final DocumentDbStatement statement = getDocumentDbStatement();
-
         final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, "testArrayDocumentConflict"));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testArrayDocumentConflict"));
         for (int i = 0; i < 2; i++) {
             Assertions.assertTrue(resultSet.next());
             final String arrayValue = resultSet.getString("field");
@@ -251,8 +242,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
-    @Test
-    void testDocumentAndArrayOfMixedTypesConflict() throws SQLException {
+    @DisplayName("Test querying when there is a conflict between a document field and an array of mixed type.")
+    @ParameterizedTest(name = "testDocumentAndArrayOfMixedTypesConflict - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testDocumentAndArrayOfMixedTypesConflict(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
                 "{ \"_id\" : \"key0\", \n" +
@@ -274,17 +268,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments(
-                "testDocumentAndArrayOfMixedTypesConflict",
-                DATABASE_NAME,
-                USER,
-                PASSWORD,
-                documents.toArray(new BsonDocument[]{}));
-
+        insertBsonDocuments("testDocumentAndArrayOfMixedTypesConflict", documents.toArray(new BsonDocument[]{}));
         final DocumentDbStatement statement = getDocumentDbStatement();
-
         final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, "testDocumentAndArrayOfMixedTypesConflict"));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testDocumentAndArrayOfMixedTypesConflict"));
         for (int i = 0; i < 2; i++) {
             Assertions.assertTrue(resultSet.next());
             final String arrayValue = resultSet.getString("field");
@@ -301,8 +288,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that documents missing a sub-document do not create null rows.
      */
     @DisplayName("Test that documents not containing a sub-document do not add null rows.")
-    @Test
-    void testDocumentWithMissingSubDocument() throws SQLException {
+    @ParameterizedTest(name = "testDocumentWithMissingSubDocument - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testDocumentWithMissingSubDocument(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String collection = "testMissingSubDocumentNotNull";
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
@@ -321,11 +310,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments(
-                collection, DATABASE_NAME, USER, PASSWORD, documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments(collection,documents.toArray(new BsonDocument[]{}));
         final Statement statement = getDocumentDbStatement();
         statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection + "_subDocument"));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection + "_subDocument"));
         final ResultSet results = statement.getResultSet();
         Assertions.assertTrue(results.next());
         Assertions.assertEquals("key0", results.getString(1));
@@ -338,8 +326,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that documents missing a nested sub-document do not create null rows.
      */
     @DisplayName("Test that documents not containing a sub-document do not add null rows.")
-    @Test
-    void testDocumentWithMissingNestedSubDocument() throws SQLException {
+    @ParameterizedTest(name = "testDocumentWithMissingNestedSubDocument - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testDocumentWithMissingNestedSubDocument(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String collection = "testMissingNestedSubDocumentNotNull";
         final List<BsonDocument> documents = new ArrayList<>();
         BsonDocument document = BsonDocument.parse(
@@ -360,11 +350,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         "}"
         );
         documents.add(document);
-        insertBsonDocuments(
-                collection, DATABASE_NAME, USER, PASSWORD, documents.toArray(new BsonDocument[]{}));
+        insertBsonDocuments(collection, documents.toArray(new BsonDocument[]{}));
         final Statement statement = getDocumentDbStatement();
         statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection + "_subDocument_nestedSubDoc"));
+                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection + "_subDocument_nestedSubDoc"));
         final ResultSet results = statement.getResultSet();
         Assertions.assertTrue(results.next());
         Assertions.assertEquals("key0", results.getString(1));
@@ -377,20 +366,21 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests count('column') works ensuring null/undefined values are not counted")
-    void testCountColumnName() throws SQLException {
+    @ParameterizedTest(name = "testCountColumnName - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testCountColumnName(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCountColumn";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abc\"}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
                 "\"field\": null}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103\n}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT COUNT(\"field\") from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                String.format("SELECT COUNT(\"field\") from \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(1, resultSet.getInt(1));
@@ -402,19 +392,20 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests query with SUM(1).")
-    void testQuerySumOne() throws SQLException {
+    @ParameterizedTest(name = "testQuerySumOne - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySumOne(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQuerySumOne";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": 4}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT SUM(1) from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                String.format("SELECT SUM(1) from \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(3, resultSet.getInt(1));
@@ -425,9 +416,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests TIMESTAMPADD() and TIMESTAMPDIFF() for intervals that can be converted to ms.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests TIMESTAMPADD() and TIMESTAMPDIFF() with different intervals.")
-    void testQueryTimestampAddDiff() throws SQLException {
+    @ParameterizedTest(name = "testQueryTimestampAddDiff - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryTimestampAddDiff(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testTimestampAddDiff";
         final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
         final long weekAfterDateTime = Instant.parse("2020-02-29T00:00:00.00Z").toEpochMilli();
@@ -442,14 +435,13 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         doc1.append("fieldHourAfter", new BsonDateTime(hourAfterDateTime));
         doc1.append("fieldMinuteAfter", new BsonDateTime(minuteAfterDateTime));
         doc1.append("fieldSecondAfter", new BsonDateTime(secondAfterDateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         // Add 1 day to a date column.
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(WEEK"
-                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(new Timestamp(weekAfterDateTime), resultSet.getTimestamp(1));
@@ -458,7 +450,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Add 1 day to a date column.
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(DAY"
-                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet1);
         Assertions.assertTrue(resultSet1.next());
         Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet1.getTimestamp(1));
@@ -467,7 +459,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Add 1 hour to a date column.
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(HOUR"
-                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals(new Timestamp(hourAfterDateTime), resultSet2.getTimestamp(1));
@@ -476,7 +468,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Add 1 minute to a date column.
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(MINUTE"
-                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertEquals(new Timestamp(minuteAfterDateTime), resultSet3.getTimestamp(1));
@@ -485,7 +477,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Add 1 second to a date column.
         final ResultSet resultSet4 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(SECOND"
-                        + ", 1, \"field\") FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\") FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet4);
         Assertions.assertTrue(resultSet4.next());
         Assertions.assertEquals(new Timestamp(secondAfterDateTime), resultSet4.getTimestamp(1));
@@ -494,7 +486,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Add 1 day to a date literal.
         final ResultSet resultSet5 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPADD(DAY"
-                        + ", 1, TIMESTAMP '2020-02-22 00:00:00' ) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, TIMESTAMP '2020-02-22 00:00:00' ) FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet5);
         Assertions.assertTrue(resultSet5.next());
         Assertions.assertEquals(new Timestamp(dayAfterDateTime), resultSet5.getTimestamp(1));
@@ -503,7 +495,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Add 1 day to the date and extract the day of the month from result.
         final ResultSet resultSet6 = statement.executeQuery(
                 String.format("SELECT DAYOFMONTH(TIMESTAMPADD(DAY"
-                        + ", 1, \"field\")) FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + ", 1, \"field\")) FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet6);
         Assertions.assertTrue(resultSet6.next());
         Assertions.assertEquals(23, resultSet6.getInt(1));
@@ -512,7 +504,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of DAY
         final ResultSet resultSet7 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(DAY, \"field\", \"fieldDayAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet7);
         Assertions.assertTrue(resultSet7.next());
         Assertions.assertEquals(1, resultSet7.getLong(1));
@@ -521,7 +513,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of WEEK
         final ResultSet resultSet8 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(WEEK, \"field\", \"fieldWeekAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet8);
         Assertions.assertTrue(resultSet8.next());
         Assertions.assertEquals(1, resultSet8.getLong(1));
@@ -530,7 +522,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of HOUR
         final ResultSet resultSet9 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(HOUR, \"field\", \"fieldHourAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet9);
         Assertions.assertTrue(resultSet9.next());
         Assertions.assertEquals(1, resultSet9.getLong(1));
@@ -539,7 +531,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of MINUTE
         final ResultSet resultSet10 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(MINUTE, \"field\", \"fieldMinuteAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet10);
         Assertions.assertTrue(resultSet10.next());
         Assertions.assertEquals(1, resultSet10.getLong(1));
@@ -548,7 +540,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of SECOND
         final ResultSet resultSet11 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(SECOND, \"field\", \"fieldSecondAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet11);
         Assertions.assertTrue(resultSet11.next());
         Assertions.assertEquals(1, resultSet11.getLong(1));
@@ -557,7 +549,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of MINUTE in SECOND
         final ResultSet resultSet12 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(SECOND, \"field\", \"fieldMinuteAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet12);
         Assertions.assertTrue(resultSet12.next());
         Assertions.assertEquals(60, resultSet12.getLong(1));
@@ -566,7 +558,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of HOUR in SECOND
         final ResultSet resultSet13 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(SECOND, \"field\", \"fieldHourAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet13);
         Assertions.assertTrue(resultSet13.next());
         Assertions.assertEquals(3600, resultSet13.getLong(1));
@@ -575,7 +567,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of DAY in SECOND
         final ResultSet resultSet14 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(SECOND, \"field\", \"fieldDayAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet14);
         Assertions.assertTrue(resultSet14.next());
         Assertions.assertEquals(86400, resultSet14.getLong(1));
@@ -584,7 +576,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of WEEK in SECOND
         final ResultSet resultSet15 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(SECOND, \"field\", \"fieldWeekAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet15);
         Assertions.assertTrue(resultSet15.next());
         Assertions.assertEquals(604800, resultSet15.getLong(1));
@@ -593,7 +585,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Difference of SECOND in MICROSECOND
         final ResultSet resultSet16 = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(MICROSECOND, \"field\", \"fieldSecondAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet16);
         Assertions.assertTrue(resultSet16.next());
         Assertions.assertEquals(1000000, resultSet16.getLong(1));
@@ -604,23 +596,24 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests TIMESTAMPDIFF() for YEAR.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests TIMESTAMPDIFF() for YEAR.")
-    void testQueryTimestampDiffYear() throws SQLException {
+    @ParameterizedTest(name = "testQueryTimestampDiffYear - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryTimestampDiffYear(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testTimestampDiffYear";
         final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
         final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         // Difference of 12 months in YEAR
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(YEAR, \"field\", \"fieldYearAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(1, resultSet.getLong(1));
@@ -631,23 +624,24 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests TIMESTAMPADD() for QUARTER.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests TIMESTAMPDIFF() for QUARTER.")
-    void testQueryTimestampDiffQuarter() throws SQLException {
+    @ParameterizedTest(name = "testQueryTimestampDiffQuarter - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryTimestampDiffQuarter(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testTimestampDiffQuarter";
         final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
         final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         // Difference of 12 months in QUARTER
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(QUARTER, \"field\", \"fieldYearAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(4, resultSet.getLong(1));
@@ -658,23 +652,24 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests TIMESTAMPADD() for MONTH.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests TIMESTAMPDIFF() for MONTH.")
-    void testQueryTimestampDiffMonth() throws SQLException {
+    @ParameterizedTest(name = "testQueryTimestampDiffMonth - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryTimestampDiffMonth(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testTimestampDiffMonth";
         final long dateTime = Instant.parse("2020-02-22T00:00:00.00Z").toEpochMilli();
         final long yearAfterDateTime =  Instant.parse("2021-02-22T00:00:00.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         doc1.append("fieldYearAfter", new BsonDateTime(yearAfterDateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         // Difference of 12 months in MONTH
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT TIMESTAMPDIFF(MONTH, \"field\", \"fieldYearAfter\")"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(12, resultSet.getLong(1));
@@ -685,17 +680,18 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that EXTRACT works for different time units.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests EXTRACT() for different time units.")
-    void testQueryExtract() throws SQLException {
+    @ParameterizedTest(name = "testQueryExtract - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryExtract(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testExtract";
         final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
         doc2.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
 
         // Get date parts and use group by to remove any duplicate rows.
@@ -730,8 +726,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                             + "SECOND(\"field\"),%n"
                             + "QUARTER(\"field\"),%n"
                             + "DAYNAME(\"field\"),%n"
-                            + "MONTHNAME(\"field\")"
-                    , DATABASE_NAME, tableName));
+                            + "MONTHNAME(\"field\")",
+                    getDatabaseName(), tableName));
             Assertions.assertNotNull(resultSet);
             Assertions.assertTrue(resultSet.next());
             // Year is 2020.
@@ -767,7 +763,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         + "THEN 'A' "
                         + "ELSE 'B' "
                         + "END "
-                        + "FROM \"%s\".\"%s\" ", DATABASE_NAME, tableName));
+                        + "FROM \"%s\".\"%s\" ", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("A", resultSet2.getString(1));
@@ -779,9 +775,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
     }
 
-    @Test
     @DisplayName("Tests DAYNAME")
-    void testDayName() throws SQLException {
+    @ParameterizedTest(name = "testDayName - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testDayName(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testDayName";
         final List<BsonDocument> docs = new ArrayList<>();
         final Instant startingDateTime = Instant.parse("2020-02-02T04:05:06.00Z");
@@ -790,8 +788,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                     "field",
                     new BsonDateTime(startingDateTime.plus(i, ChronoUnit.DAYS).toEpochMilli())));
         }
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                docs.toArray(new BsonDocument[0]));
+        insertBsonDocuments(tableName, docs.toArray(new BsonDocument[0]));
         final Statement statement = getDocumentDbStatement();
 
         final Locale originalLocale = Locale.getDefault();
@@ -801,7 +798,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             final ResultSet resultSet = statement.executeQuery(
                     String.format("SELECT "
                             + "DAYNAME(\"field\"), \"field\""
-                            + "FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                            + "FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
             Assertions.assertNotNull(resultSet);
 
             Assertions.assertTrue(resultSet.next());
@@ -853,9 +850,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
     }
 
-    @Test
     @DisplayName("Tests MONTHNAME")
-    void testMonthName() throws SQLException {
+    @ParameterizedTest(name = "testMonthName - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testMonthName(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testMonthName";
         final List<BsonDocument> docs = new ArrayList<>();
         final OffsetDateTime startingDateTime = Instant.parse("2020-01-02T04:05:06.00Z").atOffset(ZoneOffset.UTC);
@@ -867,8 +866,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         docs.add(new BsonDocument(
                 "field",
                 new BsonNull()));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                docs.toArray(new BsonDocument[0]));
+        insertBsonDocuments(tableName, docs.toArray(new BsonDocument[0]));
         final Statement statement = getDocumentDbStatement();
 
         final Locale originalLocale = Locale.getDefault();
@@ -878,7 +876,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             final ResultSet resultSet = statement.executeQuery(
                     String.format("SELECT "
                             + "MONTHNAME(\"field\"), \"field\""
-                            + "FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                            + "FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
             Assertions.assertNotNull(resultSet);
 
             Assertions.assertTrue(resultSet.next());
@@ -958,23 +956,24 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
     }
 
-    @Test
     @DisplayName("Tests MONTHNAME for NULL")
-    void testMonthNameForNull() throws SQLException {
+    @ParameterizedTest(name = "testMonthNameForNull - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testMonthNameForNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testMonthNameForNull";
         final List<BsonDocument> docs = new ArrayList<>();
         docs.add(new BsonDocument(
                 "field",
                 new BsonNull()));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                docs.toArray(new BsonDocument[0]));
+        insertBsonDocuments(tableName, docs.toArray(new BsonDocument[0]));
         final Statement statement = getDocumentDbStatement();
 
         // Get month name.
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT %n"
                         + " MONTHNAME(CAST(NULL AS TIMESTAMP))%n"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertNull(resultSet.getString(1));
@@ -984,7 +983,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT %n"
                         + " MONTHNAME(NULL)%n"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertNull(resultSet2.getString(1));
@@ -993,30 +992,31 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT %n"
                         + " MONTHNAME(CAST(\"field\" AS TIMESTAMP))%n"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertNull(resultSet3.getTimestamp(1));
         Assertions.assertFalse(resultSet3.next());
     }
 
-    @Test
     @DisplayName("Tests DAYNAME for NULL")
-    void testDayNameForNull() throws SQLException {
+    @ParameterizedTest(name = "testDayNameForNull - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testDayNameForNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testDayNameForNull";
         final List<BsonDocument> docs = new ArrayList<>();
         docs.add(new BsonDocument(
                 "field",
                 new BsonNull()));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                docs.toArray(new BsonDocument[0]));
+        insertBsonDocuments(tableName, docs.toArray(new BsonDocument[0]));
         final Statement statement = getDocumentDbStatement();
 
         // Get month name.
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT %n"
                         + " DAYNAME(CAST(NULL AS TIMESTAMP))%n"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertNull(resultSet.getString(1));
@@ -1026,7 +1026,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT %n"
                         + " DAYNAME(NULL)%n"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertNull(resultSet2.getString(1));
@@ -1035,7 +1035,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT %n"
                         + " DAYNAME(CAST(\"field\" AS TIMESTAMP))%n"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertNull(resultSet3.getTimestamp(1));
@@ -1046,21 +1046,22 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests CURRENT_TIMESTAMP.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests CURRENT_TIMESTAMP.")
-    void testCurrentTimestamp() throws SQLException {
+    @ParameterizedTest(name = "testCurrentTimestamp - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testCurrentTimestamp(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCurrentTimestamp";
         final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         // Get current date.
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT CURRENT_TIMESTAMP"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
 
         final Function<ResultSet, SQLException> validateResultSet = (testResultSet) -> {
             try {
@@ -1089,7 +1090,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Get current date as alias column name.
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT CURRENT_TIMESTAMP AS \"cts\""
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         e = validateResultSet.apply(resultSet2);
         if (e != null) {
             throw e;
@@ -1099,7 +1100,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT \"field\" "
                         + " FROM \"%s\".\"%s\""
-                        + " WHERE \"field\" < CURRENT_TIMESTAMP", DATABASE_NAME, tableName));
+                        + " WHERE \"field\" < CURRENT_TIMESTAMP", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertEquals(dateTime, resultSet3.getTimestamp(1).getTime());
@@ -1108,7 +1109,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet4 = statement.executeQuery(
                 String.format("SELECT \"field\" "
                         + " FROM \"%s\".\"%s\""
-                        + " WHERE \"field\" > CURRENT_TIMESTAMP", DATABASE_NAME, tableName));
+                        + " WHERE \"field\" > CURRENT_TIMESTAMP", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet4);
         Assertions.assertFalse(resultSet4.next());
     }
@@ -1117,21 +1118,22 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests CURRENT_DATE.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests CURRENT_DATE.")
-    void testCurrentDate() throws SQLException {
+    @ParameterizedTest(name = "testCurrentDate - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testCurrentDate(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCurrentDate";
         final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         // Get current date.
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT CURRENT_DATE"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
 
         final Function<ResultSet, SQLException> validateResultSet = (testResultSet) -> {
             try {
@@ -1156,7 +1158,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Get current date as alias column name.
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT CURRENT_DATE AS \"cts\""
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         e = validateResultSet.apply(resultSet2);
         if (e != null) {
             throw e;
@@ -1166,7 +1168,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT \"field\" "
                         + " FROM \"%s\".\"%s\""
-                        + " WHERE \"field\" < CURRENT_DATE", DATABASE_NAME, tableName));
+                        + " WHERE \"field\" < CURRENT_DATE", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertEquals(dateTime, resultSet3.getDate(1).getTime());
@@ -1175,7 +1177,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet4 = statement.executeQuery(
                 String.format("SELECT \"field\" "
                         + " FROM \"%s\".\"%s\""
-                        + " WHERE \"field\" > CURRENT_DATE", DATABASE_NAME, tableName));
+                        + " WHERE \"field\" > CURRENT_DATE", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet4);
         Assertions.assertFalse(resultSet4.next());
     }
@@ -1184,21 +1186,22 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests CURRENT_TIME.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests CURRENT_TIME.")
-    void testCurrentTime() throws SQLException {
+    @ParameterizedTest(name = "testCurrentTime - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testCurrentTime(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCurrentTime";
         final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         // Get current date.
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT CURRENT_TIME"
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
 
         final Function<ResultSet, SQLException> validateResultSet = (testResultSet) -> {
             try {
@@ -1225,7 +1228,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         // Get current date as alias column name.
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT CURRENT_TIME AS \"cts\""
-                        + " FROM \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                        + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
         e = validateResultSet.apply(resultSet2);
         if (e != null) {
             throw e;
@@ -1235,7 +1238,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT \"field\""
                         + " FROM \"%s\".\"%s\""
-                        + " WHERE CAST(\"field\" AS TIME) < CURRENT_TIME", DATABASE_NAME, tableName));
+                        + " WHERE CAST(\"field\" AS TIME) < CURRENT_TIME", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertTrue(resultSet3.next());
         Assertions.assertEquals(dateTime, resultSet3.getDate(1).getTime());
@@ -1244,7 +1247,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final ResultSet resultSet4 = statement.executeQuery(
                 String.format("SELECT \"field\""
                         + " FROM \"%s\".\"%s\""
-                        + " WHERE CAST(\"field\" AS TIME) > CURRENT_TIME", DATABASE_NAME, tableName));
+                        + " WHERE CAST(\"field\" AS TIME) > CURRENT_TIME", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet4);
         Assertions.assertFalse(resultSet4.next());
     }
@@ -1254,9 +1257,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries containing ORDER BY and OFFSET work.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests queries with OFFSET")
-    void testQueryOffset() throws SQLException {
+    @ParameterizedTest(name = "testQueryOffset - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryOffset(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryOffset";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 1,\n" +
@@ -1267,13 +1272,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
                 "\"fieldA\": 5,\n" +
                 "\"fieldB\": 6}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" LIMIT 2 OFFSET 1",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("102", resultSet.getString(1));
@@ -1286,9 +1290,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries containing IN (c1, c2...) work.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests queries with WHERE [field] IN (...)")
-    void testQueryWhereIN() throws SQLException {
+    @ParameterizedTest(name = "testQueryWhereIN - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWhereIN(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryWhereIN";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 1,\n" +
@@ -1299,13 +1305,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
                 "\"fieldA\": 5,\n" +
                 "\"fieldB\": \"ghi\"}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldA\" IN (1, 5)",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -1315,7 +1320,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldB\" IN ('abc', 'ghi')",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -1328,9 +1333,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries containing NOT IN (c1, c2...) work.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests queries with WHERE [field] NOT IN (...)")
-    void testQueryWhereNotIN() throws SQLException {
+    @ParameterizedTest(name = "testQueryWhereNotIN - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWhereNotIN(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryWhereNOTIN";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 1,\n" +
@@ -1341,13 +1348,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
                 "\"fieldA\": 5, \n" +
                 "\"fieldB\": \"ghi\"}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldA\" NOT IN (1, 5)",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("102", resultSet.getString(1));
@@ -1355,7 +1361,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldB\" NOT IN ('abc', 'ghi')",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("102", resultSet.getString(1));
@@ -1366,16 +1372,17 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries containing casts from numbers work.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests queries with cast from number.")
-    void testQueryCastNum() throws SQLException {
+    @ParameterizedTest(name = "testQueryCastNum - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryCastNum(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryCastNum";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 1,\n" +
                 "\"fieldB\": 1.2," +
                 "\"fieldC\": 10000000000}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
@@ -1388,7 +1395,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                                 "CAST(\"fieldC\" AS BIGINT), " +
                                 "CAST(\"fieldC\" AS DOUBLE) " +
                                 " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(1, resultSet.getInt(1));
@@ -1406,16 +1413,17 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries containing casts from strings work.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @Disabled("Cast to date not working.")
     @DisplayName("Tests queries with cast from string.")
-    void testQueryCastString() throws SQLException, ParseException {
+    @ParameterizedTest(name = "testQueryCastString - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryCastString(final DocumentDbTestEnvironment testEnvironment) throws SQLException, ParseException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryCastString";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": \"2020-03-11\", \n" +
                 "\"fieldNum\": \"100.5\"}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
@@ -1425,7 +1433,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                                 "CAST(\"fieldNum\" AS INTEGER)," +
                                 "CAST(\"fieldNum\" AS BIGINT) " +
                                 " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("2020-03-11", resultSet.getString(1));
@@ -1441,15 +1449,16 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries containing casts from dates work.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests queries with cast from date.")
-    void testQueryCastDate() throws SQLException, ParseException {
+    @ParameterizedTest(name = "testQueryCastDate - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryCastDate(final DocumentDbTestEnvironment testEnvironment) throws SQLException, ParseException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryCastDate";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date",
                 new BsonTimestamp(new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime()));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
@@ -1458,7 +1467,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                                 "CAST(\"date\" AS TIME)," +
                                 "CAST(\"date\" AS VARCHAR) " +
                                 " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("2020-03-11", resultSet.getDate(1).toString());
@@ -1473,20 +1482,21 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries containing casts from boolean work.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests queries with cast from boolean.")
-    void testQueryCastBoolean() throws SQLException {
+    @ParameterizedTest(name = "testQueryCastBoolean - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryCastBoolean(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryCastBoolean";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": false}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT CAST(\"fieldA\" AS VARCHAR)" +
                                 " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("false", resultSet.getString(1));
@@ -1497,10 +1507,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries containing various nested casts work.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @Disabled("Casts are not functioning from string to date.")
     @DisplayName("Tests queries with nested CAST.")
-    void testQueryNestedCast() throws SQLException, ParseException {
+    @ParameterizedTest(name = "testQueryNestedCast - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryNestedCast(final DocumentDbTestEnvironment testEnvironment) throws SQLException, ParseException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryNestedCast";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"dateString\": \"2020-03-11\"," +
@@ -1508,8 +1520,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"fieldString\": \"5\"}");
         doc1.append("fieldTimestamp", new BsonTimestamp(
                 new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime()));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
@@ -1517,7 +1528,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                                 "CAST(CAST(\"fieldTimestamp\" AS DATE) AS VARCHAR), " +
                                 "CAST(CAST(\"fieldNum\" AS DOUBLE) AS INTEGER)" +
                                 " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("2020-03-11", resultSet.getString(1));
@@ -1532,9 +1543,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Uses max fetch size of 10 to ensure multiple batches are retrieved.
      * @throws SQLException if connection or query fails.
      */
-    @Test
     @DisplayName("Tests that the result set does not close prematurely when results are retrieved in multiple batches.")
-    void testResultSetDoesNotClose() throws SQLException {
+    @ParameterizedTest(name = "testResultSetDoesNotClose - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testResultSetDoesNotClose(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testResultsetClose";
         final int numDocs = 100;
         final BsonDocument[] docs = new BsonDocument[numDocs];
@@ -1543,11 +1556,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                     "\"field\":\"abc\"}");
             docs[i] = doc;
         }
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD, docs);
+        insertBsonDocuments(tableName, docs);
         final Statement statement = getDocumentDbStatement();
         statement.setFetchSize(1);
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                String.format("SELECT * from \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         for (int i = 0; i < numDocs; i++) {
             Assertions.assertTrue(resultSet.next());
@@ -1560,9 +1573,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Tests that queries with a batch size of zero work.
      * @throws SQLException if connection or query fails.
      */
-    @Test
     @DisplayName("Tests that a batch size of zero works.")
-    void testBatchSizeZero() throws SQLException {
+    @ParameterizedTest(name = "testBatchSizeZero - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testBatchSizeZero(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testBatchSizeZero";
         final int numDocs = 10;
         final BsonDocument[] docs = new BsonDocument[numDocs];
@@ -1571,11 +1586,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                     "\"field\":\"abc\"}");
             docs[i] = doc;
         }
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD, docs);
+        insertBsonDocuments(tableName, docs);
         final Statement statement = getDocumentDbStatement();
         statement.setFetchSize(0);
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\"", DATABASE_NAME, tableName));
+                String.format("SELECT * from \"%s\".\"%s\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         for (int i = 0; i < numDocs; i++) {
             Assertions.assertTrue(resultSet.next());
@@ -1589,9 +1604,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests queries with IS [NOT] NULL in the select clause.")
-    void testQuerySelectIsNull() throws SQLException {
+    @ParameterizedTest(name = "testQuerySelectIsNull - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySelectIsNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQuerySelectIsNull";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abc\"}");
@@ -1599,13 +1616,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"field\": null}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT \"field\" IS NULL, \"field\" IS NOT NULL FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
 
         Assertions.assertTrue(resultSet.next());
@@ -1626,9 +1642,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Test that queries selecting a substring work.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Test that queries selecting a substring work.")
-    void testQuerySubstring() throws SQLException {
+    @ParameterizedTest(name = "testQuerySubstring - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySubstring(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testSelectQuerySubstring";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abcdefg\"}");
@@ -1642,12 +1660,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106,\n" +
                 "\"field\": \"ab\"}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT SUBSTRING(\"field\", 1, 3) FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("abc", resultSet.getString(1));
@@ -1669,9 +1686,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests for queries FLOOR(... TO ...) in select clause.")
-    void testQuerySelectFloorForDate() throws SQLException {
+    @ParameterizedTest(name = "testQuerySelectFloorForDate - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySelectFloorForDate(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQuerySelectFloorForDate";
         final Instant dateTime = Instant.parse("2020-02-03T12:34:56.78Z");
         final OffsetDateTime offsetDateTime = dateTime.atOffset(ZoneOffset.UTC);
@@ -1680,8 +1699,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime.toEpochMilli()));
         doc1.append("fieldEpoch", new BsonDateTime(epochDateTime.toEpochMilli()));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet = statement.executeQuery(
@@ -1704,7 +1722,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                                 + " FLOOR(\"fieldEpoch\" TO MILLISECOND),"
                                 + " FLOOR(NULL TO MILLISECOND)"
                                 + " FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(
@@ -1772,7 +1790,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         + " FLOOR(TIMESTAMPADD(DAY, 7, \"field\") TO WEEK)," // Next week
                         + " FLOOR(NULL TO WEEK)" // NULL
                         + " FROM \"%s\".\"%s\"",
-                DATABASE_NAME, tableName));
+                getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet1);
         Assertions.assertTrue(resultSet1.next());
         Assertions.assertEquals(
@@ -1816,7 +1834,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         + " FLOOR(TIMESTAMPADD(DAY, 300, \"field\") TO QUARTER), %n"
                         + " FLOOR(NULL TO QUARTER) %n"
                         + " FROM \"%s\".\"%s\"",
-                DATABASE_NAME, tableName));
+                getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals(
@@ -1839,10 +1857,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 SQLException.class,
                 () -> statement.executeQuery(
                         String.format("SELECT FLOOR(12.34) FROM \"%s\".\"%s\"",
-                                DATABASE_NAME, tableName))).getMessage();
+                                getDatabaseName(), tableName))).getMessage();
         Assertions.assertTrue(
-                errorMessage.startsWith(
-                        "Unable to parse SQL 'SELECT FLOOR(12.34) FROM \"database\".\"testQuerySelectFloorForDate\"'.")
+                errorMessage.startsWith(String.format(
+                        "Unable to parse SQL 'SELECT FLOOR(12.34) FROM \"%s\".\"testQuerySelectFloorForDate\"'.", getDatabaseName()))
                 && errorMessage.endsWith(
                         "Additional info: 'Translation of FLOOR(12.34:DECIMAL(4, 2)) is not supported by DocumentDbRules''"));
     }
@@ -1851,9 +1869,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Test that queries selecting a boolean expression with NOT work.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Test that queries selecting boolean expressions with NOT are correct.")
-    void testQueryWithNot() throws SQLException {
+    @ParameterizedTest(name = "testQueryWithNot - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithNot(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryWithNot";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field1\": true, \n" +
@@ -1868,15 +1888,14 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"field2\": false, \n" +
                 "\"field3\": 5}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT NOT (\"field1\"), " +
                                 "NOT (\"field1\" AND \"field2\"), " +
                                 "NOT (\"field1\" OR \"field2\"), " +
                                 "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertFalse(resultSet.getBoolean(1));
@@ -1902,10 +1921,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Test that queries selecting a boolean expression with NOT from nulls.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @Disabled("AD-267: Boolean expressions do not treat nulls correctly.")
     @DisplayName("Test that queries selecting a boolean expression with NOT from nulls are correct.")
-    void testQueryWithNotNulls() throws SQLException {
+    @ParameterizedTest(name = "testQueryWithNotNulls - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithNotNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryWithNotNulls";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
                 "\"field1\": true, \n" + // Added this document only for metadata
@@ -1916,15 +1937,14 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"field2\": null, \n" +
                 "\"field3\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT NOT (\"field1\"), " +
                                 "NOT (\"field1\" AND \"field2\"), " +
                                 "NOT (\"field1\" OR \"field2\"), " +
                                 "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertTrue(resultSet.next());
@@ -1935,9 +1955,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests closing a Statement will not cause exception for cancelQuery.")
-    void testCloseStatement() throws SQLException {
+    @ParameterizedTest(name = "testCloseStatement - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testCloseStatement(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final Statement statement = getDocumentDbStatement();
         Assertions.assertDoesNotThrow(statement::close);
     }

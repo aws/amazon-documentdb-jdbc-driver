@@ -84,4 +84,11 @@ public interface DocumentDbTestEnvironment {
     void prepareSimpleConsistentData(
             final MongoCollection<BsonDocument> collection,
             final int recordCount);
+
+    /**
+     *
+     */
+    void insertBsonDocuments(
+            final String collectionName,
+            final BsonDocument[] documents) throws SQLException;
 }

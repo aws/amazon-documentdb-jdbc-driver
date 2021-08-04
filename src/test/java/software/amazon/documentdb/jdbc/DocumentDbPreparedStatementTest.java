@@ -16,6 +16,8 @@
 
 package software.amazon.documentdb.jdbc;
 
+import static software.amazon.documentdb.jdbc.DocumentDbStatementTest.CONNECTION_STRING_TEMPLATE;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -57,7 +59,7 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(
                         new Properties(),
-                        DocumentDbStatementTest.getJdbcConnectionString(DocumentDbMetadataScanMethod.RANDOM),
+                        getJdbcConnectionString(DocumentDbMetadataScanMethod.RANDOM),
                         "jdbc:documentdb:");
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
@@ -188,5 +190,11 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
 
         Assertions.assertEquals("fieldDecimal128", metadata.getColumnName(13));
         Assertions.assertEquals("DECIMAL", metadata.getColumnTypeName(13));
+    }
+
+    protected static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
+        return String.format(
+                CONNECTION_STRING_TEMPLATE,
+                USER, PASSWORD, getMongoPort(), DATABASE_NAME, method.getName());
     }
  }

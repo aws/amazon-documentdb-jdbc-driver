@@ -16,12 +16,18 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import java.util.Arrays;
+import java.util.stream.Stream;
+import org.bson.BsonDocument;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.extension.ExtendWith;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
@@ -29,39 +35,62 @@ import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
-import java.util.Properties;
 
-@ExtendWith(DocumentDbFlapDoodleExtension.class)
-class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
+class DocumentDbStatementTest {
 
-    protected static final String DATABASE_NAME = "database";
-    protected static final String USER = "user";
-    protected static final String PASSWORD = "password";
+    private DocumentDbTestEnvironment testEnvironment;
     protected static final String CONNECTION_STRING_TEMPLATE = "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanLimit=1000&scanMethod=%s";
 
+
     @BeforeAll
-    static void initialize() {
-        // Add a valid users to the local MongoDB instance.
-        createUser(DATABASE_NAME, USER, PASSWORD);
+    static void setup() throws Exception {
+        // Start the test environments.
+        for (DocumentDbTestEnvironment testEnvironment :
+                DocumentDbTestEnvironmentFactory.getConfiguredEnvironments()) {
+            testEnvironment.start();
+        }
     }
 
     @AfterEach
     void afterEach() throws SQLException {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(
-                        new Properties(),
-                        getJdbcConnectionString(DocumentDbMetadataScanMethod.RANDOM),
-                        "jdbc:documentdb:");
+                .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 
-    protected static DocumentDbStatement getDocumentDbStatement() throws SQLException {
-        return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);
+    @AfterAll
+    static void teardown() throws Exception {
+        // Stop the test environments.
+        for (DocumentDbTestEnvironment testEnvironment :
+                DocumentDbTestEnvironmentFactory.getConfiguredEnvironments()) {
+            testEnvironment.stop();
+        }
     }
 
-    protected static DocumentDbStatement getDocumentDbStatement(final DocumentDbMetadataScanMethod method) throws SQLException {
-        final String connectionString = getJdbcConnectionString(method);
+    protected static Stream<DocumentDbTestEnvironment> getTestEnvironments() {
+        return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream();
+    }
+
+    protected static Stream<DocumentDbMetadataScanMethod> getScanMethods() {
+        return Arrays.stream(DocumentDbMetadataScanMethod.values());
+    }
+
+    protected void setTestEnvironment(final DocumentDbTestEnvironment testEnvironment) {
+        this.testEnvironment = testEnvironment;
+    }
+
+    protected void insertBsonDocuments(final String collection, final BsonDocument[] documents)
+            throws SQLException {
+        this.testEnvironment.insertBsonDocuments(collection, documents);
+    }
+
+    protected String getDatabaseName() {
+        return this.testEnvironment.getDatabaseName();
+    }
+
+    protected DocumentDbStatement getDocumentDbStatement() throws SQLException {
+        final String connectionString = this.testEnvironment.getJdbcConnectionString();
         final Connection connection = DriverManager.getConnection(connectionString);
         Assertions.assertNotNull(connection);
         final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();
@@ -69,9 +98,18 @@ class DocumentDbStatementTest extends DocumentDbFlapDoodleTest {
         return statement;
     }
 
-    protected static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
-        return String.format(
-                CONNECTION_STRING_TEMPLATE,
-                USER, PASSWORD, getMongoPort(), DATABASE_NAME, method.getName());
+    /**
+     * Prepares data for a given database and collection.
+     * @param collectionName - the name of the collection to insert data into.
+     * @param recordCount - the number of records to insert data into.
+     */
+    protected void prepareSimpleConsistentData(
+            final String collectionName,
+            final int recordCount) throws SQLException {
+        try (MongoClient client = this.testEnvironment.createMongoClient()) {
+            final MongoDatabase database = client.getDatabase(getDatabaseName());
+            final MongoCollection<BsonDocument> collection = database.getCollection(collectionName, BsonDocument.class);
+            this.testEnvironment.prepareSimpleConsistentData(collection, recordCount);
+        }
     }
 }

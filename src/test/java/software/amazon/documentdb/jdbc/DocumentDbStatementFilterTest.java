@@ -24,15 +24,16 @@ import org.bson.BsonInt64;
 import org.bson.BsonMinKey;
 import org.bson.BsonString;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
 
@@ -42,8 +43,10 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
     @DisplayName("Tests that a statement with project, where, group by, having, order, and limit works for a single table.")
-    @Test
-    void testComplexQuery() throws SQLException {
+    @ParameterizedTest(name = "testComplexQuery - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testComplexQuery(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String collection = "testComplexQuery";
         final BsonDocument document1 =
                 BsonDocument.parse("{ \"_id\" : \"key0\", \"array\": [1, 2, 3, 4, 5] }");
@@ -53,8 +56,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 BsonDocument.parse("{ \"_id\" : \"key2\", \"array\": [1, 2] }");
         final BsonDocument document4 =
                 BsonDocument.parse("{ \"_id\" : \"key3\", \"array\": [1, 2, 3, 4, 5] }");
-        insertBsonDocuments(
-                collection, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document1, document2, document3, document4});
+        insertBsonDocuments(collection, new BsonDocument[]{document1, document2, document3, document4});
         final Statement statement = getDocumentDbStatement();
 
         // Verify that result set has correct values.
@@ -64,7 +66,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                         + "GROUP BY \"%s\" HAVING COUNT(*) > 1"
                         + "ORDER BY \"Count\" DESC LIMIT 1",
                 collection + "__id",
-                DATABASE_NAME, collection + "_array",
+                getDatabaseName(), collection + "_array",
                 collection + "__id",
                 collection + "__id"));
         final ResultSet resultSet1 = statement.getResultSet();
@@ -75,25 +77,26 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet1.next());
     }
 
-    /*
+    /**
      * Tests that queries with not-equals do not return null or undefined values.
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests that comparisons to null do not return a value.")
-    void testComparisonToNull() throws SQLException {
+    @ParameterizedTest(name = "testComparisonToNull - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testComparisonToNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testComparisonsToNull";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": 4}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n}" +
                 "\"field\": null");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 5", DATABASE_NAME, tableName));
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 5", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertFalse(resultSet.next());
@@ -104,18 +107,19 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests query WHERE clause containing two literals such that the comparison is true.")
-    void testQueryWhereTwoLiteralsTrue() throws SQLException {
+    @ParameterizedTest(name = "testQueryWhereTwoLiteralsTrue - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWhereTwoLiteralsTrue(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryWhereTwoLiteralsTrue";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": 4}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE 2 > 1", DATABASE_NAME, tableName));
+                String.format("SELECT * from \"%s\".\"%s\" WHERE 2 > 1", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(4, resultSet.getInt(2));
@@ -124,12 +128,14 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    /* Tests that queries with multiple not-equals clauses are correct.
+    /** Tests that queries with multiple not-equals clauses are correct.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests that multiple != conditions can be used.")
-    void testMultipleNotEquals() throws SQLException {
+    @ParameterizedTest(name = "testMultipleNotEquals - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testMultipleNotEquals(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testMultipleNotEquals";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": 4}");
@@ -139,11 +145,10 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": 2}");
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 4 AND \"field\" <> 3", DATABASE_NAME, tableName));
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 4 AND \"field\" <> 3", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(2, resultSet.getInt(2));
@@ -155,9 +160,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests query WHERE clause with boolean literal.")
-    void testQueryWhereLiteralBoolean() throws SQLException {
+    @ParameterizedTest(name = "testQueryWhereLiteralBoolean - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWhereLiteralBoolean(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryWhereLiteralBoolean";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": true, \n " +
@@ -165,11 +172,10 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
                 "\"fieldA\": false, \n " +
                 "\"fieldB\": true}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = TRUE AND \"fieldB\" = FALSE", DATABASE_NAME, tableName));
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = TRUE AND \"fieldB\" = FALSE", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertTrue(resultSet.getBoolean(2));
@@ -180,9 +186,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that queries with CASE are correct, particularly where null or undefined values are involved.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests queries with CASE and null values are correct.")
-    void testCase() throws SQLException {
+    @ParameterizedTest(name = "testCase - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testCase(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCASE";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
                 + "\"field\": 1}");
@@ -201,7 +209,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108}");
         final BsonDocument doc9 = BsonDocument.parse("{\"_id\": 109}");
         doc9.append("field", new BsonMinKey());
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+        insertBsonDocuments(tableName,
                 new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8, doc9});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
@@ -214,7 +222,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                                 + "WHEN \"field\" <> 7 THEN 'E' "
                                 + "WHEN \"field2\" IN (9, 10) THEN 'F' "
                                 + "ELSE 'G' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("A", resultSet.getString(1));
@@ -242,9 +250,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests query with WHERE clause comparing two fields.")
-    void testQueryWhereTwoColumns() throws SQLException {
+    @ParameterizedTest(name = "testQueryWhereTwoColumns - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWhereTwoColumns(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryWhereTwoFields";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 4, \n " +
@@ -252,11 +262,10 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
                 "\"fieldA\": 5, \n " +
                 "\"fieldB\": 4}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" < \"fieldB\"", DATABASE_NAME, tableName));
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" < \"fieldB\"", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(4, resultSet.getInt(2));
@@ -267,9 +276,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that queries with CASE are correct with two different fields involved.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests queries with two field CASE.")
-    void testCaseTwoFields() throws SQLException {
+    @ParameterizedTest(name = "testCaseTwoFields - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testCaseTwoFields(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCASETwoFields";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
                 + "\"fieldA\": 1,\n"
@@ -279,8 +290,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 + "\"fieldB\": 1}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
                 + "\"fieldA\": 1}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
@@ -288,7 +298,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                                 + "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' "
                                 + "WHEN \"fieldA\" > \"fieldB\" THEN 'B' "
                                 + "ELSE 'C' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("A", resultSet.getString(1));
@@ -303,9 +313,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that queries can contain nested OR conditions in WHERE clause.
      * @throws SQLException occurs if query or connection fails.
      */
-    @Test
     @DisplayName("Tests queries with nested OR.")
-    void testWhereNestedOR() throws SQLException {
+    @ParameterizedTest(name = "testWhereNestedOR - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testWhereNestedOR(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testNestedOR";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": 1,\n" +
@@ -321,13 +333,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105,\n" +
                 "\"fieldA\": 1, \n" +
                 "\"fieldB\": 10}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * from \"%s\".\"%s\" " +
                         "WHERE (\"fieldA\" < 3  OR \"fieldB\" < 2) " +
-                        "AND (\"fieldA\" > 12 OR \"fieldB\" > 8)", DATABASE_NAME, tableName));
+                        "AND (\"fieldA\" > 12 OR \"fieldB\" > 8)", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(104, resultSet.getInt(1));
@@ -336,9 +347,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries with various types in WHERE clause")
-    void testQueryWhereTypes()throws  SQLException {
+    @ParameterizedTest(name = "testQueryWhereTypes - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWhereTypes(final DocumentDbTestEnvironment testEnvironment)throws  SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testQueryWhereTypes";
         final BsonDateTime date = new BsonDateTime(Instant.now().toEpochMilli());
         final long bigInt = 100000000000L;
@@ -353,12 +366,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
                 "\"fieldA\": \"def\", \n " +
                 "\"fieldB\": 4}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = 'abc' AND " +
-                        "\"fieldB\" = 5 AND \"fieldC\" = TRUE AND \"fieldD\" > '2020-03-11' AND \"fieldE\" = %d AND \"fieldF\" = %f", DATABASE_NAME, tableName, bigInt, doubleValue));
+                        "\"fieldB\" = 5 AND \"fieldC\" = TRUE AND \"fieldD\" > '2020-03-11' AND \"fieldE\" = %d AND \"fieldF\" = %f",
+                        getDatabaseName(), tableName, bigInt, doubleValue));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("abc", resultSet.getString(2));
@@ -374,20 +387,21 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that date literals can be used in WHERE comparisons.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests that date literals can be used in WHERE comparisons")
-    void testQueryWhereDateLiteral() throws SQLException {
+    @ParameterizedTest(name = "testQueryWhereDateLiteral - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWhereDateLiteral(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testDateLiteral";
         final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" < DATE '2020-01-02'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet1);
         Assertions.assertTrue(resultSet1.next());
         Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
@@ -395,7 +409,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
 
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = DATE '2020-01-01'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals(new Timestamp(dateTime), resultSet2.getTimestamp(2));
@@ -403,7 +417,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
 
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> DATE '2020-01-01'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertFalse(resultSet3.next());
     }
@@ -412,20 +426,21 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that date literals can be used in WHERE comparisons.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests that timestamp literals can be used in WHERE comparisons")
-    void testQueryWhereTimestampLiteral() throws SQLException {
+    @ParameterizedTest(name = "testQueryWhereTimestampLiteral - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWhereTimestampLiteral(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testTimestampLiteral";
         final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" < TIMESTAMP '2020-01-02 00:00:00'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet1);
         Assertions.assertTrue(resultSet1.next());
         Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
@@ -433,7 +448,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
 
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = TIMESTAMP '2020-01-01 00:00:00'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals(new Timestamp(dateTime), resultSet2.getTimestamp(2));
@@ -441,7 +456,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
 
         final ResultSet resultSet3 = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> TIMESTAMP '2020-01-01 00:00:00'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet3);
         Assertions.assertFalse(resultSet3.next());
     }
@@ -450,20 +465,21 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that calls to timestampAdd can be used in WHERE comparisons.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests that timestampadd can be used in WHERE comparisons")
-    void testQueryWhereTimestampAdd() throws SQLException {
+    @ParameterizedTest(name = "testQueryWhereTimestampAdd - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWhereTimestampAdd(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereTimestampAdd";
         final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE TIMESTAMPADD(DAY, 1, \"field\") = TIMESTAMP '2020-01-02 00:00:00'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet1);
         Assertions.assertTrue(resultSet1.next());
         Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
@@ -475,9 +491,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests for IS NULL")
-    void testQueryWithIsNull() throws SQLException {
+    @ParameterizedTest(name = "testQueryWithIsNull - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWithIsNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereQueryIsNull";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abc\"}");
@@ -485,13 +503,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NULL",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("102", resultSet.getString(1));
@@ -505,9 +522,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests for IS NOT NULL")
-    void testQueryWithIsNotNull() throws SQLException {
+    @ParameterizedTest(name = "testQueryWithIsNotNull - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWithIsNotNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereQueryIsNotNull";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abc\"}");
@@ -515,13 +534,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NOT NULL",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -533,9 +551,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      *
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests for CASE statements with IS [NOT] NULL")
-    void testQueryWithIsNotNullCase() throws SQLException {
+    @ParameterizedTest(name = "testQueryWithIsNotNullCase - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryWithIsNotNullCase(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereQueryIsNotNullCase";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abc\"}");
@@ -543,8 +563,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet = statement.executeQuery(
@@ -553,7 +572,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                                 "WHEN \"field\" IS NOT NULL THEN 2" +
                                 "ELSE 3 END " +
                                 "FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(2, resultSet.getInt(1));
@@ -568,9 +587,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests a query with CASE in the WHERE clause.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests query with WHERE and CASE.")
-    void testWhereWithCase() throws SQLException {
+    @ParameterizedTest(name = "testWhereWithCase - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testWhereWithCase(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereCASE";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
                 + "\"field\": 1}");
@@ -587,7 +608,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107}");
         final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108}");
         doc8.append("field", new BsonMinKey());
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
+        insertBsonDocuments(tableName,
                 new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
@@ -600,7 +621,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                                 + "WHEN \"field\" >= 4 THEN 'D' "
                                 + "WHEN \"field\" <> 7 THEN 'E' "
                                 + "ELSE 'F' END) = 'A'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals(101, resultSet.getInt(1));
@@ -612,10 +633,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests queries with WHERE using string literals with '$'.
      * @throws SQLException occurs if query fails.
      */
-    @Test
-    @Disabled("Relies on $literal support.")
     @DisplayName("Tests queries with WHERE using string literals with '$'.")
-    void testWhereWithConflictingStringLiterals() throws SQLException {
+    @ParameterizedTest(name = "testWhereWithConflictingStringLiterals - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testWhereWithConflictingStringLiterals(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereWithConflictingStringLiterals";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
                 + "\"price\": \"$1\"}");
@@ -623,14 +645,13 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 + "\"price\": \"$2.25\"}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
                 + "\"price\": \"1\"}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" "
                                 + "WHERE \"price\" = '$1'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet1);
         Assertions.assertTrue(resultSet1.next());
         Assertions.assertEquals(101, resultSet1.getInt(1));
@@ -641,9 +662,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     /**
      * Tests a query with nested CASE.
      */
-    @Test
     @DisplayName("Tests a query with nested CASE.")
-    void testNestedCase() throws SQLException {
+    @ParameterizedTest(name = "testNestedCase - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testNestedCase(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testNestedCASE";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
                 + "\"field\": 1}");
@@ -651,8 +674,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 + "\"field\": 2}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
                 + "\"field\": 3}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
@@ -661,7 +683,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                                 + "( CASE WHEN \"field\" < 2 THEN 'A' "
                                 + "ELSE 'B' END )"
                                 + "ELSE 'C' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("A", resultSet.getString(1));
@@ -675,10 +697,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     /**
      * Tests queries with CASE where a string literal contains '$'.
      */
-    @Test
-    @Disabled("Relies on $literal support.")
     @DisplayName("Tests queries with CASE where a string literal contains '$'.")
-    void testCaseWithConflictingStringLiterals() throws SQLException {
+    @ParameterizedTest(name = "testCaseWithConflictingStringLiterals - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testCaseWithConflictingStringLiterals(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCaseWithConflictingStringLiterals";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
                 + "\"price\": \"$1\"}");
@@ -686,15 +709,14 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 + "\"price\": \"$2.25\"}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
                 + "\"price\": \"1\"}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet1 = statement.executeQuery(
                 String.format(
                         "SELECT CASE "
                                 + "WHEN \"price\" = '$1'  THEN 'A' "
                                 + "ELSE 'B' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet1);
         Assertions.assertTrue(resultSet1.next());
         Assertions.assertEquals("A", resultSet1.getString(1));
@@ -709,7 +731,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                         "SELECT CASE "
                                 + "WHEN \"price\" = '1'  THEN 'YES' "
                                 + "ELSE '$price' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("$price", resultSet2.getString(1));
@@ -720,17 +742,18 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet2.next());
     }
 
-    @Test
     @DisplayName("Tests queries with CASE with boolean columns.")
-    void testCaseWithBooleanColumns() throws SQLException {
+    @ParameterizedTest(name = "testCaseWithBooleanColumns - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testCaseWithBooleanColumns(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCaseWithBooleanColumns";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
                 + "\"field\": true }");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
                 + "\"field\": false }");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103 }");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
@@ -738,7 +761,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                                 + "WHEN \"field\" THEN 'Yes' "
                                 + "WHEN NOT \"field\" THEN 'No' "
                                 + "ELSE 'Unknown' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("Yes", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
@@ -752,9 +775,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that queries with substring work.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Test that queries filtering with substring work.")
-    void testQuerySubstring() throws SQLException {
+    @ParameterizedTest(name = "testQuerySubstring - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQuerySubstring(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereQuerySubstring";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abcdefg\"}");
@@ -765,12 +790,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2, 3) = 'bcd'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -781,9 +805,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that queries with substring without a length input work.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Test that queries filtering with substring without a length input work.")
-    void testQuerySubstringNoLength() throws SQLException {
+    @ParameterizedTest(name = "testQuerySubstringNoLength - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQuerySubstringNoLength(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereQuerySubstringNoLength";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abcdefg\"}");
@@ -794,12 +820,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2) = 'bcdefg'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -810,9 +835,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that queries with case containing substring.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Test that queries with case containing substring work.")
-    void testQueryCaseSubstring() throws SQLException {
+    @ParameterizedTest(name = "testQueryCaseSubstring - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testQueryCaseSubstring(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testCaseQuerySubstring";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abcdefg\"}");
@@ -823,15 +850,14 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT CASE " +
                                 "WHEN SUBSTRING(\"field\", 1, 4) = 'abcd' THEN 'A'" +
                                 "WHEN SUBSTRING(\"field\", 1, 3) = 'abc' THEN 'B'" +
                                 "ELSE 'C' END FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("A", resultSet.getString(1));
@@ -848,9 +874,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * Tests that substring works with a literal.
      * @throws SQLException occurs if query fails.
      */
-    @Test
     @DisplayName("Tests substring with a literal.")
-    void testSubstringLiteral() throws SQLException {
+    @ParameterizedTest(name = "testSubstringLiteral - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testSubstringLiteral(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testSubstringLiteral";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abc\", \n" +
@@ -862,21 +890,22 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('abcdef', 1, 3)",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests substring with expressions for index and length.")
-    void testSubstringExpressions() throws SQLException {
+    @ParameterizedTest(name = "testComplexQuery - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testSubstringExpressions(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testSubstringExpressions";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"abcdef\", \n" +
@@ -895,24 +924,24 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field2\": 3, \n" +
                 "\"field3\": 1}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT SUBSTRING(\"field\", \"field3\", \"field2\" - \"field3\") " +
                                 "FROM \"%s\".\"%s\" " +
                                 "WHERE SUBSTRING(\"field\", \"field3\", \"field2\" + \"field3\") = 'abcd'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("ab", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
-    @Disabled("Requires literal support.")
     @DisplayName("Tests substring where a conflict with a field exists")
-    void testSubstringFieldConflict() throws SQLException {
+    @ParameterizedTest(name = "testSubstringFieldConflict - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testSubstringFieldConflict(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testSubstringLiteralConflict";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"$100\"}");
@@ -923,22 +952,22 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('$1000', 1, 4)",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
-    @Disabled("Requires literal support.")
     @DisplayName("Tests substring where a conflict with an operator exists")
-    void testSubstringOperatorConflict() throws SQLException {
+    @ParameterizedTest(name = "testSubstringOperatorConflict - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testSubstringOperatorConflict(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testSubstringOperatorConflict";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": \"$o\"}");
@@ -949,49 +978,51 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('$or', 1, 2)",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests FLOOR(... TO ...) in WHERE clause.")
-    void testFloorForDateInWhere() throws SQLException {
+    @ParameterizedTest(name = "testFloorForDateInWhere - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testFloorForDateInWhere(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testFloorForDateInWhere";
         final Instant dateTime = Instant.parse("2020-02-03T12:34:56.78Z");
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime.toEpochMilli()));
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         final Statement statement = getDocumentDbStatement();
 
         final ResultSet resultSet = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\""
                                 + " WHERE FLOOR(\"field\" TO SECOND) >= \"field\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertFalse(resultSet.next());
 
         final ResultSet resultSet2 = statement.executeQuery(
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\""
                                 + " WHERE FLOOR(\"field\" TO SECOND) < \"field\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertEquals("101", resultSet2.getString(1));
         Assertions.assertFalse(resultSet2.next());
     }
 
-    @Test
     @DisplayName("Tests arithmetic functions in WHERE clause.")
-    void testArithmeticWhere() throws SQLException {
+    @ParameterizedTest(name = "testArithmeticWhere - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testArithmeticWhere(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereArithmetic";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": 4, \n" +
@@ -1010,22 +1041,23 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field2\": 3, \n" +
                 "\"field3\": 1}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE \"field\" * \"field2\" / \"field3\" + \"field2\" - \"field3\" = 7",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests that queries filtering by modulo work.")
-    void testModuloWhere() throws SQLException {
+    @ParameterizedTest(name = "testModuloWhere - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testModuloWhere(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereModulo";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": 5}");
@@ -1036,15 +1068,14 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE MOD(\"field\", 3) = 2" +
                                 "OR MOD(8, \"field\") = 2" +
                                 "OR MOD(3, 2) = \"field\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -1055,9 +1086,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries containing nested OR.")
-    void testNestedOR() throws SQLException {
+    @ParameterizedTest(name = "testNestedOR - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testNestedOR(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "TestWhereOr";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": true, \n" +
@@ -1076,13 +1109,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field2\": false, \n" +
                 "\"field3\": 1}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE \"field\" OR (\"field2\" OR \"field3\" > 6)",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -1093,9 +1125,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries with nested AND.")
-    void testNestedAND() throws SQLException {
+    @ParameterizedTest(name = "testNestedAND - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testNestedAND(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereAnd";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": true, \n" +
@@ -1114,22 +1148,23 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field2\": false, \n" +
                 "\"field3\": 1}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName,  new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE \"field\" AND (\"field2\" AND \"field3\" > 6)",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries with nested combined OR and AND.")
-    void testNestedAndOr() throws SQLException {
+    @ParameterizedTest(name = "testNestedOR - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testNestedAndOr(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereAndOrCombined";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": true, \n" +
@@ -1151,13 +1186,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field2\": false, \n" +
                 "\"field3\": 1}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE ((\"field\" AND \"field3\" < 10) AND (\"field2\" OR \"field3\" > 6)) OR \"field4\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
@@ -1168,9 +1202,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries with NOT combined with OR and AND.")
-    void testNotCombinedWithAndOr() throws SQLException {
+    @ParameterizedTest(name = "testNotCombinedWithAndOr - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testNotCombinedWithAndOr(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereNotAndOr";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field\": true, \n" +
@@ -1192,13 +1228,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field2\": false, \n" +
                 "\"field3\": 1}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE ((NOT \"field\" AND \"field3\" < 10) AND (NOT \"field2\" OR \"field3\" > 6)) OR \"field4\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet);
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("102", resultSet.getString(1));
@@ -1209,9 +1244,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Test queries filtering by CURRENT_DATE.")
-    void testWhereCurrentDate() throws SQLException {
+    @ParameterizedTest(name = "testWhereCurrentDate - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testWhereCurrentDate(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereCurrentDate";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
@@ -1220,13 +1257,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"date\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE CURRENT_DATE > \"date\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
@@ -1234,9 +1270,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries filtering by CURRENT_TIME.")
-    void testCurrentTime() throws SQLException {
+    @ParameterizedTest(name = "testCurrentTime - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testCurrentTime(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereCurrentTime";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
@@ -1245,13 +1283,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"date\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName,  new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE CURRENT_TIME <> CAST(\"date\" AS TIME)",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
@@ -1259,9 +1296,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries filtering by CURRENT_TIMESTAMP.")
-    void testCurrentTimestamp() throws SQLException {
+    @ParameterizedTest(name = "testCurrentTimestamp - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testCurrentTimestamp(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereCurrentTimestamp";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
@@ -1270,13 +1309,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
                 "\"date\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE CURRENT_TIMESTAMP <> \"date\"",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
@@ -1284,9 +1322,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries filtering by date extract.")
-    void testWhereExtract() throws SQLException {
+    @ParameterizedTest(name = "testWhereExtract - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testWhereExtract(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereSqlExtract";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2021-01-01T00:00:00.00Z").toEpochMilli()));
@@ -1305,8 +1345,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc8 = BsonDocument.parse("{\"_id\": 108, \n" +
                 "\"date\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
@@ -1316,7 +1355,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                                 "OR EXTRACT(HOUR FROM \"date\") = 1" +
                                 "OR EXTRACT(MINUTE FROM \"date\") = 1" +
                                 "OR EXTRACT(SECOND FROM \"date\") = 1",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertTrue(resultSet.next());
@@ -1332,9 +1371,11 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries filtering by DAYNAME")
-    void testWhereDayName() throws SQLException {
+    @ParameterizedTest(name = "testWhereDayName - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testWhereDayName(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereDAYNAME";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2020-01-07T00:00:00.00Z").toEpochMilli()));
@@ -1342,21 +1383,22 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         doc2.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"date\": null}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE  DAYNAME(\"date\") = 'Tuesday'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries filtering by MONTHNAME")
-    void testWhereMonthName() throws SQLException {
+    @ParameterizedTest(name = "testWhereMonthName - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testWhereMonthName(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereMonthName";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
@@ -1364,21 +1406,22 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         doc2.append("date", new BsonDateTime(Instant.parse("2020-02-01T00:00:00.00Z").toEpochMilli()));
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"date\": null}");
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE  MONTHNAME(\"date\") = 'February'",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("102", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests queries filtering with date diff.")
-    void testDateMinus() throws SQLException {
+    @ParameterizedTest(name = "testDateMinus - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testDateMinus(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String tableName = "testWhereDateMinus";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("date", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
@@ -1389,21 +1432,22 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"date\": null}");
 
-        insertBsonDocuments(tableName, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         final Statement statement = getDocumentDbStatement();
         final ResultSet resultSet = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE TIMESTAMPDIFF(DAY, \"date\", \"date2\") = 2",
-                        DATABASE_NAME, tableName));
+                        getDatabaseName(), tableName));
         Assertions.assertTrue(resultSet.next());
         Assertions.assertEquals("101", resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
     }
 
-    @Test
     @DisplayName("Tests that setMaxRows limits the number of rows returned in result set.")
-    void testSetMaxRows() throws SQLException {
+    @ParameterizedTest(name = "testSetMaxRows - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testSetMaxRows(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
         final String collection = "testSetMaxRows";
         final BsonDocument[] documents = new BsonDocument[10];
         final int totalNumberDocuments = 10;
@@ -1411,12 +1455,12 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         for (int i = 0; i < totalNumberDocuments; i++) {
             documents[i] = new BsonDocument("field", new BsonString("value"));
         }
-        insertBsonDocuments(collection, DATABASE_NAME, USER, PASSWORD, documents);
+        insertBsonDocuments(collection, documents);
         final Statement statement = getDocumentDbStatement();
 
         // Don't set max rows
         ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+                String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
         int actualRowCount = 0;
         while (resultSet.next()) {
             actualRowCount++;
@@ -1427,7 +1471,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         // Set max rows < actual
         statement.setMaxRows(maxRows);
         resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+                String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
         actualRowCount = 0;
         while (resultSet.next()) {
             actualRowCount++;
@@ -1438,7 +1482,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         // Set unlimited
         statement.setMaxRows(0);
         resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
+                String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
         actualRowCount = 0;
         while (resultSet.next()) {
             actualRowCount++;
@@ -1450,7 +1494,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         int limit = maxRows - 1;
         statement.setMaxRows(maxRows);
         resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", DATABASE_NAME, collection, limit));
+                String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", getDatabaseName(), collection, limit));
         actualRowCount = 0;
         while (resultSet.next()) {
             actualRowCount++;
@@ -1462,7 +1506,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         limit = maxRows + 1;
         statement.setMaxRows(maxRows);
         resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", DATABASE_NAME, collection, limit));
+                String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", getDatabaseName(), collection, limit));
         actualRowCount = 0;
         while (resultSet.next()) {
             actualRowCount++;
