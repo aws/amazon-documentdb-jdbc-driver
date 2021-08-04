@@ -46,6 +46,7 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -621,7 +622,7 @@ public class DocumentDbConnectionProperties extends Properties {
         if (getTlsCAFilePath() != null) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_CA_FILE, getTlsCAFilePath());
         }
-        if (getSchemaName() != null) {
+        if (!DocumentDbConnectionProperty.SCHEMA_NAME.getDefaultValue().equals(getSchemaName())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SCHEMA_NAME, getSchemaName());
         }
         if (getSshUser() != null) {
@@ -638,6 +639,26 @@ public class DocumentDbConnectionProperties extends Properties {
                 hostInfo,
                 databaseInfo,
                 optionalInfo);
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof DocumentDbConnectionProperties)) {
+            return false;
+        }
+        if (!super.equals(o)) {
+            return false;
+        }
+        final DocumentDbConnectionProperties that = (DocumentDbConnectionProperties) o;
+        return this.sshlocalPort == that.sshlocalPort;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(super.hashCode(), sshlocalPort);
     }
 
     private void appendOption(final StringBuilder optionInfo,
