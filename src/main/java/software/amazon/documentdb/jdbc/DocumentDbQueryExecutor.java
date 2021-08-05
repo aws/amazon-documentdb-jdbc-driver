@@ -37,6 +37,7 @@ import software.amazon.documentdb.jdbc.query.DocumentDbMqlQueryContext;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -162,12 +163,17 @@ public class DocumentDbQueryExecutor {
      */
     @VisibleForTesting
     protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
-        final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql);
+        final Instant beginTranslation = Instant.now();
 
+        LOGGER.info("Query {}: Beginning translation of query.", queryId);
+        LOGGER.debug("Query {}: {}", queryId, sql);
+        final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql);
+        LOGGER.info("Query {}: Took {} ms to translate query.", queryId,
+                Instant.now().toEpochMilli() - beginTranslation.toEpochMilli());
         if (!(statement.getConnection() instanceof DocumentDbConnection)) {
             throw new SQLException("Unexpected operation state.");
         }
-
+        final Instant beginExecution = Instant.now();
         final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
         final DocumentDbConnectionProperties properties = connection.getConnectionProperties();
         final MongoClient client = connection.getMongoClient();
@@ -195,6 +201,10 @@ public class DocumentDbQueryExecutor {
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
+        LOGGER.info("Query {}: Took {} ms to execute query.", queryId,
+                Instant.now().toEpochMilli() - beginExecution.toEpochMilli());
+        LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
+                queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
         return new DocumentDbResultSet(
                 this.statement,
                 iterable.iterator(),

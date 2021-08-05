@@ -91,29 +91,38 @@ public class DocumentDbMetadataService {
             final DocumentDbConnectionProperties properties,
             final String schemaName,
             final int schemaVersion) throws SQLException {
+        final Instant beginRetrieval = Instant.now();
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
         final Map<String, DocumentDbSchemaTable> tableMap = new LinkedHashMap<>();
 
         // ASSUMPTION: Negative versions handle special cases
-        int lookupVersion = Math.max(schemaVersion, VERSION_LATEST_OR_NEW);
+        final int lookupVersion = Math.max(schemaVersion, VERSION_LATEST_OR_NEW);
         // Get the latest or specific version, might not exist
-        DocumentDbSchema schema = schemaReader.read(schemaName, lookupVersion);
+        final DocumentDbSchema schema = schemaReader.read(schemaName, lookupVersion);
 
         switch (schemaVersion) {
             case VERSION_LATEST_OR_NEW:
                 // If latest exist, return it.
                 if (schema != null) {
+                    LOGGER.info(String.format("Successfully retrieved metadata schema %s in %d ms.",
+                            schemaName, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
                     return schema;
                 }
-                // Otherwise, fall through to create new.
+                LOGGER.info(String.format("Existing metadata not found for schema %s, will generate new metadata instead for database %s.",
+                        schemaName, properties.getDatabase()));
+                return getNewDatabaseMetadata(properties, schemaName, 1, tableMap);
             case VERSION_NEW:
-                // Get a new version.
-                lookupVersion = schema != null ? schema.getSchemaVersion() + 1 : 1;
-                schema = getNewDatabaseMetadata(properties, schemaName, lookupVersion, tableMap);
-                return schema;
+                final int newVersionNumber = schema != null ? schema.getSchemaVersion() + 1 : 1;
+                return getNewDatabaseMetadata(properties, schemaName, newVersionNumber, tableMap);
             case VERSION_LATEST_OR_NONE:
             default:
                 // Return specific version or null.
+                if (schema != null) {
+                    LOGGER.info(String.format("Retrieved schema %s version %d in %d ms.",
+                            schemaName, schemaVersion, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
+                } else {
+                    LOGGER.info("Could not find schema {} in database {}.", schemaName, properties.getDatabase());
+                }
                 return schema;
         }
     }
@@ -275,6 +284,8 @@ public class DocumentDbMetadataService {
             final String schemaName,
             final int schemaVersion,
             final Map<String, DocumentDbSchemaTable> tableMap) throws SQLException {
+        LOGGER.debug("Beginning generation of new metadata.");
+        final Instant beginGeneration = Instant.now();
         final DocumentDbSchema schema = getCollectionMetadataDirect(
                 schemaName,
                 schemaVersion,
@@ -288,6 +299,8 @@ public class DocumentDbMetadataService {
             TABLE_MAP.putAll(buildTableMapById(tableMap));
             LOGGER.warn(e.getMessage(), e);
         }
+        LOGGER.info(String.format("Successfully generated metadata in %d ms.",
+                Instant.now().toEpochMilli() - beginGeneration.toEpochMilli()));
         return schema;
     }
 
