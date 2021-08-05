@@ -44,6 +44,10 @@ import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -137,7 +141,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final ExecutorService cancelThread1 = getCancelThread();
         final ExecutorService cancelThread2 = getCancelThread();
         final Cancel cancel1 = launchCancelThread(100, statement, cancelThread1);
-        final Cancel cancel2 = launchCancelThread(100, statement, cancelThread2);
+        final Cancel cancel2 = launchCancelThread(300, statement, cancelThread2);
 
         // Check that query was canceled.
         Assertions.assertEquals(
@@ -147,9 +151,11 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         waitCancelToComplete(cancelThread1);
         waitCancelToComplete(cancelThread2);
 
-        // Check that both threads succeed.
-        Assertions.assertNull(getCancelException(cancel1), () -> cancel1.getException().getMessage());
-        Assertions.assertNull(getCancelException(cancel2), () -> cancel2.getException().getMessage());
+        // Check that at-least one thread succeed.
+        final SQLException e1 = getCancelException(cancel1);
+        final SQLException e2 = getCancelException(cancel2);
+        final List<SQLException> exceptions = new ArrayList<>(Arrays.asList(e1, e2));
+        Assertions.assertTrue(exceptions.stream().anyMatch(Objects::isNull));
     }
 
     /** Tests that canceling a query after execution has already completed fails. */
