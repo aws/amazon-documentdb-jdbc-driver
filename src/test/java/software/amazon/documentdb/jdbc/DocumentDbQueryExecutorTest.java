@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.FindIterable;
