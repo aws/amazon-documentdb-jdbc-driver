@@ -155,7 +155,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final SQLException e1 = getCancelException(cancel1);
         final SQLException e2 = getCancelException(cancel2);
         final List<SQLException> exceptions = new ArrayList<>(Arrays.asList(e1, e2));
-        Assertions.assertTrue(exceptions.stream().filter(Objects::isNull).count() >= 1);
+        Assertions.assertTrue(exceptions.stream().anyMatch(Objects::isNull));
     }
 
     /** Tests that canceling a query after execution has already completed fails. */
