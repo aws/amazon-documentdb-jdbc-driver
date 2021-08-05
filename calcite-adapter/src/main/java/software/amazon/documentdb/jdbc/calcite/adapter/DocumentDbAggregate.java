@@ -29,6 +29,8 @@ import org.apache.calcite.sql.fun.SqlSumAggFunction;
 import org.apache.calcite.sql.fun.SqlSumEmptyIsZeroAggFunction;
 import org.apache.calcite.util.ImmutableBitSet;
 import org.apache.calcite.util.Util;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
@@ -49,6 +51,9 @@ import static software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.ma
 public class DocumentDbAggregate
         extends Aggregate
         implements DocumentDbRel {
+
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(DocumentDbAggregate.class.getName());
 
     /**
      * Creates a new {@link DocumentDbAggregate}
@@ -176,6 +181,11 @@ public class DocumentDbAggregate
         implementor.setMetadataTable(metadata);
         implementor.setDocumentDbTable(
                 new DocumentDbTable(implementor.getDocumentDbTable().getCollectionName(), metadata));
+        LOGGER.info("Created aggregation stages of pipeline.");
+        LOGGER.debug("Pipeline stages added: {}",
+                implementor.getList().stream()
+                        .map(c -> c.right)
+                        .toArray());
         // DocumentDB: modified - end
     }
 
