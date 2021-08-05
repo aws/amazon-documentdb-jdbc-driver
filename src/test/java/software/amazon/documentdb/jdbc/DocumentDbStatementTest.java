@@ -24,6 +24,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.params.provider.Arguments;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
@@ -33,6 +34,7 @@ import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 class DocumentDbStatementTest {
@@ -69,6 +71,14 @@ class DocumentDbStatementTest {
         return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream();
     }
 
+    protected static Stream<Arguments> getTestEnvironmentsForScanMethods() {
+        return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
+                .flatMap(
+                        env ->
+                                Arrays.stream(DocumentDbMetadataScanMethod.values())
+                                        .flatMap(method -> Stream.of(Arguments.arguments(env, method))));
+    }
+
     protected void setTestEnvironment(final DocumentDbTestEnvironment testEnvironment) {
         this.testEnvironment = testEnvironment;
     }
@@ -83,7 +93,11 @@ class DocumentDbStatementTest {
     }
 
     protected DocumentDbStatement getDocumentDbStatement() throws SQLException {
-        final String connectionString = this.testEnvironment.getJdbcConnectionString();
+        return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);
+    }
+
+    protected DocumentDbStatement getDocumentDbStatement(final DocumentDbMetadataScanMethod scanMethod) throws SQLException {
+        final String connectionString = this.testEnvironment.getJdbcConnectionString(scanMethod);
         final Connection connection = DriverManager.getConnection(connectionString);
         Assertions.assertNotNull(connection);
         final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();

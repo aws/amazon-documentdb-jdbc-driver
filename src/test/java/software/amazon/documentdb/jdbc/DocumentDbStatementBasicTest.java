@@ -61,13 +61,13 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      */
     @DisplayName("Tests that all supported data types can be scanned and retrieved.")
     @ParameterizedTest(name = "testQueryWithAllDataTypes - [{index}] - {arguments}")
-    @MethodSource({"getTestEnvironments"})
-    protected void testQueryWithAllDataTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException, IOException {
+    @MethodSource({"getTestEnvironmentsForScanMethods"})
+    protected void testQueryWithAllDataTypes(final DocumentDbTestEnvironment testEnvironment, final DocumentDbMetadataScanMethod scanMethod) throws SQLException, IOException {
         setTestEnvironment(testEnvironment);
-        final String collectionName = "testDocumentDbDriverTest";
+        final String collectionName = "testDocumentDbDriverTest-" + scanMethod.getName();
         final int recordCount = 10;
         prepareSimpleConsistentData(collectionName, recordCount);
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        final DocumentDbStatement statement = getDocumentDbStatement(scanMethod);
         final ResultSet resultSet = statement.executeQuery(String.format(
                 "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collectionName));
         Assertions.assertNotNull(resultSet);

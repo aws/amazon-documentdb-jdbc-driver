@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.common.test;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import org.bson.BsonDocument;
+import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
 
 import java.sql.SQLException;
 
@@ -93,4 +94,11 @@ public interface DocumentDbTestEnvironment {
     void insertBsonDocuments(
             final String collectionName,
             final BsonDocument[] documents) throws SQLException;
+
+    /**
+     * Gets the JDBC connection string for this environment.
+     * @param scanMethod scan method to add as connection parameter to default string.
+     * @return the JDBC connection string.
+     */
+    String getJdbcConnectionString(final DocumentDbMetadataScanMethod scanMethod);
 }

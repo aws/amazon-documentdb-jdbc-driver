@@ -191,7 +191,7 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals("DECIMAL", metadata.getColumnTypeName(13));
     }
 
-    protected static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
+    private static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
         return String.format(
                 CONNECTION_STRING_TEMPLATE,
                 USER, PASSWORD, getMongoPort(), DATABASE_NAME, method.getName());

@@ -40,6 +40,8 @@ import org.bson.types.Decimal128;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.Assertions;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
+import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -57,6 +59,7 @@ import java.util.UUID;
  */
 public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTestEnvironment {
     protected static final String ADMIN_DATABASE = "admin";
+    private static final String JDBC_TEMPLATE = "jdbc:documentdb://%s%s:%s/%s%s";
 
     private final String host;
     private final String username;
@@ -150,8 +153,7 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
 
     @Override
     public String getJdbcConnectionString() {
-        final String jdbcTemplate = "jdbc:documentdb://%s%s:%s/%s%s";
-        return String.format(jdbcTemplate,
+        return String.format(JDBC_TEMPLATE,
                 getCredentials(), getHost(), getPort(), getDatabaseName(), getOptions());
     }
 
@@ -288,5 +290,24 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
                 Assertions.assertEquals(count + 1, collection.countDocuments());
             }
         }
+    }
+
+    @Override
+    public String getJdbcConnectionString(final DocumentDbMetadataScanMethod scanMethod) {
+        final String optionsWithScanMethod =
+                getOptions() != null && getOptions().startsWith("?")
+                        ? getOptions()
+                        + "&"
+                        + DocumentDbConnectionProperty.METADATA_SCAN_METHOD
+                        + "="
+                        + scanMethod.getName()
+                        : "?" + DocumentDbConnectionProperty.METADATA_SCAN_METHOD + scanMethod.getName();
+        return String.format(
+                JDBC_TEMPLATE,
+                getCredentials(),
+                getHost(),
+                getPort(),
+                getDatabaseName(),
+                optionsWithScanMethod);
     }
 }
