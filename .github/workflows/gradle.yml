@@ -58,8 +58,8 @@ jobs:
       if: ${{ env.OMIT_DOCUMENTDB == '0' }}
       run: |
         mkdir -p ~/certs
-        echo "$DOC_DB_KEYPAIR" > $DOC_DB_PRIV_KEY_FILE
-        chmod 400 ~/certs/docdb-sshtunnel.pem
+        echo "$DOC_DB_KEYPAIR" > "$DOC_DB_PRIV_KEY_FILE"
+        chmod 400 "$DOC_DB_PRIV_KEY_FILE"
     - name: Run SSH tunnel to DocumentDB server
       if: ${{ env.OMIT_DOCUMENTDB == '0' }}
       run: |
