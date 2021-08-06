@@ -40,15 +40,41 @@
 - `tls` (true|false) : If true, use TLS encryption when communicating with the DocumentDB server.
   Defaults to `true`.
 - `tlsAllowInvalidHostnames` (true|false) : If true, invalid host names for the TLS certificate
-  are allowed. This is useful when using an SSH tunnel to a DocumentDB server. Defaults to false.
+  are allowed. This is useful when using an internal SSH tunnel to a DocumentDB server. Defaults to false.
 - `tlsCAFile` (string) : The path to the trusted Certificate Authority (CA) `.pem` file. If the
   path starts with the tilde character (`~`), it will be replaced with the user's home directory.
   Ensure to use only forward slash characters (`/`) in the path or URL encode the path. Providing
   the trusted Certificate Authority (CA) `.pem` file is optional as the current Amazon RDS root CA
   is used by default when the `tls` option is set to `true`. This embedded certificate is set to
   expire on 2024-08-22. For example, to provide a new trusted Certificate Authority (CA) `.pem`
-  file that is located in the current user's `Downloads` subdirectory of their home directory, 
+  file that is located in the current user's `Downloads` subdirectory of their home directory,
   use the following: `tlsCAFile=~/Downloads/rds-ca-2019-root.pem`.
+- `sshUser` (string) : The username for the internal SSH tunnel. 
+  If provided, options `sshHost` and `sshPrivateKeyFile` must also be provided, otherwise this
+  option is ignored.
+- `sshHost` (string) : The host name for the internal SSH tunnel. Optionally the SSH tunnel port number can be
+  provided using the syntax `<ssh-host>:<port>`. The default port is `22`.
+  If provided, options `sshUser` and `sshPrivateKeyFile` must also be provided, otherwise this
+  option is ignored. 
+- `sshPrivateKeyFile` (string) : The path to the private key file for the internal SSH tunnel. If the
+  path starts with the tilde character (`~`), it will be replaced with the user's home directory.
+  If provided, options `sshUser` and `sshHost` must also be provided, otherwise this option 
+  is ignored.
+- `sshPrivateKeyPassphrase` (string) : If the SSH tunnel private key file, `sshPrivateKeyFile`, is
+  passphrase protected, provide the passphrase using this option.
+  If provided, options `sshUser`, `sshHost` and `sshPrivateKeyFile` must also be provided,
+  otherwise this option is ignored.
+- `sshStrictHostKeyChecking` (true|false) : If true, the 'known_hosts' file is checked to ensure 
+  the target host is trusted when creating the internal SSH tunnel. If false, the target host is not checked.
+  Default is `false`.
+  If provided, options `sshUser`, `sshHost` and `sshPrivateKeyFile` must also be provided,
+  otherwise this option is ignored.
+- `sshKnownHostsFile` (string) : The path to the 'known_hosts' file used for checking the target 
+  host for the SSH tunnel when option `sshStrictHostKeyChecking` is '`true`.
+  Default is `~/.ssh/known_hosts`. The `known_hosts` file
+  can be populated using the `ssh-keygen` [tool](https://www.ssh.com/academy/ssh/keygen).
+  If provided, options `sshUser`, `sshHost` and `sshPrivateKeyFile` must also be provided,
+  otherwise this option is ignored.
 - `scanMethod` (enum/string) : The scanning (sampling) method to use when discovering collection
   metadata for determining table schema. Possible values include the following:
     - `random` - (default) The sample documents are returned in _random_ order.
@@ -69,7 +95,7 @@ jdbc:documentdb://localhost/customer?tlsAllowInvalidHostnames=true
 
 #### Notes:
 
-1. An [SSH tunnel](ssh-tunnel.md) is being used where the local port is `27017` (`27017` is default).
+1. An external [SSH tunnel](ssh-tunnel.md) is being used where the local port is `27017` (`27017` is default).
 1. The Amazon DocumentDB database name is `customer`.
 1. The Amazon DocumentDB is TLS-enabled (`tls=true` is default)
 1. User and password values are passed to the JDBC driver using **Properties**.
@@ -82,10 +108,25 @@ jdbc:documentdb://localhost:27117/customer?tlsAllowInvalidHostnames=true
 
 #### Notes:
 
-1. An SSH tunnel is being used where the local port is `27117`.
+1. An external [SSH tunnel](ssh-tunnel.md) is being used where the local port is `27117`.
 1. The Amazon DocumentDB database name is `customer`.
 1. The Amazon DocumentDB is TLS-enabled (`tls=true` is default).
 1. User and password values are passed to the JDBC driver using **Properties**.
+
+### Connecting to an Amazon DocumentDB Cluster using an Internal SSH tunnel
+
+```
+jdbc:documentdb://docdb-production.docdb.amazonaws.com/customer?tlsAllowInvalidHostnames=true&sshUser=ec2-user&sshHost=ec2-254-254-254-254.compute.amazonaws.com&sshPrivateKeyFile=~/.ssh/ec2-privkey.pem
+```
+
+#### Notes:
+
+1. DocumentDB cluster host is `docdb-production.docdb.amazonaws.com` (using default port `27017`).
+2. The Amazon DocumentDB database name is `customer`.
+3. The Amazon DocumentDB is TLS-enabled (`tls=true` is default).
+4. An internal SSH tunnel will be created using the user `ec2-user`,
+   host `ec2-254-254-254-254.compute.amazonaws.com`, and private key file `~/.ssh/ec2-privkey.pem`.
+6. User and password values are passed to the JDBC driver using **Properties**.
 
 ### Change the Scanning Method when Connecting to an Amazon DocumentDB Cluster
 
@@ -95,7 +136,7 @@ jdbc:documentdb://localhost/customer?tlsAllowInvalidHostnames=true&scanMethod=id
 
 #### Notes:
 
-1. An SSH tunnel is being used where the local port is `27017` (`27017` is default).
+1. An external [SSH tunnel](ssh-tunnel.md) is being used where the local port is `27017` (`27017` is default).
 1. The Amazon DocumentDB database name is `customer`.
 1. The Amazon DocumentDB is TLS-enabled (`tls=true` is default).
 1. User and password values are passed to the JDBC driver using **Properties**.

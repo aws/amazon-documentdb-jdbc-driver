@@ -475,10 +475,10 @@ public class DocumentDbConnectionProperties extends Properties {
      * @param sshStrictHostKeyChecking the indicator for whether the SSH tunnel will perform strict
      *                                 host key checking.
      */
-    public void setSshStrictHostKeyChecking(final boolean sshStrictHostKeyChecking) {
+    public void setSshStrictHostKeyChecking(final String sshStrictHostKeyChecking) {
         setProperty(
                 DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getName(),
-                String.valueOf(sshStrictHostKeyChecking));
+                String.valueOf(Boolean.parseBoolean(sshStrictHostKeyChecking)));
     }
 
     /**
@@ -515,17 +515,6 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return a MongoClientSettings object.
      */
     public MongoClientSettings buildMongoClientSettings() {
-        return buildMongoClientSettings(null);
-    }
-
-    /**
-     * Builds the MongoClientSettings from properties
-     *
-     * @param sshLocalPort the local port number for the SSH tunnel.
-     * @return a MongoClientSettings object.
-     */
-    public MongoClientSettings buildMongoClientSettings(final int sshLocalPort) {
-        setSshLocalPort(sshLocalPort);
         return buildMongoClientSettings(null);
     }
 
@@ -633,6 +622,12 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getSshPrivateKeyFile() != null) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE, getSshPrivateKeyFile());
+        }
+        if (getSshStrictHostKeyChecking() != Boolean.parseBoolean(DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING, getSshStrictHostKeyChecking());
+        }
+        if (getSshKnownHostsFile() != null && !DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getDefaultValue().equals(getSshKnownHostsFile())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE, getSshKnownHostsFile());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,
@@ -1108,11 +1103,21 @@ public class DocumentDbConnectionProperties extends Properties {
         return property;
     }
 
-    private void setSshLocalPort(final int sshLocalPort) {
+    /**
+     * Sets the SSH tunnel's local port number.
+     *
+     * @param sshLocalPort the SSH tunnel's local port number.
+     */
+    public void setSshLocalPort(final int sshLocalPort) {
         this.sshlocalPort = sshLocalPort;
     }
 
-    private int getSshLocalPort() {
+    /**
+     * Gets the SSH tunnel's local port number.
+     *
+     * @return  the SSH tunnel's local port number.
+     */
+    public int getSshLocalPort() {
         return sshlocalPort;
     }
 

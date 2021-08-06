@@ -21,6 +21,7 @@ import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.function.ThrowingSupplier;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
 import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
@@ -42,53 +43,78 @@ public class DocumentDbConnectionPropertiesTest {
     @DisplayName("Tests building the client settings and sanitized connection string from valid properties.")
     @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only.")
     public void testValidProperties() {
-         // Set properties.
-         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
-         properties.setUser("USER");
-         properties.setPassword("PASSWORD");
-         properties.setDatabase("DATABASE");
-         properties.setApplicationName("APPNAME");
-         properties.setHostname("HOSTNAME");
-         properties.setReplicaSet("rs0");
-         properties.setLoginTimeout("100");
-         properties.setMetadataScanLimit("100");
-         properties.setTlsAllowInvalidHostnames("true");
-         properties.setTlsEnabled("true");
-         properties.setRetryReadsEnabled("true");
-         properties.setTlsCAFilePath("src/main/resources/rds-ca-2019-root.pem");
+        // Set properties.
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setUser("USER");
+        properties.setPassword("PASSWORD");
+        properties.setDatabase("DATABASE");
+        properties.setApplicationName("APPNAME");
+        properties.setHostname("HOSTNAME");
+        properties.setReplicaSet("rs0");
+        properties.setLoginTimeout("100");
+        properties.setMetadataScanLimit("100");
+        properties.setTlsAllowInvalidHostnames("true");
+        properties.setTlsEnabled("true");
+        properties.setRetryReadsEnabled("true");
+        properties.setTlsCAFilePath("src/main/resources/rds-ca-2019-root.pem");
+        properties.setSshUser("SSHUSER");
+        properties.setSshHostname("SSHHOST");
+        properties.setSshPrivateKeyFile("~/.ssh/test-file-name.pem");
+        properties.setSshPrivateKeyPassphrase("PASSPHRASE");
+        properties.setSshStrictHostKeyChecking("true");
+        properties.setSshKnownHostsFile("~/.ssh/unknown_hosts");
 
-         // Get properties.
-         Assertions.assertEquals("USER", properties.getUser());
-         Assertions.assertEquals("PASSWORD", properties.getPassword());
-         Assertions.assertEquals("DATABASE", properties.getDatabase());
-         Assertions.assertEquals("APPNAME", properties.getApplicationName());
-         Assertions.assertEquals("HOSTNAME", properties.getHostname());
-         Assertions.assertEquals("rs0", properties.getReplicaSet());
-         Assertions.assertEquals(100, properties.getLoginTimeout());
-         Assertions.assertEquals(100, properties.getMetadataScanLimit());
-         Assertions.assertTrue(properties.getTlsEnabled());
-         Assertions.assertTrue(properties.getTlsAllowInvalidHostnames());
-         Assertions.assertTrue(properties.getRetryReadsEnabled());
-         Assertions.assertEquals("src/main/resources/rds-ca-2019-root.pem", properties.getTlsCAFilePath());
+        // Get properties.
+        Assertions.assertEquals("USER", properties.getUser());
+        Assertions.assertEquals("PASSWORD", properties.getPassword());
+        Assertions.assertEquals("DATABASE", properties.getDatabase());
+        Assertions.assertEquals("APPNAME", properties.getApplicationName());
+        Assertions.assertEquals("HOSTNAME", properties.getHostname());
+        Assertions.assertEquals("rs0", properties.getReplicaSet());
+        Assertions.assertEquals(100, properties.getLoginTimeout());
+        Assertions.assertEquals(100, properties.getMetadataScanLimit());
+        Assertions.assertTrue(properties.getTlsEnabled());
+        Assertions.assertTrue(properties.getTlsAllowInvalidHostnames());
+        Assertions.assertTrue(properties.getRetryReadsEnabled());
+        Assertions.assertEquals("src/main/resources/rds-ca-2019-root.pem",
+                properties.getTlsCAFilePath());
+        Assertions.assertEquals("SSHUSER", properties.getSshUser());
+        Assertions.assertEquals("SSHHOST", properties.getSshHostname());
+        Assertions.assertEquals("~/.ssh/test-file-name.pem", properties.getSshPrivateKeyFile());
+        Assertions.assertEquals("PASSPHRASE", properties.getSshPrivateKeyPassphrase());
+        Assertions.assertTrue(properties.getSshStrictHostKeyChecking());
+        Assertions.assertEquals("~/.ssh/unknown_hosts", properties.getSshKnownHostsFile());
 
-         // Build sanitized connection string.
-         Assertions.assertEquals(
-                 "//USER@HOSTNAME/DATABASE?appName=APPNAME&loginTimeoutSec=100&scanLimit=100&replicaSet=rs0&tlsAllowInvalidHostnames=true&tlsCAFile=src/main/resources/rds-ca-2019-root.pem",
-                 properties.buildSanitizedConnectionString());
+        // Build sanitized connection string.
+        Assertions.assertEquals(
+                "//USER@HOSTNAME/DATABASE?appName=APPNAME"
+                        + "&loginTimeoutSec=100"
+                        + "&scanLimit=100"
+                        + "&replicaSet=rs0"
+                        + "&tlsAllowInvalidHostnames=true"
+                        + "&tlsCAFile=src/main/resources/rds-ca-2019-root.pem"
+                        + "&sshUser=SSHUSER"
+                        + "&sshHost=SSHHOST"
+                        + "&sshPrivateKeyFile=~/.ssh/test-file-name.pem"
+                        + "&sshStrictHostKeyChecking=true"
+                        + "&sshKnownHostsFile=~/.ssh/unknown_hosts",
+                properties.buildSanitizedConnectionString());
 
-         // Build client settings.
-         final MongoClientSettings settings = properties.buildMongoClientSettings();
-         Assertions.assertNotNull(settings);
-         Assertions.assertEquals("USER", settings.getCredential().getUserName());
-         Assertions.assertEquals("PASSWORD", String.valueOf(settings.getCredential().getPassword()));
-         Assertions.assertEquals("hostname", settings.getClusterSettings().getHosts().get(0).getHost());
-         Assertions.assertEquals("APPNAME", settings.getApplicationName());
-         Assertions.assertEquals("rs0", settings.getClusterSettings().getRequiredReplicaSetName());
-         Assertions.assertEquals(100, settings.getSocketSettings().getConnectTimeout(TimeUnit.SECONDS));
-         Assertions.assertTrue(settings.getRetryReads());
-         Assertions.assertTrue(settings.getSslSettings().isEnabled());
-         Assertions.assertTrue(settings.getSslSettings().isInvalidHostNameAllowed());
-         Assertions.assertNotNull(settings.getSslSettings().getContext().getClientSessionContext());
+        // Build client settings.
+        final MongoClientSettings settings = properties.buildMongoClientSettings();
+        Assertions.assertNotNull(settings);
+        Assertions.assertEquals("USER", settings.getCredential().getUserName());
+        Assertions.assertEquals("PASSWORD", String.valueOf(settings.getCredential().getPassword()));
+        Assertions.assertEquals("hostname",
+                settings.getClusterSettings().getHosts().get(0).getHost());
+        Assertions.assertEquals("APPNAME", settings.getApplicationName());
+        Assertions.assertEquals("rs0", settings.getClusterSettings().getRequiredReplicaSetName());
+        Assertions.assertEquals(100,
+                settings.getSocketSettings().getConnectTimeout(TimeUnit.SECONDS));
+        Assertions.assertTrue(settings.getRetryReads());
+        Assertions.assertTrue(settings.getSslSettings().isEnabled());
+        Assertions.assertTrue(settings.getSslSettings().isInvalidHostNameAllowed());
+        Assertions.assertNotNull(settings.getSslSettings().getContext().getClientSessionContext());
     }
 
     /**
@@ -138,7 +164,6 @@ public class DocumentDbConnectionPropertiesTest {
     @DisplayName("Tests the properties builder function on various connection strings.")
     public void testSetPropertiesFromConnectionString() throws SQLException {
         final Properties info = new Properties();
-        info.clear();
         String connectionString = "jdbc:documentdb://username:password@localhost/database";
         DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
@@ -217,7 +242,7 @@ public class DocumentDbConnectionPropertiesTest {
         final String pattern = Matcher.quoteReplacement("TLS Certificate Authority file '")
                 + ".*" + Matcher.quoteReplacement("invalid-filename.pem' not found.");
         Assertions.assertTrue(
-                Assertions.assertThrows(SQLException.class, () -> properties1.buildMongoClientSettings())
+                Assertions.assertThrows(SQLException.class, properties1::buildMongoClientSettings)
                 .getMessage().matches(pattern));
 
         final DocumentDbConnectionProperties properties2 = new DocumentDbConnectionProperties();
@@ -228,6 +253,7 @@ public class DocumentDbConnectionPropertiesTest {
         // tlsCAFile option is ignored if tls is false.
         properties2.setTlsEnabled("false");
         properties2.setTlsCAFilePath("~/invalid-filename.pem");
-        Assertions.assertDoesNotThrow(() -> properties2.buildMongoClientSettings());
+        Assertions.assertDoesNotThrow(
+                (ThrowingSupplier<MongoClientSettings>) properties2::buildMongoClientSettings);
     }
 }

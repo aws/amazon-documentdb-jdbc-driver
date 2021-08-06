@@ -16,10 +16,13 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.jcraft.jsch.HostKey;
+import com.jcraft.jsch.HostKeyRepository;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -60,7 +63,6 @@ public class DocumentDbConnection extends Connection
     public static final String STRICT_HOST_KEY_CHECKING = "StrictHostKeyChecking";
     public static final String HASH_KNOWN_HOSTS = "HashKnownHosts";
     public static final String SERVER_HOST_KEY = "server_host_key";
-    public static final String ECDSA_SHA_2_NISTP_256 = "ecdsa-sha2-nistp256";
     public static final String YES = "yes";
     public static final String NO = "no";
     public static final String LOCALHOST = "localhost";
@@ -114,98 +116,11 @@ public class DocumentDbConnection extends Connection
             final Session session = createSession(connectionProperties, jSch);
             connectSession(connectionProperties, jSch, session);
             return getPortForwardingSession(connectionProperties, session);
+        } catch (SQLException e) {
+            throw e;
         } catch (Exception e) {
             throw new SQLException(e.getMessage(), e);
         }
-    }
-
-    private static SshPortForwardingSession getPortForwardingSession(
-            final DocumentDbConnectionProperties connectionProperties,
-            final Session session) throws JSchException {
-        final int portSeparatorIndex = connectionProperties.getHostname().indexOf(':');
-        final String clusterHost;
-        final int clusterPort;
-        if (portSeparatorIndex >= 0) {
-            clusterHost = connectionProperties.getHostname().substring(0, portSeparatorIndex);
-            clusterPort = Integer.parseInt(
-                    connectionProperties.getHostname().substring(portSeparatorIndex + 1));
-        } else {
-            clusterHost = connectionProperties.getHostname();
-            clusterPort = 27017;
-        }
-        final int localPort = session.setPortForwardingL(LOCALHOST, 0, clusterHost, clusterPort);
-        return new SshPortForwardingSession(session, localPort);
-    }
-
-    private static void connectSession(
-            final DocumentDbConnectionProperties connectionProperties,
-            final JSch jSch,
-            final Session session) throws JSchException {
-        setSecurityConfig(connectionProperties, jSch, session);
-        session.connect();
-    }
-
-    private static void addIdentity(
-            final DocumentDbConnectionProperties connectionProperties,
-            final JSch jSch) throws JSchException {
-        final String privateKey = getPath(connectionProperties.getSshPrivateKeyFile()).toString();
-        // If passPhrase protected, will need to provide this, too.
-        final String passPhrase = isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())
-                ? connectionProperties.getSshPrivateKeyPassphrase()
-                : null;
-        jSch.addIdentity(privateKey, passPhrase);
-    }
-
-    private static Session createSession(
-            final DocumentDbConnectionProperties connectionProperties,
-            final JSch jSch) throws JSchException {
-        final String sshUsername = connectionProperties.getSshUser();
-        final String sshHostname;
-        final int sshPort;
-        final int portSeparatorIndex = connectionProperties.getSshHostname().indexOf(':');
-        if (portSeparatorIndex >= 0) {
-            sshHostname = connectionProperties.getSshHostname().substring(0, portSeparatorIndex);
-            sshPort = Integer.parseInt(
-                    connectionProperties.getSshHostname().substring(portSeparatorIndex + 1));
-        } else {
-            sshHostname = connectionProperties.getSshHostname();
-            sshPort = 22;
-        }
-        return jSch.getSession(sshUsername, sshHostname, sshPort);
-    }
-
-    private static void setSecurityConfig(
-            final DocumentDbConnectionProperties connectionProperties,
-            final JSch jSch,
-            final Session session) throws JSchException {
-
-        if (!connectionProperties.getSshStrictHostKeyChecking()) {
-            session.setConfig(STRICT_HOST_KEY_CHECKING, NO);
-            return;
-        }
-
-        // This could be defaulted to `~/.ssh/known_hosts`.
-        // sshKnownHostsFilename=<ssh-known-hosts> [~/.ssh/known_hosts]
-        final String knowHostsFilename;
-        if (isNullOrWhitespace(connectionProperties.getSshKnownHostsFile())) {
-            knowHostsFilename = getPath(SSH_KNOWN_HOSTS_FILE)
-                    .toAbsolutePath().toString();
-        } else {
-            final Path knownHostsPath = getPath(connectionProperties.getSshKnownHostsFile())
-                    .toAbsolutePath();
-            if (Files.exists(knownHostsPath)) {
-                knowHostsFilename = knownHostsPath.toString();
-            } else {
-                knowHostsFilename = getPath(SSH_KNOWN_HOSTS_FILE)
-                        .toAbsolutePath().toString();
-            }
-        }
-        jSch.setKnownHosts(knowHostsFilename);
-        // The default behaviour of `ssh-keyscan` is to hash known hosts and use
-        // algorithm `ecdsa-sha2-nistp256`.
-        session.setConfig(HASH_KNOWN_HOSTS, YES);
-        // TODO: Need to scan the known_hosts files to determine how the host is encoded.
-        session.setConfig(SERVER_HOST_KEY, ECDSA_SHA_2_NISTP_256);
     }
 
     @Override
@@ -241,6 +156,7 @@ public class DocumentDbConnection extends Connection
         if (session != null) {
             session.session.disconnect();
             session = null;
+            connectionProperties.setSshLocalPort(0);
         }
     }
 
@@ -322,8 +238,8 @@ public class DocumentDbConnection extends Connection
     private void initializeClients(final DocumentDbConnectionProperties connectionProperties)
             throws SQLException {
         // Create the mongo client.
-        final MongoClientSettings settings = connectionProperties
-                .buildMongoClientSettings(getSshLocalPort());
+        connectionProperties.setSshLocalPort(getSshLocalPort());
+        final MongoClientSettings settings = connectionProperties.buildMongoClientSettings();
 
         mongoClient = MongoClients.create(settings);
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
@@ -350,12 +266,138 @@ public class DocumentDbConnection extends Connection
             mongoDatabase.runCommand(
                     Document.parse(String.format("{ \"ping\" : 1 %s }", maxTimeMSOption)));
         } catch (MongoSecurityException e) {
+            // Check specifically for authorization error.
+            if (e.getCode() == -4
+                    && e.getCause() != null
+                    && e.getCause() instanceof MongoCommandException
+                    && ((MongoCommandException)e.getCause()).getCode() == 18) {
+                throw SqlError.createSQLException(LOGGER,
+                        SqlState.CONNECTION_EXCEPTION,
+                        e,
+                        SqlError.AUTHORIZATION_ERROR,
+                        e.getCredential().getUserName(),
+                        e.getCredential().getSource(),
+                        e.getCredential().getMechanism());
+            }
+            // Everything else.
             throw SqlError.createSQLException(LOGGER,
                     SqlState.CONNECTION_EXCEPTION,
                     e,
                     SqlError.SECURITY_ERROR,
                     e.getMessage());
         } catch (Exception e) {
+            throw new SQLException(e.getMessage(), e);
+        }
+    }
+
+    private static SshPortForwardingSession getPortForwardingSession(
+            final DocumentDbConnectionProperties connectionProperties,
+            final Session session) throws JSchException {
+        final int portSeparatorIndex = connectionProperties.getHostname().indexOf(':');
+        final String clusterHost;
+        final int clusterPort;
+        if (portSeparatorIndex >= 0) {
+            clusterHost = connectionProperties.getHostname().substring(0, portSeparatorIndex);
+            clusterPort = Integer.parseInt(
+                    connectionProperties.getHostname().substring(portSeparatorIndex + 1));
+        } else {
+            clusterHost = connectionProperties.getHostname();
+            clusterPort = 27017;
+        }
+        final int localPort = session.setPortForwardingL(LOCALHOST, 0, clusterHost, clusterPort);
+        return new SshPortForwardingSession(session, localPort);
+    }
+
+    private static void connectSession(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch,
+            final Session session) throws JSchException, SQLException {
+        setSecurityConfig(connectionProperties, jSch, session);
+        session.connect();
+    }
+
+    private static void addIdentity(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch) throws JSchException {
+        final String privateKey = getPath(connectionProperties.getSshPrivateKeyFile()).toString();
+        // If passPhrase protected, will need to provide this, too.
+        final String passPhrase = isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())
+                ? connectionProperties.getSshPrivateKeyPassphrase()
+                : null;
+        jSch.addIdentity(privateKey, passPhrase);
+    }
+
+    private static Session createSession(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch) throws SQLException {
+        final String sshUsername = connectionProperties.getSshUser();
+        final String sshHostname;
+        final int sshPort;
+        final int portSeparatorIndex = connectionProperties.getSshHostname().indexOf(':');
+        if (portSeparatorIndex >= 0) {
+            sshHostname = connectionProperties.getSshHostname().substring(0, portSeparatorIndex);
+            sshPort = Integer.parseInt(
+                    connectionProperties.getSshHostname().substring(portSeparatorIndex + 1));
+        } else {
+            sshHostname = connectionProperties.getSshHostname();
+            sshPort = 22;
+        }
+        setKnownHostsFile(connectionProperties, jSch);
+        try {
+            return jSch.getSession(sshUsername, sshHostname, sshPort);
+        } catch (JSchException e) {
+            throw new SQLException(e.getMessage(), e);
+        }
+    }
+
+    private static void setSecurityConfig(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch,
+            final Session session) {
+        if (!connectionProperties.getSshStrictHostKeyChecking()) {
+            session.setConfig(STRICT_HOST_KEY_CHECKING, NO);
+            return;
+        }
+        setHostKeyType(jSch, session);
+    }
+
+    private static void setHostKeyType(final JSch jSch, final Session session) {
+        final HostKeyRepository keyRepository = jSch.getHostKeyRepository();
+        final HostKey[] hostKeys = keyRepository.getHostKey();
+        // This will ensure a match between how the host key was hashed in the known_hosts file.
+        final String hostKeyType = (hostKeys.length > 0) ? hostKeys[0].getType() : null;
+        // Set the hash algorithm
+        if (hostKeyType != null) {
+            session.setConfig(SERVER_HOST_KEY, hostKeyType);
+        }
+        // The default behaviour of `ssh-keygen` is to hash known hosts keys
+        session.setConfig(HASH_KNOWN_HOSTS, YES);
+    }
+
+    private static void setKnownHostsFile(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch) throws SQLException {
+        if (!connectionProperties.getSshStrictHostKeyChecking()) {
+            return;
+        }
+        final String knowHostsFilename;
+        if (!isNullOrWhitespace(connectionProperties.getSshKnownHostsFile())) {
+            final Path knownHostsPath = getPath(connectionProperties.getSshKnownHostsFile());
+            if (Files.exists(knownHostsPath)) {
+                knowHostsFilename = knownHostsPath.toString();
+            } else {
+                throw SqlError.createSQLException(
+                        LOGGER,
+                        SqlState.CONNECTION_EXCEPTION,
+                        SqlError.KNOWN_HOSTS_FILE_NOT_FOUND,
+                        connectionProperties.getSshKnownHostsFile());
+            }
+        } else {
+            knowHostsFilename = getPath(SSH_KNOWN_HOSTS_FILE).toString();
+        }
+        try {
+            jSch.setKnownHosts(knowHostsFilename);
+        } catch (JSchException e) {
             throw new SQLException(e.getMessage(), e);
         }
     }

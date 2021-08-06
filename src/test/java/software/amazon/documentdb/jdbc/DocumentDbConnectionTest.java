@@ -166,7 +166,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
                         DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties))
                         .getMessage()
-                        .contains("Security error detected:"));
+                        .contains("Authorization failed for user"));
     }
 
     /**
@@ -261,6 +261,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     void testSshTunnelOptions() throws SQLException {
         final String docDbUserProperty = "DOC_DB_USER";
         final String docDbHostProperty = "DOC_DB_HOST";
+        final String docDbPrivKeyFileProperty = "DOC_DB_PRIV_KEY_FILE";
         final DocumentDbTestEnvironment environment = DocumentDbTestEnvironmentFactory
                 .getDocumentDb40SshTunnelEnvironment();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
@@ -268,6 +269,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
         final String docDbRemoteHost = System.getenv(docDbHostProperty);
         final String docDbSshUserAndHost = System.getenv(docDbUserProperty);
+        final String docDbPrivKeyFile = System.getenv(docDbPrivKeyFileProperty);
         final int userSeparatorIndex = docDbSshUserAndHost.indexOf('@');
         final String sshUser = docDbSshUserAndHost.substring(0, userSeparatorIndex);
         final String sshHostname = docDbSshUserAndHost.substring(userSeparatorIndex + 1);
@@ -275,8 +277,8 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setHostname(docDbRemoteHost);
         properties.setSshUser(sshUser);
         properties.setSshHostname(sshHostname);
-        properties.setSshPrivateKeyFile("~/certs/docdb-sshtunnel.pem");
-        properties.setSshStrictHostKeyChecking(false);
+        properties.setSshPrivateKeyFile(docDbPrivKeyFile);
+        properties.setSshStrictHostKeyChecking("false");
 
         final Connection connection = DriverManager.getConnection("jdbc:documentdb:", properties);
         Assertions.assertTrue(connection instanceof DocumentDbConnection);
