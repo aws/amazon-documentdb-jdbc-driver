@@ -58,12 +58,12 @@ jobs:
       if: ${{ env.OMIT_DOCUMENTDB == '0' }}
       run: |
         mkdir -p ~/certs
-        echo "$DOC_DB_KEYPAIR" > "$DOC_DB_PRIV_KEY_FILE"
-        chmod 400 "$DOC_DB_PRIV_KEY_FILE"
+        echo "$DOC_DB_KEYPAIR" > ~/certs/docdb-sshtunnel.pem
+        chmod 400 ~/certs/docdb-sshtunnel.pem
     - name: Run SSH tunnel to DocumentDB server
       if: ${{ env.OMIT_DOCUMENTDB == '0' }}
       run: |
-        ssh -f -N -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i "$DOC_DB_PRIV_KEY_FILE" -L $DOC_DB_LOCAL_PORT:${{secrets.DOC_DB_HOST}}:$DOC_DB_REMOTE_PORT ${{secrets.DOC_DB_USER}}
+        ssh -f -N -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/certs/docdb-sshtunnel.pem -L $DOC_DB_LOCAL_PORT:${{secrets.DOC_DB_HOST}}:$DOC_DB_REMOTE_PORT ${{secrets.DOC_DB_USER}}
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
     - name: Build with Gradle with local and optional remote DocumentDB tests
