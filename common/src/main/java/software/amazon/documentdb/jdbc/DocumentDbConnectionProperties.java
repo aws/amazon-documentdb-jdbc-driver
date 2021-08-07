@@ -46,7 +46,6 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.util.Collections;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -63,8 +62,7 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
-
-    private int sshlocalPort = 0;
+    public static final String SSH_LOCAL_PORT = "sshLocalPort";
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -194,7 +192,7 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Gets TLS enabled flag.
      *
-     * @return tlsEnabled {@code true} if TLS/SSL is enabled; {@code false} otherwise..
+     * @return tlsEnabled {@code true} if TLS/SSL is enabled; {@code false} otherwise.
      */
     public boolean getTlsEnabled() {
         return Boolean.parseBoolean(
@@ -367,7 +365,7 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Sets the schema name for persisted schema.
      *
-     * @param schemaName the name of he schema.
+     * @param schemaName the name of the schema.
      */
     public void setSchemaName(final String schemaName) {
         setProperty(DocumentDbConnectionProperty.SCHEMA_NAME.getName(), schemaName);
@@ -634,26 +632,6 @@ public class DocumentDbConnectionProperties extends Properties {
                 hostInfo,
                 databaseInfo,
                 optionalInfo);
-    }
-
-    @Override
-    public boolean equals(final Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (!(o instanceof DocumentDbConnectionProperties)) {
-            return false;
-        }
-        if (!super.equals(o)) {
-            return false;
-        }
-        final DocumentDbConnectionProperties that = (DocumentDbConnectionProperties) o;
-        return this.sshlocalPort == that.sshlocalPort;
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(super.hashCode(), sshlocalPort);
     }
 
     private void appendOption(final StringBuilder optionInfo,
@@ -1109,7 +1087,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * @param sshLocalPort the SSH tunnel's local port number.
      */
     public void setSshLocalPort(final int sshLocalPort) {
-        this.sshlocalPort = sshLocalPort;
+        put(SSH_LOCAL_PORT, String.valueOf(sshLocalPort));
     }
 
     /**
@@ -1118,7 +1096,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return  the SSH tunnel's local port number.
      */
     public int getSshLocalPort() {
-        return sshlocalPort;
+        return Integer.parseInt(getProperty(SSH_LOCAL_PORT, "0"));
     }
 
     /**
