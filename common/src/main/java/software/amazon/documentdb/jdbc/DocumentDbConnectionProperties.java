@@ -1087,7 +1087,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * @param sshLocalPort the SSH tunnel's local port number.
      */
     public void setSshLocalPort(final int sshLocalPort) {
-        put(SSH_LOCAL_PORT, String.valueOf(sshLocalPort));
+        setProperty(SSH_LOCAL_PORT, String.valueOf(sshLocalPort));
     }
 
     /**
