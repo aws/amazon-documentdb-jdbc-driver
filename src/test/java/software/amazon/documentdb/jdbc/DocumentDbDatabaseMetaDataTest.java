@@ -50,6 +50,10 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     private static final String COLLECTION_SUB = "collectionSubDocument";
     private static final String COLLECTION_ARRAY = "collectionWithArray";
     private static final String HOSTNAME = "localhost";
+    private static final String DRIVER_MAJOR_VERSION_KEY = "driver.major.version";
+    private static final String DRIVER_MINOR_VERSION_KEY = "driver.minor.version";
+    private static final String DRIVER_FULL_VERSION_KEY = "driver.full.version";
+    private static final String PROPERTIES_FILE_PATH = "/project.properties";
 
     private static Connection connection;
     private static DatabaseMetaData metadata;
@@ -102,12 +106,12 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         final int majorVersion;
         final int minorVersion;
         final String fullVersion;
-        try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream("/project.properties")) {
+        try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
             final Properties p = new Properties();
             p.load(is);
-            majorVersion = Integer.parseInt(p.getProperty("driver.major.version"));
-            minorVersion = Integer.parseInt(p.getProperty("driver.minor.version"));
-            fullVersion = p.getProperty("driver.full.version");
+            majorVersion = Integer.parseInt(p.getProperty(DRIVER_MAJOR_VERSION_KEY));
+            minorVersion = Integer.parseInt(p.getProperty(DRIVER_MINOR_VERSION_KEY));
+            fullVersion = p.getProperty(DRIVER_FULL_VERSION_KEY);
         }
         Assertions.assertEquals("DocumentDB", metadata.getDatabaseProductName());
         Assertions.assertEquals("4.0", metadata.getDatabaseProductVersion());

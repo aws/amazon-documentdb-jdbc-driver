@@ -236,7 +236,6 @@ license {
 /**
  * Write driver version data to properties file.
  */
-
 task writeProperties(type: WriteProperties) {
     outputFile("$projectDir/src/main/resources/project.properties")
     property("driver.major.version", majorVersion)

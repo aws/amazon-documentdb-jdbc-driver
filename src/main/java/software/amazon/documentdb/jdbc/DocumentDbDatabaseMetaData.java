@@ -60,6 +60,10 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     private static final int DRIVER_MAJOR_VERSION;
     private static final int DRIVER_MINOR_VERSION;
     private static final String DRIVER_VERSION;
+    private static final String DRIVER_MAJOR_VERSION_KEY = "driver.major.version";
+    private static final String DRIVER_MINOR_VERSION_KEY = "driver.minor.version";
+    private static final String DRIVER_FULL_VERSION_KEY = "driver.full.version";
+    private static final String PROPERTIES_FILE_PATH = "/project.properties";
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDatabaseMetaData.class);
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private final DocumentDbConnectionProperties properties;
@@ -103,12 +107,12 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         int majorVersion = 0;
         int minorVersion = 0;
         String fullVersion = "";
-        try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream("/project.properties")) {
+        try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
             final Properties p = new Properties();
             p.load(is);
-            majorVersion = Integer.parseInt(p.getProperty("driver.major.version"));
-            minorVersion = Integer.parseInt(p.getProperty("driver.minor.version"));
-            fullVersion = p.getProperty("driver.full.version");
+            majorVersion = Integer.parseInt(p.getProperty(DRIVER_MAJOR_VERSION_KEY));
+            minorVersion = Integer.parseInt(p.getProperty(DRIVER_MINOR_VERSION_KEY));
+            fullVersion = p.getProperty(DRIVER_FULL_VERSION_KEY);
         } catch (Exception e) {
             LOGGER.error("Error loading driver version: " + e.getMessage());
         }
