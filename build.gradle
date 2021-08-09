@@ -49,10 +49,15 @@ shadowJar {
     relocate 'com.google.guava', 'com.google.guava.shadow'
     relocate 'com.google.common', 'com.google.common.shadow'
     relocate 'org.mongodb', 'org.mongodb.shadow'
+    relocate ('org.slf4j', 'org.slf4j.shadow') {
+        exclude 'org.slf4j.impl.StaticLoggerBinder'
+    }
+
     // Remove any unused dependencies (excluding Calcite)
     minimize {
         exclude(dependency('org.apache.calcite::'))
-        exclude(dependency('org.slf4j.*::'))
+        exclude(dependency('org.slf4j:slf4j-log4j12:1.7.32'))
+        exclude(dependency('org.apache.logging.log4j:log4j-slf4j-impl:'))
     }
 }
 
@@ -243,6 +248,7 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.12.3'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-slf4j-impl', version: '2.14.1'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
