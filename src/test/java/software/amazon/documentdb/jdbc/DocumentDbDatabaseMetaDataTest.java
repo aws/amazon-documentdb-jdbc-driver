@@ -30,6 +30,8 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -95,7 +97,18 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     @DisplayName("Tests basic common properties of a database.")
-    void testBasicMetadata() throws SQLException {
+    void testBasicMetadata() throws SQLException, IOException {
+        // Retrieve the version metadata from properties file.
+        final int majorVersion;
+        final int minorVersion;
+        final String fullVersion;
+        try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream("/project.properties")) {
+            final Properties p = new Properties();
+            p.load(is);
+            majorVersion = Integer.parseInt(p.getProperty("driver.major.version"));
+            minorVersion = Integer.parseInt(p.getProperty("driver.minor.version"));
+            fullVersion = p.getProperty("driver.full.version");
+        }
         Assertions.assertEquals("DocumentDB", metadata.getDatabaseProductName());
         Assertions.assertEquals("4.0", metadata.getDatabaseProductVersion());
         Assertions.assertEquals("DocumentDB JDBC Driver", metadata.getDriverName());
@@ -112,6 +125,9 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(0, metadata.getDatabaseMinorVersion());
         Assertions.assertEquals(4, metadata.getJDBCMajorVersion());
         Assertions.assertEquals(2, metadata.getJDBCMinorVersion());
+        Assertions.assertEquals(majorVersion, metadata.getDriverMajorVersion());
+        Assertions.assertEquals(minorVersion, metadata.getDriverMinorVersion());
+        Assertions.assertEquals(fullVersion, metadata.getDriverVersion());
     }
 
     /**
