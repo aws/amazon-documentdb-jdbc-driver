@@ -32,7 +32,7 @@ public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestE
     private static final String DOC_DB_PASSWORD_PROPERTY = "DOC_DB_PASSWORD";
     private static final String DOC_DB_LOCAL_PORT_PROPERTY = "DOC_DB_LOCAL_PORT";
 
-    private static final String DOC_DB_CONNECTION_OPTIONS = "?tls=true&tlsAllowInvalidHostnames=true&scanMethod=random";
+    private static final String DOC_DB_CONNECTION_OPTIONS = "?tls=true&tlsAllowInvalidHostnames=true";
     private static final String DOC_DB_INTEGRATION_DATABASE = "integration";
     private static final String RESTRICTED_USERNAME = "docDbRestricted";
 
