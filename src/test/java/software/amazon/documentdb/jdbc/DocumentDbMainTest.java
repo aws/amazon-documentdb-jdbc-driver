@@ -89,7 +89,7 @@ class DocumentDbMainTest {
     @AfterEach
     void afterEach() throws SQLException {
         if (properties != null) {
-            final SchemaWriter writer = SchemaStoreFactory.createWriter(properties);
+            final SchemaWriter writer = SchemaStoreFactory.createWriter(properties, null);
             writer.remove(DEFAULT_SCHEMA_NAME);
             writer.remove(CUSTOM_SCHEMA_NAME);
         }

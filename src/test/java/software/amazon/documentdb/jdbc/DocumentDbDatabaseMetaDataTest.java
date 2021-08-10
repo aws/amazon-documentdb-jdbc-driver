@@ -85,7 +85,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info,
                         "jdbc:documentdb:", "jdbc:documentdb:");
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         connection.close();
     }

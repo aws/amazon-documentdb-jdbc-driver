@@ -92,7 +92,8 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
 
     @AfterEach
     void afterAll() throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(VALID_CONNECTION_PROPERTIES);
+        final SchemaWriter schemaWriter = SchemaStoreFactory
+                .createWriter(VALID_CONNECTION_PROPERTIES, null);
         schemaWriter.remove("id");
         if (resultSet != null) {
             resultSet.close();

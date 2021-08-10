@@ -17,6 +17,8 @@
 package software.amazon.documentdb.jdbc.query;
 
 import com.google.common.collect.ImmutableList;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.avatica.util.DateTimeUtils;
@@ -65,6 +67,8 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbJdbcMetaDataConverter;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.HashMap;
@@ -72,25 +76,38 @@ import java.util.List;
 import java.util.Map;
 
 
-public class DocumentDbQueryMappingService {
+public class DocumentDbQueryMappingService implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
     private final DocumentDbPrepareContext prepareContext;
     private final CalcitePrepare prepare;
+    private final MongoClient client;
+    private final boolean closeClient;
 
     /**
-     * Holds the DocumentDbDatabaseSchemaMetadata, CalcitePrepare.Context and the CalcitePrepare generated for a particular connection.
+     * Holds the DocumentDbDatabaseSchemaMetadata, CalcitePrepare.Context and the CalcitePrepare
+     * generated for a particular connection.
      * The default prepare factory is used like in CalciteConnectImpl.
+     *
+     * @param connectionProperties the connection properties.
+     * @param databaseMetadata the database schema metadata.
+     * @param client the {@link MongoClient} client.
      */
     public DocumentDbQueryMappingService(final DocumentDbConnectionProperties connectionProperties,
-            final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata,
+            final MongoClient client) {
         // Add MYSQL function support
         connectionProperties.putIfAbsent("FUN", "standard,mysql");
         // Leave unquoted identifiers in their original case. Identifiers are still case-sensitive
         // but do not need to be quoted
         connectionProperties.putIfAbsent("UNQUOTEDCASING", "UNCHANGED");
+        // Initialize the MongoClient
+        this.client = client != null
+                ? client
+                : MongoClients.create(connectionProperties.buildMongoClientSettings());
+        this.closeClient = client == null;
         this.prepareContext =
                 new DocumentDbPrepareContext(
-                        getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
+                        getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata, this.client),
                         connectionProperties.getDatabase(),
                         connectionProperties);
         this.prepare = new DocumentDbPrepareImplementation();
@@ -155,11 +172,20 @@ public class DocumentDbQueryMappingService {
      */
     private static CalciteSchema getRootSchemaFromDatabaseMetadata(
             final DocumentDbConnectionProperties connectionProperties,
-            final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata,
+            final MongoClient client) {
         final SchemaPlus parentSchema = CalciteSchema.createRootSchema(true).plus();
-        final Schema schema = new DocumentDbSchemaFactory().create(databaseMetadata, connectionProperties);
+        final Schema schema = DocumentDbSchemaFactory
+                .create(databaseMetadata, connectionProperties, client);
         parentSchema.add(connectionProperties.getDatabase(), schema);
         return CalciteSchema.from(parentSchema);
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (closeClient && client != null) {
+            client.close();
+        }
     }
 
     /**

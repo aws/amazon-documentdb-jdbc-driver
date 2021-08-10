@@ -77,7 +77,7 @@ class DocumentDbSchemaWriterTest {
     void afterEach() throws SQLException {
         final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                 testEnvironment.getJdbcConnectionString());
-        final SchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties);
+        final SchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, null);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 
@@ -98,7 +98,7 @@ class DocumentDbSchemaWriterTest {
         final Map<String, DocumentDbSchemaTable> metadata = getSchemaTableMap(collectionName);
         final DocumentDbSchema schema = new DocumentDbSchema(DATABASE_NAME, 1, metadata);
 
-        final SchemaWriter writer = new DocumentDbSchemaWriter(properties);
+        final SchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
         writer.write(schema, metadata.values());
     }
 
@@ -110,7 +110,7 @@ class DocumentDbSchemaWriterTest {
         final String collectionName = "testWriteTableSchema";
         final Map<String, DocumentDbSchemaTable> metadata = getSchemaTableMap(collectionName);
         final DocumentDbSchema schema = new DocumentDbSchema(DATABASE_NAME, 1, metadata);
-        final SchemaWriter writer = new DocumentDbSchemaWriter(properties);
+        final SchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
         writer.write(schema, schema.getTableMap().values());
 
         final DocumentDbSchemaTable schemaTable = schema.getTableMap().get(collectionName);
@@ -128,7 +128,7 @@ class DocumentDbSchemaWriterTest {
         final String collectionName = "testWriteTableSchema";
         final Map<String, DocumentDbSchemaTable> metadata = getSchemaTableMap(collectionName);
         final DocumentDbSchema schema = new DocumentDbSchema(DATABASE_NAME, 1, metadata);
-        final SchemaWriter writer = new DocumentDbSchemaWriter(properties);
+        final SchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
         final DocumentDbSchemaSecurityException exception = Assertions
                 .assertThrows(DocumentDbSchemaSecurityException.class,
                         () -> writer.write(schema, schema.getTableMap().values()));

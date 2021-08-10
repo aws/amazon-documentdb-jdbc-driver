@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc.persist;
 
+import com.mongodb.client.MongoClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -50,12 +51,27 @@ public final class SchemaStoreFactory {
      */
     public static SchemaReader createReader(final DocumentDbConnectionProperties properties)
             throws SQLException {
+        return createReader(properties, null);
+    }
+
+    /**
+     * Creates a schema reader.
+     *
+     * @param properties the properties to examine for which type of schema reader store and the database
+     *                   the schema will be reading from.
+     * @param client the {@link MongoClient} client.
+     * @return a {@link SchemaReader} instance.
+     * @throws SQLException if unsupported schema store is specified.
+     */
+    public static SchemaReader createReader(final DocumentDbConnectionProperties properties,
+            final MongoClient client)
+            throws SQLException {
         final DocumentDbSchemaStoreType storeType = properties.getPersistedSchemaStore();
         switch (storeType) {
             case FILE:
                 return new FileSchemaReader(properties.getDatabase());
             case DATABASE:
-                return new DocumentDbSchemaReader(properties);
+                return new DocumentDbSchemaReader(properties, client);
             default:
                 throw SqlError.createSQLException(
                         LOGGER,
@@ -70,17 +86,18 @@ public final class SchemaStoreFactory {
      *
      * @param properties the properties to examine for which type of schema writer store and the database
      *                   the schema will be writing to.
+     * @param client the {@link MongoClient} client.
      * @return a {@link SchemaWriter} instance.
      * @throws SQLException if unsupported schema store is specified.
      */
-    public static SchemaWriter createWriter(final DocumentDbConnectionProperties properties)
-            throws SQLException {
+    public static SchemaWriter createWriter(final DocumentDbConnectionProperties properties,
+            final MongoClient client) throws SQLException {
         final DocumentDbSchemaStoreType storeType = properties.getPersistedSchemaStore();
         switch (storeType) {
             case FILE:
                 return new FileSchemaWriter(properties.getDatabase());
             case DATABASE:
-                return new DocumentDbSchemaWriter(properties);
+                return new DocumentDbSchemaWriter(properties, client);
             default:
                 throw SqlError.createSQLException(
                         LOGGER,

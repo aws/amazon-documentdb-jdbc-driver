@@ -69,7 +69,7 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
                 .getPropertiesFromConnectionString(new Properties(),
                         getJdbcConnectionString(),
                 "jdbc:documentdb:");
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 

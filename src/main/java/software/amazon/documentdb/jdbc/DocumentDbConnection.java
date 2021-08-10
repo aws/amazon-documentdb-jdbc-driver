@@ -156,7 +156,6 @@ public class DocumentDbConnection extends Connection
         if (session != null) {
             session.session.disconnect();
             session = null;
-            connectionProperties.setSshLocalPort(0);
         }
     }
 
@@ -174,7 +173,10 @@ public class DocumentDbConnection extends Connection
     private void ensureDatabaseMetadata() throws SQLException {
         if (metadata == null) {
             databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
-                    connectionProperties, connectionProperties.getSchemaName(), VERSION_LATEST_OR_NEW);
+                    connectionProperties,
+                    connectionProperties.getSchemaName(),
+                    VERSION_LATEST_OR_NEW,
+                    getMongoClient());
             metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
         }
     }
@@ -238,9 +240,8 @@ public class DocumentDbConnection extends Connection
     private void initializeClients(final DocumentDbConnectionProperties connectionProperties)
             throws SQLException {
         // Create the mongo client.
-        connectionProperties.setSshLocalPort(getSshLocalPort());
-        final MongoClientSettings settings = connectionProperties.buildMongoClientSettings();
-
+        final MongoClientSettings settings = connectionProperties
+                .buildMongoClientSettings(getSshLocalPort());
         mongoClient = MongoClients.create(settings);
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();

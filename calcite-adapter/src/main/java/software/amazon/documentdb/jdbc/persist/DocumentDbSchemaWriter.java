@@ -43,6 +43,8 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -78,20 +80,28 @@ import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader.get
 /**
  * Implements the {@link SchemaWriter} interface for DocumentDB storage.
  */
-public class DocumentDbSchemaWriter implements SchemaWriter {
+public class DocumentDbSchemaWriter implements SchemaWriter, Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchemaWriter.class);
     static final int MONGO_AUTHORIZATION_FAILURE = 13;
     private static final int MONGO_ALREADY_EXISTS = 48;
 
     private final DocumentDbConnectionProperties properties;
+    private final MongoClient client;
+    private final boolean closeClient;
 
     /**
      * Constructs a new {@link DocumentDbSchemaWriter} with connection properties.
      *
      * @param properties the connection properties.
+     * @param client the {@link MongoClient} client.
      */
-    public DocumentDbSchemaWriter(final @NonNull DocumentDbConnectionProperties properties) {
+    public DocumentDbSchemaWriter(final @NonNull DocumentDbConnectionProperties properties,
+            final MongoClient client) {
         this.properties = properties;
+        this.client = client != null
+                ? client
+                : MongoClients.create(properties.buildMongoClientSettings());
+        this.closeClient = client == null;
     }
 
     @Override
@@ -100,26 +110,24 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
             final @NonNull Collection<DocumentDbSchemaTable> tablesSchema)
             throws SQLException, DocumentDbSchemaSecurityException {
 
-        try (MongoClient client = MongoClients.create(properties.buildMongoClientSettings())) {
-            final MongoDatabase database = getDatabase(client, properties.getDatabase());
-            final MongoCollection<DocumentDbSchema> schemasCollection = database
-                    .getCollection(SCHEMA_COLLECTION, DocumentDbSchema.class);
-            final MongoCollection<Document> tableSchemasCollection = database
-                    .getCollection(TABLE_SCHEMA_COLLECTION);
-            final boolean supportsMultiDocTransactions = supportsMultiDocTransactions(
-                    client, database);
+        final MongoDatabase database = getDatabase(client, properties.getDatabase());
+        final MongoCollection<DocumentDbSchema> schemasCollection = database
+                .getCollection(SCHEMA_COLLECTION, DocumentDbSchema.class);
+        final MongoCollection<Document> tableSchemasCollection = database
+                .getCollection(TABLE_SCHEMA_COLLECTION);
+        final boolean supportsMultiDocTransactions = supportsMultiDocTransactions(
+                client, database);
 
-            ensureSchemaCollections(database);
-            runTransactedSession(
-                    client,
-                    supportsMultiDocTransactions,
-                    session -> upsertSchemaHandleSecurityException(
-                            session,
-                            schemasCollection,
-                            tableSchemasCollection,
-                            schema,
-                            tablesSchema));
-        }
+        ensureSchemaCollections(database);
+        runTransactedSession(
+                client,
+                supportsMultiDocTransactions,
+                session -> upsertSchemaHandleSecurityException(
+                        session,
+                        schemasCollection,
+                        tableSchemasCollection,
+                        schema,
+                        tablesSchema));
     }
 
     @Override
@@ -129,39 +137,37 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
 
         final String schemaName = schema.getSchemaName();
 
-        try (MongoClient client = MongoClients.create(properties.buildMongoClientSettings())) {
-            final MongoDatabase database = getDatabase(client, properties.getDatabase());
+        final MongoDatabase database = getDatabase(client, properties.getDatabase());
 
-            // Get the latest schema from storage.
-            final DocumentDbSchema latestSchema = getSchema(
-                    schemaName, VERSION_LATEST_OR_NONE, database);
-            final int schemaVersion = getSchemaVersion(schema, latestSchema) + 1;
-            final Set<String> tableReferences = getTableReferences(latestSchema);
+        // Get the latest schema from storage.
+        final DocumentDbSchema latestSchema = getSchema(
+                schemaName, VERSION_LATEST_OR_NONE, database);
+        final int schemaVersion = getSchemaVersion(schema, latestSchema) + 1;
+        final Set<String> tableReferences = getTableReferences(latestSchema);
 
-            // Determine which table references to update/delete.
-            final MongoCollection<Document> tableSchemasCollection = database
-                    .getCollection(TABLE_SCHEMA_COLLECTION);
-            final Map<String, String> tableMap = getExistingTableMap(
-                    tableReferences, tableSchemasCollection);
-            final List<String> tableReferencesToDelete = resolveTableReferenceUpdates(
-                    tableSchemas, tableReferences, tableMap);
+        // Determine which table references to update/delete.
+        final MongoCollection<Document> tableSchemasCollection = database
+                .getCollection(TABLE_SCHEMA_COLLECTION);
+        final Map<String, String> tableMap = getExistingTableMap(
+                tableReferences, tableSchemasCollection);
+        final List<String> tableReferencesToDelete = resolveTableReferenceUpdates(
+                tableSchemas, tableReferences, tableMap);
 
-            final boolean supportsMultiDocTransactions = supportsMultiDocTransactions(
-                    client, database);
-            runTransactedSession(
-                    client,
-                    supportsMultiDocTransactions,
-                    session -> deleteAndUpsertSchemaHandleSecurityException(
-                            session,
-                            tableSchemasCollection,
-                            database,
-                            schemaName,
-                            schemaVersion,
-                            schema,
-                            tableSchemas,
-                            tableReferences,
-                            tableReferencesToDelete));
-        }
+        final boolean supportsMultiDocTransactions = supportsMultiDocTransactions(
+                client, database);
+        runTransactedSession(
+                client,
+                supportsMultiDocTransactions,
+                session -> deleteAndUpsertSchemaHandleSecurityException(
+                        session,
+                        tableSchemasCollection,
+                        database,
+                        schemaName,
+                        schemaVersion,
+                        schema,
+                        tableSchemas,
+                        tableReferences,
+                        tableReferencesToDelete));
     }
 
     @Override
@@ -173,25 +179,23 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
     @Override
     public void remove(final @NonNull String schemaName, final int schemaVersion) {
         // NOTE: schemaVersion <= 0 indicates "any" version.
-        try (MongoClient client = MongoClients.create(properties.buildMongoClientSettings())) {
-            final MongoDatabase database = getDatabase(client, properties.getDatabase());
-            final MongoCollection<DocumentDbSchema> schemasCollection = database
-                    .getCollection(SCHEMA_COLLECTION, DocumentDbSchema.class);
-            final MongoCollection<Document> tableSchemasCollection = database
-                    .getCollection(TABLE_SCHEMA_COLLECTION);
+        final MongoDatabase database = getDatabase(client, properties.getDatabase());
+        final MongoCollection<DocumentDbSchema> schemasCollection = database
+                .getCollection(SCHEMA_COLLECTION, DocumentDbSchema.class);
+        final MongoCollection<Document> tableSchemasCollection = database
+                .getCollection(TABLE_SCHEMA_COLLECTION);
 
-            final boolean supportsMultiDocTransactions = supportsMultiDocTransactions(
-                    client, database);
-            runTransactedSession(
-                    client,
-                    supportsMultiDocTransactions,
-                    session -> deleteSchema(
-                            session,
-                            schemasCollection,
-                            tableSchemasCollection,
-                            schemaName,
-                            schemaVersion));
-        }
+        final boolean supportsMultiDocTransactions = supportsMultiDocTransactions(
+                client, database);
+        runTransactedSession(
+                client,
+                supportsMultiDocTransactions,
+                session -> deleteSchema(
+                        session,
+                        schemasCollection,
+                        tableSchemasCollection,
+                        schemaName,
+                        schemaVersion));
     }
 
     private static void runTransactedSession(
@@ -597,5 +601,12 @@ public class DocumentDbSchemaWriter implements SchemaWriter {
     static boolean isAuthorizationFailure(final MongoException e) {
         return e.getCode() == MONGO_AUTHORIZATION_FAILURE
                 || "authorization failure".equalsIgnoreCase(e.getMessage());
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (closeClient && client != null) {
+            client.close();
+        }
     }
 }

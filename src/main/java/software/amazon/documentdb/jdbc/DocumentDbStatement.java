@@ -38,7 +38,8 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
         super(connection);
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
-                connection.getDatabaseMetadata());
+                connection.getDatabaseMetadata(),
+                connection.getMongoClient());
         queryExecutor = new DocumentDbQueryExecutor(
                 this,
                 connection.getConnectionProperties(),

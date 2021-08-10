@@ -68,7 +68,8 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
     @AfterAll
     static void afterAll() throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(VALID_CONNECTION_PROPERTIES);
+        final SchemaWriter schemaWriter = SchemaStoreFactory
+                .createWriter(VALID_CONNECTION_PROPERTIES, null);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 

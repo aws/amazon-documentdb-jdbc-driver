@@ -62,7 +62,6 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
-    public static final String SSH_LOCAL_PORT = "sshLocalPort";
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -509,8 +508,9 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
-     * Builds the MongoClientSettings from properties
-     * @return a MongoClientSettings object.
+     * Builds the MongoClientSettings from properties.
+     *
+     * @return a {@link MongoClientSettings} object.
      */
     public MongoClientSettings buildMongoClientSettings() {
         return buildMongoClientSettings(null);
@@ -519,11 +519,36 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Builds the MongoClientSettings from properties.
      *
+     * @param sshLocalPort the local port number for an internal SSH tunnel. A port number of zero
+     *                     indicates there is no valid internal SSH tunnel started.
+     * @return a {@link MongoClientSettings} object.
+     */
+    public MongoClientSettings buildMongoClientSettings(final int sshLocalPort) {
+        return buildMongoClientSettings(null, sshLocalPort);
+    }
+
+    /**
+     * Builds the MongoClientSettings from properties.
+     *
      * @param serverMonitorListener the server monitor listener
-     * @return a MongoClientSettings object.
+     * @return a {@link MongoClientSettings} object.
      */
     public MongoClientSettings buildMongoClientSettings(
             final ServerMonitorListener serverMonitorListener) {
+        return buildMongoClientSettings(serverMonitorListener, 0);
+    }
+
+    /**
+     * Builds the MongoClientSettings from properties.
+     *
+     * @param serverMonitorListener the server monitor listener
+     * @param sshLocalPort the local port number for an internal SSH tunnel. A port number of zero
+     *                     indicates there is no valid internal SSH tunnel started.
+     * @return a {@link MongoClientSettings} object.
+     */
+    public MongoClientSettings buildMongoClientSettings(
+            final ServerMonitorListener serverMonitorListener,
+            final int sshLocalPort) {
 
         final MongoClientSettings.Builder clientSettingsBuilder = MongoClientSettings.builder();
 
@@ -540,7 +565,7 @@ public class DocumentDbConnectionProperties extends Properties {
         applyServerSettings(clientSettingsBuilder, serverMonitorListener);
 
         // Set the cluster configuration.
-        applyClusterSettings(clientSettingsBuilder, getSshLocalPort());
+        applyClusterSettings(clientSettingsBuilder, sshLocalPort);
 
         // Set the socket configuration.
         applySocketSettings(clientSettingsBuilder);
@@ -1079,24 +1104,6 @@ public class DocumentDbConnectionProperties extends Properties {
             LOGGER.warn("Property {{}} was ignored as it was not a valid schema storage type.", key, e);
         }
         return property;
-    }
-
-    /**
-     * Sets the SSH tunnel's local port number.
-     *
-     * @param sshLocalPort the SSH tunnel's local port number.
-     */
-    public void setSshLocalPort(final int sshLocalPort) {
-        setProperty(SSH_LOCAL_PORT, String.valueOf(sshLocalPort));
-    }
-
-    /**
-     * Gets the SSH tunnel's local port number.
-     *
-     * @return  the SSH tunnel's local port number.
-     */
-    public int getSshLocalPort() {
-        return Integer.parseInt(getProperty(SSH_LOCAL_PORT, "0"));
     }
 
     /**
