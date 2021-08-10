@@ -12,11 +12,11 @@ This document provides instructions on how to install and setup Java (JDK 1.8) a
 
 ### Copying/Cloning Source Code onto Local Computer
 1. If you do not have a SSH key associated with your GitHub account, follow the steps on this [page](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) to add a new SSH key to your GitHub account.
-2. In the [documentdb-jdbc](https://github.com/Bit-Quill/documentdb-jdbc) repository, copy the SSH key to your clipboard when you click the download code button as shown in the image below. 
+2. In the [documentdb-jdbc](https://github.com/Bit-Quill/documentdb-jdbc) repository, copy the SSH URL to your clipboard when you click the download code button as shown in the image below. 
 
 ![Copy SSH Key from GitHub Repository](src/markdown/images/Clone-Repository.png)
 
-3. Open the command line or terminal and navigate to the folder/directory where you would like to clone the repository to and run the following command `git clone X` where `X` is the SSH key copied to your clipboard in the above step.
+3. Open the command line or terminal and navigate to the folder/directory where you would like to clone the repository to and run the following command `git clone X` where `X` is the SSH URL to the repository copied to your clipboard in the above step.
 
 ### Building Project with Gradle
 1. In IntelliJ, open Gradle tool window: navigate to the top menu toolbar *View → Tool Windows → Gradle*.
