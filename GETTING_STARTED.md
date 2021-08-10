@@ -20,7 +20,7 @@ This document provides instructions on how to install and setup Java (JDK 1.8) a
 
 ### Building Project with Gradle
 1. In IntelliJ, open Gradle tool window: navigate to the top menu toolbar *View → Tool Windows → Gradle*.
-2. In the Gradle tool window, build the project by double-clicking on gradle task *documentdb-jdbc → Tasks → build → build*.
+2. In the Gradle tool window, build the project by double-clicking on gradle task *documentdb-jdbc → Tasks → shadow → shadowJar*.
 3. After build and compilation, a .jar file should be created in your repository in the subfolder *documentdb-jdbc/build/libs*.
 
 ![Gradle Build](src/markdown/images/Gradle-Build.png)
