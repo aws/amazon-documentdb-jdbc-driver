@@ -45,6 +45,7 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
     private static final String USER = "user";
     private static final String PASSWORD = "password";
+    private static final String CONNECTION_STRING_TEMPLATE = "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanLimit=1000&scanMethod=%s";
 
     @BeforeAll
     static void initialize()  {
@@ -57,7 +58,7 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(
                         new Properties(),
-                        DocumentDbStatementTest.getJdbcConnectionString(DocumentDbMetadataScanMethod.RANDOM),
+                        getJdbcConnectionString(DocumentDbMetadataScanMethod.RANDOM),
                         "jdbc:documentdb:");
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
@@ -188,5 +189,11 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
 
         Assertions.assertEquals("fieldDecimal128", metadata.getColumnName(13));
         Assertions.assertEquals("DECIMAL", metadata.getColumnTypeName(13));
+    }
+
+    private static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
+        return String.format(
+                CONNECTION_STRING_TEMPLATE,
+                USER, PASSWORD, getMongoPort(), DATABASE_NAME, method.getName());
     }
  }
