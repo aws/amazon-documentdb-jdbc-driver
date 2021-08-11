@@ -12,7 +12,7 @@ This document provides instructions on how to install and setup Java (JDK 1.8) a
 
 ### Copying/Cloning Source Code onto Local Computer
 1. If you do not have a SSH key associated with your GitHub account, follow the steps on this [page](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) to add a new SSH key to your GitHub account.
-2. In the [documentdb-jdbc](https://github.com/Bit-Quill/documentdb-jdbc) repository, copy the SSH URL to your clipboard when you click the download code button as shown in the image below. 
+2. In the Amazon [documentdb-jdbc](https://github.com/aws/amazon-documentdb-jdbc-driver) repository, copy the SSH URL to your clipboard when you click the download code button as shown in the image below. 
 
 ![Copy SSH Key from GitHub Repository](src/markdown/images/Clone-Repository.png)
 
