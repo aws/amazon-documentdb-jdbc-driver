@@ -247,7 +247,7 @@ public class FileSchemaReader implements SchemaReader {
     }
 
     @Override
-    public void close() throws Exception {
-
+    public void close() {
+        // Nothing to do.
     }
 }

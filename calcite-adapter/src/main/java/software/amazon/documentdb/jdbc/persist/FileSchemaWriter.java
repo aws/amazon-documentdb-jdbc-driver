@@ -151,7 +151,7 @@ public class FileSchemaWriter implements SchemaWriter {
     }
 
     @Override
-    public void close() throws Exception {
-
+    public void close() {
+        // Nothing to do.
     }
 }

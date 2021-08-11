@@ -603,7 +603,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         if (closeClient && client != null) {
             client.close();
         }

@@ -192,7 +192,7 @@ public class DocumentDbSchemaReader implements SchemaReader, AutoCloseable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         if (closeClient && client != null) {
             client.close();
         }

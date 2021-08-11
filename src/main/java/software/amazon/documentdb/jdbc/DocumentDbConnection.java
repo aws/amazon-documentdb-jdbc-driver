@@ -66,6 +66,7 @@ public class DocumentDbConnection extends Connection
     public static final String YES = "yes";
     public static final String NO = "no";
     public static final String LOCALHOST = "localhost";
+    public static final int DEFAULT_DOCUMENTDB_PORT = 27017;
 
     private final DocumentDbConnectionProperties connectionProperties;
     private DocumentDbDatabaseMetaData metadata;
@@ -303,7 +304,7 @@ public class DocumentDbConnection extends Connection
                     connectionProperties.getHostname().substring(portSeparatorIndex + 1));
         } else {
             clusterHost = connectionProperties.getHostname();
-            clusterPort = 27017;
+            clusterPort = DEFAULT_DOCUMENTDB_PORT;
         }
         final int localPort = session.setPortForwardingL(LOCALHOST, 0, clusterHost, clusterPort);
         return new SshPortForwardingSession(session, localPort);
@@ -312,9 +313,13 @@ public class DocumentDbConnection extends Connection
     private static void connectSession(
             final DocumentDbConnectionProperties connectionProperties,
             final JSch jSch,
-            final Session session) throws JSchException, SQLException {
+            final Session session) throws SQLException {
         setSecurityConfig(connectionProperties, jSch, session);
-        session.connect();
+        try {
+            session.connect();
+        } catch (JSchException e) {
+            throw new SQLException(e.getMessage(), e);
+        }
     }
 
     private static void addIdentity(
@@ -412,10 +417,10 @@ public class DocumentDbConnection extends Connection
         /**
          * Gets the SSH session.
          */
-        private Session session;
+        private final Session session;
         /**
          * Gets the local port for the port forwarding tunnel.
          */
-        private int localPort;
+        private final int localPort;
     }
 }

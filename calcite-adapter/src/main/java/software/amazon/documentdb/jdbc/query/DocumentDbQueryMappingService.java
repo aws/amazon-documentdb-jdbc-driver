@@ -181,7 +181,7 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
     }
 
     @Override
-    public void close() throws IOException {
+    public void close() {
         if (closeClient && client != null) {
             client.close();
         }

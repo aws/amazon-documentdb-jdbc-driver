@@ -4,7 +4,7 @@ If your Amazon DocumentDB cluster is deployed within an Amazon Virtual Private C
 and you want to access it from outside the VPC, you'll need to create an SSH tunnel to access your
 Amazon DocumentDB resources.
 
-There are two options to create and SSH tunnel.
+There are two options to create an SSH tunnel.
 1. Internally, using the [SSH tunnel options](connection-string.md) (minimally, `sshUser`, `sshHost`, and `sshPrivateKeyFile`).
 2. Externally, using the `ssh` application. For further information on creating an external SSH tunnel,
    please refer to the documentation on [Connecting from Outside an Amazon VPC.](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect-from-outside-a-vpc.html)

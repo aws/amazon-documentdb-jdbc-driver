@@ -28,7 +28,7 @@ public class DocumentDbSchemaFactory {
      *
      * @param databaseMetadata the database metadata.
      * @param connectionProperties the connection properties.
-     * @param client  the {@link MongoClient} client.
+     * @param client the {@link MongoClient} client.
      * @return a new {@link Schema} for the database.
      */
     public static Schema create(final DocumentDbDatabaseSchemaMetadata databaseMetadata,
