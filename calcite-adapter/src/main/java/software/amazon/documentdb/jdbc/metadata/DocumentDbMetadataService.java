@@ -415,19 +415,19 @@ public class DocumentDbMetadataService {
                 .collect(Collectors.toList());
     }
 
-    private static void closeSchemaReader(final SchemaReader schemaReader) {
+    private static void closeSchemaReader(final SchemaReader schemaReader) throws SQLException {
         try {
             schemaReader.close();
         } catch (Exception e) {
-            // Ignore.
+            throw new SQLException(e.getMessage(), e);
         }
     }
 
-    private static void closeSchemaWriter(final SchemaWriter schemaWriter) {
+    private static void closeSchemaWriter(final SchemaWriter schemaWriter) throws SQLException {
         try {
             schemaWriter.close();
         } catch (Exception e) {
-            // Ignore
+            throw new SQLException(e.getMessage(), e);
         }
     }
 }
