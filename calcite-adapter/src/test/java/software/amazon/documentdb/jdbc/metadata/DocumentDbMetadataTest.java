@@ -57,7 +57,7 @@ class DocumentDbMetadataTest {
 
     @DisplayName("Test to get database metadata for initial or latest version.")
     @Test
-    void testGetInitialWithRefresh() throws SQLException {
+    void testGetInitialWithRefresh() throws Exception {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
                 .getMongoDb40Environment();
         final MongoClient client = testEnvironment.createMongoClient();
@@ -102,13 +102,14 @@ class DocumentDbMetadataTest {
         // This is exactly the same as it is cached.
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
         Assertions.assertEquals(2, databaseMetadata2.getSchemaVersion());
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
-        schemaWriter.remove(schemaName);
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client)) {
+            schemaWriter.remove(schemaName);
+        }
     }
 
     @DisplayName("Test to get database metadata for specific version.")
     @Test
-    void testGetSpecific() throws SQLException {
+    void testGetSpecific() throws Exception {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
                 .getMongoDb40Environment();
         final MongoClient client = testEnvironment.createMongoClient();
@@ -149,8 +150,9 @@ class DocumentDbMetadataTest {
         final DocumentDbDatabaseSchemaMetadata databaseMetadata3 = DocumentDbDatabaseSchemaMetadata
                 .get(properties, schemaName, databaseMetadata1.getSchemaVersion() + 1, client);
         Assertions.assertNull(databaseMetadata3);
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
-        schemaWriter.remove(schemaName);
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client)) {
+            schemaWriter.remove(schemaName);
+        }
     }
 
     @DisplayName("Tests removing all versions of schema")

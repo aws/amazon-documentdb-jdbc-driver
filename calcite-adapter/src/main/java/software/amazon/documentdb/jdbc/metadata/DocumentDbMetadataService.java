@@ -99,38 +99,48 @@ public class DocumentDbMetadataService {
             final int schemaVersion,
             final MongoClient client) throws SQLException {
         final Instant beginRetrieval = Instant.now();
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
         final Map<String, DocumentDbSchemaTable> tableMap = new LinkedHashMap<>();
-
+        final DocumentDbSchema schema;
         // ASSUMPTION: Negative versions handle special cases
         final int lookupVersion = Math.max(schemaVersion, VERSION_LATEST_OR_NEW);
-        // Get the latest or specific version, might not exist
-        final DocumentDbSchema schema = schemaReader.read(schemaName, lookupVersion);
+        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        try {
+            // Get the latest or specific version, might not exist
+            schema = schemaReader.read(schemaName, lookupVersion);
 
-        switch (schemaVersion) {
-            case VERSION_LATEST_OR_NEW:
-                // If latest exist, return it.
-                if (schema != null) {
-                    LOGGER.info(String.format("Successfully retrieved metadata schema %s in %d ms.",
-                            schemaName, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
+            switch (schemaVersion) {
+                case VERSION_LATEST_OR_NEW:
+                    // If latest exist, return it.
+                    if (schema != null) {
+                        LOGGER.info(
+                                String.format("Successfully retrieved metadata schema %s in %d ms.",
+                                        schemaName, Instant.now().toEpochMilli()
+                                                - beginRetrieval.toEpochMilli()));
+                        return schema;
+                    }
+                    LOGGER.info(String.format(
+                            "Existing metadata not found for schema %s, will generate new metadata instead for database %s.",
+                            schemaName, properties.getDatabase()));
+                    return getNewDatabaseMetadata(properties, schemaName, 1, tableMap, client);
+                case VERSION_NEW:
+                    final int newVersionNumber = schema != null ? schema.getSchemaVersion() + 1 : 1;
+                    return getNewDatabaseMetadata(properties, schemaName, newVersionNumber,
+                            tableMap, client);
+                case VERSION_LATEST_OR_NONE:
+                default:
+                    // Return specific version or null.
+                    if (schema != null) {
+                        LOGGER.info(String.format("Retrieved schema %s version %d in %d ms.",
+                                schemaName, schemaVersion,
+                                Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
+                    } else {
+                        LOGGER.info("Could not find schema {} in database {}.", schemaName,
+                                properties.getDatabase());
+                    }
                     return schema;
-                }
-                LOGGER.info(String.format("Existing metadata not found for schema %s, will generate new metadata instead for database %s.",
-                        schemaName, properties.getDatabase()));
-                return getNewDatabaseMetadata(properties, schemaName, 1, tableMap, client);
-            case VERSION_NEW:
-                final int newVersionNumber = schema != null ? schema.getSchemaVersion() + 1 : 1;
-                return getNewDatabaseMetadata(properties, schemaName, newVersionNumber, tableMap, client);
-            case VERSION_LATEST_OR_NONE:
-            default:
-                // Return specific version or null.
-                if (schema != null) {
-                    LOGGER.info(String.format("Retrieved schema %s version %d in %d ms.",
-                            schemaName, schemaVersion, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
-                } else {
-                    LOGGER.info("Could not find schema {} in database {}.", schemaName, properties.getDatabase());
-                }
-                return schema;
+            }
+        } finally {
+            closeSchemaReader(schemaReader);
         }
     }
 
@@ -170,7 +180,11 @@ public class DocumentDbMetadataService {
         }
         // Otherwise, assume it's in the stored location.
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
-        return schemaReader.readTable(schemaName, schemaVersion, tableId);
+        try {
+            return schemaReader.readTable(schemaName, schemaVersion, tableId);
+        } finally {
+            closeSchemaReader(schemaReader);
+        }
     }
 
     /**
@@ -206,13 +220,17 @@ public class DocumentDbMetadataService {
 
         // Otherwise, assume it's in the stored location.
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
-        return schemaReader.readTables(schemaName, schemaVersion, remainingTableIds)
-                .stream()
-                .collect(Collectors.toMap(
-                        DocumentDbSchemaTable::getId,
-                        table -> table,
-                        (o, d) -> d,
-                        LinkedHashMap::new));
+        try {
+            return schemaReader.readTables(schemaName, schemaVersion, remainingTableIds)
+                    .stream()
+                    .collect(Collectors.toMap(
+                            DocumentDbSchemaTable::getId,
+                            table -> table,
+                            (o, d) -> d,
+                            LinkedHashMap::new));
+        } finally {
+            closeSchemaReader(schemaReader);
+        }
     }
 
     /**
@@ -229,7 +247,11 @@ public class DocumentDbMetadataService {
             final String schemaName,
             final MongoClient client) throws SQLException {
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
-        schemaWriter.remove(schemaName);
+        try {
+            schemaWriter.remove(schemaName);
+        } finally {
+            closeSchemaWriter(schemaWriter);
+        }
     }
 
     /**
@@ -248,7 +270,11 @@ public class DocumentDbMetadataService {
             final int schemaVersion,
             final MongoClient client) throws SQLException {
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
-        schemaWriter.remove(schemaName, schemaVersion);
+        try  {
+            schemaWriter.remove(schemaName, schemaVersion);
+        } finally {
+            closeSchemaWriter(schemaWriter);
+        }
     }
 
     /**
@@ -262,7 +288,11 @@ public class DocumentDbMetadataService {
             final DocumentDbConnectionProperties properties,
             final MongoClient client) throws SQLException {
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
-        return schemaReader.list();
+        try {
+            return schemaReader.list();
+        } finally {
+            closeSchemaReader(schemaReader);
+        }
     }
 
     /**
@@ -293,7 +323,11 @@ public class DocumentDbMetadataService {
                     new LinkedHashMap<>());
         }
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
-        schemaWriter.update(schema, schemaTables);
+        try {
+            schemaWriter.update(schema, schemaTables);
+        } finally {
+            closeSchemaWriter(schemaWriter);
+        }
     }
 
     private static DocumentDbSchema getNewDatabaseMetadata(
@@ -317,6 +351,8 @@ public class DocumentDbMetadataService {
         } catch (DocumentDbSchemaSecurityException e) {
             TABLE_MAP.putAll(buildTableMapById(tableMap));
             LOGGER.warn(e.getMessage(), e);
+        } finally {
+            closeSchemaWriter(schemaWriter);
         }
         LOGGER.info(String.format("Successfully generated metadata in %d ms.",
                 Instant.now().toEpochMilli() - beginGeneration.toEpochMilli()));
@@ -379,4 +415,19 @@ public class DocumentDbMetadataService {
                 .collect(Collectors.toList());
     }
 
+    private static void closeSchemaReader(final SchemaReader schemaReader) {
+        try {
+            schemaReader.close();
+        } catch (Exception e) {
+            // Ignore.
+        }
+    }
+
+    private static void closeSchemaWriter(final SchemaWriter schemaWriter) {
+        try {
+            schemaWriter.close();
+        } catch (Exception e) {
+            // Ignore
+        }
+    }
 }

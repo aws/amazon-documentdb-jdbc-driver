@@ -46,19 +46,6 @@ public final class SchemaStoreFactory {
      *
      * @param properties the properties to examine for which type of schema reader store and the database
      *                   the schema will be reading from.
-     * @return a {@link SchemaReader} instance.
-     * @throws SQLException if unsupported schema store is specified.
-     */
-    public static SchemaReader createReader(final DocumentDbConnectionProperties properties)
-            throws SQLException {
-        return createReader(properties, null);
-    }
-
-    /**
-     * Creates a schema reader.
-     *
-     * @param properties the properties to examine for which type of schema reader store and the database
-     *                   the schema will be reading from.
      * @param client the {@link MongoClient} client.
      * @return a {@link SchemaReader} instance.
      * @throws SQLException if unsupported schema store is specified.

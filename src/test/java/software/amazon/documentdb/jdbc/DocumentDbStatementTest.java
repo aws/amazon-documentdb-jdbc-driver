@@ -37,6 +37,8 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.stream.Stream;
 
+import static software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod.RANDOM;
+
 class DocumentDbStatementTest {
 
     private DocumentDbTestEnvironment testEnvironment;
@@ -51,11 +53,12 @@ class DocumentDbStatementTest {
     }
 
     @AfterEach
-    void afterEach() throws SQLException {
+    void afterEach() throws Exception {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null);
-        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        }
     }
 
     @AfterAll
@@ -92,17 +95,23 @@ class DocumentDbStatementTest {
         return this.testEnvironment.getDatabaseName();
     }
 
-    protected DocumentDbStatement getDocumentDbStatement() throws SQLException {
-        return getDocumentDbStatement(DocumentDbMetadataScanMethod.RANDOM);
-    }
-
-    protected DocumentDbStatement getDocumentDbStatement(final DocumentDbMetadataScanMethod scanMethod) throws SQLException {
-        final String connectionString = this.testEnvironment.getJdbcConnectionString(scanMethod);
-        final Connection connection = DriverManager.getConnection(connectionString);
-        Assertions.assertNotNull(connection);
+    protected DocumentDbStatement getDocumentDbStatement(
+            final Connection connection) throws SQLException {
         final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();
         Assertions.assertNotNull(statement);
         return statement;
+    }
+
+    protected Connection getConnection() throws SQLException {
+        return DriverManager.getConnection(getJdbcConnectionString(RANDOM));
+    }
+
+    protected Connection getConnection(final DocumentDbMetadataScanMethod scanMethod) throws SQLException {
+        return DriverManager.getConnection(getJdbcConnectionString(scanMethod));
+    }
+
+    protected String getJdbcConnectionString(final DocumentDbMetadataScanMethod scanMethod) {
+        return this.testEnvironment.getJdbcConnectionString(scanMethod);
     }
 
     /**

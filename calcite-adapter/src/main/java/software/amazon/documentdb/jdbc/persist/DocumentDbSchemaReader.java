@@ -34,7 +34,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import javax.annotation.Nullable;
-import java.io.Closeable;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -61,7 +60,7 @@ import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter.isA
 /**
  * Implementation of the {@link SchemaReader} for DocumentDB storage.
  */
-public class DocumentDbSchemaReader implements SchemaReader, Closeable {
+public class DocumentDbSchemaReader implements SchemaReader, AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchemaReader.class);
     private final DocumentDbConnectionProperties properties;
     private final MongoClient client;

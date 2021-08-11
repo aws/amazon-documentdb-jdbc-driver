@@ -67,10 +67,12 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     }
 
     @AfterAll
-    static void afterAll() throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory
-                .createWriter(VALID_CONNECTION_PROPERTIES, null);
-        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+    static void afterAll() throws Exception {
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        }
+        basicConnection.close();
     }
 
     /**
@@ -80,11 +82,12 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     void testIsValidWhenConnectionIsValid() throws SQLException {
-        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
-        // NOTE: Observed approximate 10 .. 11 seconds delay before first heartbeat is returned.
-        final int timeoutSeconds = 15;
-        Assertions.assertTrue(connection.isValid(timeoutSeconds));
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES)) {
+            // NOTE: Observed approximate 10 .. 11 seconds delay before first heartbeat is returned.
+            final int timeoutSeconds = 15;
+            Assertions.assertTrue(connection.isValid(timeoutSeconds));
+        }
     }
 
     /**
@@ -94,9 +97,10 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     void testIsValidWhenTimeoutIsNegative() throws SQLException {
-        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
-        Assertions.assertThrows(SQLException.class, () -> connection.isValid(-1));
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES)) {
+            Assertions.assertThrows(SQLException.class, () -> connection.isValid(-1));
+        }
     }
 
     /**
@@ -126,9 +130,10 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setRetryReadsEnabled("false");
         properties.setReadPreference(DocumentDbReadPreference.PRIMARY.getName());
 
-        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties);
-        Assertions.assertNotNull(connection);
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            Assertions.assertNotNull(connection);
+        }
     }
 
     /**
@@ -142,9 +147,10 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setReadPreference("invalidReadPreference");
         properties.setTlsEnabled("invalidBoolean");
 
-        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties);
-        Assertions.assertNotNull(connection);
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            Assertions.assertNotNull(connection);
+        }
     }
 
     /** Tests constructor when passed an invalid database name. */
@@ -281,8 +287,9 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setSshPrivateKeyFile(docDbPrivKeyFile);
         properties.setSshStrictHostKeyChecking("false");
 
-        final Connection connection = DriverManager.getConnection("jdbc:documentdb:", properties);
-        Assertions.assertTrue(connection instanceof DocumentDbConnection);
-        Assertions.assertTrue(connection.isValid(10));
+        try (Connection connection = DriverManager.getConnection("jdbc:documentdb:", properties)) {
+            Assertions.assertTrue(connection instanceof DocumentDbConnection);
+            Assertions.assertTrue(connection.isValid(10));
+        }
     }
 }

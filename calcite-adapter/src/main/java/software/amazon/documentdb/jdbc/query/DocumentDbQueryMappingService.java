@@ -67,7 +67,6 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbJdbcMetaDataConverter;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
@@ -76,7 +75,7 @@ import java.util.List;
 import java.util.Map;
 
 
-public class DocumentDbQueryMappingService implements Closeable {
+public class DocumentDbQueryMappingService implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
     private final DocumentDbPrepareContext prepareContext;
     private final CalcitePrepare prepare;

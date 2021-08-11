@@ -43,7 +43,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Instant;
@@ -80,7 +79,7 @@ import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader.get
 /**
  * Implements the {@link SchemaWriter} interface for DocumentDB storage.
  */
-public class DocumentDbSchemaWriter implements SchemaWriter, Closeable {
+public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchemaWriter.class);
     static final int MONGO_AUTHORIZATION_FAILURE = 13;
     private static final int MONGO_ALREADY_EXISTS = 48;

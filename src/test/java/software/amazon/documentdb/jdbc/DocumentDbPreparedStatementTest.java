@@ -54,14 +54,15 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
     }
 
     @AfterEach
-    void afterEach() throws SQLException {
+    void afterEach() throws Exception {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(
                         new Properties(),
                         getJdbcConnectionString(DocumentDbMetadataScanMethod.RANDOM),
                         "jdbc:documentdb:");
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null);
-        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        }
     }
 
     /**

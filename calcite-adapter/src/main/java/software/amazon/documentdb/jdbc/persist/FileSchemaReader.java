@@ -245,4 +245,9 @@ public class FileSchemaReader implements SchemaReader {
                 .filter(t -> tableIds.contains(t.getId()))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public void close() throws Exception {
+
+    }
 }

@@ -55,11 +55,12 @@ class DocumentDbTestEnvironmentFactoryTest {
     }
 
     @AfterEach
-    void afterEach() throws SQLException {
+    void afterEach() throws Exception {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null);
-        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        }
     }
 
     @AfterAll

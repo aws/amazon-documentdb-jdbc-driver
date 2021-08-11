@@ -30,7 +30,6 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -38,7 +37,7 @@ import java.util.Map;
 /**
  * Provides a schema for DocumentDB
  */
-public class DocumentDbSchema extends AbstractSchema implements Closeable {
+public class DocumentDbSchema extends AbstractSchema implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchema.class);
     private Map<String, Table> tables;
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;

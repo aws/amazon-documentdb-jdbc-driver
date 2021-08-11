@@ -87,11 +87,12 @@ class DocumentDbMainTest {
     }
 
     @AfterEach
-    void afterEach() throws SQLException {
+    void afterEach() throws Exception {
         if (properties != null) {
-            final SchemaWriter writer = SchemaStoreFactory.createWriter(properties, null);
-            writer.remove(DEFAULT_SCHEMA_NAME);
-            writer.remove(CUSTOM_SCHEMA_NAME);
+            try (SchemaWriter writer = SchemaStoreFactory.createWriter(properties, null)) {
+                writer.remove(DEFAULT_SCHEMA_NAME);
+                writer.remove(CUSTOM_SCHEMA_NAME);
+            }
         }
         properties = null;
     }
