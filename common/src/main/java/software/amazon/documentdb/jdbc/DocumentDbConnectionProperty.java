@@ -65,7 +65,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
     SSH_PRIVATE_KEY_PASSPHRASE("sshPrivateKeyPassphrase", "",
             "If the SSH tunnel private key file is passphrase protected, "
                     + "provide the passphrase using this option."),
-    SSH_STRICT_HOST_KEY_CHECKING("sshStrictHostKeyChecking", "false",
+    SSH_STRICT_HOST_KEY_CHECKING("sshStrictHostKeyChecking", "true",
             "If true, the 'known_hosts' file is checked to ensure the target host is trusted when creating the SSH tunnel. If false, the target host is not checked. Default is 'false'."),
     SSH_KNOWN_HOSTS_FILE("sshKnownHostsFile", "",
             "The path to the 'known_hosts' file used for checking the target host for the SSH tunnel when option 'sshStrictHostKeyChecking' is 'true'. Default is '~/.ssh/known_hosts'."),

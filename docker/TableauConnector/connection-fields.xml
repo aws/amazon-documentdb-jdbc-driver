@@ -77,7 +77,7 @@
         </conditions>
     </field>
 
-    <field name="v-ssh-strict-host-key-check" label="SSH Strict Host Key Check" value-type="boolean" category="advanced" optional="true" default-value="false">
+    <field name="v-ssh-strict-host-key-check" label="SSH Strict Host Key Check" value-type="boolean" category="advanced" optional="true" default-value="true">
         <conditions>
             <condition field="v-ssh-tunnel" value="true" />
         </conditions>
