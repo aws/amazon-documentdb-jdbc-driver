@@ -32,7 +32,7 @@ This document provides instructions on how to install and setup Java (JDK 1.8) a
 ![Setting JDK Home Path](src/markdown/images/Project-Structure-SDK.png)
 
 3. If above step does not solve the issue, try to see if reinstalling JDK 1.8 fixes the problem.
-    1. For Mac OS/Linux, unistall JDK using commands below, restart your computer and install JDK 1.8 as describe in the [Instructions](#instructions) section above.
+    1. For Mac OS/Linux, uninstall JDK using commands below, restart your computer and install JDK 1.8 as describe in the [Instructions](#instructions) section above.
      
   ~~~
     sudo rm -rf /Library/Internet\ Plug-Ins/JavaAppletPlugin.plugin
