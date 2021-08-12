@@ -208,7 +208,7 @@ public class DocumentDbQueryExecutor {
                 queryContext.getPaths());
         LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
                 queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
-        LOGGER.info("Query {}: Took {} ms to execute query.", queryId,
+        LOGGER.info("Query {}: Took {} ms to execute query and retrieve first batch of results.", queryId,
                 Instant.now().toEpochMilli() - beginExecution.toEpochMilli());
         return resultSet;
     }
