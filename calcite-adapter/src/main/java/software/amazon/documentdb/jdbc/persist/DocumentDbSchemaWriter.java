@@ -43,7 +43,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.io.IOException;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.ArrayList;

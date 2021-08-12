@@ -30,7 +30,6 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.io.IOException;
 import java.util.LinkedHashSet;
 import java.util.Map;
 

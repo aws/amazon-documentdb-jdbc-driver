@@ -67,7 +67,6 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbJdbcMetaDataConverter;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.HashMap;
