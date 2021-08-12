@@ -620,7 +620,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests TIMESTAMPADD() for QUARTER.
+     * Tests TIMESTAMPDIFF() for QUARTER.
      * @throws SQLException occurs if query fails.
      */
     @DisplayName("Tests TIMESTAMPDIFF() for QUARTER.")
@@ -648,7 +648,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests TIMESTAMPADD() for MONTH.
+     * Tests TIMESTAMPDIFF() for MONTH.
      * @throws SQLException occurs if query fails.
      */
     @DisplayName("Tests TIMESTAMPDIFF() for MONTH.")
@@ -1661,23 +1661,44 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6});
         final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
+
+        // Test SUBSTRING(%1, %2, %3) format.
+        final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT SUBSTRING(\"field\", 1, 3) FROM \"%s\".\"%s\"",
                         getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("abc", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("uvw", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("ab", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("abc", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("uvw", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("ab", resultSet1.getString(1));
+        Assertions.assertFalse(resultSet1.next());
+
+        // Test SUBSTRING(%1, %2) format.
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT SUBSTRING(\"field\", 1) FROM \"%s\".\"%s\"",
+                        getDatabaseName(), tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("abcdefg", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("uvwxyz", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("ab", resultSet2.getString(1));
+        Assertions.assertFalse(resultSet2.next());
     }
 
     /**
