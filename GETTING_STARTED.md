@@ -8,7 +8,7 @@ This document provides instructions on how to install and setup Java (JDK 1.8) a
 
 ### Installing IntelliJ IDEA
 1. Go to this [page](https://www.jetbrains.com/idea/download/) to download IntelliJ IDEA Community Edition for your system and follow the installation steps (click next and continue with default settings)
-2. The plugins *Lombok*, *SpotBugs* and *Gradle* need to be installed in the IDE which can be done via the top menu toolbar under *IntelliJ IDEA → Preferences → Plugins* (search in the *Marketplace*).
+2. The plugins *SpotBugs* and *Gradle* need to be installed in the IDE which can be done via the top menu toolbar under *IntelliJ IDEA → Preferences → Plugins* (search in the *Marketplace*).
 
 ### Copying/Cloning Source Code onto Local Computer
 1. If you do not have a SSH key associated with your GitHub account, follow the steps on this [page](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) to add a new SSH key to your GitHub account.
