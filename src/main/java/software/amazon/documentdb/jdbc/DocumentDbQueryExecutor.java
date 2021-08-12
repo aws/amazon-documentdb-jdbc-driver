@@ -201,15 +201,16 @@ public class DocumentDbQueryExecutor {
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
-        LOGGER.info("Query {}: Took {} ms to execute query.", queryId,
-                Instant.now().toEpochMilli() - beginExecution.toEpochMilli());
-        LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
-                queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
-        return new DocumentDbResultSet(
+        final DocumentDbResultSet resultSet =  new DocumentDbResultSet(
                 this.statement,
                 iterable.iterator(),
                 columnMetaData,
                 queryContext.getPaths());
+        LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
+                queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
+        LOGGER.info("Query {}: Took {} ms to execute query.", queryId,
+                Instant.now().toEpochMilli() - beginExecution.toEpochMilli());
+        return resultSet;
     }
 
     private void resetQueryState() {
