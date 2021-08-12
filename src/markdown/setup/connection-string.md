@@ -66,7 +66,8 @@
   otherwise this option is ignored.
 - `sshStrictHostKeyChecking` (true|false) : If true, the 'known_hosts' file is checked to ensure 
   the target host is trusted when creating the internal SSH tunnel. If false, the target host is not checked.
-  Default is `false`.
+  Default is `true`. Disabling this option is less secure as it can lead to a 
+  ["man-in-the-middle" attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack).
   If provided, options `sshUser`, `sshHost` and `sshPrivateKeyFile` must also be provided,
   otherwise this option is ignored.
 - `sshKnownHostsFile` (string) : The path to the 'known_hosts' file used for checking the target 

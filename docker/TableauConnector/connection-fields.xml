@@ -35,7 +35,7 @@
         </conditions>
     </field>
 
-    <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames" value-type="boolean" category="authentication" default-value="true">
+    <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames (enabling option is less secure)" value-type="boolean" category="authentication" default-value="true">
         <conditions>
             <condition field="sslmode" value="require" />
         </conditions>
@@ -77,7 +77,7 @@
         </conditions>
     </field>
 
-    <field name="v-ssh-strict-host-key-check" label="SSH Strict Host Key Check" value-type="boolean" category="advanced" optional="true" default-value="true">
+    <field name="v-ssh-strict-host-key-check" label="SSH Strict Host Key Check (disabling option is less secure)" value-type="boolean" category="advanced" optional="true" default-value="true">
         <conditions>
             <condition field="v-ssh-tunnel" value="true" />
         </conditions>
