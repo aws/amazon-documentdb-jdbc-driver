@@ -646,7 +646,7 @@ public class DocumentDbConnectionProperties extends Properties {
         if (getSshPrivateKeyFile() != null) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE, getSshPrivateKeyFile());
         }
-        if (getSshStrictHostKeyChecking() != Boolean.parseBoolean(DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE.getDefaultValue())) {
+        if (getSshStrictHostKeyChecking() != Boolean.parseBoolean(DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getDefaultValue())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING, getSshStrictHostKeyChecking());
         }
         if (getSshKnownHostsFile() != null && !DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getDefaultValue().equals(getSshKnownHostsFile())) {
