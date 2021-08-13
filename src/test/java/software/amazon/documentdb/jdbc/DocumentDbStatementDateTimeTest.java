@@ -19,16 +19,12 @@ package software.amazon.documentdb.jdbc;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonNull;
-import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
-import java.io.IOException;
-import java.sql.Blob;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -36,8 +32,6 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.Month;
@@ -49,7 +43,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
-import java.util.regex.Pattern;
 
 public class DocumentDbStatementDateTimeTest extends DocumentDbStatementTest {
 
