@@ -29,6 +29,7 @@ import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbFilter;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
@@ -1019,7 +1020,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final String query =
                 String.format("SELECT * FROM \"%s\".\"%s\" UNION SELECT \"%s\" FROM \"%s\".\"%s\"",
                         DATABASE_NAME, COLLECTION_NAME, COLLECTION_NAME + "__id", DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertEquals(String.format("Unsupported SQL syntax '%s'.", query),
+        Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_SQL, query),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(query))
                         .getMessage());
     }
@@ -1252,7 +1253,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         .assertThrows(SQLException.class, () -> queryMapper.get(rightJoinQuery))
                         .getMessage();
         Assertions.assertTrue(message.contains("Unable to parse SQL"));
-        Assertions.assertTrue(message.contains("'Unsupported join type: RIGHT.'"));
+        Assertions.assertTrue(message.contains(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, "RIGHT")));
 
 
         // Cannot do a full outer join on tables from different collections.
@@ -1270,7 +1271,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(fullJoinQuery))
                 .getMessage();
         Assertions.assertTrue(message.contains("Unable to parse SQL"));
-        Assertions.assertTrue(message.contains("'Unsupported join type: FULL.'"));
+        Assertions.assertTrue(message.contains(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, "FULL")));
 
         // Can only have a single equi-condition for a join between tables from same collection.
         final String multipleConditionsQuery =
@@ -1290,7 +1291,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(multipleConditionsQuery))
                 .getMessage();
         Assertions.assertTrue(message.contains("Unable to parse SQL"));
-        Assertions.assertTrue(message.contains("'Only a single equality condition is supported for joining tables from different collections.'"));
+        Assertions.assertTrue(message.contains(SqlError.lookup(SqlError.SINGLE_EQUIJOIN_ONLY)));
 
         // Can only join tables from same collection on foreign keys.
         final String nonForeignKeyQuery =
@@ -1309,7 +1310,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(nonForeignKeyQuery))
                 .getMessage();
         Assertions.assertTrue(message.contains("Unable to parse SQL"));
-        Assertions.assertTrue(message.contains("'Only equi-joins on foreign keys is supported for tables from same collection.'"));
+        Assertions.assertTrue(message.contains(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY)));
 
         // Can only join tables from same collection on foreign keys.
         final String nonEqualityQuery =
@@ -1328,7 +1329,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(nonEqualityQuery))
                 .getMessage();
         Assertions.assertTrue(message.contains("Unable to parse SQL"));
-        Assertions.assertTrue(message.contains("'Only equi-joins on foreign keys is supported for tables from same collection.'"));
+        Assertions.assertTrue(message.contains(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY)));
     }
 
     @Test
