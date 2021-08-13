@@ -881,7 +881,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Test that queries selecting a boolean expression with NOT from nulls.
      * @throws SQLException occurs if query fails.
      */
-    @Disabled("AD-267: Boolean expressions do not treat nulls correctly.")
+    @Disabled("AD-315: Boolean expressions do not treat boolean operators with nulls correctly.")
     @DisplayName("Test that queries selecting a boolean expression with NOT from nulls are correct.")
     @ParameterizedTest(name = "testQueryWithNotNulls - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
@@ -979,22 +979,5 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertTrue(resultSet.next());
         Assertions.assertNull(resultSet.getString(1));
         Assertions.assertFalse(resultSet.next());
-    }
-
-    private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
-        return OffsetDateTime.of(
-                offsetDateTime.getYear(), monthValue, 1,
-                0, 0, 0, 0,
-                ZoneOffset.UTC)
-                .toInstant()
-                .toEpochMilli();
-    }
-
-    private long getTruncatedTimestamp(final Instant dateTime, final ChronoUnit chronoUnit) {
-        return dateTime
-                .atOffset(ZoneOffset.UTC)
-                .truncatedTo(chronoUnit)
-                .toInstant()
-                .toEpochMilli();
     }
 }
