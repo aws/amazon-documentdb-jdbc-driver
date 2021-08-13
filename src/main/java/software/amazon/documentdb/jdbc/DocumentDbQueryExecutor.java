@@ -24,6 +24,7 @@ import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
 import org.bson.Document;
@@ -201,16 +202,16 @@ public class DocumentDbQueryExecutor {
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
-        final DocumentDbResultSet resultSet =  new DocumentDbResultSet(
-                this.statement,
-                iterable.iterator(),
-                columnMetaData,
-                queryContext.getPaths());
+        final MongoCursor<Document> iterator = iterable.iterator();
         LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
                 queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
         LOGGER.info("Query {}: Took {} ms to execute query and retrieve first batch of results.", queryId,
                 Instant.now().toEpochMilli() - beginExecution.toEpochMilli());
-        return resultSet;
+        return new DocumentDbResultSet(
+                this.statement,
+                iterator,
+                columnMetaData,
+                queryContext.getPaths());
     }
 
     private void resetQueryState() {
