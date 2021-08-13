@@ -1975,6 +1975,34 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
+    @DisplayName("Test that queries using COALESCE() are correct.")
+    @ParameterizedTest(name = "testQueryCoalesce - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryCoalesce(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryCoalesce";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field1\": null, \n" + // Added this document only for metadata
+                "\"field2\": 1, \n" +
+                "\"field3\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": 2}");
+
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT COALESCE(\"%s\", \"%s\", \"%s\" ) FROM \"%s\".\"%s\"",
+                        "field1", "field2", "field3", getDatabaseName(), tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(resultSet.getInt(1), 1);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(resultSet.getInt(1), 2);
+        Assertions.assertFalse(resultSet.next());
+    }
+
     @DisplayName("Tests closing a Statement will not cause exception for cancelQuery.")
     @ParameterizedTest(name = "testCloseStatement - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})

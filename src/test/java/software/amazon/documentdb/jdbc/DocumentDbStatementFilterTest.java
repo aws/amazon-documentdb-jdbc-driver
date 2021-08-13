@@ -258,7 +258,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
      * @throws SQLException occurs if query fails.
      */
     @DisplayName("Tests queries with simple CASE format and null values are correct.")
-    @ParameterizedTest(name = "testSearchedCase - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testSimpleCase - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testSimpleCase(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -1584,5 +1584,68 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         Assertions.assertEquals(maxRows, statement.getMaxRows());
         Assertions.assertEquals(maxRows, actualRowCount);
 
+    }
+
+    @DisplayName("Test that queries using COALESCE() are correct.")
+    @ParameterizedTest(name = "testQueryWhereCoalesce - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWhereCoalesce(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryWhereCoalesce";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field1\": null, \n" + // Added this document only for metadata
+                "\"field2\": 1, \n" +
+                "\"field3\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": 2}");
+
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet =
+                statement.executeQuery(String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE COALESCE(\"%s\", \"%s\", \"%s\") = 2 ",
+                                getDatabaseName(), tableName, "field1", "field2", "field3"));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(resultSet.getInt(1), 102);
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @DisplayName("Test that queries using [NOT] BETWEEN are correct.")
+    @ParameterizedTest(name = "testQueryBetween - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryBetween(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryBetween";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field1\": 1, \n" + // Added this document only for metadata
+                "\"field2\": 4, \n" +
+                "\"field3\": 3}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field1\": 1, \n" +
+                "\"field2\": 2, \n" +
+                "\"field3\": 3}");
+
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet1 =
+                statement.executeQuery(String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"%s\" BETWEEN \"%s\" AND \"%s\"",
+                        getDatabaseName(), tableName, "field2", "field1", "field3"));
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals(resultSet1.getInt(1), 102);
+        Assertions.assertFalse(resultSet1.next());
+
+        final ResultSet resultSet2 =
+                statement.executeQuery(String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"%s\" NOT BETWEEN \"%s\" AND \"%s\"",
+                        getDatabaseName(), tableName, "field2", "field1", "field3"));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals(resultSet2.getInt(1), 101);
+        Assertions.assertFalse(resultSet2.next());
     }
 }
