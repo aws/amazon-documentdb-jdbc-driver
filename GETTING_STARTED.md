@@ -54,8 +54,7 @@ This section describes how to connect to a DocumentDB cluster using an SSH tunne
 Since DocumentDB is currently a VPC-only service, you need to set up an SSH tunnel using an EC2 instance running in the same VPC as your DocumentDB cluster (Note that SSH tunnelling will not work for connecting in replica set mode).
 
 ##### Prerequisites
-1. Java Keytool (should come with Java installation)
-2. Mongo shell (comes with MongoDB server installation but can be downloaded separately)
+1. Mongo shell (comes with MongoDB server installation but can be downloaded separately)
     1. Download Mongo shell on macOS using HomeBrew by running following commands in the terminal:
         
         ~~~
@@ -63,7 +62,7 @@ Since DocumentDB is currently a VPC-only service, you need to set up an SSH tunn
         brew install mongodb-community-shell
         ~~~
        
-3. AWS account (or a downloaded private key granting access to the cluster)
+2. AWS account (or a downloaded private key granting access to the cluster)
 
 ##### References
 1. [Walkthrough on creating an EC2 instance and SSH-ing into it](https://medium.com/serverlessguru/creating-an-aws-ec2-instance-d5cf332fdb0c)
@@ -142,8 +141,9 @@ When connecting to a TLS-enabled cluster you can follow the same steps to set up
    wget https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem
    ~~~
    
-2. Set up the SSH tunnel.
-3. Open another terminal window and connect using the `mongo` shell. Note that since we are using an SSH tunnel to access the cluster from localhost, the server certificate does not match the hostname. It is expecting a hostname like `sample-cluster.clq6grcezxsp.us-east-1.docdb.amazonaws.com:27017` not `127.0.0.1:27017`. We have to pass the `--tlsAllowInvalidHostnames` flag or the handshake will fail.
+2. Set up the SSH tunnel. See step 3 in section [Setting Up Environment Variables](#setting-up-environment-variables) for command to start SSH port-forwarding tunnel. 
+
+3. Open another terminal window and connect using the `mongo` shell. Note that since we are using an SSH tunnel to access the cluster from localhost, the server certificate does not match the hostname. It is expecting a hostname like `sample-cluster.xxxxxxxxxxxx.us-east-1.docdb.amazonaws.com:27017` not `127.0.0.1:27017`. We have to pass the `--tlsAllowInvalidHostnames` flag or the handshake will fail.
 
    ~~~
    mongo --host 127.0.0.1:27017 --username <master username> --password <master password> --tls --tlsCAFile rds-combined-ca-bundle.pem --tlsAllowInvalidHostnames 
@@ -152,7 +152,7 @@ When connecting to a TLS-enabled cluster you can follow the same steps to set up
 ##### Connect Programmatically 
 ###### Without TLS
 Connecting without TLS is very straightforward. We essentially follow the same steps as when connecting using the `mongo` shell. 
-1. Setup the SSH tunnel.  
+1. Setup the SSH tunnel. See step 3 in section [Setting Up Environment Variables](#setting-up-environment-variables) for command to start SSH port-forwarding tunnel.
 2. Create a test or simple main to run.
 3. Use either the Driver Manager, Data Source class or Connection class to establish a connection to `localhost:27017`. Make sure to set the hostname, username, password and target database. The target database can be anything as long as it is a valid MongoDB database name (no spaces, no special chars). See example directly using the connection class: 
 
@@ -171,44 +171,12 @@ Connecting without TLS is very straightforward. We essentially follow the same s
    
 ###### With TLS
 Connecting with TLS programmatically is slightly different from how we did it with the `mongo` shell. We need to set up a trust store with the CA certificate. 
-1. Create a trust store with the CA certificate. You can use this script to create it on macOS. Remember to choose a trust store password.
-
-   ~~~js
-   mydir=/tmp/certs
-   truststore=${mydir}/rds-truststore.jks
-   storepassword=<truststorePassword>
-   
-   curl -sS "https://s3.amazonaws.com/rds-downloads/rds-combined-ca-bundle.pem" > ${mydir}/rds-combined-ca-bundle.pem
-   split -p "-----BEGIN CERTIFICATE-----" ${mydir}/rds-combined-ca-bundle.pem rds-ca-
-   
-   for CERT in rds-ca-*; do
-     alias=$(openssl x509 -noout -text -in $CERT | perl -ne 'next unless /Subject:/; s/.*(CN=|CN = )//; print')
-     echo "Importing $alias"
-     keytool -import -file ${CERT} -alias "${alias}" -storepass ${storepassword} -keystore ${truststore} -noprompt
-     rm $CERT
-   done
-   
-   rm ${mydir}/rds-combined-ca-bundle.pem
-   
-   echo "Trust store content is: "
-   
-   keytool -list -v -keystore "$truststore" -storepass ${storepassword} | grep Alias | cut -d " " -f3- | while read alias 
-   do
-      expiry=`keytool -list -v -keystore "$truststore" -storepass ${storepassword} -alias "${alias}" | grep Valid | perl -ne 'if(/until: (.*?)\n/) { print "$1\n"; }'`
-      echo " Certificate ${alias} expires in '$expiry'" 
-   done      
-   ~~~
-
-2. Create a test or simple main to run.  
-3. Set the system properties `javax.ssl.trustStore` and `javax.sssl.trustStorePassword`  with the path to trust store (`rds-trustore.jks`) and the trust store password respectively. 
-4. Use either the Driver Manager, Data Source class or Connection class to establish a connection to `localhost:27017`. Make sure to set hostname, username, password, target database and tls parameters. The target database can be anything as long as it is a valid MongoDB database name (no spaces, no special chars). See example directly using the connection class:
+1. Create a test or simple main to run.  
+2. Use either the Driver Manager, Data Source class or Connection class to establish a connection to `localhost:27017`. Make sure to set hostname, username, password, target database and tls parameters. The target database can be anything as long as it is a valid MongoDB database name (no spaces, no special chars). See example directly using the connection class:
    
    ~~~js
    @Test
    public void sshTunnelTestWithSSL() throws SQLException {
-       System.setProperty("javax.net.ssl.trustStore", "/Users/<user name>/tmp/certs/rds-truststore.jks");
-       System.setProperty("javax.net.ssl.trustStorePassword", "<truststore password>");
-
        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
        properties.setHostname("localhost:27017");
        properties.setTlsEnabled("true");
@@ -225,7 +193,6 @@ Connecting with TLS programmatically is slightly different from how we did it wi
 1. Create and set the Environment Variables:
 
    ~~~
-   TRUSTSTORE_PASSWORD=<truststore password>
    DOC_DB_USER_NAME=<secret username>
    DOC_DB_PASSWORD=<secret password>
    DOC_DB_LOCAL_PORT=27019
@@ -238,7 +205,7 @@ Connecting with TLS programmatically is slightly different from how we did it wi
 3. Start an SSH port-forwarding tunnel:
 
    ~~~
-   ssh [-f] -N -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -i ~/.ssh/<key pair name>.pem -L $DOC_DB_LOCAL_PORT:$DOC_DB_HOST:27017 $DOC_DB_USER
+   ssh [-f] -N -i ~/.ssh/<key pair name>.pem -L $DOC_DB_LOCAL_PORT:$DOC_DB_HOST:27017 $DOC_DB_USER
    ~~~
    
    (Note: use the `-f` option if you want to have the SSH run in the background)
