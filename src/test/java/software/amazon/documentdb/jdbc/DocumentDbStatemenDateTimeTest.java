@@ -45,7 +45,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Function;
 
-public class DocumentDbStatementBasicDateTimeTest extends DocumentDbStatementTest {
+public class DocumentDbStatemenDateTimeTest extends DocumentDbStatementTest {
 
     /**
      * Tests TIMESTAMPADD() and TIMESTAMPDIFF() for intervals that can be converted to ms.
