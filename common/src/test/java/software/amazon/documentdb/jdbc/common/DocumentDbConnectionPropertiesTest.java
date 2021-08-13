@@ -61,7 +61,7 @@ public class DocumentDbConnectionPropertiesTest {
         properties.setSshHostname("SSHHOST");
         properties.setSshPrivateKeyFile("~/.ssh/test-file-name.pem");
         properties.setSshPrivateKeyPassphrase("PASSPHRASE");
-        properties.setSshStrictHostKeyChecking("true");
+        properties.setSshStrictHostKeyChecking("false");
         properties.setSshKnownHostsFile("~/.ssh/unknown_hosts");
 
         // Get properties.
@@ -82,7 +82,7 @@ public class DocumentDbConnectionPropertiesTest {
         Assertions.assertEquals("SSHHOST", properties.getSshHostname());
         Assertions.assertEquals("~/.ssh/test-file-name.pem", properties.getSshPrivateKeyFile());
         Assertions.assertEquals("PASSPHRASE", properties.getSshPrivateKeyPassphrase());
-        Assertions.assertTrue(properties.getSshStrictHostKeyChecking());
+        Assertions.assertFalse(properties.getSshStrictHostKeyChecking());
         Assertions.assertEquals("~/.ssh/unknown_hosts", properties.getSshKnownHostsFile());
 
         // Build sanitized connection string.
@@ -96,7 +96,7 @@ public class DocumentDbConnectionPropertiesTest {
                         + "&sshUser=SSHUSER"
                         + "&sshHost=SSHHOST"
                         + "&sshPrivateKeyFile=~/.ssh/test-file-name.pem"
-                        + "&sshStrictHostKeyChecking=true"
+                        + "&sshStrictHostKeyChecking=false"
                         + "&sshKnownHostsFile=~/.ssh/unknown_hosts",
                 properties.buildSanitizedConnectionString());
 
