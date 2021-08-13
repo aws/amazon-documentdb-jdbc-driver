@@ -1,8 +1,30 @@
 # Getting Started as a Developer
 This document provides instructions on how to install and set up Java (JDK 1.8) and an IDE (IntelliJ IDEA) on your computer to be able compile the project source code and run DocumentDB tests.
 
+## Table of Contents
+1. [Instructions](#instructions)
+    1. [Installing Java](#installing-java)
+    2. [Installing IntelliJ](#installing-intellij-idea)
+    3. [Cloning Source Code onto Local Computer](#cloning-source-code-onto-local-computer)
+    4. [Building Project with Gradle](#building-project-with-gradle)
+    5. [Setting Up Environment to Run DocumentDB Tests](#setting-up-environment-to-run-documentdb-tests)
+        1. [Connect to a DocumentDB Cluster Using an SSH Tunnel](#connect-to-a-documentdb-cluster-using-an-ssh-tunnel)
+            1. [Prerequisites](#prerequisites)
+            2. [References](#references)
+            3. [Creating an EC2 Instance in a VPC](#creating-an-ec2-instance-in-a-vpc)
+            4. [Create a DocumentDB Cluster and an SSH Tunnel](#create-a-documentdb-cluster-and-an-ssh-tunnel)
+            5. [Connect with TLS](#connect-with-tls)
+            6. [Connect Programmatically](#connect-programmatically)
+                1. [Without TLS](#without-tls)
+                2. [With TLS](#with-tls)
+        2. [Setting Up Environment Variables](#setting-up-environment-variables)
+        3. [Bypass Testing DocumentDB](#bypass-testing-documentdb)
+2. [Troubleshooting](#troubleshooting)
+    1. [Issues with JDK](#issues-with-jdk)
+    2. [Error Connecting to DocumentDB Instance (Connection Time Out)](#error-connecting-to-documentdb-instance-connection-time-out)
+            
 ## Instructions
-### Installing Java (JDK 1.8)
+### Installing Java
 1. Go to this [page](https://www.oracle.com/java/technologies/javase/javase-jdk8-downloads.html) to download Java SE Development Kit 8 (JDK 1.8) for your system and follow installation steps (you need to have or create an Oracle account to download).
 2. Confirm correct version (1.8) of Java has been installed by running the command `java -version` or `javac -version` in the command line or terminal.
 
@@ -10,7 +32,7 @@ This document provides instructions on how to install and set up Java (JDK 1.8) 
 1. Go to this [page](https://www.jetbrains.com/idea/download/) to download IntelliJ IDEA Community Edition for your system and follow the installation steps (click next and continue with default settings)
 2. The plugins *SpotBugs* and *Gradle* need to be installed in the IDE which can be done via the top menu toolbar under *IntelliJ IDEA → Preferences → Plugins* (search in the *Marketplace*).
 
-### Copying/Cloning Source Code onto Local Computer
+### Cloning Source Code onto Local Computer
 1. If you do not have a SSH key associated with your GitHub account, follow the steps on this [page](https://docs.github.com/en/github/authenticating-to-github/connecting-to-github-with-ssh/adding-a-new-ssh-key-to-your-github-account) to add a new SSH key to your GitHub account.
 2. In the Amazon [documentdb-jdbc](https://github.com/aws/amazon-documentdb-jdbc-driver) repository, copy the SSH URL to your clipboard when you click the download code button as shown in the image below. 
 
@@ -31,7 +53,7 @@ This section describes how to connect to a DocumentDB cluster using an SSH tunne
 #### Connect to a DocumentDB Cluster Using an SSH Tunnel
 Since DocumentDB is currently a VPC-only service, you need to set up an SSH tunnel using an EC2 instance running in the same VPC as your DocumentDB cluster (Note that SSH tunnelling will not work for connecting in replica set mode).
 
-##### Prerequisites:
+##### Prerequisites
 1. Java Keytool (should come with Java installation)
 2. Mongo shell (comes with MongoDB server installation but can be downloaded separately)
     1. Download Mongo shell on macOS using HomeBrew by running following commands in the terminal:
