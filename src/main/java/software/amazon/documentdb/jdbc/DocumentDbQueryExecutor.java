@@ -203,10 +203,10 @@ public class DocumentDbQueryExecutor {
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
         final MongoCursor<Document> iterator = iterable.iterator();
-        LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
-                queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
         LOGGER.info("Query {}: Took {} ms to execute query and retrieve first batch of results.", queryId,
                 Instant.now().toEpochMilli() - beginExecution.toEpochMilli());
+        LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
+                queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
         return new DocumentDbResultSet(
                 this.statement,
                 iterator,
