@@ -957,7 +957,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @MethodSource({"getTestEnvironments"})
     void testQuerySelectNotWithNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final String tableName = "testQuerySelectBooleanExpr";
+        final String tableName = "testQuerySelectNotOfNulls";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
                 "\"field\": true}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
