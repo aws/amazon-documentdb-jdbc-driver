@@ -16,9 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
-import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
-import org.bson.BsonNull;
 import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -29,26 +27,14 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 import java.io.IOException;
 import java.sql.Blob;
-import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.sql.Types;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.time.DayOfWeek;
 import java.time.Instant;
-import java.time.Month;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.format.TextStyle;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.function.Function;
 import java.util.regex.Pattern;
 
 public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
@@ -1702,190 +1688,6 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     /**
-     * Tests for queries FLOOR(... TO ...) in select clause.
-     *
-     * @throws SQLException occurs if query fails.
-     */
-    @DisplayName("Tests for queries FLOOR(... TO ...) in select clause.")
-    @ParameterizedTest(name = "testQuerySelectFloorForDate - [{index}] - {arguments}")
-    @MethodSource({"getTestEnvironments"})
-    void testQuerySelectFloorForDate(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
-        setTestEnvironment(testEnvironment);
-        final String tableName = "testQuerySelectFloorForDate";
-        final Instant dateTime = Instant.parse("2020-02-03T12:34:56.78Z");
-        final OffsetDateTime offsetDateTime = dateTime.atOffset(ZoneOffset.UTC);
-        final Instant epochDateTime = Instant.EPOCH;
-        final OffsetDateTime offsetEpochDateTime = epochDateTime.atOffset(ZoneOffset.UTC);
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
-        doc1.append("field", new BsonDateTime(dateTime.toEpochMilli()));
-        doc1.append("fieldEpoch", new BsonDateTime(epochDateTime.toEpochMilli()));
-        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT"
-                                + " FLOOR(\"field\" TO YEAR),"
-                                + " FLOOR(\"field\" TO MONTH),"
-                                + " FLOOR(\"field\" TO QUARTER),"
-                                + " FLOOR(\"field\" TO DAY),"
-                                + " FLOOR(\"field\" TO HOUR),"
-                                + " FLOOR(\"field\" TO MINUTE),"
-                                + " FLOOR(\"field\" TO SECOND),"
-                                + " FLOOR(\"field\" TO MILLISECOND),"
-                                + " FLOOR(\"fieldEpoch\" TO YEAR),"
-                                + " FLOOR(\"fieldEpoch\" TO MONTH),"
-                                + " FLOOR(\"fieldEpoch\" TO QUARTER),"
-                                + " FLOOR(\"fieldEpoch\" TO DAY),"
-                                + " FLOOR(\"fieldEpoch\" TO HOUR),"
-                                + " FLOOR(\"fieldEpoch\" TO MINUTE),"
-                                + " FLOOR(\"fieldEpoch\" TO SECOND),"
-                                + " FLOOR(\"fieldEpoch\" TO MILLISECOND),"
-                                + " FLOOR(NULL TO MILLISECOND)"
-                                + " FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetDateTime, 1),
-                resultSet.getTimestamp(1).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetDateTime, offsetDateTime.getMonthValue()),
-                resultSet.getTimestamp(2).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetDateTime, 1),
-                resultSet.getTimestamp(3).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
-                resultSet.getTimestamp(4).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.HOURS),
-                resultSet.getTimestamp(5).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.MINUTES),
-                resultSet.getTimestamp(6).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.SECONDS),
-                resultSet.getTimestamp(7).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.MILLIS),
-                resultSet.getTimestamp(8).getTime());
-
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetEpochDateTime, 1),
-                resultSet.getTimestamp(9).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetEpochDateTime, offsetEpochDateTime.getMonthValue()),
-                resultSet.getTimestamp(10).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetEpochDateTime, 1),
-                resultSet.getTimestamp(11).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.DAYS),
-                resultSet.getTimestamp(12).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.HOURS),
-                resultSet.getTimestamp(13).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.MINUTES),
-                resultSet.getTimestamp(14).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.SECONDS),
-                resultSet.getTimestamp(15).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(epochDateTime, ChronoUnit.MILLIS),
-                resultSet.getTimestamp(16).getTime());
-        Assertions.assertNull(resultSet.getTimestamp(17));
-        Assertions.assertFalse(resultSet.next());
-
-        // Test WEEK (to Monday) truncation
-        final ResultSet resultSet1 = statement.executeQuery(String.format(
-                "SELECT"
-                        + " FLOOR(\"field\" TO WEEK)," // Monday
-                        + " FLOOR(TIMESTAMPADD(DAY, 1, \"field\") TO WEEK)," // Tuesday
-                        + " FLOOR(TIMESTAMPADD(DAY, 2, \"field\") TO WEEK)," // Wednesday
-                        + " FLOOR(TIMESTAMPADD(DAY, 3, \"field\") TO WEEK)," // Thursday
-                        + " FLOOR(TIMESTAMPADD(DAY, 4, \"field\") TO WEEK)," // Friday
-                        + " FLOOR(TIMESTAMPADD(DAY, 5, \"field\") TO WEEK)," // Saturday
-                        + " FLOOR(TIMESTAMPADD(DAY, 6, \"field\") TO WEEK)," // Sunday
-                        + " FLOOR(TIMESTAMPADD(DAY, 7, \"field\") TO WEEK)," // Next week
-                        + " FLOOR(NULL TO WEEK)" // NULL
-                        + " FROM \"%s\".\"%s\"",
-                getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
-                resultSet1.getTimestamp(1).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
-                resultSet1.getTimestamp(2).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
-                resultSet1.getTimestamp(3).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
-                resultSet1.getTimestamp(4).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
-                resultSet1.getTimestamp(5).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
-                resultSet1.getTimestamp(6).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(dateTime, ChronoUnit.DAYS),
-                resultSet1.getTimestamp(7).getTime());
-        // Next week
-        Assertions.assertEquals(
-                getTruncatedTimestamp(
-                        dateTime
-                                .atOffset(ZoneOffset.UTC)
-                                .plus(1, ChronoUnit.WEEKS)
-                                .toInstant(), ChronoUnit.DAYS),
-                resultSet1.getTimestamp(8).getTime());
-        Assertions.assertNull(resultSet1.getTimestamp(9));
-        Assertions.assertFalse(resultSet1.next());
-
-        // Test QUARTER truncation
-        final ResultSet resultSet2 = statement.executeQuery(String.format(
-                "SELECT %n"
-                        + " FLOOR(\"field\" TO QUARTER), %n"
-                        + " FLOOR(TIMESTAMPADD(DAY, 100, \"field\") TO QUARTER), %n"
-                        + " FLOOR(TIMESTAMPADD(DAY, 200, \"field\") TO QUARTER), %n"
-                        + " FLOOR(TIMESTAMPADD(DAY, 300, \"field\") TO QUARTER), %n"
-                        + " FLOOR(NULL TO QUARTER) %n"
-                        + " FROM \"%s\".\"%s\"",
-                getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetDateTime, 1), // Jan. 01
-                resultSet2.getTimestamp(1).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetDateTime, 4), // Apr. 01
-                resultSet2.getTimestamp(2).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetDateTime, 7), // Jul. 01
-                resultSet2.getTimestamp(3).getTime());
-        Assertions.assertEquals(
-                getTruncatedTimestamp(offsetDateTime, 10), // Oct. 01
-                resultSet2.getTimestamp(4).getTime());
-        Assertions.assertNull(resultSet2.getTimestamp(5)); // NULL
-        Assertions.assertFalse(resultSet2.next());
-
-        // Don't support FLOOR for numeric, yet.
-        final String errorMessage = Assertions.assertThrows(
-                SQLException.class,
-                () -> statement.executeQuery(
-                        String.format("SELECT FLOOR(12.34) FROM \"%s\".\"%s\"",
-                                getDatabaseName(), tableName))).getMessage();
-        Assertions.assertTrue(
-                errorMessage.startsWith(String.format(
-                        "Unable to parse SQL 'SELECT FLOOR(12.34) FROM \"%s\".\"testQuerySelectFloorForDate\"'.", getDatabaseName()))
-                && errorMessage.endsWith(
-                        "Additional info: 'Translation of FLOOR(12.34:DECIMAL(4, 2)) is not supported by DocumentDbRules''"));
-    }
-
-    /**
      * Test that queries selecting a boolean expression with NOT work.
      * @throws SQLException occurs if query fails.
      */
@@ -2010,22 +1812,5 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         setTestEnvironment(testEnvironment);
         final Statement statement = getDocumentDbStatement();
         Assertions.assertDoesNotThrow(statement::close);
-    }
-
-    private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
-        return OffsetDateTime.of(
-                offsetDateTime.getYear(), monthValue, 1,
-                0, 0, 0, 0,
-                ZoneOffset.UTC)
-                .toInstant()
-                .toEpochMilli();
-    }
-
-    private long getTruncatedTimestamp(final Instant dateTime, final ChronoUnit chronoUnit) {
-        return dateTime
-                .atOffset(ZoneOffset.UTC)
-                .truncatedTo(chronoUnit)
-                .toInstant()
-                .toEpochMilli();
     }
 }

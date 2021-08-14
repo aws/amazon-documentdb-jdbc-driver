@@ -47,6 +47,7 @@
       <Source name="Connection.java"/>
       <Source name="DocumentDbStatementTest.java"/>
       <Source name="DocumentDbStatementBasicTest.java"/>
+      <Source name="DocumentDbStatementDateTimeTest.java"/>
       <Source name="DocumentDbStatementFilterTest.java"/>
       <Source name="DocumentDbStatementJoinTest.java"/>
       <Source name="DocumentDbConnection.java"/>
@@ -100,6 +101,7 @@
   <Match>
     <Or>
       <Source name="DocumentDbStatementBasicTest.java"/>
+      <Source name="DocumentDbStatementDateTimeTest.java"/>
     </Or>
     <Bug pattern="RV_RETURN_VALUE_IGNORED"/>
   </Match>
