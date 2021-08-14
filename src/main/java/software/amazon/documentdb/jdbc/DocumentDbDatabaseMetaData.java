@@ -711,6 +711,21 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         throw new SQLFeatureNotSupportedException();
     }
 
+    @Override
+    public boolean supportsFullOuterJoins() {
+        return false;
+    }
+
+    @Override
+    public boolean nullsAreSortedLow() {
+        return true;
+    }
+
+    @Override
+    public int getMaxTablesInSelect() {
+        return 0;
+    }
+
     /**
      * Expects a string with zero-or more occurrences of '%' and '_' in the pattern.
      * Here we're converting the SQL-type pattern to a Regex pattern.

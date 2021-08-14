@@ -164,9 +164,13 @@ The following are all equivalent to the same inner join:
 ## Sorting
 When using an `ORDER BY` clause, values corresponding directly to a column will 
 be sorted with the underlying DocumentDB type. 
-For columns where the corresponding fields in DocumentDB may be of varying types (ex: some are `string`, `null`, or `integer`),
-the sort will consider both value and type, following the MongoDB comparison order of types as documented [here]().
-This can produce results that are unexpected for those unfamiliar with the underlying data.
+For columns where the corresponding fields in DocumentDB
+may be of varying types (ex: some are `string`, `null`, or `integer`),
+the sort will consider both value and type, following the [MongoDB comparison order]().
+This can produce results that are unexpected for those unfamiliar with the underlying data. 
+
+Note that null values will be first when sorting by `ASC` and last when sorting by `DESC` and that
+this cannot be overridden since `NULLS FIRST` and `NULLS LAST` are not supported.
 
 ## Type Conversion
 Type conversions is currently handled as a last step of the query execution.
@@ -186,12 +190,15 @@ When used outside the `SELECT` clause or even in a more complex or nested expres
 - `value1 IN (value2 [, valueN]*)`
 - `value1 NOT IN (value2 [, valueN]*)`
 
-In this context, values can be a reference to another column, a literal, or some expression consisting of other supported operators.
-Values cannot be subqueries. Subqueries are separate queries that can be used as an expression in another query. 
+In this context, values can be a reference to another column, a literal, 
+or some expression consisting of other supported operators.
+Values cannot be subqueries. 
+Subqueries are separate queries that can be used as an expression in another query. 
 
 Note also that values that are references to a column are compared with their native DocumentDB type. 
-For columns where the corresponding fields in DocumentDB may be of varying types (ex: some are string, null, or integer), 
-comparison operators will compare both value and type, following the MongoDB comparison order of types as documented [here]().
+For columns where the corresponding fields in DocumentDB
+may be of varying types (ex: some are `string`, `null`, or `integer`), 
+comparison operators will compare both value and type, following the [MongoDB comparison order]().
 This can produce results that are unexpected for those unfamiliar with the underlying data.
 
 ### Logical Operators
