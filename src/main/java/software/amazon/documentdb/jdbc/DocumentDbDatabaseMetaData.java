@@ -26,7 +26,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.io.InputStream;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
@@ -37,7 +36,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.regex.Pattern;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
@@ -57,13 +55,6 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
  */
 public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java.sql.DatabaseMetaData {
     private static final Map<JdbcType, Integer> TYPE_COLUMN_SIZE_MAP;
-    private static final int DRIVER_MAJOR_VERSION;
-    private static final int DRIVER_MINOR_VERSION;
-    private static final String DRIVER_VERSION;
-    private static final String DRIVER_MAJOR_VERSION_KEY = "driver.major.version";
-    private static final String DRIVER_MINOR_VERSION_KEY = "driver.minor.version";
-    private static final String DRIVER_FULL_VERSION_KEY = "driver.full.version";
-    private static final String PROPERTIES_FILE_PATH = "/project.properties";
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDatabaseMetaData.class);
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private final DocumentDbConnectionProperties properties;
@@ -102,24 +93,6 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                     break;
             }
         }
-
-        // Retrieve driver metadata from properties file.
-        int majorVersion = 0;
-        int minorVersion = 0;
-        String fullVersion = "";
-        try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
-            final Properties p = new Properties();
-            p.load(is);
-            majorVersion = Integer.parseInt(p.getProperty(DRIVER_MAJOR_VERSION_KEY));
-            minorVersion = Integer.parseInt(p.getProperty(DRIVER_MINOR_VERSION_KEY));
-            fullVersion = p.getProperty(DRIVER_FULL_VERSION_KEY);
-        } catch (Exception e) {
-            LOGGER.error("Error loading driver version: " + e.getMessage());
-        }
-
-        DRIVER_MAJOR_VERSION = majorVersion;
-        DRIVER_MINOR_VERSION = minorVersion;
-        DRIVER_VERSION = fullVersion;
     }
 
     /**
@@ -167,17 +140,17 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     @Override
     public int getDriverMajorVersion() {
-        return DRIVER_MAJOR_VERSION;
+        return DocumentDbDriver.DRIVER_MAJOR_VERSION;
     }
 
     @Override
     public int getDriverMinorVersion() {
-        return DRIVER_MINOR_VERSION;
+        return DocumentDbDriver.DRIVER_MINOR_VERSION;
     }
 
     @Override
     public String getDriverVersion() {
-        return DRIVER_VERSION;
+        return DocumentDbDriver.DRIVER_VERSION;
     }
 
     @Override
