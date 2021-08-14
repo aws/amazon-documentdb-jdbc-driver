@@ -183,7 +183,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
 
         // Test same query but using IS TRUE / IS FALSE syntax.
         final ResultSet resultSet2 = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" IS  NOT TRUE AND \"fieldB\" IS FALSE", getDatabaseName(), tableName));
+                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" IS TRUE AND \"fieldB\" IS FALSE", getDatabaseName(), tableName));
         Assertions.assertNotNull(resultSet2);
         Assertions.assertTrue(resultSet2.next());
         Assertions.assertTrue(resultSet2.getBoolean(2));
