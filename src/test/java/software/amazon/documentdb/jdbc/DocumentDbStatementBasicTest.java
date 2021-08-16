@@ -858,23 +858,44 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6});
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);
-            final ResultSet resultSet = statement.executeQuery(
+
+            // Test SUBSTRING(%1, %2, %3) format.
+            final ResultSet resultSet1 = statement.executeQuery(
                     String.format("SELECT SUBSTRING(\"field\", 1, 3) FROM \"%s\".\"%s\"",
                             getDatabaseName(), tableName));
-            Assertions.assertNotNull(resultSet);
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("abc", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("uvw", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("ab", resultSet.getString(1));
-            Assertions.assertFalse(resultSet.next());
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("abc", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("uvw", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("ab", resultSet1.getString(1));
+            Assertions.assertFalse(resultSet1.next());
+
+            // Test SUBSTRING(%1, %2) format.
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format("SELECT SUBSTRING(\"field\", 1) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("abcdefg", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("uvwxyz", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("ab", resultSet2.getString(1));
+            Assertions.assertFalse(resultSet2.next());
         }
     }
 
@@ -936,13 +957,13 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Test that queries selecting a boolean expression with NOT from nulls.
      * @throws SQLException occurs if query fails.
      */
-    @Disabled("AD-267: Boolean expressions do not treat nulls correctly.")
+    @Disabled("AD-315: Boolean expressions do not treat boolean operators with nulls correctly.")
     @DisplayName("Test that queries selecting a boolean expression with NOT from nulls are correct.")
-    @ParameterizedTest(name = "testQueryWithNotNulls - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testQueryWithAndOrNotNulls - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
-    void testQueryWithNotNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+    void testQueryWithAndOrNotNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final String tableName = "testQueryWithNotNulls";
+        final String tableName = "testQueryWithAndOrNotNulls";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
                 "\"field1\": true, \n" + // Added this document only for metadata
                 "\"field2\": true, \n" +
@@ -956,8 +977,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);
             final ResultSet resultSet = statement.executeQuery(
-                    String.format("SELECT NOT (\"field1\"), " +
-                                    "NOT (\"field1\" AND \"field2\"), " +
+                    String.format("SELECT NOT (\"field1\" AND \"field2\"), " +
                                     "NOT (\"field1\" OR \"field2\"), " +
                                     "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
                             getDatabaseName(), tableName));
@@ -967,7 +987,36 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertNull(resultSet.getString(1));
             Assertions.assertNull(resultSet.getString(2));
             Assertions.assertNull(resultSet.getString(3));
-            Assertions.assertNull(resultSet.getString(4));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @DisplayName("Test that queries using COALESCE() are correct.")
+    @ParameterizedTest(name = "testQueryCoalesce - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryCoalesce(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryCoalesce";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field1\": null, \n" + // Added this document only for metadata
+                "\"field2\": 1, \n" +
+                "\"field3\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": 2}");
+
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT COALESCE(\"%s\", \"%s\", \"%s\" ) FROM \"%s\".\"%s\"",
+                            "field1", "field2", "field3", getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(resultSet.getInt(1), 1);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(resultSet.getInt(1), 2);
             Assertions.assertFalse(resultSet.next());
         }
     }
@@ -980,6 +1029,69 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);
             Assertions.assertDoesNotThrow(statement::close);
+        }
+    }
+
+    @ParameterizedTest(name = "testQueryWithSelectBoolean - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySelectBoolean(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQuerySelectBooleanExpr";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field\": 1, \n " +
+                "\"field2\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field\": 1, \n " +
+                "\"field2\": 3}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
+                "\"field\": 1, \n " +
+                "\"field2\": null}");
+
+        insertBsonDocuments(tableName,
+                new BsonDocument[]{doc1, doc2, doc3});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT \"field2\" <> 2 FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @ParameterizedTest(name = "testQueryWithNotNull - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySelectNotWithNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQuerySelectNotNulls";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field\": true}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field\": false}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
+                "\"field\": null}");
+
+        insertBsonDocuments(tableName,
+                new BsonDocument[]{doc1, doc2, doc3});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT NOT(\"field\") FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
         }
     }
 }
