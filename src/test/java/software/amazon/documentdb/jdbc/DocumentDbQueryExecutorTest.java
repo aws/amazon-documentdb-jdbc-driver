@@ -91,9 +91,11 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
     }
 
     @AfterEach
-    void afterAll() throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(VALID_CONNECTION_PROPERTIES);
-        schemaWriter.remove("id");
+    void afterAll() throws Exception {
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            schemaWriter.remove("id");
+        }
         if (resultSet != null) {
             resultSet.close();
         }
@@ -271,21 +273,24 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         @Override
         protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
             final MongoClientSettings settings = VALID_CONNECTION_PROPERTIES.buildMongoClientSettings();
-            final MongoClient client = MongoClients.create(settings);
-            final MongoDatabase database =
-                    client.getDatabase(VALID_CONNECTION_PROPERTIES.getDatabase());
-            final MongoCollection<Document> collection = database.getCollection(COLLECTION_NAME);
+            try (MongoClient client = MongoClients.create(settings)) {
+                final MongoDatabase database =
+                        client.getDatabase(VALID_CONNECTION_PROPERTIES.getDatabase());
+                final MongoCollection<Document> collection = database.getCollection(
+                        COLLECTION_NAME);
 
-            // We use the $where operator to sleep for 5000 milliseconds. This operator
-            // can only be used with find().
-            final Document whereDoc =
-                    new Document("$where", "function(){ return sleep(5000) || true;}");
-            final FindIterable<Document> iterable = collection.find(whereDoc).comment(getQueryId());
-            final MongoCursor<Document> iterator = iterable.iterator();
-            final JdbcColumnMetaData column =
-                    JdbcColumnMetaData.builder().columnLabel("EXPR$0").ordinal(0).build();
-            return new DocumentDbResultSet(
-                    statement, iterator, ImmutableList.of(column), ImmutableList.of("EXPR$0"));
+                // We use the $where operator to sleep for 5000 milliseconds. This operator
+                // can only be used with find().
+                final Document whereDoc =
+                        new Document("$where", "function(){ return sleep(5000) || true;}");
+                final FindIterable<Document> iterable = collection.find(whereDoc)
+                        .comment(getQueryId());
+                final MongoCursor<Document> iterator = iterable.iterator();
+                final JdbcColumnMetaData column =
+                        JdbcColumnMetaData.builder().columnLabel("EXPR$0").ordinal(0).build();
+                return new DocumentDbResultSet(
+                        statement, iterator, ImmutableList.of(column), ImmutableList.of("EXPR$0"));
+            }
         }
     }
 }

@@ -80,13 +80,14 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     @AfterAll
-    static void afterAll() throws SQLException {
+    static void afterAll() throws Exception {
         final Properties info = connection.getClientInfo();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info,
                         "jdbc:documentdb:", "jdbc:documentdb:");
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
-        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        }
         connection.close();
     }
 

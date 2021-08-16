@@ -29,6 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -57,24 +58,26 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument document4 =
                 BsonDocument.parse("{ \"_id\" : \"key3\", \"array\": [1, 2, 3, 4, 5] }");
         insertBsonDocuments(collection, new BsonDocument[]{document1, document2, document3, document4});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        // Verify that result set has correct values.
-        statement.execute(String.format(
-                "SELECT \"%s\", COUNT(*) AS \"Count\" FROM \"%s\".\"%s\""
-                        + "WHERE \"%s\" <> 'key3' "
-                        + "GROUP BY \"%s\" HAVING COUNT(*) > 1"
-                        + "ORDER BY \"Count\" DESC LIMIT 1",
-                collection + "__id",
-                getDatabaseName(), collection + "_array",
-                collection + "__id",
-                collection + "__id"));
-        final ResultSet resultSet1 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("key0", resultSet1.getString(collection + "__id"));
-        Assertions.assertEquals(5, resultSet1.getInt("Count"));
-        Assertions.assertFalse(resultSet1.next());
+            // Verify that result set has correct values.
+            statement.execute(String.format(
+                    "SELECT \"%s\", COUNT(*) AS \"Count\" FROM \"%s\".\"%s\""
+                            + "WHERE \"%s\" <> 'key3' "
+                            + "GROUP BY \"%s\" HAVING COUNT(*) > 1"
+                            + "ORDER BY \"Count\" DESC LIMIT 1",
+                    collection + "__id",
+                    getDatabaseName(), collection + "_array",
+                    collection + "__id",
+                    collection + "__id"));
+            final ResultSet resultSet1 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("key0", resultSet1.getString(collection + "__id"));
+            Assertions.assertEquals(5, resultSet1.getInt("Count"));
+            Assertions.assertFalse(resultSet1.next());
+        }
     }
 
     /**
@@ -94,12 +97,15 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 5", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 5",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -117,15 +123,18 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": 4}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE 2 > 1", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(4, resultSet.getInt(2));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertNull(resultSet.getString(2));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * from \"%s\".\"%s\" WHERE 2 > 1", getDatabaseName(),
+                            tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(4, resultSet.getInt(2));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(2));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /** Tests that queries with multiple not-equals clauses are correct.
@@ -146,13 +155,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 4 AND \"field\" <> 3", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(2, resultSet.getInt(2));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * from \"%s\".\"%s\" WHERE \"field\" <> 4 AND \"field\" <> 3",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(2, resultSet.getInt(2));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -173,21 +186,27 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"fieldA\": false, \n " +
                 "\"fieldB\": true}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = TRUE AND \"fieldB\" = FALSE", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertTrue(resultSet1.getBoolean(2));
-        Assertions.assertFalse(resultSet1.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = TRUE AND \"fieldB\" = FALSE",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertTrue(resultSet1.getBoolean(2));
+            Assertions.assertFalse(resultSet1.next());
 
-        // Test same query but using IS TRUE / IS FALSE syntax.
-        final ResultSet resultSet2 = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" IS TRUE AND \"fieldB\" IS FALSE", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertTrue(resultSet2.getBoolean(2));
-        Assertions.assertFalse(resultSet2.next());
+            // Test same query but using IS TRUE / IS FALSE syntax.
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format(
+                            "SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" IS TRUE AND \"fieldB\" IS FALSE",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertTrue(resultSet2.getBoolean(2));
+            Assertions.assertFalse(resultSet2.next());
+        }
     }
 
     /**
@@ -219,38 +238,40 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         doc9.append("field", new BsonMinKey());
         insertBsonDocuments(tableName,
                 new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8, doc9});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"field\" < 2  THEN 'A' "
-                                + "WHEN \"field\" <= 2 THEN 'B' "
-                                + "WHEN \"field\" > 4 THEN 'C' "
-                                + "WHEN \"field\" >= 4 THEN 'D' "
-                                + "WHEN \"field\" <> 7 THEN 'E' "
-                                + "WHEN \"field2\" IN (9, 10) THEN 'F' "
-                                + "ELSE 'G' END FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("A", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("B", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("D", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("E", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("F", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("G", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("G", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("G", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CASE "
+                                    + "WHEN \"field\" < 2  THEN 'A' "
+                                    + "WHEN \"field\" <= 2 THEN 'B' "
+                                    + "WHEN \"field\" > 4 THEN 'C' "
+                                    + "WHEN \"field\" >= 4 THEN 'D' "
+                                    + "WHEN \"field\" <> 7 THEN 'E' "
+                                    + "WHEN \"field2\" IN (9, 10) THEN 'F' "
+                                    + "ELSE 'G' END FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("A", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("B", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("C", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("D", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("E", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("F", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("G", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("G", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("G", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -282,37 +303,39 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         doc9.append("field", new BsonMinKey());
         insertBsonDocuments(tableName,
                 new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8, doc9});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CASE \"field\""
-                                + "WHEN 1 THEN 'A' "
-                                + "WHEN 2 THEN 'B' "
-                                + "WHEN 5, 6 THEN 'C' "
-                                + "WHEN 4, 5, 6 THEN 'D' "
-                                + "WHEN 1, 2, 3, 4, 5, 6, 8, 9 THEN 'E' "
-                                + "ELSE 'F' END FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("A", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("B", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("D", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("E", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("F", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("F", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("F", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("F", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CASE \"field\""
+                                    + "WHEN 1 THEN 'A' "
+                                    + "WHEN 2 THEN 'B' "
+                                    + "WHEN 5, 6 THEN 'C' "
+                                    + "WHEN 4, 5, 6 THEN 'D' "
+                                    + "WHEN 1, 2, 3, 4, 5, 6, 8, 9 THEN 'E' "
+                                    + "ELSE 'F' END FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("A", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("B", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("C", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("D", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("E", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("F", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("F", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("F", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("F", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -333,13 +356,16 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"fieldA\": 5, \n " +
                 "\"fieldB\": 4}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" < \"fieldB\"", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(4, resultSet.getInt(2));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" < \"fieldB\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(4, resultSet.getInt(2));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -361,22 +387,24 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
                 + "\"fieldA\": 1}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' "
-                                + "WHEN \"fieldA\" > \"fieldB\" THEN 'B' "
-                                + "ELSE 'C' END FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("A", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("B", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CASE "
+                                    + "WHEN \"fieldA\" < \"fieldB\"  THEN 'A' "
+                                    + "WHEN \"fieldA\" > \"fieldB\" THEN 'B' "
+                                    + "ELSE 'C' END FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("A", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("B", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("C", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -404,17 +432,20 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"fieldA\": 1, \n" +
                 "\"fieldB\": 10}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" " +
-                        "WHERE (\"fieldA\" < 3  OR \"fieldB\" < 2) " +
-                        "AND (\"fieldA\" > 12 OR \"fieldB\" > 8)", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(104, resultSet.getInt(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(105, resultSet.getInt(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * from \"%s\".\"%s\" " +
+                                    "WHERE (\"fieldA\" < 3  OR \"fieldB\" < 2) " +
+                                    "AND (\"fieldA\" > 12 OR \"fieldB\" > 8)", getDatabaseName(),
+                            tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(104, resultSet.getInt(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(105, resultSet.getInt(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries with various types in WHERE clause")
@@ -437,20 +468,22 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"fieldA\": \"def\", \n " +
                 "\"fieldB\": 4}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = 'abc' AND " +
-                        "\"fieldB\" = 5 AND \"fieldC\" = TRUE AND \"fieldD\" > '2020-03-11' AND \"fieldE\" = %d AND \"fieldF\" = %f",
-                        getDatabaseName(), tableName, bigInt, doubleValue));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("abc", resultSet.getString(2));
-        Assertions.assertEquals(5, resultSet.getInt(3));
-        Assertions.assertTrue(resultSet.getBoolean(4));
-        Assertions.assertEquals(date.getValue(), resultSet.getTimestamp(5).getTime());
-        Assertions.assertEquals(bigInt, resultSet.getLong(6));
-        Assertions.assertEquals(doubleValue, resultSet.getDouble(7));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * from \"%s\".\"%s\" WHERE \"fieldA\" = 'abc' AND " +
+                                    "\"fieldB\" = 5 AND \"fieldC\" = TRUE AND \"fieldD\" > '2020-03-11' AND \"fieldE\" = %d AND \"fieldF\" = %f",
+                            getDatabaseName(), tableName, bigInt, doubleValue));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("abc", resultSet.getString(2));
+            Assertions.assertEquals(5, resultSet.getInt(3));
+            Assertions.assertTrue(resultSet.getBoolean(4));
+            Assertions.assertEquals(date.getValue(), resultSet.getTimestamp(5).getTime());
+            Assertions.assertEquals(bigInt, resultSet.getLong(6));
+            Assertions.assertEquals(doubleValue, resultSet.getDouble(7));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -467,29 +500,32 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" < DATE '2020-01-02'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
-        Assertions.assertFalse(resultSet1.next());
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" < DATE '2020-01-02'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
+            Assertions.assertFalse(resultSet1.next());
 
-        final ResultSet resultSet2 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = DATE '2020-01-01'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet2.getTimestamp(2));
-        Assertions.assertFalse(resultSet2.next());
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = DATE '2020-01-01'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals(new Timestamp(dateTime), resultSet2.getTimestamp(2));
+            Assertions.assertFalse(resultSet2.next());
 
-        final ResultSet resultSet3 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> DATE '2020-01-01'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertFalse(resultSet3.next());
+            final ResultSet resultSet3 = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> DATE '2020-01-01'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertFalse(resultSet3.next());
+        }
     }
 
     /**
@@ -506,29 +542,34 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" < TIMESTAMP '2020-01-02 00:00:00'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
-        Assertions.assertFalse(resultSet1.next());
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" < TIMESTAMP '2020-01-02 00:00:00'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
+            Assertions.assertFalse(resultSet1.next());
 
-        final ResultSet resultSet2 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = TIMESTAMP '2020-01-01 00:00:00'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet2.getTimestamp(2));
-        Assertions.assertFalse(resultSet2.next());
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = TIMESTAMP '2020-01-01 00:00:00'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals(new Timestamp(dateTime), resultSet2.getTimestamp(2));
+            Assertions.assertFalse(resultSet2.next());
 
-        final ResultSet resultSet3 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> TIMESTAMP '2020-01-01 00:00:00'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertFalse(resultSet3.next());
+            final ResultSet resultSet3 = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> TIMESTAMP '2020-01-01 00:00:00'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertFalse(resultSet3.next());
+        }
     }
 
     /**
@@ -545,15 +586,18 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE TIMESTAMPADD(DAY, 1, \"field\") = TIMESTAMP '2020-01-02 00:00:00'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
-        Assertions.assertFalse(resultSet1.next());
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE TIMESTAMPADD(DAY, 1, \"field\") = TIMESTAMP '2020-01-02 00:00:00'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
+            Assertions.assertFalse(resultSet1.next());
+        }
     }
 
     /**
@@ -574,17 +618,19 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NULL",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NULL",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -605,15 +651,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NOT NULL",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NOT NULL",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -634,23 +682,25 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT CASE " +
-                                "WHEN \"field\" IS NULL THEN 1" +
-                                "WHEN \"field\" IS NOT NULL THEN 2" +
-                                "ELSE 3 END " +
-                                "FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(2, resultSet.getInt(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(1, resultSet.getInt(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(1, resultSet.getInt(1));
-        Assertions.assertFalse(resultSet.next());
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT CASE " +
+                                    "WHEN \"field\" IS NULL THEN 1" +
+                                    "WHEN \"field\" IS NOT NULL THEN 2" +
+                                    "ELSE 3 END " +
+                                    "FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(2, resultSet.getInt(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(1, resultSet.getInt(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(1, resultSet.getInt(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -680,23 +730,25 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         doc8.append("field", new BsonMinKey());
         insertBsonDocuments(tableName,
                 new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" "
-                                + "WHERE (CASE "
-                                + "WHEN \"field\" < 2  THEN 'A' "
-                                + "WHEN \"field\" <= 2 THEN 'B' "
-                                + "WHEN \"field\" > 4 THEN 'C' "
-                                + "WHEN \"field\" >= 4 THEN 'D' "
-                                + "WHEN \"field\" <> 7 THEN 'E' "
-                                + "ELSE 'F' END) = 'A'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(101, resultSet.getInt(1));
-        Assertions.assertEquals(1, resultSet.getInt(2));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" "
+                                    + "WHERE (CASE "
+                                    + "WHEN \"field\" < 2  THEN 'A' "
+                                    + "WHEN \"field\" <= 2 THEN 'B' "
+                                    + "WHEN \"field\" > 4 THEN 'C' "
+                                    + "WHEN \"field\" >= 4 THEN 'D' "
+                                    + "WHEN \"field\" <> 7 THEN 'E' "
+                                    + "ELSE 'F' END) = 'A'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(101, resultSet.getInt(1));
+            Assertions.assertEquals(1, resultSet.getInt(2));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -716,17 +768,19 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
                 + "\"price\": \"1\"}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" "
-                                + "WHERE \"price\" = '$1'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(101, resultSet1.getInt(1));
-        Assertions.assertEquals("$1", resultSet1.getString(2));
-        Assertions.assertFalse(resultSet1.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" "
+                                    + "WHERE \"price\" = '$1'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(101, resultSet1.getInt(1));
+            Assertions.assertEquals("$1", resultSet1.getString(2));
+            Assertions.assertFalse(resultSet1.next());
+        }
     }
 
     /**
@@ -745,23 +799,25 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
                 + "\"field\": 3}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"field\" < 3  THEN "
-                                + "( CASE WHEN \"field\" < 2 THEN 'A' "
-                                + "ELSE 'B' END )"
-                                + "ELSE 'C' END FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("A", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("B", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CASE "
+                                    + "WHEN \"field\" < 3  THEN "
+                                    + "( CASE WHEN \"field\" < 2 THEN 'A' "
+                                    + "ELSE 'B' END )"
+                                    + "ELSE 'C' END FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("A", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("B", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("C", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -780,36 +836,38 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
                 + "\"price\": \"1\"}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"price\" = '$1'  THEN 'A' "
-                                + "ELSE 'B' END FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("A", resultSet1.getString(1));
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("B", resultSet1.getString(1));
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("B", resultSet1.getString(1));
-        Assertions.assertFalse(resultSet1.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT CASE "
+                                    + "WHEN \"price\" = '$1'  THEN 'A' "
+                                    + "ELSE 'B' END FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("A", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("B", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("B", resultSet1.getString(1));
+            Assertions.assertFalse(resultSet1.next());
 
-        final ResultSet resultSet2 = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"price\" = '1'  THEN 'YES' "
-                                + "ELSE '$price' END FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("$price", resultSet2.getString(1));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("$price", resultSet2.getString(1));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("YES", resultSet2.getString(1));
-        Assertions.assertFalse(resultSet2.next());
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format(
+                            "SELECT CASE "
+                                    + "WHEN \"price\" = '1'  THEN 'YES' "
+                                    + "ELSE '$price' END FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("$price", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("$price", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("YES", resultSet2.getString(1));
+            Assertions.assertFalse(resultSet2.next());
+        }
     }
 
     @DisplayName("Tests queries with CASE with boolean columns.")
@@ -824,21 +882,23 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 + "\"field\": false }");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103 }");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CASE "
-                                + "WHEN \"field\" THEN 'Yes' "
-                                + "WHEN NOT \"field\" THEN 'No' "
-                                + "ELSE 'Unknown' END FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("Yes", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("No", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("Unknown", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CASE "
+                                    + "WHEN \"field\" THEN 'Yes' "
+                                    + "WHEN NOT \"field\" THEN 'No' "
+                                    + "ELSE 'Unknown' END FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("Yes", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("No", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("Unknown", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -861,14 +921,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2, 3) = 'bcd'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2, 3) = 'bcd'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -891,14 +954,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2) = 'bcdefg'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE SUBSTRING(\"field\", 2) = 'bcdefg'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -921,23 +987,25 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT CASE " +
-                                "WHEN SUBSTRING(\"field\", 1, 4) = 'abcd' THEN 'A'" +
-                                "WHEN SUBSTRING(\"field\", 1, 3) = 'abc' THEN 'B'" +
-                                "ELSE 'C' END FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("A", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("B", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("C", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT CASE " +
+                                    "WHEN SUBSTRING(\"field\", 1, 4) = 'abcd' THEN 'A'" +
+                                    "WHEN SUBSTRING(\"field\", 1, 3) = 'abc' THEN 'B'" +
+                                    "ELSE 'C' END FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("A", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("B", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("C", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("C", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -961,14 +1029,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('abcdef', 1, 3)",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('abcdef', 1, 3)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests substring with expressions for index and length.")
@@ -995,16 +1066,19 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field3\": 1}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT SUBSTRING(\"field\", \"field3\", \"field2\" - \"field3\") " +
-                                "FROM \"%s\".\"%s\" " +
-                                "WHERE SUBSTRING(\"field\", \"field3\", \"field2\" + \"field3\") = 'abcd'",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("ab", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT SUBSTRING(\"field\", \"field3\", \"field2\" - \"field3\") " +
+                                    "FROM \"%s\".\"%s\" " +
+                                    "WHERE SUBSTRING(\"field\", \"field3\", \"field2\" + \"field3\") = 'abcd'",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("ab", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests substring where a conflict with a field exists")
@@ -1023,14 +1097,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('$1000', 1, 4)",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('$1000', 1, 4)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests substring where a conflict with an operator exists")
@@ -1049,14 +1126,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('$or', 1, 2)",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = SUBSTRING('$or', 1, 2)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests FLOOR(... TO ...) in WHERE clause.")
@@ -1069,23 +1149,25 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime.toEpochMilli()));
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\""
-                                + " WHERE FLOOR(\"field\" TO SECOND) >= \"field\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertFalse(resultSet.next());
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\""
+                                    + " WHERE FLOOR(\"field\" TO SECOND) >= \"field\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertFalse(resultSet.next());
 
-        final ResultSet resultSet2 = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\""
-                                + " WHERE FLOOR(\"field\" TO SECOND) < \"field\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("101", resultSet2.getString(1));
-        Assertions.assertFalse(resultSet2.next());
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\""
+                                    + " WHERE FLOOR(\"field\" TO SECOND) < \"field\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("101", resultSet2.getString(1));
+            Assertions.assertFalse(resultSet2.next());
+        }
     }
 
     @DisplayName("Tests arithmetic functions in WHERE clause.")
@@ -1112,15 +1194,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field3\": 1}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE \"field\" * \"field2\" / \"field3\" + \"field2\" - \"field3\" = 7",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE \"field\" * \"field2\" / \"field3\" + \"field2\" - \"field3\" = 7",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests that queries filtering by modulo work.")
@@ -1139,21 +1223,23 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE MOD(\"field\", 3) = 2" +
-                                "OR MOD(8, \"field\") = 2" +
-                                "OR MOD(3, 2) = \"field\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE MOD(\"field\", 3) = 2" +
+                                    "OR MOD(8, \"field\") = 2" +
+                                    "OR MOD(3, 2) = \"field\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries containing nested OR.")
@@ -1180,19 +1266,21 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field3\": 1}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE \"field\" OR (\"field2\" OR \"field3\" > 6)",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE \"field\" OR (\"field2\" OR \"field3\" > 6)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries with nested AND.")
@@ -1219,15 +1307,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field3\": 1}");
 
         insertBsonDocuments(tableName,  new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE \"field\" AND (\"field2\" AND \"field3\" > 6)",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE \"field\" AND (\"field2\" AND \"field3\" > 6)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries with nested combined OR and AND.")
@@ -1257,19 +1347,21 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field3\": 1}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE ((\"field\" AND \"field3\" < 10) AND (\"field2\" OR \"field3\" > 6)) OR \"field4\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE ((\"field\" AND \"field3\" < 10) AND (\"field2\" OR \"field3\" > 6)) OR \"field4\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries with NOT combined with OR and AND.")
@@ -1299,19 +1391,21 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field3\": 1}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE ((NOT \"field\" AND \"field3\" < 10) AND (NOT \"field2\" OR \"field3\" > 6)) OR \"field4\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("104", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE ((NOT \"field\" AND \"field3\" < 10) AND (NOT \"field2\" OR \"field3\" > 6)) OR \"field4\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("104", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Test queries filtering by CURRENT_DATE.")
@@ -1328,16 +1422,18 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"date\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE CURRENT_DATE > \"date\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE CURRENT_DATE > \"date\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries filtering by CURRENT_TIME.")
@@ -1354,16 +1450,18 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"date\": null}");
 
         insertBsonDocuments(tableName,  new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE CURRENT_TIME <> CAST(\"date\" AS TIME)",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE CURRENT_TIME <> CAST(\"date\" AS TIME)",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries filtering by CURRENT_TIMESTAMP.")
@@ -1380,16 +1478,18 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"date\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE CURRENT_TIMESTAMP <> \"date\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE CURRENT_TIMESTAMP <> \"date\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries filtering by date extract.")
@@ -1416,29 +1516,31 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"date\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7, doc8});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE EXTRACT(YEAR FROM \"date\") = 2021" +
-                                "OR EXTRACT(MONTH FROM \"date\") = 2" +
-                                "OR EXTRACT(DAY FROM \"date\") = 2" +
-                                "OR EXTRACT(HOUR FROM \"date\") = 1" +
-                                "OR EXTRACT(MINUTE FROM \"date\") = 1" +
-                                "OR EXTRACT(SECOND FROM \"date\") = 1",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("104", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("105", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("106", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE EXTRACT(YEAR FROM \"date\") = 2021" +
+                                    "OR EXTRACT(MONTH FROM \"date\") = 2" +
+                                    "OR EXTRACT(DAY FROM \"date\") = 2" +
+                                    "OR EXTRACT(HOUR FROM \"date\") = 1" +
+                                    "OR EXTRACT(MINUTE FROM \"date\") = 1" +
+                                    "OR EXTRACT(SECOND FROM \"date\") = 1",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("104", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("105", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("106", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries filtering by DAYNAME")
@@ -1454,14 +1556,16 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"date\": null}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE  DAYNAME(\"date\") = 'Tuesday'",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE  DAYNAME(\"date\") = 'Tuesday'",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries filtering by MONTHNAME")
@@ -1477,14 +1581,16 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"date\": null}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE  MONTHNAME(\"date\") = 'February'",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE  MONTHNAME(\"date\") = 'February'",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests queries filtering with date diff.")
@@ -1503,14 +1609,16 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"date\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" " +
-                                "WHERE TIMESTAMPDIFF(DAY, \"date\", \"date2\") = 2",
-                        getDatabaseName(), tableName));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" " +
+                                    "WHERE TIMESTAMPDIFF(DAY, \"date\", \"date2\") = 2",
+                            getDatabaseName(), tableName));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests that setMaxRows limits the number of rows returned in result set.")
@@ -1526,64 +1634,67 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
             documents[i] = new BsonDocument("field", new BsonString("value"));
         }
         insertBsonDocuments(collection, documents);
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        // Don't set max rows
-        ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
-        int actualRowCount = 0;
-        while (resultSet.next()) {
-            actualRowCount++;
+            // Don't set max rows
+            ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
+            int actualRowCount = 0;
+            while (resultSet.next()) {
+                actualRowCount++;
+            }
+            Assertions.assertEquals(0, statement.getMaxRows());
+            Assertions.assertEquals(totalNumberDocuments, actualRowCount);
+
+            // Set max rows < actual
+            statement.setMaxRows(maxRows);
+            resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
+            actualRowCount = 0;
+            while (resultSet.next()) {
+                actualRowCount++;
+            }
+            Assertions.assertEquals(maxRows, statement.getMaxRows());
+            Assertions.assertEquals(maxRows, actualRowCount);
+
+            // Set unlimited
+            statement.setMaxRows(0);
+            resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
+            actualRowCount = 0;
+            while (resultSet.next()) {
+                actualRowCount++;
+            }
+            Assertions.assertEquals(0, statement.getMaxRows());
+            Assertions.assertEquals(totalNumberDocuments, actualRowCount);
+
+            // Set max rows > SQL LIMIT
+            int limit = maxRows - 1;
+            statement.setMaxRows(maxRows);
+            resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", getDatabaseName(),
+                            collection, limit));
+            actualRowCount = 0;
+            while (resultSet.next()) {
+                actualRowCount++;
+            }
+            Assertions.assertEquals(maxRows, statement.getMaxRows());
+            Assertions.assertEquals(limit, actualRowCount);
+
+            // Set max rows < SQL LIMIT
+            limit = maxRows + 1;
+            statement.setMaxRows(maxRows);
+            resultSet = statement.executeQuery(
+                    String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", getDatabaseName(),
+                            collection, limit));
+            actualRowCount = 0;
+            while (resultSet.next()) {
+                actualRowCount++;
+            }
+            Assertions.assertEquals(maxRows, statement.getMaxRows());
+            Assertions.assertEquals(maxRows, actualRowCount);
         }
-        Assertions.assertEquals(0, statement.getMaxRows());
-        Assertions.assertEquals(totalNumberDocuments, actualRowCount);
-
-        // Set max rows < actual
-        statement.setMaxRows(maxRows);
-        resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
-        actualRowCount = 0;
-        while (resultSet.next()) {
-            actualRowCount++;
-        }
-        Assertions.assertEquals(maxRows, statement.getMaxRows());
-        Assertions.assertEquals(maxRows, actualRowCount);
-
-        // Set unlimited
-        statement.setMaxRows(0);
-        resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection));
-        actualRowCount = 0;
-        while (resultSet.next()) {
-            actualRowCount++;
-        }
-        Assertions.assertEquals(0, statement.getMaxRows());
-        Assertions.assertEquals(totalNumberDocuments, actualRowCount);
-
-        // Set max rows > SQL LIMIT
-        int limit = maxRows - 1;
-        statement.setMaxRows(maxRows);
-        resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", getDatabaseName(), collection, limit));
-        actualRowCount = 0;
-        while (resultSet.next()) {
-            actualRowCount++;
-        }
-        Assertions.assertEquals(maxRows, statement.getMaxRows());
-        Assertions.assertEquals(limit, actualRowCount);
-
-        // Set max rows < SQL LIMIT
-        limit = maxRows + 1;
-        statement.setMaxRows(maxRows);
-        resultSet = statement.executeQuery(
-                String.format("SELECT * FROM \"%s\".\"%s\" LIMIT %d", getDatabaseName(), collection, limit));
-        actualRowCount = 0;
-        while (resultSet.next()) {
-            actualRowCount++;
-        }
-        Assertions.assertEquals(maxRows, statement.getMaxRows());
-        Assertions.assertEquals(maxRows, actualRowCount);
-
     }
 
     @DisplayName("Test that queries using COALESCE() are correct.")
@@ -1602,15 +1713,17 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field3\": 2}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet =
-                statement.executeQuery(String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE COALESCE(\"%s\", \"%s\", \"%s\") = 2 ",
-                                getDatabaseName(), tableName, "field1", "field2", "field3"));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(resultSet.getInt(1), 102);
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet =
+                    statement.executeQuery(String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE COALESCE(\"%s\", \"%s\", \"%s\") = 2 ",
+                            getDatabaseName(), tableName, "field1", "field2", "field3"));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(resultSet.getInt(1), 102);
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Test that queries using [NOT] BETWEEN are correct.")
@@ -1629,23 +1742,25 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                 "\"field3\": 3}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet1 =
-                statement.executeQuery(String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"%s\" BETWEEN \"%s\" AND \"%s\"",
-                        getDatabaseName(), tableName, "field2", "field1", "field3"));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(resultSet1.getInt(1), 102);
-        Assertions.assertFalse(resultSet1.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet1 =
+                    statement.executeQuery(String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"%s\" BETWEEN \"%s\" AND \"%s\"",
+                            getDatabaseName(), tableName, "field2", "field1", "field3"));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(resultSet1.getInt(1), 102);
+            Assertions.assertFalse(resultSet1.next());
 
-        final ResultSet resultSet2 =
-                statement.executeQuery(String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"%s\" NOT BETWEEN \"%s\" AND \"%s\"",
-                        getDatabaseName(), tableName, "field2", "field1", "field3"));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals(resultSet2.getInt(1), 101);
-        Assertions.assertFalse(resultSet2.next());
+            final ResultSet resultSet2 =
+                    statement.executeQuery(String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"%s\" NOT BETWEEN \"%s\" AND \"%s\"",
+                            getDatabaseName(), tableName, "field2", "field1", "field3"));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals(resultSet2.getInt(1), 101);
+            Assertions.assertFalse(resultSet2.next());
+        }
     }
 }

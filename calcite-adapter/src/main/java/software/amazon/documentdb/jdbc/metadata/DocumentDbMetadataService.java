@@ -65,15 +65,20 @@ public class DocumentDbMetadataService {
      *
      * @param properties the connection properties.
      * @param schemaName the client ID.
+     * @param client the {@link MongoClient} client.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
     public static DocumentDbSchema get(
             final DocumentDbConnectionProperties properties,
-            final String schemaName) throws SQLException {
-        return get(properties, schemaName, VERSION_LATEST_OR_NEW);
+            final String schemaName,
+            final MongoClient client) throws SQLException {
+        return get(properties, schemaName, VERSION_LATEST_OR_NEW, client);
     }
 
-
+    /**
+     * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId and
+     * version.
+     *
     /**
      * Gets an existing {@link DocumentDbDatabaseSchemaMetadata} instance based on the clientId and
      * version.
@@ -83,6 +88,7 @@ public class DocumentDbMetadataService {
      * @param schemaVersion the version of the metadata. A version number of
      *                {@link DocumentDbDatabaseSchemaMetadata#VERSION_LATEST_OR_NEW} indicates to get the latest
      *                or create a new instance.
+     * @param client the {@link MongoClient} client.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the clientId and version exist,
      * {@code null} otherwise.
      */
@@ -90,40 +96,51 @@ public class DocumentDbMetadataService {
     public static DocumentDbSchema get(
             final DocumentDbConnectionProperties properties,
             final String schemaName,
-            final int schemaVersion) throws SQLException {
+            final int schemaVersion,
+            final MongoClient client) throws SQLException {
         final Instant beginRetrieval = Instant.now();
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
         final Map<String, DocumentDbSchemaTable> tableMap = new LinkedHashMap<>();
-
+        final DocumentDbSchema schema;
         // ASSUMPTION: Negative versions handle special cases
         final int lookupVersion = Math.max(schemaVersion, VERSION_LATEST_OR_NEW);
-        // Get the latest or specific version, might not exist
-        final DocumentDbSchema schema = schemaReader.read(schemaName, lookupVersion);
+        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        try {
+            // Get the latest or specific version, might not exist
+            schema = schemaReader.read(schemaName, lookupVersion);
 
-        switch (schemaVersion) {
-            case VERSION_LATEST_OR_NEW:
-                // If latest exist, return it.
-                if (schema != null) {
-                    LOGGER.info(String.format("Successfully retrieved metadata schema %s in %d ms.",
-                            schemaName, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
+            switch (schemaVersion) {
+                case VERSION_LATEST_OR_NEW:
+                    // If latest exist, return it.
+                    if (schema != null) {
+                        LOGGER.info(
+                                String.format("Successfully retrieved metadata schema %s in %d ms.",
+                                        schemaName, Instant.now().toEpochMilli()
+                                                - beginRetrieval.toEpochMilli()));
+                        return schema;
+                    }
+                    LOGGER.info(String.format(
+                            "Existing metadata not found for schema %s, will generate new metadata instead for database %s.",
+                            schemaName, properties.getDatabase()));
+                    return getNewDatabaseMetadata(properties, schemaName, 1, tableMap, client);
+                case VERSION_NEW:
+                    final int newVersionNumber = schema != null ? schema.getSchemaVersion() + 1 : 1;
+                    return getNewDatabaseMetadata(properties, schemaName, newVersionNumber,
+                            tableMap, client);
+                case VERSION_LATEST_OR_NONE:
+                default:
+                    // Return specific version or null.
+                    if (schema != null) {
+                        LOGGER.info(String.format("Retrieved schema %s version %d in %d ms.",
+                                schemaName, schemaVersion,
+                                Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
+                    } else {
+                        LOGGER.info("Could not find schema {} in database {}.", schemaName,
+                                properties.getDatabase());
+                    }
                     return schema;
-                }
-                LOGGER.info(String.format("Existing metadata not found for schema %s, will generate new metadata instead for database %s.",
-                        schemaName, properties.getDatabase()));
-                return getNewDatabaseMetadata(properties, schemaName, 1, tableMap);
-            case VERSION_NEW:
-                final int newVersionNumber = schema != null ? schema.getSchemaVersion() + 1 : 1;
-                return getNewDatabaseMetadata(properties, schemaName, newVersionNumber, tableMap);
-            case VERSION_LATEST_OR_NONE:
-            default:
-                // Return specific version or null.
-                if (schema != null) {
-                    LOGGER.info(String.format("Retrieved schema %s version %d in %d ms.",
-                            schemaName, schemaVersion, Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
-                } else {
-                    LOGGER.info("Could not find schema {} in database {}.", schemaName, properties.getDatabase());
-                }
-                return schema;
+            }
+        } finally {
+            closeSchemaReader(schemaReader);
         }
     }
 
@@ -144,6 +161,7 @@ public class DocumentDbMetadataService {
      * @param schemaName the name of the schema.
      * @param schemaVersion the version of the schema.
      * @param tableId the table ID of the table.
+     * @param client the {@link MongoClient} client.
      *
      * @return a {@link DocumentDbSchemaTable} that matches the table if it exists,
      * {@code null} if the table ID does not exist.
@@ -154,14 +172,19 @@ public class DocumentDbMetadataService {
             final @NonNull DocumentDbConnectionProperties properties,
             final @NonNull String schemaName,
             final int schemaVersion,
-            final @NonNull String tableId) {
+            final @NonNull String tableId,
+            final MongoClient client) {
         // Should only be in this map if we failed to write it.
         if (TABLE_MAP.containsKey(tableId)) {
             return TABLE_MAP.get(tableId);
         }
         // Otherwise, assume it's in the stored location.
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
-        return schemaReader.readTable(schemaName, schemaVersion, tableId);
+        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        try {
+            return schemaReader.readTable(schemaName, schemaVersion, tableId);
+        } finally {
+            closeSchemaReader(schemaReader);
+        }
     }
 
     /**
@@ -171,6 +194,7 @@ public class DocumentDbMetadataService {
      * @param schemaName the name of the database schema.
      * @param schemaVersion the version of the database schema.
      * @param remainingTableIds the set of tables IDs.
+     * @param client the {@link MongoClient} client.
      *
      * @return a map of table schema using the table ID as key.
      */
@@ -179,7 +203,8 @@ public class DocumentDbMetadataService {
             final @NonNull DocumentDbConnectionProperties properties,
             final @NonNull String schemaName,
             final int schemaVersion,
-            final @NonNull Set<String> remainingTableIds) {
+            final @NonNull Set<String> remainingTableIds,
+            final MongoClient client) {
 
         // Should only be in this map if we failed to write it.
         final LinkedHashMap<String, DocumentDbSchemaTable> map = remainingTableIds.stream()
@@ -194,14 +219,18 @@ public class DocumentDbMetadataService {
         }
 
         // Otherwise, assume it's in the stored location.
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
-        return schemaReader.readTables(schemaName, schemaVersion, remainingTableIds)
-                .stream()
-                .collect(Collectors.toMap(
-                        DocumentDbSchemaTable::getId,
-                        table -> table,
-                        (o, d) -> d,
-                        LinkedHashMap::new));
+        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        try {
+            return schemaReader.readTables(schemaName, schemaVersion, remainingTableIds)
+                    .stream()
+                    .collect(Collectors.toMap(
+                            DocumentDbSchemaTable::getId,
+                            table -> table,
+                            (o, d) -> d,
+                            LinkedHashMap::new));
+        } finally {
+            closeSchemaReader(schemaReader);
+        }
     }
 
     /**
@@ -209,14 +238,20 @@ public class DocumentDbMetadataService {
      *
      * @param properties the connection properties.
      * @param schemaName the name of the schema to remove.
+     * @param client the {@link MongoClient} client.
      *
      * @throws SQLException if connection properties are incorrect.
      */
     public static void remove(
             final DocumentDbConnectionProperties properties,
-            final String schemaName) throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
-        schemaWriter.remove(schemaName);
+            final String schemaName,
+            final MongoClient client) throws SQLException {
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
+        try {
+            schemaWriter.remove(schemaName);
+        } finally {
+            closeSchemaWriter(schemaWriter);
+        }
     }
 
     /**
@@ -225,15 +260,21 @@ public class DocumentDbMetadataService {
      * @param properties the connection properties.
      * @param schemaName the schema name.
      * @param schemaVersion the schema version.
+     * @param client the {@link MongoClient} client.
      *
      * @throws SQLException if connection properties are incorrect.
      */
     public static void remove(
             final DocumentDbConnectionProperties properties,
             final String schemaName,
-            final int schemaVersion) throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
-        schemaWriter.remove(schemaName, schemaVersion);
+            final int schemaVersion,
+            final MongoClient client) throws SQLException {
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
+        try  {
+            schemaWriter.remove(schemaName, schemaVersion);
+        } finally {
+            closeSchemaWriter(schemaWriter);
+        }
     }
 
     /**
@@ -244,9 +285,14 @@ public class DocumentDbMetadataService {
      * @throws SQLException if unable to connect.
      */
     public static List<DocumentDbSchema> getSchemaList(
-            final DocumentDbConnectionProperties properties) throws SQLException {
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties);
-        return schemaReader.list();
+            final DocumentDbConnectionProperties properties,
+            final MongoClient client) throws SQLException {
+        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        try {
+            return schemaReader.list();
+        } finally {
+            closeSchemaReader(schemaReader);
+        }
     }
 
     /**
@@ -255,6 +301,7 @@ public class DocumentDbMetadataService {
      * @param properties the connection properties.
      * @param schemaName the name of the schema.
      * @param schemaTables the collection of updated table schema.
+     * @param client the {@link MongoClient} client.
      *
      * @throws SQLException if unable to connect or other exception.
      * @throws DocumentDbSchemaSecurityException if unable to write to the database due to
@@ -263,9 +310,9 @@ public class DocumentDbMetadataService {
     public static void update(
             final DocumentDbConnectionProperties properties,
             final String schemaName,
-            final Collection<DocumentDbSchemaTable> schemaTables)
-            throws SQLException, DocumentDbSchemaSecurityException {
-        DocumentDbSchema schema = get(properties, schemaName, VERSION_LATEST_OR_NONE);
+            final Collection<DocumentDbSchemaTable> schemaTables,
+            final MongoClient client) throws SQLException, DocumentDbSchemaSecurityException {
+        DocumentDbSchema schema = get(properties, schemaName, VERSION_LATEST_OR_NONE, client);
         if (schema == null) {
             // This is intentional because the update will increment the version.
             final int schemaVersion = 0;
@@ -275,15 +322,20 @@ public class DocumentDbMetadataService {
                     schemaVersion,
                     new LinkedHashMap<>());
         }
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
-        schemaWriter.update(schema, schemaTables);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
+        try {
+            schemaWriter.update(schema, schemaTables);
+        } finally {
+            closeSchemaWriter(schemaWriter);
+        }
     }
 
     private static DocumentDbSchema getNewDatabaseMetadata(
             final DocumentDbConnectionProperties properties,
             final String schemaName,
             final int schemaVersion,
-            final Map<String, DocumentDbSchemaTable> tableMap) throws SQLException {
+            final Map<String, DocumentDbSchemaTable> tableMap,
+            final MongoClient client) throws SQLException {
         LOGGER.debug("Beginning generation of new metadata.");
         final Instant beginGeneration = Instant.now();
         final DocumentDbSchema schema = getCollectionMetadataDirect(
@@ -291,13 +343,16 @@ public class DocumentDbMetadataService {
                 schemaVersion,
                 properties.getDatabase(),
                 properties,
-                tableMap);
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
+                tableMap,
+                client);
+        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
         try {
             schemaWriter.write(schema, tableMap.values());
         } catch (DocumentDbSchemaSecurityException e) {
             TABLE_MAP.putAll(buildTableMapById(tableMap));
             LOGGER.warn(e.getMessage(), e);
+        } finally {
+            closeSchemaWriter(schemaWriter);
         }
         LOGGER.info(String.format("Successfully generated metadata in %d ms.",
                 Instant.now().toEpochMilli() - beginGeneration.toEpochMilli()));
@@ -316,11 +371,15 @@ public class DocumentDbMetadataService {
             final int schemaVersion,
             final String databaseName,
             final DocumentDbConnectionProperties properties,
-            final Map<String, DocumentDbSchemaTable> tableMap) throws SQLException {
+            final Map<String, DocumentDbSchemaTable> tableMap,
+            final MongoClient client) throws SQLException {
 
         final MongoClientSettings settings = properties.buildMongoClientSettings();
-        try (MongoClient client = MongoClients.create(settings)) {
-            final MongoDatabase database = client.getDatabase(databaseName);
+        final MongoClient mongoClient = client != null
+                ? client
+                : MongoClients.create(settings);
+        try {
+            final MongoDatabase database = mongoClient.getDatabase(databaseName);
             for (String collectionName : getFilteredCollectionNames(database)) {
                 final MongoCollection<BsonDocument> collection = database
                         .getCollection(collectionName, BsonDocument.class);
@@ -339,6 +398,10 @@ public class DocumentDbMetadataService {
                     .collect(Collectors.toSet());
             return new DocumentDbSchema(schemaName, schemaVersion, databaseName,
                     new Date(Instant.now().toEpochMilli()), tableReferences);
+        } finally {
+            if (client == null) {
+                mongoClient.close();
+            }
         }
     }
 
@@ -352,4 +415,19 @@ public class DocumentDbMetadataService {
                 .collect(Collectors.toList());
     }
 
+    private static void closeSchemaReader(final SchemaReader schemaReader) throws SQLException {
+        try {
+            schemaReader.close();
+        } catch (Exception e) {
+            throw new SQLException(e.getMessage(), e);
+        }
+    }
+
+    private static void closeSchemaWriter(final SchemaWriter schemaWriter) throws SQLException {
+        try {
+            schemaWriter.close();
+        } catch (Exception e) {
+            throw new SQLException(e.getMessage(), e);
+        }
+    }
 }

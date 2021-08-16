@@ -16,6 +16,8 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import lombok.SneakyThrows;
 import org.apache.calcite.schema.Table;
 import org.apache.calcite.schema.impl.AbstractSchema;
@@ -34,31 +36,33 @@ import java.util.Map;
 /**
  * Provides a schema for DocumentDB
  */
-public class DocumentDbSchema extends AbstractSchema {
+public class DocumentDbSchema extends AbstractSchema implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchema.class);
     private Map<String, Table> tables;
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
-    private final DocumentDbConnectionProperties properties;
+    private final String databaseName;
+    private final MongoClient client;
+    private final boolean closeClient;
 
     /**
      * Constructs a new {@link DocumentDbSchema} from {@link DocumentDbDatabaseSchemaMetadata}.
      *
      * @param databaseMetadata the database metadata.
+     * @param client the {@link MongoClient} client.
      */
     protected DocumentDbSchema(final DocumentDbDatabaseSchemaMetadata databaseMetadata,
-            final DocumentDbConnectionProperties properties) {
+            final DocumentDbConnectionProperties connectionProperties,
+            final MongoClient client) {
         this.databaseMetadata = databaseMetadata;
-        this.properties = properties;
+        this.databaseName = connectionProperties.getDatabase();
         tables = null;
-    }
-
-    /**
-     * Gets the connection properties.
-     *
-     * @return the {@link DocumentDbConnectionProperties} connection properties object.
-     */
-    public DocumentDbConnectionProperties getProperties() {
-        return properties;
+        if (client != null) {
+            this.client = client;
+            this.closeClient = false;
+        } else {
+            this.client = MongoClients.create(connectionProperties.buildMongoClientSettings());
+            this.closeClient = true;
+        }
     }
 
     @SneakyThrows
@@ -86,5 +90,30 @@ public class DocumentDbSchema extends AbstractSchema {
                     tableName);
         }
         return new DocumentDbTable(schemaTable.getCollectionName(), schemaTable);
+    }
+
+    /**
+     * Gets the {@link MongoClient} client.
+     *
+     * @return the {@link MongoClient} client.
+     */
+    public MongoClient getClient() {
+        return client;
+    }
+
+    /**
+     * Gets the name of the database.
+     *
+     * @return the name of the database.
+     */
+    public String getDatabaseName() {
+        return databaseName;
+    }
+
+    @Override
+    public void close() {
+        if (closeClient && client != null) {
+            client.close();
+        }
     }
 }

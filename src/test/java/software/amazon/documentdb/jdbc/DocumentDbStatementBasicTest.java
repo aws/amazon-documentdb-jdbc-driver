@@ -27,6 +27,7 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 import java.io.IOException;
 import java.sql.Blob;
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -53,41 +54,44 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final String collectionName = "testDocumentDbDriverTest-" + scanMethod.getName();
         final int recordCount = 10;
         prepareSimpleConsistentData(collectionName, recordCount);
-        final DocumentDbStatement statement = getDocumentDbStatement(scanMethod);
-        final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collectionName));
-        Assertions.assertNotNull(resultSet);
-        int count = 0;
-        while (resultSet.next()) {
-            Assertions.assertTrue(
-                    Pattern.matches("^\\w+$", resultSet.getString(collectionName + "__id")));
-            Assertions.assertEquals(Double.MAX_VALUE, resultSet.getDouble("fieldDouble"));
-            Assertions.assertEquals("新年快乐", resultSet.getString("fieldString"));
-            Assertions.assertTrue(Pattern.matches("^\\w+$", resultSet.getString("fieldObjectId")));
-            Assertions.assertTrue(resultSet.getBoolean("fieldBoolean"));
-            Assertions.assertEquals(
-                    Instant.parse("2020-01-01T00:00:00.00Z"),
-                    resultSet.getTimestamp("fieldDate").toInstant());
-            Assertions.assertEquals(Integer.MAX_VALUE, resultSet.getInt("fieldInt"));
-            Assertions.assertEquals(Long.MAX_VALUE, resultSet.getLong("fieldLong"));
-            Assertions.assertEquals("MaxKey", resultSet.getString("fieldMaxKey"));
-            Assertions.assertEquals("MinKey", resultSet.getString("fieldMinKey"));
-            Assertions.assertNull(resultSet.getString("fieldNull"));
+        try (Connection connection = getConnection(scanMethod)) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collectionName));
+            Assertions.assertNotNull(resultSet);
+            int count = 0;
+            while (resultSet.next()) {
+                Assertions.assertTrue(
+                        Pattern.matches("^\\w+$", resultSet.getString(collectionName + "__id")));
+                Assertions.assertEquals(Double.MAX_VALUE, resultSet.getDouble("fieldDouble"));
+                Assertions.assertEquals("新年快乐", resultSet.getString("fieldString"));
+                Assertions.assertTrue(
+                        Pattern.matches("^\\w+$", resultSet.getString("fieldObjectId")));
+                Assertions.assertTrue(resultSet.getBoolean("fieldBoolean"));
+                Assertions.assertEquals(
+                        Instant.parse("2020-01-01T00:00:00.00Z"),
+                        resultSet.getTimestamp("fieldDate").toInstant());
+                Assertions.assertEquals(Integer.MAX_VALUE, resultSet.getInt("fieldInt"));
+                Assertions.assertEquals(Long.MAX_VALUE, resultSet.getLong("fieldLong"));
+                Assertions.assertEquals("MaxKey", resultSet.getString("fieldMaxKey"));
+                Assertions.assertEquals("MinKey", resultSet.getString("fieldMinKey"));
+                Assertions.assertNull(resultSet.getString("fieldNull"));
 
-            // Test for binary/blob types.
-            final Blob blob = resultSet.getBlob("fieldBinary");
-            final byte[] expectedBytes = new byte[]{0, 1, 2};
-            // Note: pos is 1-indexed
-            Assertions.assertArrayEquals(
-                    expectedBytes, blob.getBytes(1, (int) blob.length()));
-            final byte[] actualBytes = new byte[(int) blob.length()];
-            Assertions.assertEquals(3,
-                    resultSet.getBinaryStream("fieldBinary").read(actualBytes));
-            Assertions.assertArrayEquals(expectedBytes, actualBytes);
+                // Test for binary/blob types.
+                final Blob blob = resultSet.getBlob("fieldBinary");
+                final byte[] expectedBytes = new byte[]{0, 1, 2};
+                // Note: pos is 1-indexed
+                Assertions.assertArrayEquals(
+                        expectedBytes, blob.getBytes(1, (int) blob.length()));
+                final byte[] actualBytes = new byte[(int) blob.length()];
+                Assertions.assertEquals(3,
+                        resultSet.getBinaryStream("fieldBinary").read(actualBytes));
+                Assertions.assertArrayEquals(expectedBytes, actualBytes);
 
-            count++;
+                count++;
+            }
+            Assertions.assertEquals(recordCount, count);
         }
-        Assertions.assertEquals(recordCount, count);
     }
 
     /**
@@ -119,20 +123,23 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         documents.add(document);
         insertBsonDocuments("testArrayScalarConflict", documents.toArray(new BsonDocument[]{}));
 
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testArrayScalarConflict_array"));
-        for (int i = 0; i < 4; i++) {
-            Assertions.assertTrue(resultSet.next());
-            final String arrayValue = resultSet.getString("value");
-            if (i == 0) {
-                Assertions.assertEquals("{\"field1\": 1, \"field2\": 2}", arrayValue);
-            } else {
-                Assertions.assertEquals(String.valueOf(i), arrayValue);
+            final ResultSet resultSet = statement.executeQuery(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                    "testArrayScalarConflict_array"));
+            for (int i = 0; i < 4; i++) {
+                Assertions.assertTrue(resultSet.next());
+                final String arrayValue = resultSet.getString("value");
+                if (i == 0) {
+                    Assertions.assertEquals("{\"field1\": 1, \"field2\": 2}", arrayValue);
+                } else {
+                    Assertions.assertEquals(String.valueOf(i), arrayValue);
+                }
             }
+            Assertions.assertFalse(resultSet.next());
         }
-        Assertions.assertFalse(resultSet.next());
     }
 
     /**
@@ -163,19 +170,22 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         );
         documents.add(document);
         insertBsonDocuments("testDocumentScalarConflict", documents.toArray(new BsonDocument[]{}));
-        final DocumentDbStatement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testDocumentScalarConflict"));
-        for (int i = 0; i < 2; i++) {
-            Assertions.assertTrue(resultSet.next());
-            final String arrayValue = resultSet.getString("doc");
-            if (i == 0) {
-                Assertions.assertEquals("{\"field1\": 1, \"field2\": 2}", arrayValue);
-            } else {
-                Assertions.assertEquals(String.valueOf(i), arrayValue);
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                    "testDocumentScalarConflict"));
+            for (int i = 0; i < 2; i++) {
+                Assertions.assertTrue(resultSet.next());
+                final String arrayValue = resultSet.getString("doc");
+                if (i == 0) {
+                    Assertions.assertEquals("{\"field1\": 1, \"field2\": 2}", arrayValue);
+                } else {
+                    Assertions.assertEquals(String.valueOf(i), arrayValue);
+                }
             }
+            Assertions.assertFalse(resultSet.next());
         }
-        Assertions.assertFalse(resultSet.next());
     }
 
     /**
@@ -206,19 +216,21 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         );
         documents.add(document);
         insertBsonDocuments("testArrayDocumentConflict", documents.toArray(new BsonDocument[]{}));
-        final DocumentDbStatement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testArrayDocumentConflict"));
-        for (int i = 0; i < 2; i++) {
-            Assertions.assertTrue(resultSet.next());
-            final String arrayValue = resultSet.getString("field");
-            if (i == 0) {
-                Assertions.assertEquals("{\"field1\": 1, \"field2\": 2}", arrayValue);
-            } else {
-                Assertions.assertEquals("[1, 2, 3, 4]", arrayValue);
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testArrayDocumentConflict"));
+            for (int i = 0; i < 2; i++) {
+                Assertions.assertTrue(resultSet.next());
+                final String arrayValue = resultSet.getString("field");
+                if (i == 0) {
+                    Assertions.assertEquals("{\"field1\": 1, \"field2\": 2}", arrayValue);
+                } else {
+                    Assertions.assertEquals("[1, 2, 3, 4]", arrayValue);
+                }
             }
+            Assertions.assertFalse(resultSet.next());
         }
-        Assertions.assertFalse(resultSet.next());
     }
 
     /**
@@ -254,19 +266,22 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         );
         documents.add(document);
         insertBsonDocuments("testDocumentAndArrayOfMixedTypesConflict", documents.toArray(new BsonDocument[]{}));
-        final DocumentDbStatement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testDocumentAndArrayOfMixedTypesConflict"));
-        for (int i = 0; i < 2; i++) {
-            Assertions.assertTrue(resultSet.next());
-            final String arrayValue = resultSet.getString("field");
-            if (i == 0) {
-                Assertions.assertEquals("{\"field1\": 1, \"field2\": 2}", arrayValue);
-            } else {
-                Assertions.assertEquals("[{\"field1\": 1, \"field2\": 2}, 1]", arrayValue);
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                    "testDocumentAndArrayOfMixedTypesConflict"));
+            for (int i = 0; i < 2; i++) {
+                Assertions.assertTrue(resultSet.next());
+                final String arrayValue = resultSet.getString("field");
+                if (i == 0) {
+                    Assertions.assertEquals("{\"field1\": 1, \"field2\": 2}", arrayValue);
+                } else {
+                    Assertions.assertEquals("[{\"field1\": 1, \"field2\": 2}, 1]", arrayValue);
+                }
             }
+            Assertions.assertFalse(resultSet.next());
         }
-        Assertions.assertFalse(resultSet.next());
     }
 
     /**
@@ -296,15 +311,17 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         );
         documents.add(document);
         insertBsonDocuments(collection,documents.toArray(new BsonDocument[]{}));
-        final Statement statement = getDocumentDbStatement();
-        statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection + "_subDocument"));
-        final ResultSet results = statement.getResultSet();
-        Assertions.assertTrue(results.next());
-        Assertions.assertEquals("key0", results.getString(1));
-        Assertions.assertEquals(1, results.getInt(2));
-        Assertions.assertEquals(2, results.getInt(3));
-        Assertions.assertFalse(results.next(), "Contained unexpected extra row.");
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection + "_subDocument"));
+            final ResultSet results = statement.getResultSet();
+            Assertions.assertTrue(results.next());
+            Assertions.assertEquals("key0", results.getString(1));
+            Assertions.assertEquals(1, results.getInt(2));
+            Assertions.assertEquals(2, results.getInt(3));
+            Assertions.assertFalse(results.next(), "Contained unexpected extra row.");
+        }
     }
 
     /**
@@ -336,14 +353,17 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         );
         documents.add(document);
         insertBsonDocuments(collection, documents.toArray(new BsonDocument[]{}));
-        final Statement statement = getDocumentDbStatement();
-        statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), collection + "_subDocument_nestedSubDoc"));
-        final ResultSet results = statement.getResultSet();
-        Assertions.assertTrue(results.next());
-        Assertions.assertEquals("key0", results.getString(1));
-        Assertions.assertEquals(7, results.getInt(2));
-        Assertions.assertFalse(results.next(), "Contained unexpected extra row.");
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                    collection + "_subDocument_nestedSubDoc"));
+            final ResultSet results = statement.getResultSet();
+            Assertions.assertTrue(results.next());
+            Assertions.assertEquals("key0", results.getString(1));
+            Assertions.assertEquals(7, results.getInt(2));
+            Assertions.assertFalse(results.next(), "Contained unexpected extra row.");
+        }
     }
 
     /**
@@ -363,13 +383,16 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"field\": null}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103\n}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT COUNT(\"field\") from \"%s\".\"%s\"", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(1, resultSet.getInt(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT COUNT(\"field\") from \"%s\".\"%s\"", getDatabaseName(),
+                            tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(1, resultSet.getInt(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -388,13 +411,16 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT SUM(1) from \"%s\".\"%s\"", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(3, resultSet.getInt(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT SUM(1) from \"%s\".\"%s\"", getDatabaseName(),
+                            tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(3, resultSet.getInt(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -417,17 +443,19 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"fieldA\": 5,\n" +
                 "\"fieldB\": 6}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" LIMIT 2 OFFSET 1",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" LIMIT 2 OFFSET 1",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -450,27 +478,29 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"fieldA\": 5,\n" +
                 "\"fieldB\": \"ghi\"}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldA\" IN (1, 5)",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
-        resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldB\" IN ('abc', 'ghi')",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("103", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldA\" IN (1, 5)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+            resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldB\" IN ('abc', 'ghi')",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("103", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -493,23 +523,25 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"fieldA\": 5, \n" +
                 "\"fieldB\": \"ghi\"}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldA\" NOT IN (1, 5)",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
-        resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldB\" NOT IN ('abc', 'ghi')",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldA\" NOT IN (1, 5)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+            resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" WHERE \"fieldB\" NOT IN ('abc', 'ghi')",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -527,30 +559,32 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"fieldB\": 1.2," +
                 "\"fieldC\": 10000000000}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CAST(\"fieldA\" AS INTEGER), " +
-                                "CAST(\"fieldA\" AS BIGINT), " +
-                                "CAST(\"fieldA\" AS DOUBLE), " +
-                                "CAST(\"fieldB\" AS INTEGER)," +
-                                "CAST(\"fieldB\" AS BIGINT), " +
-                                "CAST(\"fieldB\" AS DOUBLE), " +
-                                "CAST(\"fieldC\" AS BIGINT), " +
-                                "CAST(\"fieldC\" AS DOUBLE) " +
-                                " FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(1, resultSet.getInt(1));
-        Assertions.assertEquals(1L, resultSet.getLong(2));
-        Assertions.assertEquals(1D, resultSet.getDouble(3));
-        Assertions.assertEquals(1, resultSet.getInt(4));
-        Assertions.assertEquals(1L, resultSet.getLong(5));
-        Assertions.assertEquals(1.2D, resultSet.getDouble(6));
-        Assertions.assertEquals(10000000000L, resultSet.getLong(7));
-        Assertions.assertEquals(10000000000D, resultSet.getDouble(8));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CAST(\"fieldA\" AS INTEGER), " +
+                                    "CAST(\"fieldA\" AS BIGINT), " +
+                                    "CAST(\"fieldA\" AS DOUBLE), " +
+                                    "CAST(\"fieldB\" AS INTEGER)," +
+                                    "CAST(\"fieldB\" AS BIGINT), " +
+                                    "CAST(\"fieldB\" AS DOUBLE), " +
+                                    "CAST(\"fieldC\" AS BIGINT), " +
+                                    "CAST(\"fieldC\" AS DOUBLE) " +
+                                    " FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(1, resultSet.getInt(1));
+            Assertions.assertEquals(1L, resultSet.getLong(2));
+            Assertions.assertEquals(1D, resultSet.getDouble(3));
+            Assertions.assertEquals(1, resultSet.getInt(4));
+            Assertions.assertEquals(1L, resultSet.getLong(5));
+            Assertions.assertEquals(1.2D, resultSet.getDouble(6));
+            Assertions.assertEquals(10000000000L, resultSet.getLong(7));
+            Assertions.assertEquals(10000000000D, resultSet.getDouble(8));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -568,25 +602,28 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"fieldA\": \"2020-03-11\", \n" +
                 "\"fieldNum\": \"100.5\"}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CAST(\"fieldA\" AS DATE), " +
-                                "CAST(\"fieldA\" AS TIMESTAMP), " +
-                                "CAST(\"fieldNum\" AS DOUBLE), " +
-                                "CAST(\"fieldNum\" AS INTEGER)," +
-                                "CAST(\"fieldNum\" AS BIGINT) " +
-                                " FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("2020-03-11", resultSet.getString(1));
-        Assertions.assertEquals(new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime(),
-                resultSet.getTimestamp(2).getTime());
-        Assertions.assertEquals(100.5D, resultSet.getDouble(3));
-        Assertions.assertEquals(100, resultSet.getInt(4));
-        Assertions.assertEquals(100, resultSet.getLong(5));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CAST(\"fieldA\" AS DATE), " +
+                                    "CAST(\"fieldA\" AS TIMESTAMP), " +
+                                    "CAST(\"fieldNum\" AS DOUBLE), " +
+                                    "CAST(\"fieldNum\" AS INTEGER)," +
+                                    "CAST(\"fieldNum\" AS BIGINT) " +
+                                    " FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("2020-03-11", resultSet.getString(1));
+            Assertions.assertEquals(
+                    new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime(),
+                    resultSet.getTimestamp(2).getTime());
+            Assertions.assertEquals(100.5D, resultSet.getDouble(3));
+            Assertions.assertEquals(100, resultSet.getInt(4));
+            Assertions.assertEquals(100, resultSet.getLong(5));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -603,23 +640,27 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         doc1.append("date",
                 new BsonTimestamp(new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime()));
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CAST(\"date\" AS DATE), " +
-                                "CAST(\"date\" AS TIMESTAMP), " +
-                                "CAST(\"date\" AS TIME)," +
-                                "CAST(\"date\" AS VARCHAR) " +
-                                " FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("2020-03-11", resultSet.getDate(1).toString());
-        Assertions.assertEquals(new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime(),
-                resultSet.getTimestamp(2).getTime());
-        Assertions.assertEquals(new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime(),
-                resultSet.getTime(3).getTime());
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CAST(\"date\" AS DATE), " +
+                                    "CAST(\"date\" AS TIMESTAMP), " +
+                                    "CAST(\"date\" AS TIME)," +
+                                    "CAST(\"date\" AS VARCHAR) " +
+                                    " FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("2020-03-11", resultSet.getDate(1).toString());
+            Assertions.assertEquals(
+                    new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime(),
+                    resultSet.getTimestamp(2).getTime());
+            Assertions.assertEquals(
+                    new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime(),
+                    resultSet.getTime(3).getTime());
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -635,16 +676,18 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"fieldA\": false}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CAST(\"fieldA\" AS VARCHAR)" +
-                                " FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("false", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CAST(\"fieldA\" AS VARCHAR)" +
+                                    " FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("false", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -665,22 +708,23 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         doc1.append("fieldTimestamp", new BsonTimestamp(
                 new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime()));
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT CAST(CAST(\"dateString\" AS DATE) AS VARCHAR), " +
-                                "CAST(CAST(\"fieldTimestamp\" AS DATE) AS VARCHAR), " +
-                                "CAST(CAST(\"fieldNum\" AS DOUBLE) AS INTEGER)" +
-                                " FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("2020-03-11", resultSet.getString(1));
-        Assertions.assertEquals("2020-03-11", resultSet.getString(2));
-        Assertions.assertEquals(5, resultSet.getInt(3));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT CAST(CAST(\"dateString\" AS DATE) AS VARCHAR), " +
+                                    "CAST(CAST(\"fieldTimestamp\" AS DATE) AS VARCHAR), " +
+                                    "CAST(CAST(\"fieldNum\" AS DOUBLE) AS INTEGER)" +
+                                    " FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("2020-03-11", resultSet.getString(1));
+            Assertions.assertEquals("2020-03-11", resultSet.getString(2));
+            Assertions.assertEquals(5, resultSet.getInt(3));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
-
 
     /**
      * Tests that the result set of a query does not close prematurely when results are retrieved in multiple batches.
@@ -701,16 +745,18 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             docs[i] = doc;
         }
         insertBsonDocuments(tableName, docs);
-        final Statement statement = getDocumentDbStatement();
-        statement.setFetchSize(1);
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\"", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        for (int i = 0; i < numDocs; i++) {
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals(String.valueOf(i), resultSet.getString(1));
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            statement.setFetchSize(1);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * from \"%s\".\"%s\"", getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            for (int i = 0; i < numDocs; i++) {
+                Assertions.assertTrue(resultSet.next());
+                Assertions.assertEquals(String.valueOf(i), resultSet.getString(1));
+            }
+            Assertions.assertFalse(resultSet.next());
         }
-        Assertions.assertFalse(resultSet.next());
     }
 
     /**
@@ -731,16 +777,18 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             docs[i] = doc;
         }
         insertBsonDocuments(tableName, docs);
-        final Statement statement = getDocumentDbStatement();
-        statement.setFetchSize(0);
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT * from \"%s\".\"%s\"", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        for (int i = 0; i < numDocs; i++) {
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals(String.valueOf(i), resultSet.getString(1));
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            statement.setFetchSize(0);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT * from \"%s\".\"%s\"", getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            for (int i = 0; i < numDocs; i++) {
+                Assertions.assertTrue(resultSet.next());
+                Assertions.assertEquals(String.valueOf(i), resultSet.getString(1));
+            }
+            Assertions.assertFalse(resultSet.next());
         }
-        Assertions.assertFalse(resultSet.next());
     }
 
     /**
@@ -761,25 +809,28 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT \"field\" IS NULL, \"field\" IS NOT NULL FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\" IS NULL, \"field\" IS NOT NULL FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
 
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.getBoolean(1));
-        Assertions.assertTrue(resultSet.getBoolean(2));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
 
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.getBoolean(1));
-        Assertions.assertFalse(resultSet.getBoolean(2));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertFalse(resultSet.getBoolean(2));
 
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.getBoolean(1));
-        Assertions.assertFalse(resultSet.getBoolean(2));
-        Assertions.assertFalse(resultSet.next());
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertFalse(resultSet.getBoolean(2));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -805,45 +856,47 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"field\": \"ab\"}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        // Test SUBSTRING(%1, %2, %3) format.
-        final ResultSet resultSet1 = statement.executeQuery(
-                String.format("SELECT SUBSTRING(\"field\", 1, 3) FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("abc", resultSet1.getString(1));
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("uvw", resultSet1.getString(1));
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("", resultSet1.getString(1));
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("", resultSet1.getString(1));
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("", resultSet1.getString(1));
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("ab", resultSet1.getString(1));
-        Assertions.assertFalse(resultSet1.next());
+            // Test SUBSTRING(%1, %2, %3) format.
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format("SELECT SUBSTRING(\"field\", 1, 3) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("abc", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("uvw", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("ab", resultSet1.getString(1));
+            Assertions.assertFalse(resultSet1.next());
 
-        // Test SUBSTRING(%1, %2) format.
-        final ResultSet resultSet2 = statement.executeQuery(
-                String.format("SELECT SUBSTRING(\"field\", 1) FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("abcdefg", resultSet2.getString(1));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("uvwxyz", resultSet2.getString(1));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("", resultSet2.getString(1));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("", resultSet2.getString(1));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("", resultSet2.getString(1));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("ab", resultSet2.getString(1));
-        Assertions.assertFalse(resultSet2.next());
+            // Test SUBSTRING(%1, %2) format.
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format("SELECT SUBSTRING(\"field\", 1) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("abcdefg", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("uvwxyz", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("", resultSet2.getString(1));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("ab", resultSet2.getString(1));
+            Assertions.assertFalse(resultSet2.next());
+        }
     }
 
     /**
@@ -870,32 +923,34 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"field3\": 5}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT NOT (\"field1\"), " +
-                                "NOT (\"field1\" AND \"field2\"), " +
-                                "NOT (\"field1\" OR \"field2\"), " +
-                                "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.getBoolean(1));
-        Assertions.assertTrue(resultSet.getBoolean(2));
-        Assertions.assertFalse(resultSet.getBoolean(3));
-        Assertions.assertTrue(resultSet.getBoolean(4));
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT NOT (\"field1\"), " +
+                                    "NOT (\"field1\" AND \"field2\"), " +
+                                    "NOT (\"field1\" OR \"field2\"), " +
+                                    "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+            Assertions.assertFalse(resultSet.getBoolean(3));
+            Assertions.assertTrue(resultSet.getBoolean(4));
 
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.getBoolean(1));
-        Assertions.assertFalse(resultSet.getBoolean(2));
-        Assertions.assertFalse(resultSet.getBoolean(3));
-        Assertions.assertFalse(resultSet.getBoolean(4));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertFalse(resultSet.getBoolean(2));
+            Assertions.assertFalse(resultSet.getBoolean(3));
+            Assertions.assertFalse(resultSet.getBoolean(4));
 
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.getBoolean(1));
-        Assertions.assertTrue(resultSet.getBoolean(2));
-        Assertions.assertTrue(resultSet.getBoolean(3));
-        Assertions.assertTrue(resultSet.getBoolean(4));
-        Assertions.assertFalse(resultSet.next());
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+            Assertions.assertTrue(resultSet.getBoolean(3));
+            Assertions.assertTrue(resultSet.getBoolean(4));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -919,19 +974,21 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"field3\": null}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT NOT (\"field1\" AND \"field2\"), " +
-                                "NOT (\"field1\" OR \"field2\"), " +
-                                "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertNull(resultSet.getString(1));
-        Assertions.assertNull(resultSet.getString(2));
-        Assertions.assertNull(resultSet.getString(3));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT NOT (\"field1\" AND \"field2\"), " +
+                                    "NOT (\"field1\" OR \"field2\"), " +
+                                    "NOT (\"field1\" AND \"field3\" > 2) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertNull(resultSet.getString(2));
+            Assertions.assertNull(resultSet.getString(3));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Test that queries using COALESCE() are correct.")
@@ -950,16 +1007,18 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                 "\"field3\": 2}");
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT COALESCE(\"%s\", \"%s\", \"%s\" ) FROM \"%s\".\"%s\"",
-                        "field1", "field2", "field3", getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(resultSet.getInt(1), 1);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals(resultSet.getInt(1), 2);
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT COALESCE(\"%s\", \"%s\", \"%s\" ) FROM \"%s\".\"%s\"",
+                            "field1", "field2", "field3", getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(resultSet.getInt(1), 1);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(resultSet.getInt(1), 2);
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @DisplayName("Tests closing a Statement will not cause exception for cancelQuery.")
@@ -967,8 +1026,10 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @MethodSource({"getTestEnvironments"})
     void testCloseStatement(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final Statement statement = getDocumentDbStatement();
-        Assertions.assertDoesNotThrow(statement::close);
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            Assertions.assertDoesNotThrow(statement::close);
+        }
     }
 
     @ParameterizedTest(name = "testQueryWithSelectBoolean - [{index}] - {arguments}")
@@ -988,18 +1049,20 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
         insertBsonDocuments(tableName,
                 new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT \"field2\" <> 2 FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.getBoolean(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.getBoolean(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.getBoolean(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT \"field2\" <> 2 FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     @ParameterizedTest(name = "testQueryWithNotNull - [{index}] - {arguments}")
@@ -1016,17 +1079,19 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
         insertBsonDocuments(tableName,
                 new BsonDocument[]{doc1, doc2, doc3});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format("SELECT NOT(\"field\") FROM \"%s\".\"%s\"",
-                        getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.getBoolean(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertTrue(resultSet.getBoolean(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertNull(resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT NOT(\"field\") FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 }
