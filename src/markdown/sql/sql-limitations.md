@@ -3,43 +3,24 @@
 ## Basic Query Format
 The driver supports `SELECT` statements of the general form (using BNF notation): 
 ```
-SELECT [ ALL | DISTINCT ]
-   { * | projectItem [, projectItem ]* }
+SELECT [ ALL | DISTINCT ] { * | projectItem [, projectItem ]* }
    FROM tableExpression
    [ WHERE booleanExpression ]
    [ GROUP BY { groupItem [, groupItem ]* } ]
    [ HAVING booleanExpression ]
    [ ORDER BY orderItem [, orderItem ]* ]
    [ LIMIT number ]
-   [ OFFSET start { ROW | ROWS } ]
-
-projectItem:
-   expression [ [ AS ] columnAlias ] |   tableAlias . *
-   
-orderItem:
-   expression [ ASC | DESC ]
-   
-groupItem:
-   expression
-
-tableExpression:
-   tableReference [, tableReference ]*
-   |   tableExpression [ NATURAL | INNER | LEFT OUTER | CROSS ] JOIN tableExpression [ joinCondition ]
-      
-joinCondition:
-   ON booleanExpression
-
-tableReference: 
-   [ schemaName . ] tableName  
+   [ OFFSET start ]
 ```
 Queries without a `FROM` clause or only using `VALUES` in the `FROM` clause are not supported.
-A query must specify 1 or more tables.
+A query must specify 1 or more tables as a comma separated list or using `JOIN` keywords. See the 
+[Joins]() section for more information.
 
 Set operations such as `UNION`, `INTERSECT` and `MINUS` are not supported.
 Grouping operations using `CUBE`, `ROLLLUP` or `GROUPING SETS` are not supported.
 Ordering using `NULLS FIRST` or `NULLS LAST` is not supported. 
 
-Since it is read-only, the driver does not support any kind of 
+Note that since it is read-only, the driver does not support any kind of 
 `CREATE`, `UPDATE`, `DELETE` or `INSERT` statements. The creation of 
 temporary tables using `SELECT INTO` is also not supported.
 
