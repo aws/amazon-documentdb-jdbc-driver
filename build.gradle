@@ -229,9 +229,6 @@ license {
 }
 
 repositories {
-    maven {
-        url 'https://raw.githubusercontent.com/birschick-bq/janino/brucei/ad-189/maven'
-    }
     mavenCentral()
 }
 
