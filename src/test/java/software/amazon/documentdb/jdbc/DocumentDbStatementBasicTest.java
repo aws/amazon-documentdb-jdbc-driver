@@ -883,11 +883,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      */
     @Disabled("AD-315: Boolean expressions do not treat boolean operators with nulls correctly.")
     @DisplayName("Test that queries selecting a boolean expression with NOT from nulls are correct.")
-    @ParameterizedTest(name = "testQueryWithNotNulls - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testQueryWithAndOrNotNulls - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
-    void testQueryWithNotNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+    void testQueryWithAndOrNotNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final String tableName = "testQueryWithNotNulls";
+        final String tableName = "testQueryWithAndOrNotNulls";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
                 "\"field1\": true, \n" + // Added this document only for metadata
                 "\"field2\": true, \n" +
@@ -922,7 +922,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertDoesNotThrow(statement::close);
     }
 
-    @ParameterizedTest(name = "testQueryWithNotNulls - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testQueryWithSelectBoolean - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testQuerySelectBoolean(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -953,11 +953,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertFalse(resultSet.next());
     }
 
-    @ParameterizedTest(name = "testQueryWithNotNulls - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testQueryWithNotNull - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testQuerySelectNotWithNull(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final String tableName = "testQuerySelectNotOfNulls";
+        final String tableName = "testQuerySelectNotNulls";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
                 "\"field\": true}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
