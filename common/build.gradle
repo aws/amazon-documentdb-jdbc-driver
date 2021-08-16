@@ -170,6 +170,7 @@ jacocoTestCoverageVerification.dependsOn jacocoTestReport
  */
 license {
     header =  project.parent.file('license-header.txt')
+    exclude "**/log4j.properties"
     headerDefinitions {
         slash_star_with_space {
             firstLine = '/*'
