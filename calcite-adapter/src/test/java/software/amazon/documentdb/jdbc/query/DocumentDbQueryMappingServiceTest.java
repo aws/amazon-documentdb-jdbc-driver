@@ -276,8 +276,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
                                 "{\"$and\": [{\"$eq\": [\"$array.field1\", {\"$literal\": \"value\"}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, " +
-                                "{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}]}}}"),
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
@@ -760,8 +760,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                        "{\"$and\": [{\"$gt\": [\"$_f3\", {\"$literal\": 1}]}, {\"$gt\": [\"$_f3\", null]}, " +
-                        "{\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
+                        "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$_f3\", null]}, " +
+                        "{\"$gt\": [{\"$literal\": 1}, null]}]}, {\"$gt\": [\"$_f3\", {\"$literal\": 1}]}, null]}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -831,7 +831,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                        "{\"$and\": [{\"$gt\": [\"$Total\", {\"$literal\": 1}]}, {\"$gt\": [\"$Total\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
+                        "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$Total\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}, {\"$gt\": [\"$Total\", {\"$literal\": 1}]}, null]}}}"),
                 result.getAggregateOperations().get(7));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
@@ -956,9 +956,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                        "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 1}]}, " +
-                        "{\"$gt\": [\"$array.field\", null]}, " +
-                        "{\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
+                        "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                        "{\"$gt\": [{\"$literal\": 1}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 1}]}, null]}}}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
@@ -996,8 +995,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$and\": [{\"$gt\": [\"$Total\", {\"$literal\": 1}]}, " +
-                                "{\"$gt\": [\"$Total\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$Total\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 1}, null]}]}, {\"$gt\": [\"$Total\", {\"$literal\": 1}]}, null]}}}"),
                 result.getAggregateOperations().get(8));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}}"),
@@ -1177,16 +1176,15 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(9, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$lookup\": {\"from\": \"testCollection\", \"let\": {\"otherTestCollection__id\": \"$_id\"}, \"pipeline\": [" +
-                                "{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}," +
-                                " {\"array.field2\": {\"$exists\": true}}]}}, " +
+                        "{\"$lookup\": {\"from\": \"testCollection\", \"let\": {\"otherTestCollection__id\": \"$_id\"}, " +
+                                "\"pipeline\": [{\"$match\": {\"$or\": [{\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}, {\"array.field2\": {\"$exists\": true}}]}}, " +
                                 "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}, " +
                                 "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 1}]}, " +
-                                "{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}}}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field\", {\"$literal\": 1}]}, null]}}}, " +
                                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}, " +
-                                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}, " +
-                                "{\"$match\": {\"$expr\": {\"$eq\": [\"$$otherTestCollection__id\", \"$_id\"]}}}], \"as\": \"testCollection_array\"}}\n"),
+                                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}, {\"$match\": " +
+                                "{\"$expr\": {\"$eq\": [\"$$otherTestCollection__id\", \"$_id\"]}}}], \"as\": \"testCollection_array\"}}"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$unwind\": {\"path\": \"$testCollection_array\", \"preserveNullAndEmptyArrays\": false}}"),
@@ -1207,9 +1205,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$and\": [{\"$gt\": [\"$Total\", {\"$literal\": 1}]}, " +
-                                "{\"$gt\": [\"$Total\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 1}, null]}]}}}"),
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$Total\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 1}, null]}]}, {\"$gt\": [\"$Total\", {\"$literal\": 1}]}, null]}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {\"placeholderField1F84EB1G3K47\": {\"$eq\": true}}}"),
@@ -1382,13 +1379,11 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$addFields\": {\"EXPR$0\": " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 10}]}, " +
-                                "{\"$gt\": [\"$array.field\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 10}, null]}]}, {\"$literal\": \"A\"}, " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 5}]}," +
-                                "{\"$gt\": [\"$array.field\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$literal\": \"B\"}, {\"$literal\": \"C\"}]}]}}}"),
+                        "{\"$addFields\": {\"EXPR$0\": {\"$cond\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field\", {\"$literal\": 10}]}, null]}, {\"$literal\": \"A\"}, " +
+                                "{\"$cond\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field\", {\"$literal\": 5}]}, null]}, {\"$literal\": \"B\"}, {\"$literal\": \"C\"}]}]}}}"),
                 result.getAggregateOperations().get(2));
     }
 
@@ -1460,8 +1455,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$and\": [{\"$and\": [{\"$ne\": [\"$array.field\", {\"$literal\": 2}]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 2}, null]}]}, " +
-                                "{\"$and\": [{\"$ne\": [\"$array.field\", {\"$literal\": 3}]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 3}, null]}]}]}}}"),
+                                "{\"$and\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 2}, null]}]}, {\"$ne\": [\"$array.field\", {\"$literal\": 2}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 3}, null]}]}, {\"$ne\": [\"$array.field\", {\"$literal\": 3}]}, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1683,10 +1680,12 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$or\": [" +
-                                "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}]}}}"),
+                                "{\"$or\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1722,10 +1721,12 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$and\": [" +
-                                "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}]}}}"),
+                                "{\"$and\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1761,12 +1762,16 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$or\": [{\"$and\": [" +
-                                "{\"$and\": [{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$and\": [{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
-                                "{\"$or\": [{\"$and\": [{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}]}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}]}}}"),
+                                "{\"$or\": [{\"$and\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}, {\"$or\": [" +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1802,12 +1807,16 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$or\": [{\"$and\": [" +
-                                "{\"$and\": [{\"$lte\": [\"$array.field\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$and\": [{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
-                                "{\"$or\": [{\"$and\": [{\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}]}]}, " +
-                                "{\"$and\": [{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, {\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}]}}}"),
+                                "{\"$or\": [{\"$and\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$lte\": [\"$array.field\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}, {\"$or\": [" +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
