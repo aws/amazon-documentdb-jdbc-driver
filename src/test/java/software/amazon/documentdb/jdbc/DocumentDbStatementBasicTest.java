@@ -806,23 +806,44 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6});
         final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
+
+        // Test SUBSTRING(%1, %2, %3) format.
+        final ResultSet resultSet1 = statement.executeQuery(
                 String.format("SELECT SUBSTRING(\"field\", 1, 3) FROM \"%s\".\"%s\"",
                         getDatabaseName(), tableName));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("abc", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("uvw", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("ab", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        Assertions.assertNotNull(resultSet1);
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("abc", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("uvw", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("", resultSet1.getString(1));
+        Assertions.assertTrue(resultSet1.next());
+        Assertions.assertEquals("ab", resultSet1.getString(1));
+        Assertions.assertFalse(resultSet1.next());
+
+        // Test SUBSTRING(%1, %2) format.
+        final ResultSet resultSet2 = statement.executeQuery(
+                String.format("SELECT SUBSTRING(\"field\", 1) FROM \"%s\".\"%s\"",
+                        getDatabaseName(), tableName));
+        Assertions.assertNotNull(resultSet2);
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("abcdefg", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("uvwxyz", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("", resultSet2.getString(1));
+        Assertions.assertTrue(resultSet2.next());
+        Assertions.assertEquals("ab", resultSet2.getString(1));
+        Assertions.assertFalse(resultSet2.next());
     }
 
     /**
@@ -912,6 +933,34 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         Assertions.assertNull(resultSet.getString(2));
         Assertions.assertNull(resultSet.getString(3));
         Assertions.assertNull(resultSet.getString(4));
+        Assertions.assertFalse(resultSet.next());
+    }
+
+    @DisplayName("Test that queries using COALESCE() are correct.")
+    @ParameterizedTest(name = "testQueryCoalesce - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryCoalesce(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryCoalesce";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field1\": null, \n" + // Added this document only for metadata
+                "\"field2\": 1, \n" +
+                "\"field3\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": 2}");
+
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
+        final Statement statement = getDocumentDbStatement();
+        final ResultSet resultSet = statement.executeQuery(
+                String.format("SELECT COALESCE(\"%s\", \"%s\", \"%s\" ) FROM \"%s\".\"%s\"",
+                        "field1", "field2", "field3", getDatabaseName(), tableName));
+        Assertions.assertNotNull(resultSet);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(resultSet.getInt(1), 1);
+        Assertions.assertTrue(resultSet.next());
+        Assertions.assertEquals(resultSet.getInt(1), 2);
         Assertions.assertFalse(resultSet.next());
     }
 
