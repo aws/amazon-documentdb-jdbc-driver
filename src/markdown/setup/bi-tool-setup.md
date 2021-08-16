@@ -14,7 +14,7 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
 
 ## Tableau Desktop
 
-### Adding the Amazon DocumentDB JDBC Driver
+### Adding the Amazon DocumentDB by AWS JDBC Driver
 
 1. [Download](setup.md#download-the-documentdb-jdbc-driver) the DocumentDB JDBC driver JAR file and copy it to one of these
    directories according to your operating system:
@@ -82,7 +82,7 @@ Outlined here are the setup for [Tableau Desktop](https://www.tableau.com/produc
 
 ## DbVisualizer
 
-### Adding the Amazon DocumentDB JDBC Driver
+### Adding the Amazon DocumentDB by AWS DBC Driver
 
 Start the DbVisualizer application and navigate to the menu path: **Tools > Driver Manager...**
 
@@ -91,7 +91,7 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 1. For the **Name:** field, enter **DocumentDB**
 1. For the **URL Format:** field, enter `jdbc:documentdb://<host>[:port]/<database>[?option=value[&option=value[...]]]`
 1. Click the **folder** button on the right. Navigate to the location of your downloaded
-   Amazon DocumentDB JDBC driver JAR file. Select the file and click the **Open** button.
+   Amazon DocumentDB by AWS JDBC driver JAR file. Select the file and click the **Open** button.
    ![DbVisualizer JDBC Jar file](dbvisualizer-driver-jar-file.png)
 1. Ensure the `software.amazon.documentdb.jdbc.DocumentDbDriver` is selected in the **Driver Class:**
    field. Your Driver Manager settings for **DocumentDB** should look like the following image.
@@ -114,7 +114,7 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 
 ## SQuirreL SQL Client
 
-### Adding the Amazon DocumentDB JDBC Driver
+### Adding the Amazon DocumentDB by AWS JDBC Driver
 
 1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 1. Launch the SQuirrel SQL Client application.
@@ -123,7 +123,7 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 1. For the **Name:** field, enter **DocumentDB**.
 1. For the **Example URL:** field, enter `jdbc:documentdb://<host>[:port]/<database>[?option=value[&option=value[...]]]`
 1. Select the **Extra Class Path** tab.
-1. Click the **Add** button and navigate to the downloaded Amazon DocumentDB JDBC driver JAR file.
+1. Click the **Add** button and navigate to the downloaded Amazon DocumentDB by AWS JDBC driver JAR file.
 1. Click **OK** to add the JAR file to the **Extra Class Path**.
 1. Click the **List Drivers** button.
 1. For the **Class Name:** field, ensure the `software.amazon.documentdb.jdbc.DocumentDbDriver`

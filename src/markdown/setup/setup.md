@@ -1,4 +1,4 @@
-# Amazon DocumentDB JDBC Driver Setup
+# Amazon DocumentDB by AWS JDBC Driver Setup
 
 ## Topics
 
