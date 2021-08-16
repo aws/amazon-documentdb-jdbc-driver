@@ -170,7 +170,7 @@ Connecting without TLS is very straightforward. We essentially follow the same s
    ~~~
    
 ###### With TLS
-Connecting with TLS programmatically is slightly different from how we did it with the `mongo` shell. We need to set up a trust store with the CA certificate. 
+Connecting with TLS programmatically is slightly different from how we did it with the `mongo` shell.
 1. Create a test or simple main to run.  
 2. Use either the Driver Manager, Data Source class or Connection class to establish a connection to `localhost:27017`. Make sure to set hostname, username, password, target database and tls parameters. The target database can be anything as long as it is a valid MongoDB database name (no spaces, no special chars). See example directly using the connection class:
    
