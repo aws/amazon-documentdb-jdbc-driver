@@ -508,6 +508,30 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Sets the local port of the SSH port-forwarding tunnel.
+     * The port number must be non-negative.
+     * A port number of 0 indicates the local port number should be chosen randomly.
+     * Default is '0'
+     *
+     * @param sshLocalPort the SSH tunnel host name and optional port number.
+     */
+    public void setSshLocalPort(final String sshLocalPort) {
+        setProperty(DocumentDbConnectionProperty.SSH_LOCAL_PORT.getName(), sshLocalPort);
+    }
+
+    /**
+     * Sets the local port of the SSH port-forwarding tunnel.
+     * The port number must be non-negative.
+     * A port number of 0 indicates the local port number should be chosen randomly.
+     * Default is '0'
+     *
+     * @return the local port of the SSH port-forwarding tunnel.
+     */
+    public int getSshLocalPort() {
+        return getPropertyAsInteger(DocumentDbConnectionProperty.SSH_LOCAL_PORT.getName());
+    }
+
+    /**
      * Builds the MongoClientSettings from properties.
      *
      * @return a {@link MongoClientSettings} object.
@@ -651,6 +675,9 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getSshKnownHostsFile() != null && !DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getDefaultValue().equals(getSshKnownHostsFile())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE, getSshKnownHostsFile());
+        }
+        if (getSshLocalPort() != Integer.parseInt(DocumentDbConnectionProperty.SSH_LOCAL_PORT.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_LOCAL_PORT, getSshLocalPort());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,

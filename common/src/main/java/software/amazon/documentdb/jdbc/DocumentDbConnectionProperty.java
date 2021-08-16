@@ -69,6 +69,8 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
             "If true, the 'known_hosts' file is checked to ensure the target host is trusted when creating the SSH tunnel. If false, the target host is not checked. Default is 'false'."),
     SSH_KNOWN_HOSTS_FILE("sshKnownHostsFile", "",
             "The path to the 'known_hosts' file used for checking the target host for the SSH tunnel when option 'sshStrictHostKeyChecking' is 'true'. Default is '~/.ssh/known_hosts'."),
+    SSH_LOCAL_PORT("sshLocalPort", "0",
+            "The local port of the SSH port-forwarding tunnel. The port number must be non-negative. A port number of 0 indicates the local port number should be chosen randomly. Default is '0'"),
     ;
 
     // Unsupported MongoDB connection properties that will be ignored but should have warnings.

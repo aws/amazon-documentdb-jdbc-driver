@@ -306,7 +306,11 @@ public class DocumentDbConnection extends Connection
             clusterHost = connectionProperties.getHostname();
             clusterPort = DEFAULT_DOCUMENTDB_PORT;
         }
-        final int localPort = session.setPortForwardingL(LOCALHOST, 0, clusterHost, clusterPort);
+        final int localPort = session.setPortForwardingL(
+                LOCALHOST,
+                connectionProperties.getSshLocalPort(), // defaults to '0' indicating random
+                clusterHost,
+                clusterPort);
         return new SshPortForwardingSession(session, localPort);
     }
 

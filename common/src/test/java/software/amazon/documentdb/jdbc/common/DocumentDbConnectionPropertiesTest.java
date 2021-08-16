@@ -214,7 +214,8 @@ public class DocumentDbConnectionPropertiesTest {
                 "&" + DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE.getName() + "=" + "~/.ssh/key.pem" +
                 "&" + DocumentDbConnectionProperty.SSH_PRIVATE_KEY_PASSPHRASE.getName() + "=" + "passphrase" +
                 "&" + DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getName() + "=" + "false" +
-                "&" + DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getName() + "=" + "~/.ssh/known_hosts";
+                "&" + DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getName() + "=" + "~/.ssh/known_hosts" +
+                "&" + DocumentDbConnectionProperty.SSH_LOCAL_PORT.getName() + "=" + "12345";
         properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
