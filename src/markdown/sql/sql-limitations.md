@@ -1,4 +1,7 @@
 # SQL Support and Limitations
+The Amazon DocumentDB JDBC driver is a read-only driver that supports a subset of SQL-92 and 
+some common extensions. 
+This section highlights limitations to keep in mind when constructing SQL queries for the driver.
 
 ## Basic Query Format
 The driver supports `SELECT` statements of the general form: 
@@ -8,27 +11,24 @@ SELECT [ ALL | DISTINCT ] { * | projectItem [, projectItem ]* }
    [ WHERE booleanExpression ]
    [ GROUP BY { groupItem [, groupItem ]* } ]
    [ HAVING booleanExpression ]
-   [ ORDER BY orderItem [, orderItem ]* ]
+   [ ORDER BY orderItem [ ASC | DESC ] [, orderItem [ ASC | DESC ]* ]
    [ LIMIT limitNumber ]
    [ OFFSET startNumber ]
 ```
 Queries without a `FROM` clause or only using `VALUES` in the `FROM` clause are not supported.
 A `tableExpression` must specify 1 or more tables as a comma separated list or using `JOIN` keywords. See the 
-[Joins](#joins) section for more information. 
-
-All other clauses apart from `SELECT` and `FROM` are optional.
+[Joins](#joins) section for more information. All other clauses are optional.
 
 A `projectItem`, `groupItem` or `orderItem` can be a reference to a column, a literal or
 some combination of the former using [supported operators or functions](#operators-and-functions). 
 A `booleanExpression` is the same but must resolve to a `boolean` value.
 
+A `projectItem` can be given an alias using `AS`. Items without an explicit name will be given
+an auto-generated column label in the result. Ordering using column aliases is allowed.
+
 Set operations `UNION`, `INTERSECT` and `EXCEPT` are not supported.
 Grouping operations using `CUBE`, `ROLLUP` or `GROUPING SETS` are not supported.
-Ordering using `NULLS FIRST` or `NULLS LAST` is not supported.
-
-Note that since it is read-only, the driver does not support any kind of 
-`CREATE`, `UPDATE`, `DELETE` or `INSERT` statements. The creation of 
-temporary tables using `SELECT INTO` is also not supported.
+Ordering using `NULLS FIRST` and `NULLS LAST` or by referencing column ordinals is not supported.
 
 ## Identifiers
 Identifiers are the names of tables, columns, and column aliases in an SQL query.  
@@ -210,10 +210,10 @@ a function that takes `TIMESTAMP`, will be automatically cast to `TIMESTAMP`.
 - `value1 IN (value2 [, valueN]*)`
 - `value1 NOT IN (value2 [, valueN]*)`
 
-In this context, values can be a reference to another column, a literal, 
+In this context, `valueN` can be a reference to another column, a literal, 
 or some expression consisting of other supported operators.
-Values cannot be subqueries. 
-Subqueries are separate queries that can be used as an expression in another query. 
+It **cannot** be a subquery. Subqueries are separate queries that can be used as an expression in another query. 
+The driver does not currently support using subqueries as scalar values.
 
 Note also that values that are references to a column are compared with their native DocumentDB type. 
 For columns where the corresponding fields in DocumentDB
