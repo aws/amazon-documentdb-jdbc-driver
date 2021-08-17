@@ -54,8 +54,10 @@ information.
 
 ## SQL and JDBC Limitations
 
-The Amazon DocumentDB JDBC driver has a number of important limitations. See the 
-[SQL and JDBC limitations documentation](src/markdown/sql/sql-limitations.md) for more information.
+The Amazon DocumentDB JDBC driver has a number of important limitations. See the
+[SQL limitations documentation](src/markdown/sql/sql-limitations.md) and
+[JDBC limitations documentation](src/markdown/jdbc/jdbc-limitations.md) for more information.
+
 
 ## Troubleshooting Guide
 
