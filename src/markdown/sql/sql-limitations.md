@@ -1,7 +1,7 @@
 # SQL Support and Limitations
 
 ## Basic Query Format
-The driver supports `SELECT` statements of the general form (using BNF notation): 
+The driver supports `SELECT` statements of the general form: 
 ```
 SELECT [ ALL | DISTINCT ] { * | projectItem [, projectItem ]* }
    FROM tableExpression
@@ -9,23 +9,29 @@ SELECT [ ALL | DISTINCT ] { * | projectItem [, projectItem ]* }
    [ GROUP BY { groupItem [, groupItem ]* } ]
    [ HAVING booleanExpression ]
    [ ORDER BY orderItem [, orderItem ]* ]
-   [ LIMIT number ]
-   [ OFFSET start ]
+   [ LIMIT limitNumber ]
+   [ OFFSET startNumber ]
 ```
 Queries without a `FROM` clause or only using `VALUES` in the `FROM` clause are not supported.
-A query must specify 1 or more tables as a comma separated list or using `JOIN` keywords. See the 
-[Joins]() section for more information.
+A `tableExpression` must specify 1 or more tables as a comma separated list or using `JOIN` keywords. See the 
+[Joins](#joins) section for more information. 
 
-Set operations such as `UNION`, `INTERSECT` and `MINUS` are not supported.
-Grouping operations using `CUBE`, `ROLLLUP` or `GROUPING SETS` are not supported.
-Ordering using `NULLS FIRST` or `NULLS LAST` is not supported. 
+All other clauses apart from `SELECT` and `FROM` are optional.
+
+A `projectItem`, `groupItem` or `orderItem` can be a reference to a column, a literal or
+some combination of the former using [supported operators or functions](#operators-and-functions). 
+A `booleanExpression` is the same but must resolve to a boolean value.
+
+Set operations `UNION`, `INTERSECT` and `EXCEPT` are not supported.
+Grouping operations using `CUBE`, `ROLLUP` or `GROUPING SETS` are not supported.
+Ordering using `NULLS FIRST` or `NULLS LAST` is not supported.
 
 Note that since it is read-only, the driver does not support any kind of 
 `CREATE`, `UPDATE`, `DELETE` or `INSERT` statements. The creation of 
 temporary tables using `SELECT INTO` is also not supported.
 
 ## Identifiers
-Identifiers are the names of tables and columns in a SQL query.  
+Identifiers are the names of tables, columns, and column aliases in an SQL query.  
 
 Quoting is optional but unquoted identifiers must start with a letter 
 and can only contain letters, digits, and underscores. 
@@ -139,15 +145,35 @@ The following are all equivalent to the same inner join:
 `FULL OUTER` and `RIGHT (OUTER)` joins even with the above join conditions are not supported. 
 
 ## Data Types
+The driver recognizes the following SQL data types:
 
-<!-- TODO: Add supported data types. -->
+- `BOOLEAN`
+- `TINYINT`
+- `SMALLINT`
+- `INTEGER` or `INT`
+- `BIGINT`
+- `DECIMAL`
+- `REAL` or `FLOAT`
+- `DOUBLE`
+- `CHAR`
+- `VARCHAR`
+- `BINARY`
+- `VARBINARY`
+- `DATE`
+- `TIME`
+- `TIMESTAMP`
+
+Note that while all the above can be used when constructing queries, columns themselves can 
+only be of the types `BOOLEAN`, `BIGINT`, `INTEGER`, `DECIMAL`, `DOUBLE`, `VARCHAR`, `VARBINARY` and `TIMESTAMP`. 
+See the [schema discovery or generation](schema/schema-discovery.md) sections for more information.
 
 ## Sorting
 When using an `ORDER BY` clause, values corresponding directly to a column will 
 be sorted with the underlying DocumentDB type. 
 For columns where the corresponding fields in DocumentDB
 may be of varying types (ex: some are `string`, `null`, or `integer`),
-the sort will consider both value and type, following the [MongoDB comparison order]().
+the sort will consider both value and type, 
+following the [MongoDB comparison order](https://docs.mongodb.com/manual/reference/bson-type-comparison-order/).
 This can produce results that are unexpected for those unfamiliar with the underlying data. 
 
 Note that null values will be first when sorting by `ASC` and last when sorting by `DESC` and that
@@ -158,7 +184,18 @@ Type conversions is currently handled as a last step of the query execution.
 When used outside the `SELECT` clause or even in a more complex or nested expression in the `SELECT` clause, 
 `CAST` may have inconsistent results.
 
-<!-- TODO: Add supported CASTs. -->
+The following conversions using `CAST` are supported (denoted by **Y**) or unsupported (denoted by **N**):
+
+|  FROM - TO                      | BOOLEAN | TINYINT, SMALLINT, INT, BIGINT | DECIMAL, FLOAT, REAL, DOUBLE | DATE | TIME | TIMESTAMP | CHAR, VARCHAR | BINARY, VARBINARY
+|:-------------------             |:--------|:------------------------------ |:-----------------------------|:-----|:-----|:----------|:----------------|:-------------------
+| BOOLEAN                         | x       | i       | e       | e        | e   | e      | e       | e             | e      | x        | x    | x    | x         | i               | x
+| TINYINT, SMALLINT, INT, BIGINT  | x       | e       | i       | i        | i   | i      | i       | i             | i      | e        | x    | x    | e         | i               | x | x    | e       | i       | i        | i   | i      | i       | i             | i      | e        | x    | x    | e         | i               | x
+| DECIMAL, FLOAT, REAL, DOUBLE    |         | x    | e       | i       | i        | i   | i      | i       | i             | i      | e        | x    | x    | e         | i               | x
+| DATE                            | x       | x       | x       | x        | x   | x      | x       | x             | x      | x        | i    | x    | i         | i               | x
+| TIME                            | x       | x       | x       | x        | x   | x      | x       | x             | x      | x        | x    | i    | e         | i               | x
+| TIMESTAMP                       | x       | x       | e       | e        | e   | e      | e       | e             | e      | x        | i    | e    | i         | i               | x
+| CHAR, VARCHAR                   | x       | e       | i       | i        | i   | i      | i       | i             | i      | i        | i    | i    | i         | i               | i
+| BINARY, VARBINARY               | x       | x       | x       | x        | x   | x      | x       | x             | x      | x        | e    | e    | e         | i               | i
 
 ## Operators and Functions 
 
@@ -179,7 +216,8 @@ Subqueries are separate queries that can be used as an expression in another que
 Note also that values that are references to a column are compared with their native DocumentDB type. 
 For columns where the corresponding fields in DocumentDB
 may be of varying types (ex: some are `string`, `null`, or `integer`), 
-comparison operators will compare both value and type, following the [MongoDB comparison order]().
+comparison operators will compare both value and type,
+following the [MongoDB comparison order](https://docs.mongodb.com/manual/reference/bson-type-comparison-order/).
 This can produce results that are unexpected for those unfamiliar with the underlying data.
 
 ### Logical Operators

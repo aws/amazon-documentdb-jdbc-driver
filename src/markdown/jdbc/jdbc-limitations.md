@@ -1,4 +1,4 @@
-# JDBC Support & Limitations
+# JDBC Support and Limitations
 
 ## Schema, Catalog, and Tables
 The semantics of schema, catalogs, and tables often vary by database vendor.
