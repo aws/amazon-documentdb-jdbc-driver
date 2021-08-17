@@ -149,4 +149,9 @@ public class FileSchemaWriter implements SchemaWriter {
             }
         }
     }
+
+    @Override
+    public void close() {
+        // Nothing to do.
+    }
 }

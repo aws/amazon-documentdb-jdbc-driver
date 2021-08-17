@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
@@ -65,9 +67,12 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     }
 
     @AfterAll
-    static void afterAll() throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(VALID_CONNECTION_PROPERTIES);
-        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+    static void afterAll() throws Exception {
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        }
+        basicConnection.close();
     }
 
     /**
@@ -77,11 +82,12 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     void testIsValidWhenConnectionIsValid() throws SQLException {
-        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
-        // NOTE: Observed approximate 10 .. 11 seconds delay before first heartbeat is returned.
-        final int timeoutSeconds = 15;
-        Assertions.assertTrue(connection.isValid(timeoutSeconds));
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES)) {
+            // NOTE: Observed approximate 10 .. 11 seconds delay before first heartbeat is returned.
+            final int timeoutSeconds = 15;
+            Assertions.assertTrue(connection.isValid(timeoutSeconds));
+        }
     }
 
     /**
@@ -91,9 +97,10 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
      */
     @Test
     void testIsValidWhenTimeoutIsNegative() throws SQLException {
-        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES);
-        Assertions.assertThrows(SQLException.class, () -> connection.isValid(-1));
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES)) {
+            Assertions.assertThrows(SQLException.class, () -> connection.isValid(-1));
+        }
     }
 
     /**
@@ -123,9 +130,10 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setRetryReadsEnabled("false");
         properties.setReadPreference(DocumentDbReadPreference.PRIMARY.getName());
 
-        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties);
-        Assertions.assertNotNull(connection);
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            Assertions.assertNotNull(connection);
+        }
     }
 
     /**
@@ -139,9 +147,10 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setReadPreference("invalidReadPreference");
         properties.setTlsEnabled("invalidBoolean");
 
-        final DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
-                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties);
-        Assertions.assertNotNull(connection);
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            Assertions.assertNotNull(connection);
+        }
     }
 
     /** Tests constructor when passed an invalid database name. */
@@ -164,7 +173,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
                         DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties))
                         .getMessage()
-                        .contains("Security error detected:"));
+                        .contains("Authorization failed for user"));
     }
 
     /**
@@ -252,5 +261,35 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         Assertions.assertTrue(tableTypes.next());
         Assertions.assertEquals("TABLE", tableTypes.getString(1));
         Assertions.assertFalse(tableTypes.next());
+    }
+
+    @Test
+    @DisplayName("Tests SSH tunnel options")
+    void testSshTunnelOptions() throws SQLException {
+        final String docDbUserProperty = "DOC_DB_USER";
+        final String docDbHostProperty = "DOC_DB_HOST";
+        final String docDbPrivKeyFileProperty = "DOC_DB_PRIV_KEY_FILE";
+        final DocumentDbTestEnvironment environment = DocumentDbTestEnvironmentFactory
+                .getDocumentDb40SshTunnelEnvironment();
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(environment.getJdbcConnectionString());
+
+        final String docDbRemoteHost = System.getenv(docDbHostProperty);
+        final String docDbSshUserAndHost = System.getenv(docDbUserProperty);
+        final String docDbPrivKeyFile = System.getenv(docDbPrivKeyFileProperty);
+        final int userSeparatorIndex = docDbSshUserAndHost.indexOf('@');
+        final String sshUser = docDbSshUserAndHost.substring(0, userSeparatorIndex);
+        final String sshHostname = docDbSshUserAndHost.substring(userSeparatorIndex + 1);
+
+        properties.setHostname(docDbRemoteHost);
+        properties.setSshUser(sshUser);
+        properties.setSshHostname(sshHostname);
+        properties.setSshPrivateKeyFile(docDbPrivKeyFile);
+        properties.setSshStrictHostKeyChecking("false");
+
+        try (Connection connection = DriverManager.getConnection("jdbc:documentdb:", properties)) {
+            Assertions.assertTrue(connection instanceof DocumentDbConnection);
+            Assertions.assertTrue(connection.isValid(10));
+        }
     }
 }

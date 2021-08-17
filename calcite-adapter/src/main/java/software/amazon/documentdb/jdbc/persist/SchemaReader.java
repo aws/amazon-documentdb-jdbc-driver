@@ -25,7 +25,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
-public interface SchemaReader {
+public interface SchemaReader extends AutoCloseable {
 
     /**
      * Reads the latest version of the default schema for current database.

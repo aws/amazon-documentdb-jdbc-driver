@@ -34,6 +34,8 @@ import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.DuplicateKeyException;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import lombok.Getter;
 import lombok.NonNull;
 import org.apache.commons.cli.CommandLine;
@@ -238,6 +240,8 @@ public class DocumentDbMain {
             "New schema '%s', version '%s' generated.";
     private static final String REMOVED_SCHEMA_MESSAGE = "Removed schema '%s'.";
 
+    private static MongoClient client;
+
     static {
         ARCHIVE_VERSION = getArchiveVersion();
         LIBRARY_NAME = getLibraryName();
@@ -356,6 +360,8 @@ public class DocumentDbMain {
             output.append(e.getClass().getSimpleName())
                     .append(": ")
                     .append(e.getMessage());
+        } finally {
+            closeClient();
         }
     }
 
@@ -390,6 +396,20 @@ public class DocumentDbMain {
         }
     }
 
+    private static MongoClient getMongoClient(final DocumentDbConnectionProperties properties) {
+        if (client == null) {
+            client = MongoClients.create(properties.buildMongoClientSettings());
+        }
+        return client;
+    }
+
+    private static void closeClient() {
+        if (client != null) {
+            client.close();
+            client = null;
+        }
+    }
+
     private static void performImport(
             final CommandLine commandLine,
             final DocumentDbConnectionProperties properties,
@@ -421,7 +441,8 @@ public class DocumentDbMain {
             DocumentDbDatabaseSchemaMetadata.update(
                     properties,
                     properties.getSchemaName(),
-                    schemaTableList);
+                    schemaTableList,
+                    getMongoClient(properties));
         } catch (SQLException | DocumentDbSchemaSecurityException e) {
             output.append(e.getClass().getSimpleName())
                     .append(" ")
@@ -515,8 +536,11 @@ public class DocumentDbMain {
         final List<String> requestedTableList = requestedTableNames != null
                 ? Arrays.asList(requestedTableNames)
                 : new ArrayList<>();
-        final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), VERSION_LATEST_OR_NONE);
+        final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata.get(
+                properties,
+                properties.getSchemaName(),
+                VERSION_LATEST_OR_NONE,
+                getMongoClient(properties));
         if (schema == null) {
             // No schema to export.
             return;
@@ -590,7 +614,7 @@ public class DocumentDbMain {
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
         final List<DocumentDbSchema> schemas = DocumentDbDatabaseSchemaMetadata.getSchemaList(
-                properties);
+                properties, getMongoClient(properties));
         for (DocumentDbSchema schema : schemas) {
             output.append(String.format("Name=%s, Version=%d, SQL Name=%s, Modified=%s%n",
                     maybeQuote(schema.getSchemaName()),
@@ -605,8 +629,11 @@ public class DocumentDbMain {
     private static void performListTables(
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
-        final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), VERSION_LATEST_OR_NONE);
+        final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata.get(
+                properties,
+                properties.getSchemaName(),
+                VERSION_LATEST_OR_NONE,
+                getMongoClient(properties));
         if (schema != null) {
             final List<String> sortedTableNames = schema.getTableSchemaMap().keySet().stream()
                     .sorted()
@@ -625,15 +652,21 @@ public class DocumentDbMain {
     private static void performRemove(
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
-        DocumentDbDatabaseSchemaMetadata.remove(properties, properties.getSchemaName());
+        DocumentDbDatabaseSchemaMetadata.remove(
+                properties,
+                properties.getSchemaName(),
+                getMongoClient(properties));
         output.append(String.format(REMOVED_SCHEMA_MESSAGE, properties.getSchemaName()));
     }
 
     private static void performGenerateNew(
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
-        final DocumentDbDatabaseSchemaMetadata schema =  DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), VERSION_NEW);
+        final DocumentDbDatabaseSchemaMetadata schema =  DocumentDbDatabaseSchemaMetadata.get(
+                properties,
+                properties.getSchemaName(),
+                VERSION_NEW,
+                getMongoClient(properties));
         if (schema != null) {
             output.append(String.format(NEW_SCHEMA_VERSION_GENERATED_MESSAGE,
                     schema.getSchemaName(),

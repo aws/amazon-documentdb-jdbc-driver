@@ -9,7 +9,7 @@ plugins {
 }
 
 group 'software.amazon.documentdb.jdbc'
-version '1.0.0-beta.6'
+version "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}-beta.${project.BETA_VERSION}"
 description 'documentdb-jdbc-driver'
 
 java {
@@ -53,6 +53,7 @@ shadowJar {
     minimize {
         exclude(dependency('org.apache.calcite::'))
         exclude(dependency('org.slf4j.*::'))
+        exclude(dependency('com.jcraft::'))
     }
 }
 
@@ -214,6 +215,7 @@ jacocoTestCoverageVerification.dependsOn jacocoTestReport
  */
 license {
     header =  project.file('license-header.txt')
+    exclude "**/*.properties"
     headerDefinitions {
         slash_star_with_space {
             firstLine = '/*'
@@ -226,6 +228,21 @@ license {
     mapping {
         java = 'slash_star_with_space'
     }
+}
+
+/**
+ * Write driver version data to properties file.
+ */
+task writeProperties(type: WriteProperties) {
+    outputFile("$projectDir/src/main/resources/project.properties")
+    property("driver.major.version", MAJOR_VERSION)
+    property("driver.minor.version", MINOR_VERSION)
+    property("driver.full.version", project.version)
+}
+
+processResources {
+    from(writeProperties)
+    duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 
 repositories {
@@ -244,6 +261,7 @@ dependencies {
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+    implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
     compileOnly         'org.projectlombok:lombok:1.18.16'

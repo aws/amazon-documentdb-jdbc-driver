@@ -18,6 +18,9 @@ package software.amazon.documentdb.jdbc;
 
 import lombok.SneakyThrows;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -30,9 +33,34 @@ import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOC
  */
 public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Driver {
     // Note: This class must be marked public for the registration/DeviceManager to work.
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDriver.class);
+    private static final String DRIVER_MAJOR_VERSION_KEY = "driver.major.version";
+    private static final String DRIVER_MINOR_VERSION_KEY = "driver.minor.version";
+    private static final String DRIVER_FULL_VERSION_KEY = "driver.full.version";
+    private static final String PROPERTIES_FILE_PATH = "/project.properties";
+    static final int DRIVER_MAJOR_VERSION;
+    static final int DRIVER_MINOR_VERSION;
+    static final String DRIVER_VERSION;
 
     // Registers the JDBC driver.
     static {
+        // Retrieve driver metadata from properties file.
+        int majorVersion = 0;
+        int minorVersion = 0;
+        String fullVersion = "";
+        try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
+            final Properties p = new Properties();
+            p.load(is);
+            majorVersion = Integer.parseInt(p.getProperty(DRIVER_MAJOR_VERSION_KEY));
+            minorVersion = Integer.parseInt(p.getProperty(DRIVER_MINOR_VERSION_KEY));
+            fullVersion = p.getProperty(DRIVER_FULL_VERSION_KEY);
+        } catch (Exception e) {
+            LOGGER.error("Error loading driver version: " + e.getMessage());
+        }
+        DRIVER_MAJOR_VERSION = majorVersion;
+        DRIVER_MINOR_VERSION = minorVersion;
+        DRIVER_VERSION = fullVersion;
+
         new DocumentDbDriver().register();
     }
 
@@ -82,5 +110,15 @@ public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Dri
 
     protected String getConnectStringPrefix() {
         return DOCUMENT_DB_SCHEME;
+    }
+
+    @Override
+    public int getMajorVersion() {
+        return DRIVER_MAJOR_VERSION;
+    }
+
+    @Override
+    public int getMinorVersion() {
+        return DRIVER_MINOR_VERSION;
     }
 }

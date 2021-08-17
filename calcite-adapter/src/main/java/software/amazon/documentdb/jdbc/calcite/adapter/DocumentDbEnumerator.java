@@ -16,7 +16,6 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import com.mongodb.client.MongoClient;
 import lombok.SneakyThrows;
 import org.apache.calcite.linq4j.Enumerator;
 import org.apache.calcite.linq4j.function.Function1;
@@ -37,7 +36,6 @@ class DocumentDbEnumerator implements Enumerator<Object> {
     private final Iterator<Document> cursor;
     private final Function1<Document, Object> getter;
     private Object current;
-    private final MongoClient client;
 
     /** Creates a DocumentDbEnumerator.
      *
@@ -45,11 +43,9 @@ class DocumentDbEnumerator implements Enumerator<Object> {
      * @param getter Converts an object into a list of fields
      */
     DocumentDbEnumerator(final Iterator<Document> cursor,
-            final Function1<Document, Object> getter,
-            final MongoClient client) {
+            final Function1<Document, Object> getter) {
         this.cursor = cursor;
         this.getter = getter;
-        this.client = client;
     }
 
     @Override public Object current() {
@@ -80,7 +76,6 @@ class DocumentDbEnumerator implements Enumerator<Object> {
         if (cursor instanceof AutoCloseable) {
             ((AutoCloseable) cursor).close();
         }
-        client.close();
         // AggregationOutput implements Iterator but not DBCursor. There is no
         // available close() method -- apparently there is no open resource.
     }

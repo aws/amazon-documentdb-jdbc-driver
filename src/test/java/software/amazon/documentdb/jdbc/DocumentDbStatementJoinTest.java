@@ -24,6 +24,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
+import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -44,49 +45,52 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 BsonDocument.parse("{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1 } }");
         insertBsonDocuments(
                 "testComplexDocument", new BsonDocument[]{document});
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        // Verify the base table.
-        final ResultSet resultSet1 = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testComplexDocument"));
-        Assertions.assertNotNull(resultSet1);
+            // Verify the base table.
+            final ResultSet resultSet1 = statement.executeQuery(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testComplexDocument"));
+            Assertions.assertNotNull(resultSet1);
 
-        // Verify the nested table from the field doc.
-        final ResultSet resultSet2 = statement.executeQuery(String.format(
-                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testComplexDocument_doc"));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("key", resultSet2.getString("testComplexDocument__id"));
-        Assertions.assertEquals(1, resultSet2.getInt("field"));
+            // Verify the nested table from the field doc.
+            final ResultSet resultSet2 = statement.executeQuery(String.format(
+                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), "testComplexDocument_doc"));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("key", resultSet2.getString("testComplexDocument__id"));
+            Assertions.assertEquals(1, resultSet2.getInt("field"));
 
-        // Verify PROJECT.
-        final ResultSet resultSet3 = statement.executeQuery(String.format(
-                "SELECT \"%s\", \"%s\" FROM \"%s\".\"%s\"", "field", "testComplexDocument__id", getDatabaseName(), "testComplexDocument_doc"));
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertTrue(resultSet3.next());
-        Assertions.assertEquals("key", resultSet3.getString("testComplexDocument__id"));
-        Assertions.assertEquals(1, resultSet3.getInt("field"));
+            // Verify PROJECT.
+            final ResultSet resultSet3 = statement.executeQuery(String.format(
+                    "SELECT \"%s\", \"%s\" FROM \"%s\".\"%s\"", "field", "testComplexDocument__id",
+                    getDatabaseName(), "testComplexDocument_doc"));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertTrue(resultSet3.next());
+            Assertions.assertEquals("key", resultSet3.getString("testComplexDocument__id"));
+            Assertions.assertEquals(1, resultSet3.getInt("field"));
 
-        // Verify JOIN on the base table and nested table to produce 3 columns and 1 row.
-        final ResultSet resultSet4 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s",
-                                getDatabaseName(),
-                                "testComplexDocument",
-                                getDatabaseName(),
-                                "testComplexDocument_doc",
-                                "\"testComplexDocument\".\"testComplexDocument__id\"",
-                                "\"testComplexDocument_doc\".\"testComplexDocument__id\""));
-        Assertions.assertNotNull(resultSet4);
-        Assertions.assertEquals(3, resultSet4.getMetaData().getColumnCount());
-        int rowCount = 0;
-        while (resultSet4.next()) {
-            rowCount++;
+            // Verify JOIN on the base table and nested table to produce 3 columns and 1 row.
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s",
+                                    getDatabaseName(),
+                                    "testComplexDocument",
+                                    getDatabaseName(),
+                                    "testComplexDocument_doc",
+                                    "\"testComplexDocument\".\"testComplexDocument__id\"",
+                                    "\"testComplexDocument_doc\".\"testComplexDocument__id\""));
+            Assertions.assertNotNull(resultSet4);
+            Assertions.assertEquals(3, resultSet4.getMetaData().getColumnCount());
+            int rowCount = 0;
+            while (resultSet4.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(1, rowCount);
         }
-        Assertions.assertEquals(1, rowCount);
     }
 
     /**
@@ -104,58 +108,60 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                         "{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"doc2\" : { \"field2\" : \"value\" } } }");
         insertBsonDocuments(
                 "testComplex3LevelDocument", new BsonDocument[]{document});
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        // Verify the base table.
-        final ResultSet resultSet1 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testComplex3LevelDocument"));
-        Assertions.assertNotNull(resultSet1);
+            // Verify the base table.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testComplex3LevelDocument"));
+            Assertions.assertNotNull(resultSet1);
 
-        // Verify the nested table from the field doc.
-        final ResultSet resultSet2 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testComplex3LevelDocument_doc"));
-        Assertions.assertNotNull(resultSet2);
+            // Verify the nested table from the field doc.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testComplex3LevelDocument_doc"));
+            Assertions.assertNotNull(resultSet2);
 
-        // Verify the nested table from the field doc2 from the field doc.
-        final ResultSet resultSet3 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"",
-                                getDatabaseName(), "testComplex3LevelDocument_doc_doc2"));
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertTrue(resultSet3.next());
-        Assertions.assertEquals("key", resultSet3.getString("testComplex3LevelDocument__id"));
-        Assertions.assertEquals("value", resultSet3.getString("field2"));
+            // Verify the nested table from the field doc2 from the field doc.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), "testComplex3LevelDocument_doc_doc2"));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertTrue(resultSet3.next());
+            Assertions.assertEquals("key", resultSet3.getString("testComplex3LevelDocument__id"));
+            Assertions.assertEquals("value", resultSet3.getString("field2"));
 
-        // Verify JOIN on the 3 tables to produce 5 columns and 1 row.
-        final ResultSet resultSet4 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s",
-                                getDatabaseName(), "testComplex3LevelDocument",
-                                getDatabaseName(), "testComplex3LevelDocument_doc",
-                                "\"testComplex3LevelDocument\".\"testComplex3LevelDocument__id\"",
-                                "\"testComplex3LevelDocument_doc\".\"testComplex3LevelDocument__id\"",
-                                getDatabaseName(), "testComplex3LevelDocument_doc_doc2",
-                                "\"testComplex3LevelDocument_doc\".\"testComplex3LevelDocument__id\"",
-                                "\"testComplex3LevelDocument_doc_doc2\".\"testComplex3LevelDocument__id\""));
-        Assertions.assertNotNull(resultSet4);
-        Assertions.assertEquals(5, resultSet4.getMetaData().getColumnCount());
-        int rowCount = 0;
-        while (resultSet4.next()) {
-            rowCount++;
+            // Verify JOIN on the 3 tables to produce 5 columns and 1 row.
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s",
+                                    getDatabaseName(), "testComplex3LevelDocument",
+                                    getDatabaseName(), "testComplex3LevelDocument_doc",
+                                    "\"testComplex3LevelDocument\".\"testComplex3LevelDocument__id\"",
+                                    "\"testComplex3LevelDocument_doc\".\"testComplex3LevelDocument__id\"",
+                                    getDatabaseName(), "testComplex3LevelDocument_doc_doc2",
+                                    "\"testComplex3LevelDocument_doc\".\"testComplex3LevelDocument__id\"",
+                                    "\"testComplex3LevelDocument_doc_doc2\".\"testComplex3LevelDocument__id\""));
+            Assertions.assertNotNull(resultSet4);
+            Assertions.assertEquals(5, resultSet4.getMetaData().getColumnCount());
+            int rowCount = 0;
+            while (resultSet4.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(1, rowCount);
         }
-        Assertions.assertEquals(1, rowCount);
     }
 
     /**
@@ -172,49 +178,51 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ 1, 2, 3 ] }");
         insertBsonDocuments(
                 "testScalarArray", new BsonDocument[]{document});
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        // Verify the base table.
-        final ResultSet resultSet1 =
-                statement.executeQuery(
-                        String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testScalarArray"));
-        Assertions.assertNotNull(resultSet1);
+            // Verify the base table.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testScalarArray"));
+            Assertions.assertNotNull(resultSet1);
 
-        // Verify the nested table with 3 rows from the field array.
-        final ResultSet resultSet2 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testScalarArray_array"));
-        Assertions.assertNotNull(resultSet2);
-        for (int i = 0; i < 3; i++) {
-            Assertions.assertTrue(resultSet2.next());
-            Assertions.assertEquals("key", resultSet2.getString("testScalarArray__id"));
-            Assertions.assertEquals(i, resultSet2.getLong("array_index_lvl_0"));
-            Assertions.assertEquals(i + 1, resultSet2.getInt("value"));
+            // Verify the nested table with 3 rows from the field array.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testScalarArray_array"));
+            Assertions.assertNotNull(resultSet2);
+            for (int i = 0; i < 3; i++) {
+                Assertions.assertTrue(resultSet2.next());
+                Assertions.assertEquals("key", resultSet2.getString("testScalarArray__id"));
+                Assertions.assertEquals(i, resultSet2.getLong("array_index_lvl_0"));
+                Assertions.assertEquals(i + 1, resultSet2.getInt("value"));
+            }
+
+            // Verify JOIN on the base table and nested table to produce 4 columns and 3 rows.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s",
+                                    getDatabaseName(),
+                                    "testScalarArray",
+                                    getDatabaseName(),
+                                    "testScalarArray_array",
+                                    "\"testScalarArray\".\"testScalarArray__id\"",
+                                    "\"testScalarArray_array\".\"testScalarArray__id\""));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertEquals(4, resultSet3.getMetaData().getColumnCount());
+            int rowCount = 0;
+            while (resultSet3.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(3, rowCount);
         }
-
-        // Verify JOIN on the base table and nested table to produce 4 columns and 3 rows.
-        final ResultSet resultSet3 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s",
-                                getDatabaseName(),
-                                "testScalarArray",
-                                getDatabaseName(),
-                                "testScalarArray_array",
-                                "\"testScalarArray\".\"testScalarArray__id\"",
-                                "\"testScalarArray_array\".\"testScalarArray__id\""));
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertEquals(4, resultSet3.getMetaData().getColumnCount());
-        int rowCount = 0;
-        while (resultSet3.next()) {
-            rowCount++;
-        }
-        Assertions.assertEquals(3, rowCount);
     }
 
     /**
@@ -232,66 +240,70 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                         "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
         insertBsonDocuments(
                 "testDocumentArray", new BsonDocument[]{document});
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        // Verify the base table.
-        final ResultSet resultSet1 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testDocumentArray"));
-        Assertions.assertNotNull(resultSet1);
+            // Verify the base table.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testDocumentArray"));
+            Assertions.assertNotNull(resultSet1);
 
-        // Verify the nested table with 2 rows from the field array.
-        final ResultSet resultSet2 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testDocumentArray_array"));
-        Assertions.assertNotNull(resultSet2);
-        for (int i = 0; i < 2; i++) {
-            Assertions.assertTrue(resultSet2.next());
-            Assertions.assertEquals("key", resultSet2.getString("testDocumentArray__id"));
-            Assertions.assertEquals(i, resultSet2.getLong("array_index_lvl_0"));
-            Assertions.assertEquals(i + 1, resultSet2.getInt("field"));
-            Assertions.assertEquals("value", resultSet2.getString(i == 0 ? "field1" : "field2"));
-            Assertions.assertNull(resultSet2.getString(i == 0 ? "field2" : "field1"));
+            // Verify the nested table with 2 rows from the field array.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testDocumentArray_array"));
+            Assertions.assertNotNull(resultSet2);
+            for (int i = 0; i < 2; i++) {
+                Assertions.assertTrue(resultSet2.next());
+                Assertions.assertEquals("key", resultSet2.getString("testDocumentArray__id"));
+                Assertions.assertEquals(i, resultSet2.getLong("array_index_lvl_0"));
+                Assertions.assertEquals(i + 1, resultSet2.getInt("field"));
+                Assertions.assertEquals("value",
+                        resultSet2.getString(i == 0 ? "field1" : "field2"));
+                Assertions.assertNull(resultSet2.getString(i == 0 ? "field2" : "field1"));
+            }
+
+            // Verify WHERE on the nested table to produce only rows where field = 2.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = 2",
+                                    getDatabaseName(),
+                                    "testDocumentArray_array"));
+            Assertions.assertNotNull(resultSet3);
+            int rowCount = 0;
+            while (resultSet3.next()) {
+                Assertions.assertEquals(2, resultSet3.getInt("field"));
+                rowCount++;
+            }
+            Assertions.assertEquals(1, rowCount);
+
+            // Verify JOIN on the base table and nested table to produce 6 columns and 2 rows.
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s",
+                                    getDatabaseName(),
+                                    "testDocumentArray",
+                                    getDatabaseName(),
+                                    "testDocumentArray_array",
+                                    "\"testDocumentArray\".\"testDocumentArray__id\"",
+                                    "\"testDocumentArray_array\".\"testDocumentArray__id\""));
+            Assertions.assertNotNull(resultSet4);
+            Assertions.assertEquals(6, resultSet4.getMetaData().getColumnCount());
+            rowCount = 0;
+            while (resultSet4.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(2, rowCount);
         }
-
-        // Verify WHERE on the nested table to produce only rows where field = 2.
-        final ResultSet resultSet3 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" = 2", getDatabaseName(),
-                                "testDocumentArray_array"));
-        Assertions.assertNotNull(resultSet3);
-        int rowCount = 0;
-        while (resultSet3.next()) {
-            Assertions.assertEquals(2, resultSet3.getInt("field"));
-            rowCount++;
-        }
-        Assertions.assertEquals(1, rowCount);
-
-        // Verify JOIN on the base table and nested table to produce 6 columns and 2 rows.
-        final ResultSet resultSet4 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s",
-                                getDatabaseName(),
-                                "testDocumentArray",
-                                getDatabaseName(),
-                                "testDocumentArray_array",
-                                "\"testDocumentArray\".\"testDocumentArray__id\"",
-                                "\"testDocumentArray_array\".\"testDocumentArray__id\""));
-        Assertions.assertNotNull(resultSet4);
-        Assertions.assertEquals(6, resultSet4.getMetaData().getColumnCount());
-        rowCount = 0;
-        while (resultSet4.next()) {
-            rowCount++;
-        }
-        Assertions.assertEquals(2, rowCount);
     }
 
     /**
@@ -308,68 +320,71 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ [1, 2, 3 ], [ 4, 5, 6 ] ]}");
         insertBsonDocuments(
                 "test2LevelArray", new BsonDocument[]{document});
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        // Verify the base table.
-        final ResultSet resultSet1 =
-                statement.executeQuery(
-                        String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "test2LevelArray"));
-        Assertions.assertNotNull(resultSet1);
+            // Verify the base table.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "test2LevelArray"));
+            Assertions.assertNotNull(resultSet1);
 
-        // Verify the nested table with 6 rows from the field array.
-        final ResultSet resultSet2 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "test2LevelArray_array"));
-        Assertions.assertNotNull(resultSet2);
-        int expectedValue = 1;
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 3; j++) {
-                Assertions.assertTrue(resultSet2.next());
-                Assertions.assertEquals("key", resultSet2.getString("test2LevelArray__id"));
-                Assertions.assertEquals(i, resultSet2.getLong("array_index_lvl_0"));
-                Assertions.assertEquals(j, resultSet2.getLong("array_index_lvl_1"));
-                Assertions.assertEquals(expectedValue, resultSet2.getInt("value"));
-                expectedValue++;
+            // Verify the nested table with 6 rows from the field array.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "test2LevelArray_array"));
+            Assertions.assertNotNull(resultSet2);
+            int expectedValue = 1;
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 3; j++) {
+                    Assertions.assertTrue(resultSet2.next());
+                    Assertions.assertEquals("key", resultSet2.getString("test2LevelArray__id"));
+                    Assertions.assertEquals(i, resultSet2.getLong("array_index_lvl_0"));
+                    Assertions.assertEquals(j, resultSet2.getLong("array_index_lvl_1"));
+                    Assertions.assertEquals(expectedValue, resultSet2.getInt("value"));
+                    expectedValue++;
+                }
             }
-        }
 
-        // Verify WHERE on the nested table to produce only rows where array_index_lvl_0 is 0.
-        final ResultSet resultSet3 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"array_index_lvl_0\" = 0", getDatabaseName(),
-                                "test2LevelArray_array"));
-        Assertions.assertNotNull(resultSet3);
-        int rowCount = 0;
-        while (resultSet3.next()) {
-            Assertions.assertEquals(0, resultSet3.getLong("array_index_lvl_0"));
-            rowCount++;
-        }
-        Assertions.assertEquals(3, rowCount);
+            // Verify WHERE on the nested table to produce only rows where array_index_lvl_0 is 0.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" WHERE \"array_index_lvl_0\" = 0",
+                                    getDatabaseName(),
+                                    "test2LevelArray_array"));
+            Assertions.assertNotNull(resultSet3);
+            int rowCount = 0;
+            while (resultSet3.next()) {
+                Assertions.assertEquals(0, resultSet3.getLong("array_index_lvl_0"));
+                rowCount++;
+            }
+            Assertions.assertEquals(3, rowCount);
 
-        // Verify JOIN on the base table and nested table to produce 5 columns and 6.
-        final ResultSet resultSet4 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s",
-                                getDatabaseName(),
-                                "test2LevelArray",
-                                getDatabaseName(),
-                                "test2LevelArray_array",
-                                "\"test2LevelArray\".\"test2LevelArray__id\"",
-                                "\"test2LevelArray_array\".\"test2LevelArray__id\""));
-        Assertions.assertNotNull(resultSet4);
-        Assertions.assertEquals(5, resultSet4.getMetaData().getColumnCount());
-        rowCount = 0;
-        while (resultSet4.next()) {
-            rowCount++;
+            // Verify JOIN on the base table and nested table to produce 5 columns and 6.
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s",
+                                    getDatabaseName(),
+                                    "test2LevelArray",
+                                    getDatabaseName(),
+                                    "test2LevelArray_array",
+                                    "\"test2LevelArray\".\"test2LevelArray__id\"",
+                                    "\"test2LevelArray_array\".\"test2LevelArray__id\""));
+            Assertions.assertNotNull(resultSet4);
+            Assertions.assertEquals(5, resultSet4.getMetaData().getColumnCount());
+            rowCount = 0;
+            while (resultSet4.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(6, rowCount);
         }
-        Assertions.assertEquals(6, rowCount);
     }
 
     /**
@@ -385,73 +400,77 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final BsonDocument document =
                 BsonDocument.parse("{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"array\" : [1, 2, 3 ] } }");
         insertBsonDocuments("testComplexDocumentWithArray", new BsonDocument[]{document});
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        // Verify the base table.
-        final ResultSet resultSet1 =
-                statement.executeQuery(
-                        String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testComplexDocumentWithArray"));
-        Assertions.assertNotNull(resultSet1);
+            // Verify the base table.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testComplexDocumentWithArray"));
+            Assertions.assertNotNull(resultSet1);
 
-        // Verify the nested table from the field doc.
-        final ResultSet resultSet2 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testComplexDocumentWithArray_doc"));
-        Assertions.assertNotNull(resultSet2);
+            // Verify the nested table from the field doc.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testComplexDocumentWithArray_doc"));
+            Assertions.assertNotNull(resultSet2);
 
-        // Verify the nested table with 3 rows from the field array in the field doc.
-        final ResultSet resultSet3 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testComplexDocumentWithArray_doc_array"));
-        Assertions.assertNotNull(resultSet3);
-        for (int i = 0; i < 3; i++) {
-            Assertions.assertTrue(resultSet3.next());
-            Assertions.assertEquals("key", resultSet3.getString("testComplexDocumentWithArray__id"));
-            Assertions.assertEquals(i, resultSet3.getLong("doc_array_index_lvl_0"));
-            Assertions.assertEquals(i + 1, resultSet3.getInt("value"));
+            // Verify the nested table with 3 rows from the field array in the field doc.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testComplexDocumentWithArray_doc_array"));
+            Assertions.assertNotNull(resultSet3);
+            for (int i = 0; i < 3; i++) {
+                Assertions.assertTrue(resultSet3.next());
+                Assertions.assertEquals("key",
+                        resultSet3.getString("testComplexDocumentWithArray__id"));
+                Assertions.assertEquals(i, resultSet3.getLong("doc_array_index_lvl_0"));
+                Assertions.assertEquals(i + 1, resultSet3.getInt("value"));
+            }
+
+            // Verify WHERE on the nested table to produce only rows where value is 1.
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" WHERE \"value\" = 1",
+                                    getDatabaseName(),
+                                    "testComplexDocumentWithArray_doc_array"));
+            Assertions.assertNotNull(resultSet4);
+            int rowCount = 0;
+            while (resultSet4.next()) {
+                Assertions.assertEquals(1, resultSet4.getInt("value"));
+                rowCount++;
+            }
+            Assertions.assertEquals(1, rowCount);
+            // Verify JOIN on the 3 tables to get 6 columns and 3 rows.
+            final ResultSet resultSet5 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s",
+                                    getDatabaseName(), "testComplexDocumentWithArray",
+                                    getDatabaseName(), "testComplexDocumentWithArray_doc",
+                                    "\"testComplexDocumentWithArray\".\"testComplexDocumentWithArray__id\"",
+                                    "\"testComplexDocumentWithArray_doc\".\"testComplexDocumentWithArray__id\"",
+                                    getDatabaseName(), "testComplexDocumentWithArray_doc_array",
+                                    "\"testComplexDocumentWithArray_doc\".\"testComplexDocumentWithArray__id\"",
+                                    "\"testComplexDocumentWithArray_doc_array\".\"testComplexDocumentWithArray__id\""));
+            Assertions.assertNotNull(resultSet5);
+            Assertions.assertEquals(6, resultSet5.getMetaData().getColumnCount());
+            rowCount = 0;
+            while (resultSet5.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(3, rowCount);
         }
-
-        // Verify WHERE on the nested table to produce only rows where value is 1.
-        final ResultSet resultSet4 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"value\" = 1", getDatabaseName(),
-                                "testComplexDocumentWithArray_doc_array"));
-        Assertions.assertNotNull(resultSet4);
-        int rowCount = 0;
-        while (resultSet4.next()) {
-            Assertions.assertEquals(1, resultSet4.getInt("value"));
-            rowCount++;
-        }
-        Assertions.assertEquals(1, rowCount);
-        // Verify JOIN on the 3 tables to get 6 columns and 3 rows.
-        final ResultSet resultSet5 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s",
-                                getDatabaseName(), "testComplexDocumentWithArray",
-                                getDatabaseName(), "testComplexDocumentWithArray_doc",
-                                "\"testComplexDocumentWithArray\".\"testComplexDocumentWithArray__id\"",
-                                "\"testComplexDocumentWithArray_doc\".\"testComplexDocumentWithArray__id\"",
-                                getDatabaseName(), "testComplexDocumentWithArray_doc_array",
-                                "\"testComplexDocumentWithArray_doc\".\"testComplexDocumentWithArray__id\"",
-                                "\"testComplexDocumentWithArray_doc_array\".\"testComplexDocumentWithArray__id\""));
-        Assertions.assertNotNull(resultSet5);
-        Assertions.assertEquals(6, resultSet5.getMetaData().getColumnCount());
-        rowCount = 0;
-        while (resultSet5.next()) {
-            rowCount++;
-        }
-        Assertions.assertEquals(3, rowCount);
     }
 
     /**
@@ -468,83 +487,87 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"array2\" : [ 1, 2, 3 ] }, { \"array2\" : [ 4, 5, 6 ] } ]}");
         insertBsonDocuments("testArrayOfDocumentsWithArray", new BsonDocument[]{document});
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        // Verify the base table.
-        final ResultSet resultSet1 =
-                statement.executeQuery(
-                        String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testArrayOfDocumentsWithArray"));
-        Assertions.assertNotNull(resultSet1);
+            // Verify the base table.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testArrayOfDocumentsWithArray"));
+            Assertions.assertNotNull(resultSet1);
 
-        // Verify the nested table with 2 rows from the field array.
-        final ResultSet resultSet2 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testArrayOfDocumentsWithArray_array"));
-        Assertions.assertNotNull(resultSet2);
+            // Verify the nested table with 2 rows from the field array.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testArrayOfDocumentsWithArray_array"));
+            Assertions.assertNotNull(resultSet2);
 
-        // Verify the nested table with 6 rows from the field array2 in the documents of array.
-        final ResultSet resultSet3 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
-                                "testArrayOfDocumentsWithArray_array_array2"));
-        Assertions.assertNotNull(resultSet3);
-        int expectedValue = 1;
-        for (int i = 0; i < 2; i++) {
-            for (int j = 0; j < 3; j++) {
-                Assertions.assertTrue(resultSet3.next());
-                Assertions.assertEquals("key", resultSet3.getString("testArrayOfDocumentsWithArray__id"));
-                Assertions.assertEquals(i, resultSet3.getLong("array_index_lvl_0"));
-                Assertions.assertEquals(j, resultSet3.getLong("array_array2_index_lvl_0"));
-                Assertions.assertEquals(expectedValue, resultSet3.getInt("value"));
-                expectedValue++;
+            // Verify the nested table with 6 rows from the field array2 in the documents of array.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testArrayOfDocumentsWithArray_array_array2"));
+            Assertions.assertNotNull(resultSet3);
+            int expectedValue = 1;
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 3; j++) {
+                    Assertions.assertTrue(resultSet3.next());
+                    Assertions.assertEquals("key",
+                            resultSet3.getString("testArrayOfDocumentsWithArray__id"));
+                    Assertions.assertEquals(i, resultSet3.getLong("array_index_lvl_0"));
+                    Assertions.assertEquals(j, resultSet3.getLong("array_array2_index_lvl_0"));
+                    Assertions.assertEquals(expectedValue, resultSet3.getInt("value"));
+                    expectedValue++;
+                }
             }
-        }
 
-        // Verify WHERE on the array2 nested table to produce only rows where array_index_lvl_0 is 0.
-        final ResultSet resultSet4 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" WHERE \"array_index_lvl_0\" = 0", getDatabaseName(),
-                                "testArrayOfDocumentsWithArray_array_array2"));
-        Assertions.assertNotNull(resultSet4);
-        int rowCount = 0;
-        while (resultSet4.next()) {
-            Assertions.assertEquals(0, resultSet4.getLong("array_index_lvl_0"));
-            rowCount++;
-        }
-        Assertions.assertEquals(3, rowCount);
-        Assertions.assertFalse(resultSet4.next());
+            // Verify WHERE on the array2 nested table to produce only rows where array_index_lvl_0 is 0.
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" WHERE \"array_index_lvl_0\" = 0",
+                                    getDatabaseName(),
+                                    "testArrayOfDocumentsWithArray_array_array2"));
+            Assertions.assertNotNull(resultSet4);
+            int rowCount = 0;
+            while (resultSet4.next()) {
+                Assertions.assertEquals(0, resultSet4.getLong("array_index_lvl_0"));
+                rowCount++;
+            }
+            Assertions.assertEquals(3, rowCount);
+            Assertions.assertFalse(resultSet4.next());
 
-        // Verify JOIN on the 3 tables to get 7 columns and 6 rows.
-        final ResultSet resultSet5 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT * FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON %s = %s "
-                                        + "AND %s = %s",
-                                getDatabaseName(), "testArrayOfDocumentsWithArray",
-                                getDatabaseName(), "testArrayOfDocumentsWithArray_array",
-                                "\"testArrayOfDocumentsWithArray\".\"testArrayOfDocumentsWithArray__id\"",
-                                "\"testArrayOfDocumentsWithArray_array\".\"testArrayOfDocumentsWithArray__id\"",
-                                getDatabaseName(), "testArrayOfDocumentsWithArray_array_array2",
-                                "\"testArrayOfDocumentsWithArray_array\".\"testArrayOfDocumentsWithArray__id\"",
-                                "\"testArrayOfDocumentsWithArray_array_array2\".\"testArrayOfDocumentsWithArray__id\"",
-                                "\"testArrayOfDocumentsWithArray_array\".\"array_index_lvl_0\"",
-                                "\"testArrayOfDocumentsWithArray_array_array2\".\"array_index_lvl_0\""));
-        Assertions.assertNotNull(resultSet5);
-        Assertions.assertEquals(7, resultSet5.getMetaData().getColumnCount());
-        rowCount = 0;
-        while (resultSet5.next()) {
-            rowCount++;
+            // Verify JOIN on the 3 tables to get 7 columns and 6 rows.
+            final ResultSet resultSet5 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s "
+                                            + "AND %s = %s",
+                                    getDatabaseName(), "testArrayOfDocumentsWithArray",
+                                    getDatabaseName(), "testArrayOfDocumentsWithArray_array",
+                                    "\"testArrayOfDocumentsWithArray\".\"testArrayOfDocumentsWithArray__id\"",
+                                    "\"testArrayOfDocumentsWithArray_array\".\"testArrayOfDocumentsWithArray__id\"",
+                                    getDatabaseName(), "testArrayOfDocumentsWithArray_array_array2",
+                                    "\"testArrayOfDocumentsWithArray_array\".\"testArrayOfDocumentsWithArray__id\"",
+                                    "\"testArrayOfDocumentsWithArray_array_array2\".\"testArrayOfDocumentsWithArray__id\"",
+                                    "\"testArrayOfDocumentsWithArray_array\".\"array_index_lvl_0\"",
+                                    "\"testArrayOfDocumentsWithArray_array_array2\".\"array_index_lvl_0\""));
+            Assertions.assertNotNull(resultSet5);
+            Assertions.assertEquals(7, resultSet5.getMetaData().getColumnCount());
+            rowCount = 0;
+            while (resultSet5.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(6, rowCount);
         }
-        Assertions.assertEquals(6, rowCount);
     }
 
     /**
@@ -567,28 +590,30 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final BsonDocument document4 =
                 BsonDocument.parse("{ \"_id\" : \"key3\", \"field\": 1, \"array\": [1, 2, 3, 4, 5] }");
         insertBsonDocuments(collection, new BsonDocument[]{document1, document2, document3, document4});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        // Verify that result set has correct values.
-        statement.execute(String.format(
-                "SELECT SUM(\"%s\") as \"Sum\", COUNT(*) AS \"Count\" FROM \"%s\".\"%s\""
-                        + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
-                        + "WHERE \"%s\" <> 1 "
-                        + "GROUP BY \"%s\".\"%s\" HAVING COUNT(*) > 1"
-                        + "ORDER BY \"Count\" DESC LIMIT 1",
-                "field",
-                getDatabaseName(), collection,
-                getDatabaseName(), collection + "_array",
-                collection, collection + "__id",
-                collection + "_array", collection + "__id",
-                "field",
-                collection, collection + "__id"));
-        final ResultSet resultSet1 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(0, resultSet1.getInt("Sum"));
-        Assertions.assertEquals(5, resultSet1.getInt("Count"));
-        Assertions.assertFalse(resultSet1.next());
+            // Verify that result set has correct values.
+            statement.execute(String.format(
+                    "SELECT SUM(\"%s\") as \"Sum\", COUNT(*) AS \"Count\" FROM \"%s\".\"%s\""
+                            + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                            + "WHERE \"%s\" <> 1 "
+                            + "GROUP BY \"%s\".\"%s\" HAVING COUNT(*) > 1"
+                            + "ORDER BY \"Count\" DESC LIMIT 1",
+                    "field",
+                    getDatabaseName(), collection,
+                    getDatabaseName(), collection + "_array",
+                    collection, collection + "__id",
+                    collection + "_array", collection + "__id",
+                    "field",
+                    collection, collection + "__id"));
+            final ResultSet resultSet1 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(0, resultSet1.getInt("Sum"));
+            Assertions.assertEquals(5, resultSet1.getInt("Count"));
+            Assertions.assertFalse(resultSet1.next());
+        }
     }
 
     /**
@@ -605,34 +630,36 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         final BsonDocument document1 = BsonDocument.parse("{ \"_id\" : \"key0\", \"doc1\": { \"field\" : 1 } }");
         final BsonDocument document2 = BsonDocument.parse("{ \"_id\" : \"key1\", \"doc2\": { \"field\": 2 } }");
         insertBsonDocuments(collection, new BsonDocument[]{document1, document2});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        // Verify that an inner join will return an empty result set.
-        statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\" INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                getDatabaseName(), collection + "_doc1",
-                getDatabaseName(), collection + "_doc2",
-                collection + "_doc1", collection + "__id",
-                collection + "_doc2", collection + "__id"));
-        final ResultSet resultSet1 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertFalse(resultSet1.next());
+            // Verify that an inner join will return an empty result set.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\" INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                    getDatabaseName(), collection + "_doc1",
+                    getDatabaseName(), collection + "_doc2",
+                    collection + "_doc1", collection + "__id",
+                    collection + "_doc2", collection + "__id"));
+            final ResultSet resultSet1 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertFalse(resultSet1.next());
 
-        // Verify that a left outer join will return 1 row.
-        statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\" LEFT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                getDatabaseName(), collection + "_doc1",
-                getDatabaseName(), collection + "_doc2",
-                collection + "_doc1", collection + "__id",
-                collection + "_doc2", collection + "__id"));
-        final ResultSet resultSet2 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("key0", resultSet2.getString(collection + "__id"));
-        Assertions.assertEquals(1, resultSet2.getInt("field"));
-        Assertions.assertNull(resultSet2.getString(collection + "__id0"));
-        Assertions.assertEquals(0, resultSet2.getInt("field0"));
-        Assertions.assertFalse(resultSet2.next());
+            // Verify that a left outer join will return 1 row.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\" LEFT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                    getDatabaseName(), collection + "_doc1",
+                    getDatabaseName(), collection + "_doc2",
+                    collection + "_doc1", collection + "__id",
+                    collection + "_doc2", collection + "__id"));
+            final ResultSet resultSet2 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("key0", resultSet2.getString(collection + "__id"));
+            Assertions.assertEquals(1, resultSet2.getInt("field"));
+            Assertions.assertNull(resultSet2.getString(collection + "__id0"));
+            Assertions.assertEquals(0, resultSet2.getInt("field0"));
+            Assertions.assertFalse(resultSet2.next());
+        }
     }
 
     @Disabled("Incorrect behaviour for right or full joins involving more than 2 virtual tables.")
@@ -647,45 +674,47 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                         "{ \"_id\" : \"key0\", \"doc1\": { \"field\" : 1 }, \"doc2\": { \"field\": 2 }}");
         final BsonDocument document2 = BsonDocument.parse("{ \"_id\" : \"key1\", \"doc2\": { \"field\": 2 } }");
         insertBsonDocuments(collection, new BsonDocument[]{document1, document2});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        // Verify that a right outer join will return 1 rows.
-        statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\" RIGHT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                getDatabaseName(), collection,
-                getDatabaseName(), collection + "_doc1",
-                collection, collection + "__id",
-                collection + "_doc1", collection + "__id"));
-        final ResultSet resultSet = statement.getResultSet();
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertFalse(resultSet.next());
+            // Verify that a right outer join will return 1 rows.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\" RIGHT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                    getDatabaseName(), collection,
+                    getDatabaseName(), collection + "_doc1",
+                    collection, collection + "__id",
+                    collection + "_doc1", collection + "__id"));
+            final ResultSet resultSet = statement.getResultSet();
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.next());
 
-        // Verify that an inner join combined with a right outer join will return 2 rows.
-        statement.execute(
-                String.format(
-                        "SELECT * FROM \"%s\".\"%s\" "
-                                + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
-                                + "RIGHT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                        getDatabaseName(),
-                        collection,
-                        getDatabaseName(),
-                        collection + "_doc1",
-                        collection,
-                        collection + "__id",
-                        collection + "_doc1",
-                        collection + "__id",
-                        getDatabaseName(),
-                        collection + "_doc2",
-                        collection + "_doc1",
-                        collection + "__id",
-                        collection + "_doc2",
-                        collection + "__id"));
-        final ResultSet resultSet2 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertFalse(resultSet2.next());
+            // Verify that an inner join combined with a right outer join will return 2 rows.
+            statement.execute(
+                    String.format(
+                            "SELECT * FROM \"%s\".\"%s\" "
+                                    + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                                    + "RIGHT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                            getDatabaseName(),
+                            collection,
+                            getDatabaseName(),
+                            collection + "_doc1",
+                            collection,
+                            collection + "__id",
+                            collection + "_doc1",
+                            collection + "__id",
+                            getDatabaseName(),
+                            collection + "_doc2",
+                            collection + "_doc1",
+                            collection + "__id",
+                            collection + "_doc2",
+                            collection + "__id"));
+            final ResultSet resultSet2 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertFalse(resultSet2.next());
+        }
     }
 
     /**
@@ -719,30 +748,32 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 collection1, new BsonDocument[]{document1, document2, document3, document4});
         insertBsonDocuments(
                 collection2, new BsonDocument[]{document5, document6, document7});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        // Verify that result set has correct values. Expecting query to single out document3.
-        statement.execute(String.format(
-                "SELECT \"%s\", SUM(\"%s\") as \"Sum\", COUNT(*) AS \"Count\" FROM \"%s\".\"%s\""
-                        + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
-                        + "WHERE \"%s\" <> 1 "
-                        + "GROUP BY \"%s\".\"%s\" HAVING COUNT(*) < 5"
-                        + "ORDER BY \"Count\" DESC LIMIT 1",
-                collection2 + "__id",
-                "field",
-                getDatabaseName(), collection1 + "_array",
-                getDatabaseName(), collection2,
-                collection1 + "_array", collection1 + "__id",
-                collection2, collection2 + "__id",
-                "field2",
-                collection2, collection2 + "__id"));
-        final ResultSet resultSet1 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals("key2", resultSet1.getString(collection2 + "__id"));
-        Assertions.assertEquals(0, resultSet1.getInt("Sum"));
-        Assertions.assertEquals(3, resultSet1.getInt("Count"));
-        Assertions.assertFalse(resultSet1.next());
+            // Verify that result set has correct values. Expecting query to single out document3.
+            statement.execute(String.format(
+                    "SELECT \"%s\", SUM(\"%s\") as \"Sum\", COUNT(*) AS \"Count\" FROM \"%s\".\"%s\""
+                            + "INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                            + "WHERE \"%s\" <> 1 "
+                            + "GROUP BY \"%s\".\"%s\" HAVING COUNT(*) < 5"
+                            + "ORDER BY \"Count\" DESC LIMIT 1",
+                    collection2 + "__id",
+                    "field",
+                    getDatabaseName(), collection1 + "_array",
+                    getDatabaseName(), collection2,
+                    collection1 + "_array", collection1 + "__id",
+                    collection2, collection2 + "__id",
+                    "field2",
+                    collection2, collection2 + "__id"));
+            final ResultSet resultSet1 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("key2", resultSet1.getString(collection2 + "__id"));
+            Assertions.assertEquals(0, resultSet1.getInt("Sum"));
+            Assertions.assertEquals(3, resultSet1.getInt("Count"));
+            Assertions.assertFalse(resultSet1.next());
+        }
     }
 
     /**
@@ -766,42 +797,44 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 collection1, new BsonDocument[]{document1});
         insertBsonDocuments(
                 collection2, new BsonDocument[]{document2});
-        final Statement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
 
-        // Verify that an inner join will return 1 row where field0 = field.
-        statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\" INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                getDatabaseName(), collection1 + "_array",
-                getDatabaseName(), collection2 + "_doc",
-                collection1 + "_array", "field",
-                collection2 + "_doc", "field"));
-        final ResultSet resultSet1 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet1);
-        Assertions.assertTrue(resultSet1.next());
-        Assertions.assertEquals(resultSet1.getInt("field"), resultSet1.getInt("field0"));
-        Assertions.assertEquals("key0", resultSet1.getString(collection1 + "__id"));
-        Assertions.assertEquals("key1", resultSet1.getString(collection2 + "__id"));
-        Assertions.assertFalse(resultSet1.next());
+            // Verify that an inner join will return 1 row where field0 = field.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\" INNER JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                    getDatabaseName(), collection1 + "_array",
+                    getDatabaseName(), collection2 + "_doc",
+                    collection1 + "_array", "field",
+                    collection2 + "_doc", "field"));
+            final ResultSet resultSet1 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(resultSet1.getInt("field"), resultSet1.getInt("field0"));
+            Assertions.assertEquals("key0", resultSet1.getString(collection1 + "__id"));
+            Assertions.assertEquals("key1", resultSet1.getString(collection2 + "__id"));
+            Assertions.assertFalse(resultSet1.next());
 
-        // Verify that a left outer join will return 2 rows but only 1 match from the right.
-        statement.execute(String.format(
-                "SELECT * FROM \"%s\".\"%s\" LEFT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                getDatabaseName(), collection1 + "_array",
-                getDatabaseName(), collection2 + "_doc",
-                collection1 + "_array", "field",
-                collection2 + "_doc", "field"));
-        final ResultSet resultSet2 = statement.getResultSet();
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals(resultSet2.getInt("field"), resultSet2.getInt("field0"));
-        Assertions.assertEquals("key0", resultSet2.getString(collection1 + "__id"));
-        Assertions.assertEquals("key1", resultSet2.getString(collection2 + "__id"));
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("key0", resultSet2.getString(collection1 + "__id"));
-        Assertions.assertNull(resultSet2.getString(collection2 + "__id"));
-        Assertions.assertEquals(2, resultSet2.getInt("field"));
-        Assertions.assertEquals(0, resultSet2.getInt("field0"));
-        Assertions.assertFalse(resultSet2.next());
+            // Verify that a left outer join will return 2 rows but only 1 match from the right.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\" LEFT JOIN \"%s\".\"%s\" ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                    getDatabaseName(), collection1 + "_array",
+                    getDatabaseName(), collection2 + "_doc",
+                    collection1 + "_array", "field",
+                    collection2 + "_doc", "field"));
+            final ResultSet resultSet2 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals(resultSet2.getInt("field"), resultSet2.getInt("field0"));
+            Assertions.assertEquals("key0", resultSet2.getString(collection1 + "__id"));
+            Assertions.assertEquals("key1", resultSet2.getString(collection2 + "__id"));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("key0", resultSet2.getString(collection1 + "__id"));
+            Assertions.assertNull(resultSet2.getString(collection2 + "__id"));
+            Assertions.assertEquals(2, resultSet2.getInt("field"));
+            Assertions.assertEquals(0, resultSet2.getInt("field0"));
+            Assertions.assertFalse(resultSet2.next());
+        }
     }
 
     /**
@@ -820,60 +853,62 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"doc2\" : { \"field2\" : \"value\" } } }");
         insertBsonDocuments(tableName, new BsonDocument[]{document});
-        final DocumentDbStatement statement = getDocumentDbStatement();
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
-        // Verify the nested table from the field doc2 from the field doc.
-        final ResultSet resultSet2 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT \"%s__id\" FROM \"%s\".\"%s\"",
-                                tableName, getDatabaseName(), tableName + "_doc"));
-        Assertions.assertNotNull(resultSet2);
-        Assertions.assertTrue(resultSet2.next());
-        Assertions.assertEquals("key", resultSet2.getString(keyColumnName));
+            // Verify the nested table from the field doc2 from the field doc.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT \"%s__id\" FROM \"%s\".\"%s\"",
+                                    tableName, getDatabaseName(), tableName + "_doc"));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("key", resultSet2.getString(keyColumnName));
 
-        // Verify the nested table from the field doc2 from the field doc.
-        final ResultSet resultSet3 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT \"%s__id\" FROM \"%s\".\"%s\"",
-                                tableName, getDatabaseName(), tableName + "_doc_doc2"));
-        Assertions.assertNotNull(resultSet3);
-        Assertions.assertTrue(resultSet3.next());
-        Assertions.assertEquals("key", resultSet3.getString(keyColumnName));
+            // Verify the nested table from the field doc2 from the field doc.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT \"%s__id\" FROM \"%s\".\"%s\"",
+                                    tableName, getDatabaseName(), tableName + "_doc_doc2"));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertTrue(resultSet3.next());
+            Assertions.assertEquals("key", resultSet3.getString(keyColumnName));
 
-        // Verify JOIN on the 3 tables to produce 2 columns and 1 row.
-        final ResultSet resultSet4 =
-                statement.executeQuery(
-                        String.format(
-                                "SELECT \"%s\".\"%s__id\", \"field2\" FROM \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON \"%s\".\"%s\" = \"%s\".\"%s\" "
-                                        + "INNER JOIN \"%s\".\"%s\" "
-                                        + "ON \"%s\".\"%s\" = \"%s\".\"%s\"",
-                                tableName,
-                                tableName,
-                                getDatabaseName(),
-                                tableName,
-                                getDatabaseName(),
-                                tableName + "_doc",
-                                tableName,
-                                keyColumnName,
-                                tableName + "_doc",
-                                keyColumnName,
-                                getDatabaseName(),
-                                tableName + "_doc_doc2",
-                                tableName + "_doc",
-                                keyColumnName,
-                                tableName + "_doc_doc2",
-                                keyColumnName));
-        Assertions.assertNotNull(resultSet4);
-        Assertions.assertEquals(2, resultSet4.getMetaData().getColumnCount());
-        int rowCount = 0;
-        while (resultSet4.next()) {
-            rowCount++;
+            // Verify JOIN on the 3 tables to produce 2 columns and 1 row.
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT \"%s\".\"%s__id\", \"field2\" FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON \"%s\".\"%s\" = \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                                    tableName,
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_doc",
+                                    tableName,
+                                    keyColumnName,
+                                    tableName + "_doc",
+                                    keyColumnName,
+                                    getDatabaseName(),
+                                    tableName + "_doc_doc2",
+                                    tableName + "_doc",
+                                    keyColumnName,
+                                    tableName + "_doc_doc2",
+                                    keyColumnName));
+            Assertions.assertNotNull(resultSet4);
+            Assertions.assertEquals(2, resultSet4.getMetaData().getColumnCount());
+            int rowCount = 0;
+            while (resultSet4.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(1, rowCount);
         }
-        Assertions.assertEquals(1, rowCount);
     }
 
 
@@ -892,17 +927,19 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "\"sub\": {" +
                 "   \"subField\": 15}}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
-                        getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertEquals(10, resultSet.getInt(2));
-        Assertions.assertEquals(15, resultSet.getInt(3));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
+                            getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertEquals(10, resultSet.getInt(2));
+            Assertions.assertEquals(15, resultSet.getInt(3));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -922,17 +959,19 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "   \"subField\": 15," +
                 "   \"fieldA\": 10}}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
-                        getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertEquals(10, resultSet.getInt(2));
-        Assertions.assertEquals(15, resultSet.getInt(3));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * from \"%s\".\"%s\" NATURAL JOIN \"%s\".\"%s\"",
+                            getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertEquals(10, resultSet.getInt(2));
+            Assertions.assertEquals(15, resultSet.getInt(3));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -951,19 +990,21 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "   \"subField\": 15," +
                 "   \"fieldA\": 10}}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\" WHERE " +
-                                "\"testCrossJoinBasic\".\"testCrossJoinBasic__id\" = \"testCrossJoinBasic_sub\".\"testCrossJoinBasic__id\"",
-                        getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertEquals(10, resultSet.getInt(2));
-        Assertions.assertEquals("101", resultSet.getString(3));
-        Assertions.assertEquals(15, resultSet.getInt(4));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\" WHERE " +
+                                    "\"testCrossJoinBasic\".\"testCrossJoinBasic__id\" = \"testCrossJoinBasic_sub\".\"testCrossJoinBasic__id\"",
+                            getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertEquals(10, resultSet.getInt(2));
+            Assertions.assertEquals("101", resultSet.getString(3));
+            Assertions.assertEquals(15, resultSet.getInt(4));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 
     /**
@@ -988,20 +1029,22 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "   \"subField\": 15," +
                 "   \"fieldA\": 10}}");
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
-        final Statement statement = getDocumentDbStatement();
-        final ResultSet resultSet = statement.executeQuery(
-                String.format(
-                        "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\"",
-                        getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
-        Assertions.assertNotNull(resultSet);
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("101", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertTrue(resultSet.next());
-        Assertions.assertEquals("102", resultSet.getString(1));
-        Assertions.assertFalse(resultSet.next());
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format(
+                            "SELECT * from \"%s\".\"%s\" CROSS JOIN \"%s\".\"%s\"",
+                            getDatabaseName(), tableName, getDatabaseName(), tableName + "_sub"));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("101", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals("102", resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
     }
 }

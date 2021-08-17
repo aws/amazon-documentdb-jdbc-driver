@@ -10,7 +10,7 @@
     </field>
 
     <!-- Use custom database param rather than the provided database param as we use the database as a schema not a catalog. -->
-    <field name="v-database" label="Database" category="general" value-type="string">
+    <field name="v-database" label="Database" category="endpoint" value-type="string">
         <!-- Validates that database name does not contain illegal characters and is between 1-64 characters long. https://docs.mongodb.com/manual/reference/limits/  -->
         <validation-rule reg-exp="^[^\/\\ .&quot;\\\$]{1,64}$"/>
     </field>
@@ -21,7 +21,7 @@
 
     <field name="password" label="Password" category="authentication" value-type="string" secure="true" />
 
-    <field name="sslmode" label="Enable TLS" value-type="boolean" category="general" default-value="require">
+    <field name="sslmode" label="Enable TLS" value-type="boolean" category="authentication" default-value="require">
         <boolean-options>
             <false-value value="" />
             <true-value value="require" />
@@ -29,34 +29,85 @@
     </field>
 
     <!-- Only display this field only when TLS enabled is true. Note: do not validate path. -->
-    <field name="v-tls-ca-file" label="TLS Certificate Authority File" value-type="file" category="general" optional="true" >
+    <field name="v-tls-ca-file" label="TLS Certificate Authority File" value-type="file" category="authentication" optional="true" >
         <conditions>
             <condition field="sslmode" value="require" />
         </conditions>
     </field>
 
-    <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames" value-type="boolean" category="general" default-value="false">
+    <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames (enabling option is less secure)" value-type="boolean" category="authentication" default-value="true">
+        <conditions>
+            <condition field="sslmode" value="require" />
+        </conditions>
         <boolean-options>
             <false-value value="false" />
             <true-value value="true" />
         </boolean-options>
     </field>
 
-    <field name="v-retry-reads" label="Enable Retry Reads" value-type="boolean" category="general" default-value="true">
+    <!-- Advanced tab. -->
+    <field name="v-ssh-tunnel" label="Enable SSH Tunnel" value-type="boolean" category="advanced" optional="true" default-value="false">
         <boolean-options>
             <false-value value="false" />
             <true-value value="true" />
         </boolean-options>
     </field>
 
-    <field name="v-replica-set" label="Enable Replica Set Mode" value-type="boolean" category="general" default-value="false">
+    <field name="v-ssh-user" label="SSH User" value-type="string" category="advanced" optional="true" default-value="">
+        <conditions>
+            <condition field="v-ssh-tunnel" value="true" />
+        </conditions>
+    </field>
+
+    <field name="v-ssh-host" label="SSH Hostname" value-type="string" category="advanced" optional="true" default-value="">
+        <conditions>
+            <condition field="v-ssh-tunnel" value="true" />
+        </conditions>
+    </field>
+
+    <field name="v-ssh-priv-key-filename" label="SSH Private Key File" value-type="file" category="advanced" optional="true" default-value="">
+        <conditions>
+            <condition field="v-ssh-tunnel" value="true" />
+        </conditions>
+    </field>
+
+    <field name="v-ssh-priv-key-passphrase" label="SSH Private Key File Passphrase" value-type="string" category="advanced" optional="true" default-value="">
+        <conditions>
+            <condition field="v-ssh-tunnel" value="true" />
+        </conditions>
+    </field>
+
+    <field name="v-ssh-strict-host-key-check" label="SSH Strict Host Key Check (disabling option is less secure)" value-type="boolean" category="advanced" optional="true" default-value="true">
+        <conditions>
+            <condition field="v-ssh-tunnel" value="true" />
+        </conditions>
         <boolean-options>
             <false-value value="false" />
             <true-value value="true" />
         </boolean-options>
     </field>
 
-    <field name="v-read-preference" label="Read Preference" value-type="selection" category="general">
+    <field name="v-ssh-known-hosts-file" label="SSH Known Hosts File" value-type="file" category="advanced" optional="true" default-value="~/.ssh/known_hosts">
+        <conditions>
+            <condition field="v-ssh-strict-host-key-check" value="true" />
+        </conditions>
+    </field>
+
+    <field name="v-retry-reads" label="Enable Retry Reads" value-type="boolean" category="advanced" default-value="true">
+        <boolean-options>
+            <false-value value="false" />
+            <true-value value="true" />
+        </boolean-options>
+    </field>
+
+    <field name="v-replica-set" label="Enable Replica Set Mode" value-type="boolean" category="advanced" default-value="false">
+        <boolean-options>
+            <false-value value="false" />
+            <true-value value="true" />
+        </boolean-options>
+    </field>
+
+    <field name="v-read-preference" label="Read Preference" value-type="selection" category="advanced">
         <selection-group>
             <option value="primary" label="Primary"/>
             <option value="primaryPreferred" label="Primary Preferred"/>
@@ -66,7 +117,7 @@
         </selection-group>
     </field>
 
-    <field name="v-scan-method" label="Scan Method" value-type="selection" category="general">
+    <field name="v-scan-method" label="Scan Method" value-type="selection" category="advanced">
         <selection-group>
             <option value="random" label="Random"/>
             <option value="idForward" label="ID Forward"/>
@@ -75,7 +126,7 @@
         </selection-group>
     </field>
 
-    <field name="v-scan-limit" label="Scan Limit" value-type="string" category="general" default-value="1000">
+    <field name="v-scan-limit" label="Scan Limit" value-type="string" category="advanced" default-value="1000">
         <!-- Only display scan limit when a scan method that is not All is chosen. -->
         <conditions>
             <condition field="v-scan-method" value="random" />
@@ -85,12 +136,11 @@
         <validation-rule reg-exp="^\+?(0|[1-9]\d*)$"/>
     </field>
 
-    <field name="v-login-timeout" label="Login Timeout" value-type="string" category="general" default-value="0" >
+    <field name="v-login-timeout" label="Login Timeout" value-type="string" category="advanced" default-value="0" >
         <validation-rule reg-exp="^\+?(0|[1-9]\d*)$"/>
     </field>
 
-    <field name="v-schema-name" label="Schema Name" value-type="string" category="general" default-value="_default">
+    <field name="v-schema-name" label="Schema Name" value-type="string" category="advanced" default-value="_default">
         <validation-rule reg-exp="^[_0-9a-zA-Z]+$"/>
     </field>
-
 </connection-fields>
