@@ -16,11 +16,19 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.jcraft.jsch.HostKey;
+import com.jcraft.jsch.HostKeyRepository;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 import com.mongodb.MongoClientSettings;
+import com.mongodb.MongoCommandException;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import org.bson.Document;
 import org.slf4j.Logger;
@@ -30,6 +38,8 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.DatabaseMetaData;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -37,6 +47,8 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.concurrent.Executor;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
 
 /**
@@ -47,12 +59,21 @@ public class DocumentDbConnection extends Connection
 
     private static final Logger LOGGER =
             LoggerFactory.getLogger(DocumentDbConnection.class.getName());
+    public static final String SSH_KNOWN_HOSTS_FILE = "~/.ssh/known_hosts";
+    public static final String STRICT_HOST_KEY_CHECKING = "StrictHostKeyChecking";
+    public static final String HASH_KNOWN_HOSTS = "HashKnownHosts";
+    public static final String SERVER_HOST_KEY = "server_host_key";
+    public static final String YES = "yes";
+    public static final String NO = "no";
+    public static final String LOCALHOST = "localhost";
+    public static final int DEFAULT_DOCUMENTDB_PORT = 27017;
 
     private final DocumentDbConnectionProperties connectionProperties;
     private DocumentDbDatabaseMetaData metadata;
     private DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private MongoClient mongoClient = null;
     private MongoDatabase mongoDatabase = null;
+    private SshPortForwardingSession session;
 
     /**
      * DocumentDbConnection constructor, initializes super class.
@@ -72,7 +93,35 @@ public class DocumentDbConnection extends Connection
             }
             LOGGER.debug(sb.toString());
         }
+        this.session = createSshTunnel(connectionProperties);
         initializeClients(connectionProperties);
+    }
+
+    /**
+     * Initializes the SSH session and creates a port forwarding tunnel.
+     *
+     * @param connectionProperties the {@link DocumentDbConnectionProperties} connection properties.
+     * @return a {@link Session} session. This session must be closed by calling the
+     *          {@link Session#disconnect()} method.
+     * @throws SQLException if unable to create SSH session or create the port forwarding tunnel.
+     */
+    public static SshPortForwardingSession createSshTunnel(
+            final DocumentDbConnectionProperties connectionProperties) throws SQLException {
+        if (!connectionProperties.enableSshTunnel()) {
+            return null;
+        }
+
+        try {
+            final JSch jSch = new JSch();
+            addIdentity(connectionProperties, jSch);
+            final Session session = createSession(connectionProperties, jSch);
+            connectSession(connectionProperties, jSch, session);
+            return getPortForwardingSession(connectionProperties, session);
+        } catch (SQLException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new SQLException(e.getMessage(), e);
+        }
     }
 
     @Override
@@ -105,6 +154,10 @@ public class DocumentDbConnection extends Connection
             mongoClient.close();
             mongoClient = null;
         }
+        if (session != null) {
+            session.session.disconnect();
+            session = null;
+        }
     }
 
     @SneakyThrows
@@ -121,7 +174,10 @@ public class DocumentDbConnection extends Connection
     private void ensureDatabaseMetadata() throws SQLException {
         if (metadata == null) {
             databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
-                    connectionProperties, connectionProperties.getSchemaName(), VERSION_LATEST_OR_NEW);
+                    connectionProperties,
+                    connectionProperties.getSchemaName(),
+                    VERSION_LATEST_OR_NEW,
+                    getMongoClient());
             metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
         }
     }
@@ -186,11 +242,18 @@ public class DocumentDbConnection extends Connection
             throws SQLException {
         // Create the mongo client.
         final MongoClientSettings settings = connectionProperties
-                .buildMongoClientSettings();
-
+                .buildMongoClientSettings(getSshLocalPort());
         mongoClient = MongoClients.create(settings);
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
+    }
+
+    private int getSshLocalPort() {
+        // Get the port from the SSH tunnel session, if it exists.
+        if (session != null) {
+            return session.localPort;
+        }
+        return 0;
     }
 
     private void pingDatabase() throws SQLException {
@@ -205,6 +268,20 @@ public class DocumentDbConnection extends Connection
             mongoDatabase.runCommand(
                     Document.parse(String.format("{ \"ping\" : 1 %s }", maxTimeMSOption)));
         } catch (MongoSecurityException e) {
+            // Check specifically for authorization error.
+            if (e.getCode() == -4
+                    && e.getCause() != null
+                    && e.getCause() instanceof MongoCommandException
+                    && ((MongoCommandException)e.getCause()).getCode() == 18) {
+                throw SqlError.createSQLException(LOGGER,
+                        SqlState.CONNECTION_EXCEPTION,
+                        e,
+                        SqlError.AUTHORIZATION_ERROR,
+                        e.getCredential().getUserName(),
+                        e.getCredential().getSource(),
+                        e.getCredential().getMechanism());
+            }
+            // Everything else.
             throw SqlError.createSQLException(LOGGER,
                     SqlState.CONNECTION_EXCEPTION,
                     e,
@@ -213,5 +290,137 @@ public class DocumentDbConnection extends Connection
         } catch (Exception e) {
             throw new SQLException(e.getMessage(), e);
         }
+    }
+
+    private static SshPortForwardingSession getPortForwardingSession(
+            final DocumentDbConnectionProperties connectionProperties,
+            final Session session) throws JSchException {
+        final int portSeparatorIndex = connectionProperties.getHostname().indexOf(':');
+        final String clusterHost;
+        final int clusterPort;
+        if (portSeparatorIndex >= 0) {
+            clusterHost = connectionProperties.getHostname().substring(0, portSeparatorIndex);
+            clusterPort = Integer.parseInt(
+                    connectionProperties.getHostname().substring(portSeparatorIndex + 1));
+        } else {
+            clusterHost = connectionProperties.getHostname();
+            clusterPort = DEFAULT_DOCUMENTDB_PORT;
+        }
+        final int localPort = session.setPortForwardingL(LOCALHOST, 0, clusterHost, clusterPort);
+        return new SshPortForwardingSession(session, localPort);
+    }
+
+    private static void connectSession(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch,
+            final Session session) throws SQLException {
+        setSecurityConfig(connectionProperties, jSch, session);
+        try {
+            session.connect();
+        } catch (JSchException e) {
+            throw new SQLException(e.getMessage(), e);
+        }
+    }
+
+    private static void addIdentity(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch) throws JSchException {
+        final String privateKey = getPath(connectionProperties.getSshPrivateKeyFile()).toString();
+        // If passPhrase protected, will need to provide this, too.
+        final String passPhrase = isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())
+                ? connectionProperties.getSshPrivateKeyPassphrase()
+                : null;
+        jSch.addIdentity(privateKey, passPhrase);
+    }
+
+    private static Session createSession(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch) throws SQLException {
+        final String sshUsername = connectionProperties.getSshUser();
+        final String sshHostname;
+        final int sshPort;
+        final int portSeparatorIndex = connectionProperties.getSshHostname().indexOf(':');
+        if (portSeparatorIndex >= 0) {
+            sshHostname = connectionProperties.getSshHostname().substring(0, portSeparatorIndex);
+            sshPort = Integer.parseInt(
+                    connectionProperties.getSshHostname().substring(portSeparatorIndex + 1));
+        } else {
+            sshHostname = connectionProperties.getSshHostname();
+            sshPort = 22;
+        }
+        setKnownHostsFile(connectionProperties, jSch);
+        try {
+            return jSch.getSession(sshUsername, sshHostname, sshPort);
+        } catch (JSchException e) {
+            throw new SQLException(e.getMessage(), e);
+        }
+    }
+
+    private static void setSecurityConfig(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch,
+            final Session session) {
+        if (!connectionProperties.getSshStrictHostKeyChecking()) {
+            session.setConfig(STRICT_HOST_KEY_CHECKING, NO);
+            return;
+        }
+        setHostKeyType(jSch, session);
+    }
+
+    private static void setHostKeyType(final JSch jSch, final Session session) {
+        final HostKeyRepository keyRepository = jSch.getHostKeyRepository();
+        final HostKey[] hostKeys = keyRepository.getHostKey();
+        // This will ensure a match between how the host key was hashed in the known_hosts file.
+        final String hostKeyType = (hostKeys.length > 0) ? hostKeys[0].getType() : null;
+        // Set the hash algorithm
+        if (hostKeyType != null) {
+            session.setConfig(SERVER_HOST_KEY, hostKeyType);
+        }
+        // The default behaviour of `ssh-keygen` is to hash known hosts keys
+        session.setConfig(HASH_KNOWN_HOSTS, YES);
+    }
+
+    private static void setKnownHostsFile(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch) throws SQLException {
+        if (!connectionProperties.getSshStrictHostKeyChecking()) {
+            return;
+        }
+        final String knowHostsFilename;
+        if (!isNullOrWhitespace(connectionProperties.getSshKnownHostsFile())) {
+            final Path knownHostsPath = getPath(connectionProperties.getSshKnownHostsFile());
+            if (Files.exists(knownHostsPath)) {
+                knowHostsFilename = knownHostsPath.toString();
+            } else {
+                throw SqlError.createSQLException(
+                        LOGGER,
+                        SqlState.CONNECTION_EXCEPTION,
+                        SqlError.KNOWN_HOSTS_FILE_NOT_FOUND,
+                        connectionProperties.getSshKnownHostsFile());
+            }
+        } else {
+            knowHostsFilename = getPath(SSH_KNOWN_HOSTS_FILE).toString();
+        }
+        try {
+            jSch.setKnownHosts(knowHostsFilename);
+        } catch (JSchException e) {
+            throw new SQLException(e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Container for the SSH port forwarding tunnel session.
+     */
+    @Getter
+    @AllArgsConstructor
+    public static class SshPortForwardingSession {
+        /**
+         * Gets the SSH session.
+         */
+        private final Session session;
+        /**
+         * Gets the local port for the port forwarding tunnel.
+         */
+        private final int localPort;
     }
 }

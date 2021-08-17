@@ -107,7 +107,7 @@ encountered.
 
 The following diagram shows the way in which scalar-scalar data type conflicts are resolved.
 
-![Scalar-Scalar Promotion](src/markdown/images/ScalarDataTypePromotion-transparent.png)
+![Scalar-Scalar Promotion](../images/ScalarDataTypePromotion-transparent.png)
 
 ### Object and Array Data Type Handling
 

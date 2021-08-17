@@ -45,6 +45,7 @@ import org.mockito.MockitoAnnotations;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
@@ -96,15 +97,16 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
     }
 
     @AfterEach
-    void afterEach() throws SQLException {
+    void afterEach() throws Exception {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(
                         new Properties(),
                         getJdbcConnectionString(),
                         "jdbc:documentdb:");
 
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties);
-        schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties,  null)) {
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+        }
     }
 
     @AfterAll
@@ -200,7 +202,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
         // Test going to previous row number. (2 -> 1)
         Assertions.assertEquals(
-                "Cannot retrieve previous rows.",
+                SqlError.lookup(SqlError.RESULT_FORWARD_ONLY),
                 Assertions.assertThrows(SQLException.class, () -> resultSet.absolute(1)).getMessage());
         Assertions.assertEquals(1, resultSet.getRowIndex());
         Assertions.assertEquals(2, resultSet.getRow());
@@ -232,7 +234,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
         // Test going to previous row number. (2 -> 1)
         Assertions.assertEquals(
-                "Cannot retrieve previous rows.",
+                SqlError.lookup(SqlError.RESULT_FORWARD_ONLY),
                 Assertions.assertThrows(SQLException.class, () -> resultSet.relative(-1)).getMessage());
         Assertions.assertEquals(1, resultSet.getRowIndex());
         Assertions.assertEquals(2, resultSet.getRow());
@@ -268,7 +270,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
 
         // Attempt to use closed result set.
         Assertions.assertEquals(
-                "ResultSet is closed.",
+                SqlError.lookup(SqlError.RESULT_SET_CLOSED),
                 Assertions.assertThrows(SQLException.class, () -> resultSet.next()).getMessage());
     }
 
@@ -289,7 +291,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(2, resultSet.findColumn("value"));
         Assertions.assertEquals(3, resultSet.findColumn("Value"));
         Assertions.assertEquals(
-                String.format("Unknown column label: %s", "value2"),
+                SqlError.lookup(SqlError.INVALID_COLUMN_LABEL, "value2"),
                 Assertions.assertThrows(SQLException.class, () -> resultSet.findColumn("value2"))
                         .getMessage());
     }
@@ -318,7 +320,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                 new DocumentDbResultSet(mockStatement, iterator, ImmutableList.of(column), ImmutableList.of("_id"));
 
         // Try access before first row.
-        Assertions.assertEquals("Result set before first row.",
+        Assertions.assertEquals( SqlError.lookup(SqlError.BEFORE_FIRST),
                 Assertions.assertThrows(SQLException.class, () -> resultSet.getString(1))
                         .getMessage());
 
@@ -340,7 +342,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         // Move past last row.
         Mockito.when(iterator.hasNext()).thenReturn(false);
         Assertions.assertFalse(resultSet.next());
-        Assertions.assertEquals("Result set after last row.",
+        Assertions.assertEquals(SqlError.lookup(SqlError.AFTER_LAST),
                 Assertions.assertThrows(SQLException.class, () -> resultSet.getString(1))
                         .getMessage());
     }

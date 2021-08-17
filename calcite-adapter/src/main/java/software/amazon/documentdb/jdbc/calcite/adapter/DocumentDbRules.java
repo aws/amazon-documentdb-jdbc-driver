@@ -420,8 +420,24 @@ public final class DocumentDbRules {
                 final RexCall call,
                 final List<String> strings,
                 final String stdOperator) {
-            final String op = getMongoAggregateForOperator(call, strings, stdOperator);
-            return addNullChecksToQuery(strings, op);
+            // {$cond: [<null check expression>, <comparison expression>, null]}
+            final String condExpr = "{\"$cond\": [" + getNullCheckExpr(strings) +
+                    ", " +
+                    getMongoAggregateForOperator(call, strings, stdOperator) +
+                    ", null]}";
+            return condExpr;
+        }
+
+        private static String getNullCheckExpr(final List<String> strings) {
+            final StringBuilder nullCheckOperator = new StringBuilder("{\"$and\": [");
+            for (String s : strings) {
+                nullCheckOperator.append("{\"$gt\": [");
+                nullCheckOperator.append(s);
+                nullCheckOperator.append(", null]},");
+            }
+            nullCheckOperator.deleteCharAt(nullCheckOperator.length() - 1);
+            nullCheckOperator.append("]}");
+            return nullCheckOperator.toString();
         }
 
         private static String getMongoAggregateForNullOperator(
@@ -441,20 +457,6 @@ public final class DocumentDbRules {
             return "{$substrCP: [" + Util.commaList(inputs) + "]}";
         }
 
-        private static String addNullChecksToQuery(final List<String> strings, final String op) {
-            final StringBuilder sb = new StringBuilder("{\"$and\": [");
-            sb.append(op);
-            for (String string : strings) {
-                if (!"null".equals(string)) {
-                    // The operator {$gt null} filters out any values that are null or undefined.
-                    sb.append(",{\"$gt\": [");
-                    sb.append(string);
-                    sb.append(", null]}");
-                }
-            }
-            sb.append("]}");
-            return sb.toString();
-        }
     }
 
     private static String stripQuotes(final String s) {
