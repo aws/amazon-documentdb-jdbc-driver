@@ -36,9 +36,8 @@ Identifiers are the names of tables, columns, and column aliases in an SQL query
 Quoting is optional but unquoted identifiers must start with a letter 
 and can only contain letters, digits, and underscores. 
 Quoted identifiers start and end with double quotes. 
-They may contain virtually any character. If you wish to include a double quote in an identifier, 
-use another double quote to escape it.
-The maximum identifier length, quoted or unquoted, is 128 characters.
+They may contain virtually any character. To include a double quote in an identifier, 
+use another double quote to escape it. The maximum identifier length, quoted or unquoted, is 128 characters.
 
 Identifier matching is case-sensitive and identifiers that match a reserved SQL keyword must be quoted 
 or use fully qualified names.
@@ -180,22 +179,25 @@ Note that null values will be first when sorting by `ASC` and last when sorting 
 this cannot be overridden since `NULLS FIRST` and `NULLS LAST` are not supported.
 
 ## Type Conversion
-Type conversions is currently handled as a last step of the query execution.
+Type conversions through `CAST`are currently handled as a last step of the query execution.
 When used outside the `SELECT` clause or even in a more complex or nested expression in the `SELECT` clause, 
 `CAST` may have inconsistent results.
 
-The following conversions using `CAST` are supported (denoted by **Y**) or unsupported (denoted by **N**):
+The following conversions using an explicit `CAST` are supported (denoted by **Y**) or unsupported (denoted by **N**):
 
 |  FROM - TO                      | BOOLEAN | TINYINT, SMALLINT, INT, BIGINT | DECIMAL, FLOAT, REAL, DOUBLE | DATE | TIME | TIMESTAMP | CHAR, VARCHAR | BINARY, VARBINARY
-|:-------------------             |:--------|:------------------------------ |:-----------------------------|:-----|:-----|:----------|:----------------|:-------------------
-| BOOLEAN                         | x       | i       | e       | e        | e   | e      | e       | e             | e      | x        | x    | x    | x         | i               | x
-| TINYINT, SMALLINT, INT, BIGINT  | x       | e       | i       | i        | i   | i      | i       | i             | i      | e        | x    | x    | e         | i               | x | x    | e       | i       | i        | i   | i      | i       | i             | i      | e        | x    | x    | e         | i               | x
-| DECIMAL, FLOAT, REAL, DOUBLE    |         | x    | e       | i       | i        | i   | i      | i       | i             | i      | e        | x    | x    | e         | i               | x
-| DATE                            | x       | x       | x       | x        | x   | x      | x       | x             | x      | x        | i    | x    | i         | i               | x
-| TIME                            | x       | x       | x       | x        | x   | x      | x       | x             | x      | x        | x    | i    | e         | i               | x
-| TIMESTAMP                       | x       | x       | e       | e        | e   | e      | e       | e             | e      | x        | i    | e    | i         | i               | x
-| CHAR, VARCHAR                   | x       | e       | i       | i        | i   | i      | i       | i             | i      | i        | i    | i    | i         | i               | i
-| BINARY, VARBINARY               | x       | x       | x       | x        | x   | x      | x       | x             | x      | x        | e    | e    | e         | i               | i
+|:-------------------             |:--------|:------------------------------ |:-----------------------------|:-----|:-----|:----------|:--------------|:------------------
+| BOOLEAN                         | _       | N                              | N                            | N    | N    | N         | Y             | N
+| TINYINT, SMALLINT, INT, BIGINT  | N       | Y                              | Y                            | N    | N    | N         | N             | N
+| DECIMAL, FLOAT, REAL, DOUBLE    |         | Y                              | Y                            | N    | N    | N         | N             | N
+| DATE                            | N       | N                              | N                            | _    | Y    | Y         | Y             | N
+| TIME                            | N       | N                              | N                            | N    | _    | N         | N             | N
+| TIMESTAMP                       | N       | N                              | N                            | Y    | Y    | _         | Y             | N
+| CHAR, VARCHAR                   | N       | N                              | N                            | N    | N    | N         | _             | N
+| BINARY, VARBINARY               | N       | N                              | N                            | N    | N    | N         | N             | _
+
+The driver also allows for implicit conversions when such a conversion makes sense. For example, a `DATE` value passed to 
+a function that takes `TIMESTAMP`, will be automatically cast to `TIMESTAMP`.
 
 ## Operators and Functions 
 
