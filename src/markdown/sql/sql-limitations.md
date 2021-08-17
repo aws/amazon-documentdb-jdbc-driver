@@ -20,7 +20,7 @@ All other clauses apart from `SELECT` and `FROM` are optional.
 
 A `projectItem`, `groupItem` or `orderItem` can be a reference to a column, a literal or
 some combination of the former using [supported operators or functions](#operators-and-functions). 
-A `booleanExpression` is the same but must resolve to a boolean value.
+A `booleanExpression` is the same but must resolve to a `boolean` value.
 
 Set operations `UNION`, `INTERSECT` and `EXCEPT` are not supported.
 Grouping operations using `CUBE`, `ROLLUP` or `GROUPING SETS` are not supported.
@@ -164,7 +164,7 @@ The driver recognizes the following SQL data types:
 
 Note that while all the above can be used when constructing queries, columns themselves can 
 only be of the types `BOOLEAN`, `BIGINT`, `INTEGER`, `DECIMAL`, `DOUBLE`, `VARCHAR`, `VARBINARY` and `TIMESTAMP`. 
-See the [schema discovery or generation](schema/schema-discovery.md) sections for more information.
+See the [schema discovery or generation](/src/markdown/schema/schema-discovery.md) sections for more information.
 
 ## Sorting
 When using an `ORDER BY` clause, values corresponding directly to a column will 
@@ -189,7 +189,7 @@ The following conversions using an explicit `CAST` are supported (denoted by **Y
 |:-------------------             |:--------|:------------------------------ |:-----------------------------|:-----|:-----|:----------|:--------------|:------------------
 | BOOLEAN                         | _       | N                              | N                            | N    | N    | N         | Y             | N
 | TINYINT, SMALLINT, INT, BIGINT  | N       | Y                              | Y                            | N    | N    | N         | N             | N
-| DECIMAL, FLOAT, REAL, DOUBLE    |         | Y                              | Y                            | N    | N    | N         | N             | N
+| DECIMAL, FLOAT, REAL, DOUBLE    | N       | Y                              | Y                            | N    | N    | N         | N             | N
 | DATE                            | N       | N                              | N                            | _    | Y    | Y         | Y             | N
 | TIME                            | N       | N                              | N                            | N    | _    | N         | N             | N
 | TIMESTAMP                       | N       | N                              | N                            | Y    | Y    | _         | Y             | N
