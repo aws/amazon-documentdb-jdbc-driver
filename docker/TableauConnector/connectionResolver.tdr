@@ -14,7 +14,9 @@
           <attr>password</attr>
           <attr>sslmode</attr>
           <attr>v-database</attr>
-          <attr>v-tls-allow-invalid-hostnames</attr>
+          <attr>v-allow-invalid-hostnames</attr>
+          <attr>v-tls-ca-file</attr>
+          <attr>v-ssh-tunnel</attr>
           <attr>v-ssh-user</attr>
           <attr>v-ssh-host</attr>
           <attr>v-ssh-priv-key-filename</attr>
