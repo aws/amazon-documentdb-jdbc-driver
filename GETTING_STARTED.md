@@ -74,7 +74,7 @@ If you already have an instance of an Amazon EC2 running in the same VPC as your
 2. Select the **Amazon Linux 2 AMI (HVM), SSD Volume Type** as the machine image and **t2.micro** as the instance type. Leave everything as default and launch the instance.  
    1. **NOTE:** This will create the instance in your default VPC. You can select a different VPC if necessary but should remember to create your DocumentDB cluster there as well. 
 3. You will be prompted to provide or generate a key pair for the instance. Create a new key pair with a meaningful name and download it. Make sure to keep track of this file.
-4. Give the instance a meaningful name and wait for the instance to have a state of running.
+4. Give the instance a meaningful name and wait for the instance to have a state of running. Give your 
 5. Move the key pair file (a PEM file) into your ssh directory.
 
    ~~~
@@ -90,10 +90,10 @@ If you already have an instance of an Amazon EC2 running in the same VPC as your
 7. SSH into the instance to verify the setup!
 
    ~~~
-   ssh -i ~/.ssh/<key pair name>.pem ec2-user@<public IPv4 DNS name>
+   ssh -i ~/.ssh/<key pair name>.pem <ec2-username>@<public IPv4 DNS name>
    ~~~
    
-   You can find the public dns name of your instance from the EC2 dashboard. Select your instance and copy the public IPv4 DNS from the instance memory.
+   Where <ec2-username> is the EC2 username chosen by you when creating a EC2 instance. You can find the public dns name of your instance from the EC2 dashboard. Select your instance and copy the public IPv4 DNS from the instance memory.
 
    ![EC2 Instance](src/markdown/images/EC2-instance.png)
 
@@ -123,7 +123,7 @@ If you already have an instance of an Amazon EC2 running in the same VPC as your
 8. Once the cluster is available, we can create the SSH tunnel using our EC2 instance. Use the same key pair file and public DNS name used to SSH into the EC2 instance. Use the cluster endpoint from the configuration tab of your cluster.
 
    ~~~
-   ssh -i ~/.ssh/<key pair>.pem -N -L 27017:<cluster endpoint>:27017 ec2-user@<public IPv4 DNS name>
+   ssh -i ~/.ssh/<key pair>.pem -N -L 27017:<cluster endpoint>:27017 <ec2-username>@<public IPv4 DNS name>
    ~~~
    ![Cluster Endpoint](src/markdown/images/Cluster-Endpoint.png)
    
@@ -196,7 +196,7 @@ Connecting with TLS programmatically is slightly different from how we did it wi
    DOC_DB_USER_NAME=<secret username>
    DOC_DB_PASSWORD=<secret password>
    DOC_DB_LOCAL_PORT=27019
-   DOC_DB_USER=ec2-user@<public IPv4 DNS name>
+   DOC_DB_USER=<ec2-username>@<public IPv4 DNS name>
    DOC_DB_HOST=<cluster endpoint>
    DOC_DB_PRIV_KEY_FILE=~/.ssh/<key pair name>.pem
    ~~~
