@@ -14,7 +14,7 @@ group 'software.amazon.documentdb.jdbc'
 version "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}-beta.${project.BETA_VERSION}"
 description 'documentdb-jdbc-driver'
 
-tasks.register('patch') {
+tasks.register('patchJanino') {
     download {
         println "Dowloading Janino Library"
         src 'https://github.com/janino-compiler/janino/archive/4b98b5b44ee329685503e264751067fab259f7b7.zip'
@@ -41,8 +41,6 @@ tasks.register('patch') {
         into "src/main/resources"
     }
 }
-
-build.dependsOn tasks.patch
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -71,6 +69,8 @@ jar {
 }
 
 shadowJar {
+    dependsOn('patchJanino')
+
     //  Exclude driver unnecessary classes.
     exclude 'org/apache/calcite/jdbc/Driver*'
     exclude 'org/apache/calcite/avatica/remote/Driver*'
