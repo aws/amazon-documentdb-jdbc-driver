@@ -1095,7 +1095,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
     }
 
-    @ParameterizedTest(name = "testQueryWithAndOrNulls - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testQuerySelectLogicNulls - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testQuerySelectLogicNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -1144,7 +1144,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
     }
 
-    @ParameterizedTest(name = "testQueryWithAndOrNulls - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testQuerySelectLogicManyNulls - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testQuerySelectLogicManyNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
