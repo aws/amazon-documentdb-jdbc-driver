@@ -6,9 +6,9 @@
 
 #### What to look for:
 
-1. `java.net.ConnectException: Connection refused: connect`
+-  `java.net.ConnectException: Connection refused: connect`
 
-#### Tableau Connection Error Issue
+##### Tableau Connection Error
     
 ```text
 An error occurred while communicating with DocumentDB by Amazon
@@ -28,7 +28,7 @@ Check that the server is running and that you have access privileges to the requ
 Connector Class: documentdbjdbc, Version: ...
 ```
 
-#### DbVisualizer Error
+##### DbVisualizer Connection Error
 
 ```text
 An error occurred while establishing the connection:
@@ -41,24 +41,41 @@ exception={com.mongodb.MongoSocketOpenException: Exception opening socket},
  caused by {java.net.ConnectException: Connection refused: connect}}]
 ```
 
-1. To connect to an Amazon DocumentDB cluster from outside an Amazon VPC, 
-  you can use an SSH tunnel. For more information, see [Connecting to an 
-  Amazon DocumentDB Cluster from Outside an Amazon VPC](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect-from-outside-a-vpc.html). 
-  Additionally, if your development environment is in a different Amazon VPC, you can also use 
-  VPC Peering and connect to your Amazon DocumentDB cluster from another Amazon VPC in the 
-  same region or a different region.
-1. Also see [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/ssh-tunnel.md)
-1. Ensure the *Port* number matches the local port number configured when using an SSH tunnel.
-1. Ensure the *Hostname* is set to `localhost` when using an SSH tunnel.
-      
+#### What to do:
+This problem suggests that you are unable to reach the DocumentDB cluster. Most commonly, this is 
+because you are outside the cluster's VPC. To connect to an Amazon DocumentDB cluster from outside 
+an Amazon VPC, you can use an SSH tunnel. The driver allows users to set up an SSH tunnel manually 
+or pass additional parameters in the connecting string so that the driver can create one automatically. 
+See [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/ssh-tunnel.md) for more information 
+on both methods. 
+
+If this is still an issue after having setup the SSH tunnel, double-check the values of *Port* or 
+*Hostname*.
+
+If you have manually set up an SSH tunnel:
+1. Ensure the *Port* number in your connection string matches the local port number configured when using an SSH tunnel. 
+   In this example, the local port is **27019** not 27017:
+      ```
+      ssh -i "ec2Access.pem" -L 27019:sample-cluster.node.us-east-1.docdb.amazonaws.com:27017 ec3-user@ec2.compute-1.amazonaws.com -N
+      ```
+1. Ensure the *Hostname* in your connection string is set to `localhost`.
+
+If you are using the automatically set up SSH tunnel:  
+1. Ensure the *Port* number in your connection matches the cluster's port number. Typically, this is `27017`. 
+1. Ensure the *Hostname* in your connection string is set to the cluster hostname and **not** `localhost`.
+
+If the issue is unrelated to SSH tunneling, 
+double check other parameters in your [connection string]()
+and make sure the cluster is running and available to connect to.
+
 ### Internally Embedded Certificate Authority Issue       
 
 #### What to look for:
 
-1. `unable to find valid certification path to requested target`
-1. `Server's certificate with common name ... is not trusted`
+-  `unable to find valid certification path to requested target`
+-  `Server's certificate with common name ... is not trusted`
 
-#### Tableau Certificate Error
+##### Tableau Certificate Error
 
 ```text
 An error occurred while communicating with DocumentDB by Amazon
@@ -80,7 +97,7 @@ Check that the server is running and that you have access privileges to the requ
 Connector Class: documentdbjdbc, Version: ...
 ```
 
-#### DbVisualizer Certificate Error
+##### DbVisualizer Certificate Error
 
 ```text
 Server's certificate with common name ... is not trusted.
@@ -97,6 +114,23 @@ The online security resources may give a pointer how to fix this.
 1. Provide the root certificate file name in the connection. 
    1. Tableau: *TLS Certificate Authority File (Optional)* : `~/rds-ca-2019-root.pem`
    1. DbVisualizer: `jdbc:documentdb://localhost:27017/test?tls=true&tlsAllowInvalidHostnames=true&tlsCAFile=~/rds-ca-2019-root.pem`
+    
+### Invalid hostname 
+#### What to look for: 
+-  `javax.net.ssl.SSLHandshakeException: No subject alternative DNS name matching localhost found.`
+
+#### What to do: 
+1. Pass the `tlsAllowInvalidHostnames` parameter in your connection string as `true`. 
+
+### Invalid username or password 
+
+#### What to look for: 
+- `Authorization failed for user '<username>' on database 'admin' with mechanism 'SCRAM-SHA-1'.`
+- `Exception authenticating MongoCredential{mechanism=SCRAM-SHA-1, userName='<username>', source='admin', password=<hidden>, mechanismProperties=<hidden>}'.`
+
+#### What to do: 
+1. Double check that your username and password are correct. 
+2. Make sure that the user you are logging in with has the right access privileges to the target database.
 
 ## Schema Issues
 
@@ -115,3 +149,9 @@ The online security resources may give a pointer how to fix this.
     java -jar document-db-1.0.SNAPSHOT-all.jar --generate-new \
     --server localhost:27019 --database test -u ajones --tls --tls-allow-invalid-hostnames
     ```
+## Query Issues
+
+#### What to look for: 
+
+#### What to do: 
+1. Double check that the identifiers using
