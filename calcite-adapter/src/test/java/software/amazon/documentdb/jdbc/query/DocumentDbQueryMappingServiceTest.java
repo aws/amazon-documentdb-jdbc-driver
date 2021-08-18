@@ -279,9 +279,12 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$and\": [{\"$eq\": [\"$array.field1\", {\"$literal\": \"value\"}]}, " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}}}"),
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [true, {\"$eq\": [\"$array.field1\", {\"$literal\": \"value\"}]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$eq\": [\"$array.field1\", {\"$literal\": \"value\"}]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
@@ -1425,7 +1428,11 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$or\": [{\"$eq\": [\"$array.field\", {\"$literal\": 2}]}, {\"$eq\": [\"$array.field\", {\"$literal\": 3}]}]}}}"),
+                        "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$eq\": [\"$array.field\", {\"$literal\": 2}]}]}, " +
+                                "{\"$eq\": [true, {\"$eq\": [\"$array.field\", {\"$literal\": 3}]}]}]}, true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$eq\": [\"$array.field\", {\"$literal\": 2}]}]}, " +
+                                "{\"$eq\": [false, {\"$eq\": [\"$array.field\", {\"$literal\": 3}]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1459,10 +1466,15 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$and\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 2}, null]}]}, {\"$ne\": [\"$array.field\", {\"$literal\": 2}]}, null]}, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [true, " +
                                 "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 3}, null]}]}, {\"$ne\": [\"$array.field\", {\"$literal\": 3}]}, null]}]}}}"),
+                                "{\"$gt\": [{\"$literal\": 2}, null]}]}, {\"$ne\": [\"$array.field\", {\"$literal\": 2}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 3}, null]}]}, {\"$ne\": [\"$array.field\", {\"$literal\": 3}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 2}, null]}]}, {\"$ne\": [\"$array.field\", {\"$literal\": 2}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 3}, null]}]}, {\"$ne\": [\"$array.field\", {\"$literal\": 3}]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1496,7 +1508,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$or\": [{\"$lte\": [\"$array.field\", null]}, {\"$gt\": [\"$array.field1\", null]}]}}}"),
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$lte\": [\"$array.field\", null]}]}, {\"$eq\": [true, {\"$gt\": [\"$array.field1\", null]}]}]}, true, {\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$lte\": [\"$array.field\", null]}]}, {\"$eq\": [false, {\"$gt\": [\"$array.field1\", null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1648,7 +1660,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$or\": [{\"$eq\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, {\"$literal\": 2}]}, {\"$eq\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, {\"$literal\": 2}]}, {\"$eq\": [{\"$literal\": 1}, \"$array.field\"]}]}}}"),
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$eq\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, {\"$literal\": 2}]}]}, {\"$eq\": [true, {\"$eq\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, {\"$literal\": 2}]}]}, {\"$eq\": [true, {\"$eq\": [{\"$literal\": 1}, \"$array.field\"]}]}]}, true, {\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$eq\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, {\"$literal\": 2}]}]}, {\"$eq\": [false, {\"$eq\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, {\"$literal\": 2}]}]}, {\"$eq\": [false, {\"$eq\": [{\"$literal\": 1}, \"$array.field\"]}]}]}, false, null]}]}}}"),
         result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1684,12 +1696,18 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$or\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}, " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}, " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}}}"),
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1725,12 +1743,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$and\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}, " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}, " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}}}"),
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, {\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1766,16 +1779,62 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$or\": [{\"$and\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}, " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
-                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}, {\"$or\": [" +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {" +
+                                "\"$gt\": [{\"$literal\": 10}, null]}]}, {\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$or\": [{\"$eq\": [true, " +
                                 "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, " +
                                 "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, " +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, null]}]}}}"),
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}]}]}, true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, {\"$cond\": [{\"$and\": [{\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}]}]}, false, null]}]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}]}, {\"$eq\": [true, {\"$cond\": [{\"$or\": [{\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}]}]}, true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}]}]}, false, null]}]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1811,16 +1870,60 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$or\": [{\"$and\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
-                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$lte\": [\"$array.field\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$lte\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, " +
                                 "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
-                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}, {\"$or\": [" +
-                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}]}, {\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, " +
                                 "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, {\"$cond\": [{\"$and\": [{\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}]}]}, true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$lte\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}]}, {\"$eq\": [false, {\"$cond\": [{\"$or\": [{\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, {\"$cond\": [{\"$and\": [{\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}]}]}, false, null]}]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$lte\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}]}, {\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, {\"$cond\": [{\"$and\": [{\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}]}]}, true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$lte\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 10}, null]}]}, " +
+                                "{\"$lt\": [\"$array.field2\", {\"$literal\": 10}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, {\"$cond\": [{\"$and\": [{\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$lte\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}]}]}, false, null]}]}]}, {\"$eq\": [false, " +
                                 "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
-                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, null]}]}}}"),
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 0}]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(

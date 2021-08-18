@@ -1148,7 +1148,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     @MethodSource({"getTestEnvironments"})
     void testQuerySelectLogicManyNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final String tableName = "testQuerySelectLogicNulls";
+        final String tableName = "testQuerySelectLogicManyNulls";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
                 "\"field\": true, \n" +
                 "\"field1\": true, \n" +
