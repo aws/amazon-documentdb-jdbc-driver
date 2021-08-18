@@ -246,10 +246,10 @@ public final class DocumentDbRules {
                     RexToMongoTranslator::getMongoAggregateForIntegerDivide);
             // Boolean
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.AND,
-                    (call, strings) -> getMongoAggregateForOperator(
+                    (call, strings) -> getMongoAggregateForOrAndOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.OR,
-                    (call, strings) -> getMongoAggregateForOperator(
+                    (call, strings) -> getMongoAggregateForOrAndOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.NOT,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
@@ -299,6 +299,108 @@ public final class DocumentDbRules {
 
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.SUBSTRING,
                     RexToMongoTranslator::getMongoAggregateForSubstringOperator);
+        }
+
+        private static String getMongoAggregateForOrAndOperator(final RexCall call, final List<String> strings, final String s) {
+            StringBuilder sb = new StringBuilder();
+            List<String> checked = new ArrayList<>(strings);
+            String first = checked.remove(0);
+            sb.append("{$cond: [{$gt: [").append(first).append(", null]},");
+            if ("$and".equals(s)) {
+                checkForAndNulls(first, strings, checked, true, false, sb);
+                sb.append(",");
+                checkForAndNulls(first, strings, checked, false, false, sb);
+            }
+            if ("$or".equals(s)) {
+                checkForOrNulls(first, strings, checked, true, false, sb);
+                sb.append(",");
+                checkForOrNulls(first, strings, checked, false, false, sb);
+            }
+            return sb.append("]}").toString();
+        }
+
+        private static void checkForAndNulls(String prev, List<String> strings, List<String> unchecked, boolean prevWasNonNull, boolean foundNull, final StringBuilder sb) {
+            if (prevWasNonNull) {
+                if (unchecked.isEmpty()) {
+                    if (foundNull) {
+                        sb.append("null");
+                    } else {
+                        sb.append("{$and: [").append(Util.commaList(strings)).append("]}");
+                    }
+                } else {
+                    List<String> newUnchecked = new ArrayList<>(unchecked);
+                    String current = newUnchecked.remove(0);
+                    sb.append("{$cond: [");
+                    sb.append(prev);
+                    sb.append(",");
+                    sb.append("{$cond: [{$gt: [");
+                    sb.append(current);
+                    sb.append(", null]},");
+                    checkForAndNulls(current, strings, newUnchecked, true, foundNull, sb);
+                    sb.append(",");
+                    checkForAndNulls(current, strings, newUnchecked, false, foundNull, sb);
+                    sb.append("]}, {$literal: false}]}");
+                }
+
+            } else {
+                if (unchecked.isEmpty()) {
+                    sb.append("null");
+                } else {
+                    List<String> newUnchecked = new ArrayList<>(unchecked);
+                    String current = newUnchecked.remove(0);
+                    sb.append("{$cond: [");
+                    sb.append("{$gt: [");
+                    sb.append(current);
+                    sb.append(", null]},");
+                    checkForAndNulls(current, strings, newUnchecked, true, true, sb);
+                    sb.append(",");
+                    checkForAndNulls(current, strings, newUnchecked, false, true, sb);
+                    sb.append("]}");
+                }
+            }
+        }
+
+        private static void checkForOrNulls(String prev, List<String> strings, List<String> unchecked, boolean prevWasNonNull, boolean foundNull, final StringBuilder sb) {
+            if (prevWasNonNull) {
+                if (unchecked.isEmpty()) {
+                    if (foundNull) {
+                        sb.append("null");
+                    } else {
+                        sb.append("{$or: [").append(Util.commaList(strings)).append("]}");
+                    }
+                } else {
+                    List<String> newUnchecked = new ArrayList<>(unchecked);
+                    String current = newUnchecked.remove(0);
+                    sb.append("{$cond: [");
+                    sb.append(prev);
+                    sb.append(",");
+                    sb.append("{$literal: true}");
+                    sb.append(",");
+                    sb.append("{$cond: [{$gt: [");
+                    sb.append(current);
+                    sb.append(", null]},");
+                    checkForOrNulls(current, strings, newUnchecked, true, foundNull, sb);
+                    sb.append(",");
+                    checkForOrNulls(current, strings, newUnchecked, false, foundNull, sb);
+                    sb.append("]}]}");
+                }
+
+            } else {
+                if (unchecked.isEmpty()) {
+                    sb.append("null");
+                } else {
+                    List<String> newUnchecked = new ArrayList<>(unchecked);
+                    String current = newUnchecked.remove(0);
+                    sb.append("{$cond: [");
+                    sb.append("{$gt: [");
+                    sb.append(current);
+                    sb.append(", null]},");
+                    checkForOrNulls(current, strings, newUnchecked, true, true, sb);
+                    sb.append(",");
+                    checkForOrNulls(current, strings, newUnchecked, false, true, sb);
+                    sb.append("]}");
+                }
+            }
         }
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
