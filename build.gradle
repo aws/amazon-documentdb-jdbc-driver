@@ -6,11 +6,41 @@ plugins {
     id 'com.github.hierynomus.license' version '0.15.0'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
     id 'org.kordamp.gradle.markdown' version '2.2.0'
+    id "de.undercouch.download" version "4.1.2"
+    id "com.github.dkorotych.gradle-maven-exec" version "2.2.1"
 }
 
 group 'software.amazon.documentdb.jdbc'
-version '1.0.0-beta.6'
+version "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}-beta.${project.BETA_VERSION}"
 description 'documentdb-jdbc-driver'
+
+tasks.register('patchJanino') {
+    download {
+        println "Dowloading Janino Library"
+        src 'https://github.com/janino-compiler/janino/archive/4b98b5b44ee329685503e264751067fab259f7b7.zip'
+        dest buildDir
+    }
+    copy {
+        def zipFile = file("${buildDir}/4b98b5b44ee329685503e264751067fab259f7b7.zip")
+        def outputDir = file("${buildDir}/dependencies")
+        from zipTree(zipFile)
+        into outputDir
+    }
+    copy {
+        from "src/main/dependency/org/codehaus/commons/compiler/CompilerFactoryFactory.java"
+        into "${buildDir}/dependencies/janino-4b98b5b44ee329685503e264751067fab259f7b7/commons-compiler/src/main/java/org/codehaus/commons/compiler"
+    }
+    mavenexec {
+        workingDir "${buildDir}/dependencies/janino-4b98b5b44ee329685503e264751067fab259f7b7/commons-compiler"
+        goals 'package'
+        threads '2C'
+        quiet false
+    }
+    copy {
+        from "${buildDir}/dependencies/janino-4b98b5b44ee329685503e264751067fab259f7b7/commons-compiler/target/commons-compiler-3.0.11.jar"
+        into "src/main/resources"
+    }
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -39,6 +69,8 @@ jar {
 }
 
 shadowJar {
+    dependsOn('patchJanino')
+
     //  Exclude driver unnecessary classes.
     exclude 'org/apache/calcite/jdbc/Driver*'
     exclude 'org/apache/calcite/avatica/remote/Driver*'
@@ -53,6 +85,7 @@ shadowJar {
     minimize {
         exclude(dependency('org.apache.calcite::'))
         exclude(dependency('org.slf4j.*::'))
+        exclude(dependency('com.jcraft::'))
     }
 }
 
@@ -214,6 +247,7 @@ jacocoTestCoverageVerification.dependsOn jacocoTestReport
  */
 license {
     header =  project.file('license-header.txt')
+    exclude "**/*.properties"
     headerDefinitions {
         slash_star_with_space {
             firstLine = '/*'
@@ -228,10 +262,22 @@ license {
     }
 }
 
+/**
+ * Write driver version data to properties file.
+ */
+task writeProperties(type: WriteProperties) {
+    outputFile("$projectDir/src/main/resources/project.properties")
+    property("driver.major.version", MAJOR_VERSION)
+    property("driver.minor.version", MINOR_VERSION)
+    property("driver.full.version", project.version)
+}
+
+processResources {
+    from(writeProperties)
+    duplicatesStrategy(DuplicatesStrategy.INCLUDE)
+}
+
 repositories {
-    maven {
-        url 'https://raw.githubusercontent.com/birschick-bq/janino/brucei/ad-189/maven'
-    }
     mavenCentral()
 }
 
@@ -242,11 +288,12 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.3'
     implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.12.3'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-    implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.29'
+    implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+    implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
     compileOnly         'org.projectlombok:lombok:1.18.16'
@@ -257,11 +304,11 @@ dependencies {
     testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
-    testImplementation      group: 'junit', name: 'junit', version: '4.12'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.6.0'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.0'
-    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '2.1.0'
-    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.6.0'
+    testImplementation      group: 'junit', name: 'junit', version: '4.13.2'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.7.2'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.7.2'
+    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '3.11.2'
+    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.7.2'
 
-    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
 }

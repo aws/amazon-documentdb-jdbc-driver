@@ -173,6 +173,7 @@ jacocoTestCoverageVerification.dependsOn jacocoTestReport
 license {
     skipExistingHeaders = true
     header =  project.parent.file('license-header.txt')
+    exclude "**/*.properties"
     headerDefinitions {
         slash_star_with_space {
             firstLine = '/*'
@@ -188,9 +189,6 @@ license {
 }
 
 repositories {
-    maven {
-        url 'https://raw.githubusercontent.com/birschick-bq/janino/brucei/ad-189/maven'
-    }
     mavenCentral()
 }
 
@@ -201,9 +199,8 @@ dependencies {
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
-    implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.29'
+    implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.26.0'
-    implementation group: 'org.codehaus.janino', name: 'commons-compiler', version: '3.0.17'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
 
     compileOnly         'org.projectlombok:lombok:1.18.16'
@@ -211,11 +208,11 @@ dependencies {
 
     testCompileOnly group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     testImplementation(testFixtures(project(':common')))
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.6.0'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.7.2'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 
-    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.10.1'
+    spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
 }
 
 test {

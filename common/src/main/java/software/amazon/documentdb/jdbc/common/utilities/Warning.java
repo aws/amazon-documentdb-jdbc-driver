@@ -22,13 +22,10 @@ import java.util.ResourceBundle;
  * Enum representing the possible warning messages and lookup facilities for localization.
  */
 public enum Warning {
-    ERROR_CANCELING_QUERY,
     MAX_VALUE_TRUNCATED,
     VALUE_TRUNCATED,
-    NULL_PROPERTY,
-    NULL_URL,
     UNSUPPORTED_PROPERTY,
-    UNSUPPORTED_URL_PREFIX;
+    ;
 
     private static final ResourceBundle RESOURCE = ResourceBundle.getBundle("jdbc");
 

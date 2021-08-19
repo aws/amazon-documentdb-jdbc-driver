@@ -62,7 +62,7 @@ public abstract class Statement implements java.sql.Statement {
     @Override
     public void cancel() throws SQLException {
         verifyOpen();
-        cancelQuery();
+        cancelQuery(false);
     }
 
     @Override
@@ -82,7 +82,7 @@ public abstract class Statement implements java.sql.Statement {
         if (!this.isClosed.getAndSet(true)) {
             LOGGER.debug("Cancel any running queries.");
             try {
-                cancelQuery();
+                cancelQuery(true);
             } catch (final SQLException e) {
                 LOGGER.warn(
                         "Error occurred while closing Statement. Failed to cancel running query: %s",
@@ -437,6 +437,7 @@ public abstract class Statement implements java.sql.Statement {
     /**
      * Cancels the current query.
      * @throws SQLException - if a database exception occurs
+     * @param isClosing indicator of whether the statement is closing.
      */
-    protected abstract void cancelQuery() throws SQLException;
+    protected abstract void cancelQuery(final boolean isClosing) throws SQLException;
 }

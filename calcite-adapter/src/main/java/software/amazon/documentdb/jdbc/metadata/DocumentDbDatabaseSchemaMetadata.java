@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
+import com.mongodb.client.MongoClient;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
 
@@ -77,12 +78,15 @@ public final class DocumentDbDatabaseSchemaMetadata {
      *
      * @param properties the connection properties.
      * @param schemaName the schema name.
+     * @param client the {@link MongoClient} client.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance.
      */
     public static DocumentDbDatabaseSchemaMetadata get(
-            final DocumentDbConnectionProperties properties, final String schemaName)
+            final DocumentDbConnectionProperties properties,
+            final String schemaName,
+            final MongoClient client)
             throws SQLException {
-        return get(properties, schemaName, VERSION_LATEST_OR_NEW);
+        return get(properties, schemaName, VERSION_LATEST_OR_NEW, client);
     }
 
 
@@ -95,20 +99,22 @@ public final class DocumentDbDatabaseSchemaMetadata {
      * @param schemaVersion the version of the schema. A version number of
      *                {@link DocumentDbDatabaseSchemaMetadata#VERSION_LATEST_OR_NEW} indicates to get the latest
      *                or create a new instance.
+     * @param client the {@link MongoClient} client.
      * @return a {@link DocumentDbDatabaseSchemaMetadata} instance if the schema and version exist,
      * null otherwise.
      */
     public static DocumentDbDatabaseSchemaMetadata get(
             final DocumentDbConnectionProperties properties, final String schemaName,
-            final int schemaVersion) throws SQLException {
+            final int schemaVersion,
+            final MongoClient client) throws SQLException {
 
         // Try to get it from the service.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata;
         final DocumentDbSchema schema = DocumentDbMetadataService
-                .get(properties, schemaName, schemaVersion);
+                .get(properties, schemaName, schemaVersion, client);
         if (schema != null) {
             // Setup lazy load based on table ID.
-            setSchemaGetTableFunction(properties, schemaName, schemaVersion, schema);
+            setSchemaGetTableFunction(properties, schemaName, schemaVersion, schema, client);
             databaseMetadata = new DocumentDbDatabaseSchemaMetadata(schema);
         } else {
             databaseMetadata = null;
@@ -121,13 +127,15 @@ public final class DocumentDbDatabaseSchemaMetadata {
      *
      * @param properties the connection properties.
      * @param schemaName the name of the schema.
+     * @param client the {@link MongoClient} client.
      *
      * @throws SQLException if invalid connection properties.
      */
     public static void remove(
             final DocumentDbConnectionProperties properties,
-            final String schemaName) throws SQLException {
-        DocumentDbMetadataService.remove(properties, schemaName);
+            final String schemaName,
+            final MongoClient client) throws SQLException {
+        DocumentDbMetadataService.remove(properties, schemaName, client);
     }
 
     /**
@@ -136,28 +144,33 @@ public final class DocumentDbDatabaseSchemaMetadata {
      * @param properties the connection properties.
      * @param schemaName the name of the schema.
      * @param schemaVersion the version of the schema.
+     * @param client the {@link MongoClient} client.
      *
      * @throws SQLException if invalid connection properties.
      */
     public static void remove(
             final DocumentDbConnectionProperties properties,
             final String schemaName,
-            final int schemaVersion) throws SQLException {
-        DocumentDbMetadataService.remove(properties, schemaName, schemaVersion);
+            final int schemaVersion,
+            final MongoClient client) throws SQLException {
+        DocumentDbMetadataService.remove(properties, schemaName, schemaVersion, client);
     }
 
     /**
      * Gets the list of all persisted schema.
      *
      * @param properties the connection properties.
+     * @param client the {@link MongoClient} client.
      * @return a list of {@link DocumentDbSchema} schema.
      * @throws SQLException if unable to connect.
      */
     public static List<DocumentDbSchema> getSchemaList(
-            final DocumentDbConnectionProperties properties) throws SQLException {
-        final List<DocumentDbSchema> schemas = DocumentDbMetadataService.getSchemaList(properties);
+            final DocumentDbConnectionProperties properties,
+            final MongoClient client) throws SQLException {
+        final List<DocumentDbSchema> schemas = DocumentDbMetadataService
+                .getSchemaList(properties, client);
         schemas.forEach(schema -> setSchemaGetTableFunction(
-                properties, schema.getSchemaName(), schema.getSchemaVersion(), schema));
+                properties, schema.getSchemaName(), schema.getSchemaVersion(), schema, client));
         return schemas;
     }
 
@@ -167,6 +180,7 @@ public final class DocumentDbDatabaseSchemaMetadata {
      * @param properties the connection properties.
      * @param schemaName the name of the schema.
      * @param schemaTables the collection of updated table schema.
+     * @param client the {@link MongoClient} client.
      *
      * @throws SQLException if unable to connect or other exception.
      * @throws DocumentDbSchemaSecurityException if unable to write to the database due to
@@ -175,21 +189,23 @@ public final class DocumentDbDatabaseSchemaMetadata {
     public static void update(
             final DocumentDbConnectionProperties properties,
             final String schemaName,
-            final Collection<DocumentDbSchemaTable> schemaTables)
+            final Collection<DocumentDbSchemaTable> schemaTables,
+            final MongoClient client)
             throws SQLException, DocumentDbSchemaSecurityException {
-        DocumentDbMetadataService.update(properties, schemaName, schemaTables);
+        DocumentDbMetadataService.update(properties, schemaName, schemaTables, client);
     }
 
     private static void setSchemaGetTableFunction(
             final DocumentDbConnectionProperties properties,
             final String schemaName,
             final int schemaVersion,
-            final DocumentDbSchema schema) {
+            final DocumentDbSchema schema,
+            final MongoClient client) {
         schema.setGetTableFunction(
                 tableId -> DocumentDbMetadataService
-                        .getTable(properties, schemaName, schemaVersion, tableId),
+                        .getTable(properties, schemaName, schemaVersion, tableId, client),
                 remainingTableIds -> DocumentDbMetadataService
-                        .getTables(properties, schemaName, schemaVersion, remainingTableIds));
+                        .getTables(properties, schemaName, schemaVersion, remainingTableIds, client));
     }
 
     @Override

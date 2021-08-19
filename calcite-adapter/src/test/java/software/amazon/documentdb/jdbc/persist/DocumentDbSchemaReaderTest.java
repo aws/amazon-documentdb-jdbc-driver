@@ -107,7 +107,7 @@ class DocumentDbSchemaReaderTest {
                     testEnvironment.getJdbcConnectionString());
             properties.setPersistedSchemaStore(DATABASE);
 
-            final SchemaWriter writer = new DocumentDbSchemaWriter(properties);
+            final SchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
             writer.write(SCHEMA, METADATA.values());
         }
     }
@@ -118,7 +118,7 @@ class DocumentDbSchemaReaderTest {
                 .collect(Collectors.toList())) {
             final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                     testEnvironment.getJdbcConnectionString());
-            final SchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties);
+            final SchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, null);
             schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             testEnvironment.stop();
         }
@@ -132,7 +132,7 @@ class DocumentDbSchemaReaderTest {
         final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                 testEnvironment.getJdbcConnectionString());
         properties.setPersistedSchemaStore(DATABASE);
-        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties);
+        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties, null);
         final DocumentDbSchema schema = schemaReader.read();
         Assertions.assertNotNull(schema);
         Assertions.assertEquals(DEFAULT_SCHEMA_NAME, schema.getSchemaName());
@@ -149,7 +149,7 @@ class DocumentDbSchemaReaderTest {
         Assertions.assertNotNull(testEnvironment);
         final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                 testEnvironment.getJdbcConnectionString());
-        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties);
+        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties, null);
         final DocumentDbSchema schema = schemaReader.read(DEFAULT_SCHEMA_NAME);
         Assertions.assertNotNull(schema);
         Assertions.assertEquals(DEFAULT_SCHEMA_NAME, schema.getSchemaName());
@@ -166,7 +166,7 @@ class DocumentDbSchemaReaderTest {
         Assertions.assertNotNull(testEnvironment);
         final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                 testEnvironment.getJdbcConnectionString());
-        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties);
+        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties, null);
         final DocumentDbSchema schema = schemaReader.read(DEFAULT_SCHEMA_NAME, 1);
         Assertions.assertNotNull(schema);
         Assertions.assertEquals(DEFAULT_SCHEMA_NAME, schema.getSchemaName());
@@ -183,7 +183,7 @@ class DocumentDbSchemaReaderTest {
         Assertions.assertNotNull(testEnvironment);
         final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                 testEnvironment.getJdbcConnectionString());
-        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties);
+        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties, null);
         final DocumentDbSchemaTable schemaTable = schemaReader.readTable(DEFAULT_SCHEMA_NAME, 1,
                 TABLE_ID);
         Assertions.assertNotNull(schemaTable);
@@ -203,7 +203,7 @@ class DocumentDbSchemaReaderTest {
         Assertions.assertNotNull(testEnvironment);
         final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                 testEnvironment.getJdbcConnectionString());
-        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties);
+        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties, null);
         final DocumentDbSchema schema = schemaReader.read(DEFAULT_SCHEMA_NAME, 2);
         Assertions.assertNull(schema);
     }
@@ -216,7 +216,7 @@ class DocumentDbSchemaReaderTest {
         Assertions.assertNotNull(testEnvironment);
         final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                 testEnvironment.getJdbcConnectionString());
-        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties);
+        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties, null);
         final DocumentDbSchema schema = schemaReader.read("unknown");
         Assertions.assertNull(schema);
     }
@@ -232,7 +232,7 @@ class DocumentDbSchemaReaderTest {
         final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties(properties);
         newProperties.setUser("unknown");
 
-        final SchemaReader schemaReader = new DocumentDbSchemaReader(newProperties);
+        final SchemaReader schemaReader = new DocumentDbSchemaReader(newProperties, null);
         Assertions.assertEquals("Exception authenticating "
                         + "MongoCredential{mechanism=SCRAM-SHA-1, userName='unknown', "
                         + "source='admin', password=<hidden>, mechanismProperties=<hidden>}",
@@ -250,7 +250,7 @@ class DocumentDbSchemaReaderTest {
                 testEnvironment.getRestrictedUserConnectionString());
 
         // This will allow read of the schema collection(s)
-        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties);
+        final SchemaReader schemaReader = new DocumentDbSchemaReader(properties, null);
         final DocumentDbSchema schema = schemaReader.read();
         Assertions.assertNotNull(schema);
         Assertions.assertEquals(DEFAULT_SCHEMA_NAME, schema.getSchemaName());

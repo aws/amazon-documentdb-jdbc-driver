@@ -38,7 +38,8 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
         super(connection);
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
-                connection.getDatabaseMetadata());
+                connection.getDatabaseMetadata(),
+                connection.getMongoClient());
         queryExecutor = new DocumentDbQueryExecutor(
                 this,
                 connection.getConnectionProperties(),
@@ -59,8 +60,8 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     }
 
     @Override
-    protected void cancelQuery() throws SQLException {
-        queryExecutor.cancelQuery();
+    protected void cancelQuery(final boolean isClosing) throws SQLException {
+        queryExecutor.cancelQuery(isClosing);
     }
 
     @Override

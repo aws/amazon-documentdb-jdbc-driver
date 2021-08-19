@@ -46,6 +46,8 @@ import org.apache.calcite.util.JsonBuilder;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
@@ -71,6 +73,9 @@ import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGene
  * Implementation of {@link Join} in DocumentDb.
  */
 public class DocumentDbJoin extends Join implements DocumentDbRel {
+
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(DocumentDbJoin.class.getName());
 
     /**
      * Creates a new {@link DocumentDbJoin}
@@ -567,6 +572,11 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                 throw new IllegalArgumentException(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
         }
         implementor.add(null, String.valueOf(Aggregates.unwind("$" + rightMatches, opts)));
+        LOGGER.debug("Created join stages of pipeline.");
+        LOGGER.debug("Pipeline stages added: {}",
+                implementor.getList().stream()
+                        .map(c -> c.right)
+                        .toArray());
     }
 
     /**

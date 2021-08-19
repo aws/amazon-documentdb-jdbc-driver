@@ -44,6 +44,10 @@ import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -87,9 +91,11 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
     }
 
     @AfterEach
-    void afterAll() throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(VALID_CONNECTION_PROPERTIES);
-        schemaWriter.remove("id");
+    void afterAll() throws Exception {
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            schemaWriter.remove("id");
+        }
         if (resultSet != null) {
             resultSet.close();
         }
@@ -102,9 +108,11 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final ExecutorService cancelThread = getCancelThread();
         final Cancel cancel = launchCancelThread(0, statement, cancelThread);
         waitCancelToComplete(cancelThread);
+        final SQLException exception = getCancelException(cancel);
+        Assertions.assertNotNull(exception);
         Assertions.assertEquals(
                 "Cannot cancel query, it is either completed or has not started.",
-                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel)).getMessage());
+                exception.getMessage());
     }
 
     /**
@@ -124,7 +132,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 Assertions.assertThrows(SQLException.class, () -> resultSet = statement.executeQuery(QUERY))
                         .getMessage());
         waitCancelToComplete(cancelThread);
-        Assertions.assertDoesNotThrow(() -> cancel.getException());
+        Assertions.assertNull(cancel.getException(), () -> cancel.getException().getMessage());
     }
 
     /** Tests that canceling a query from two different threads. */
@@ -135,7 +143,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final ExecutorService cancelThread1 = getCancelThread();
         final ExecutorService cancelThread2 = getCancelThread();
         final Cancel cancel1 = launchCancelThread(100, statement, cancelThread1);
-        final Cancel cancel2 = launchCancelThread(100, statement, cancelThread2);
+        final Cancel cancel2 = launchCancelThread(300, statement, cancelThread2);
 
         // Check that query was canceled.
         Assertions.assertEquals(
@@ -145,15 +153,11 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         waitCancelToComplete(cancelThread1);
         waitCancelToComplete(cancelThread2);
 
-        // Check that 1 of the threads succeeded while other threw an exception.
-        try {
-            cancel1.getException();
-            // First thread succeeded so second must fail.
-            Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel2));
-        } catch (SQLException e) {
-            // First thread failed so second one must have succeeded.
-            Assertions.assertDoesNotThrow(() -> getCancelException(cancel2));
-        }
+        // Check that at-least one thread succeed.
+        final SQLException e1 = getCancelException(cancel1);
+        final SQLException e2 = getCancelException(cancel2);
+        final List<SQLException> exceptions = new ArrayList<>(Arrays.asList(e1, e2));
+        Assertions.assertTrue(exceptions.stream().anyMatch(Objects::isNull));
     }
 
     /** Tests that canceling a query after execution has already completed fails. */
@@ -167,9 +171,11 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         final ExecutorService cancelThread = getCancelThread();
         final Cancel cancel = launchCancelThread(0, statement, cancelThread);
         waitCancelToComplete(cancelThread);
+        final SQLException exception = getCancelException(cancel);
+        Assertions.assertNotNull(exception);
         Assertions.assertEquals(
                 "Cannot cancel query, it is either completed or has not started.",
-                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel)).getMessage());
+                exception.getMessage());
     }
 
     /** Tests canceling a query after it has already been canceled. */
@@ -186,16 +192,17 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 Assertions.assertThrows(SQLException.class, () -> resultSet = statement.executeQuery(QUERY))
                         .getMessage());
         waitCancelToComplete(cancelThread1);
-        Assertions.assertDoesNotThrow(() -> cancel1.getException());
+        Assertions.assertNull(cancel1.getException(), () -> cancel1.getException().getMessage());
 
         // Attempt to cancel again.
         final ExecutorService cancelThread2 = getCancelThread();
         final Cancel cancel2 = launchCancelThread(1, statement, cancelThread2);
         waitCancelToComplete(cancelThread2);
+        final SQLException exception = getCancelException(cancel2);
+        Assertions.assertNotNull(exception);
         Assertions.assertEquals(
                 "Cannot cancel query, it is either completed or has not started.",
-                Assertions.assertThrows(SQLException.class, () -> getCancelException(cancel2))
-                        .getMessage());
+                exception.getMessage());
     }
 
     private ExecutorService getCancelThread() {
@@ -210,8 +217,8 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         return cancel1;
     }
 
-    private void getCancelException(final Cancel cancel) throws SQLException {
-        cancel.getException();
+    private SQLException getCancelException(final Cancel cancel) {
+        return cancel.getException();
     }
 
     @SneakyThrows
@@ -243,19 +250,15 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
 
         /**
          * Function to get exception if the run call generated one.
-         *
-         * @throws SQLException Exception caught by run.
          */
-        public void getException() throws SQLException {
-            if (exception != null) {
-                throw exception;
-            }
+        public SQLException getException()  {
+            return exception;
         }
     }
 
     /**
-     * Identical to actual DocumentDbQueryExecutor but overrides runQuery so we can simulate a long
-     * running query with find instead.
+     * Identical to actual DocumentDbQueryExecutor but overrides runQuery, so we can simulate a
+     * long-running query with find instead.
      */
     private static class MockQueryExecutor extends DocumentDbQueryExecutor {
         MockQueryExecutor(
@@ -270,21 +273,24 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         @Override
         protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
             final MongoClientSettings settings = VALID_CONNECTION_PROPERTIES.buildMongoClientSettings();
-            final MongoClient client = MongoClients.create(settings);
-            final MongoDatabase database =
-                    client.getDatabase(VALID_CONNECTION_PROPERTIES.getDatabase());
-            final MongoCollection<Document> collection = database.getCollection(COLLECTION_NAME);
+            try (MongoClient client = MongoClients.create(settings)) {
+                final MongoDatabase database =
+                        client.getDatabase(VALID_CONNECTION_PROPERTIES.getDatabase());
+                final MongoCollection<Document> collection = database.getCollection(
+                        COLLECTION_NAME);
 
-            // We use the $where operator to sleep for 5000 milliseconds. This operator
-            // can only be used with find().
-            final Document whereDoc =
-                    new Document("$where", "function(){ return sleep(5000) || true;}");
-            final FindIterable<Document> iterable = collection.find(whereDoc).comment(getQueryId());
-            final MongoCursor<Document> iterator = iterable.iterator();
-            final JdbcColumnMetaData column =
-                    JdbcColumnMetaData.builder().columnLabel("EXPR$0").ordinal(0).build();
-            return new DocumentDbResultSet(
-                    statement, iterator, ImmutableList.of(column), ImmutableList.of("EXPR$0"), client);
+                // We use the $where operator to sleep for 5000 milliseconds. This operator
+                // can only be used with find().
+                final Document whereDoc =
+                        new Document("$where", "function(){ return sleep(5000) || true;}");
+                final FindIterable<Document> iterable = collection.find(whereDoc)
+                        .comment(getQueryId());
+                final MongoCursor<Document> iterator = iterable.iterator();
+                final JdbcColumnMetaData column =
+                        JdbcColumnMetaData.builder().columnLabel("EXPR$0").ordinal(0).build();
+                return new DocumentDbResultSet(
+                        statement, iterator, ImmutableList.of(column), ImmutableList.of("EXPR$0"));
+            }
         }
     }
 }

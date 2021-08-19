@@ -15,6 +15,12 @@
     const LOGIN_TIMEOUT_KEY= "loginTimeoutSec";
     const TLS_CA_FILE_KEY="tlsCAFile"
     const SCHEMA_NAME="schemaName"
+    const SSH_USER="sshUser"
+    const SSH_HOST="sshHost"
+    const SSH_PRIV_KEY_FILE="sshPrivateKeyFile"
+    const SSH_PRIVATE_KEY_PASSPHRASE="sshPrivateKeyPassphrase"
+    const SSH_STRICT_HOST_KEY_CHECKING="sshStrictHostKeyChecking"
+    const SSH_KNOWN_HOSTS_FILE="sshKnownHostsFile"
 
     // Get optional parameters.
     var params = {};
@@ -25,6 +31,12 @@
     params[RETRY_READS_KEY] = attr["v-retry-reads"];
     params[LOGIN_TIMEOUT_KEY] = attr["v-login-timeout"];
     params[TLS_CA_FILE_KEY] = attr["v-tls-ca-file"];
+    params[SSH_USER] = attr["v-ssh-user"];
+    params[SSH_HOST] = attr["v-ssh-host"];
+    params[SSH_PRIV_KEY_FILE] = attr["v-ssh-priv-key-filename"];
+    params[SSH_PRIVATE_KEY_PASSPHRASE] = attr["v-ssh-priv-key-passphrase"];
+    params[SSH_STRICT_HOST_KEY_CHECKING] = attr["v-ssh-strict-host-key-check"];
+    params[SSH_KNOWN_HOSTS_FILE] = attr["v-ssh-known-hosts-file"];
 
     // Add schema name if set.
     if (attr["v-schema-name"]) {

@@ -1,0 +1,21 @@
+query,result,test_name
+"SELECT int0, int1, string1 FROM jmeter.test ORDER BY int1 LIMIT 5","int0	int1	string1
+50	10	Hop
+40	20	Hip
+30	30	Hop
+20	40	Hip
+10	50	Hop
+",SELECT *
+"SELECT int0, int1, string1 FROM jmeter.test WHERE int0 < 40 ORDER BY int1 LIMIT 5","int0	int1	string1
+30	30	Hop
+20	40	Hip
+10	50	Hop
+",SELECT WHERE
+SELECT SUM(int0) AS expr FROM jmeter.test GROUP BY string1 ORDER BY expr ASC LIMIT 5,"expr
+60
+90
+",SELECT SUM
+SELECT CASE WHEN (int0) < 30 THEN 'yes' ELSE 'no' END AS expr FROM jmeter.test GROUP BY CASE WHEN (int0) < 30 THEN 'yes' ELSE 'no' END ORDER BY expr,"expr
+no
+yes
+",SELECT CASE
