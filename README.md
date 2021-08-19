@@ -1,4 +1,4 @@
-﻿# Amazon DocumentDB by AWS JDBC Driver
+﻿# Amazon DocumentDB JDBC Driver
 ![Code Coverage Instructions](./.github/badges/jacoco.svg)
 ![Code Coverage Branches](./.github/badges/branches.svg)
 
