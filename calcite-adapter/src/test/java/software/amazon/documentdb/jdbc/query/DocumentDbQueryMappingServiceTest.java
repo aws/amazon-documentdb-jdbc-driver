@@ -1743,7 +1743,18 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                                "{\"$cond\": [{\"$and\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, {\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}}}"),
+                                "{\"$cond\": [{\"$and\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 6}, null]}]}, {\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, " +
+                                "{\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$gt\": [\"$array.field\", {\"$literal\": 0}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field1\", {\"$literal\": 0}]}, null]}]}, {\"$eq\": [false, " +
+                                "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field2\", null]}, {\"$gt\": [{\"$literal\": 6}, null]}]}, " +
+                                "{\"$gt\": [\"$array.field2\", {\"$literal\": 6}]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1954,6 +1965,32 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                         + " Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'"),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(incorrectCasing))
                         .getMessage());
+    }
+
+    @Test
+    @DisplayName("Tests queries with where clause containing nested AND.")
+    void testQueryAndWithTypes() throws SQLException {
+        final String query =
+                String.format(
+                        "SELECT \"field\" > '2021-01-01' AND \"field\" < '2020-02-01' FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(1, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$addFields\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, " +
+                                "{\"$gt\": [{\"$date\": \"2021-01-01T00:00:00Z\"}, null]}]}, {\"$gt\": [\"$field\", {\"$date\": \"2021-01-01T00:00:00Z\"}]}, null]}]}, " +
+                                "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, " +
+                                "{\"$gt\": [{\"$date\": \"2020-02-01T00:00:00Z\"}, null]}]}, " +
+                                "{\"$lt\": [\"$field\", {\"$date\": \"2020-02-01T00:00:00Z\"}]}, null]}]}]}, true, " +
+                                "{\"$cond\": [{\"$or\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, " +
+                                "{\"$gt\": [{\"$date\": \"2021-01-01T00:00:00Z\"}, null]}]}, {\"$gt\": [\"$field\", {\"$date\": \"2021-01-01T00:00:00Z\"}]}, null]}]}, " +
+                                "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": \"2020-02-01T00:00:00Z\"}, null]}]}, " +
+                                "{\"$lt\": [\"$field\", {\"$date\": \"2020-02-01T00:00:00Z\"}]}, null]}]}]}, false, null]}]}}}"),
+                result.getAggregateOperations().get(0));
     }
 
 }

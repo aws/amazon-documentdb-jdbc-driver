@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
@@ -1235,6 +1236,68 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet.next());
             Assertions.assertFalse(resultSet.getBoolean(1));
             Assertions.assertNull(resultSet.getString(2));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @ParameterizedTest(name = "testQuerySelectLogicNullAndTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySelectLogicNullAndTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQuerySelectLogicNullAndTypes";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field\": \"abc\", \n" +
+                "\"field1\": true, \n" +
+                "\"field2\": 3}");
+        doc1.append("field3", new BsonDateTime(Instant.parse("2020-01-03T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field\": \"def\", \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": 1}");
+        doc2.append("field3", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
+                "\"field\": null, \n" +
+                "\"field1\": false, \n" +
+                "\"field2\": null}");
+        doc2.append("field3", new BsonDateTime(Instant.parse("2020-01-03T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": \"abc\", \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": 4}");
+        doc4.append("field3", new BsonDateTime(Instant.parse("2020-01-03T00:00:00.00Z").toEpochMilli()));
+
+        insertBsonDocuments(tableName,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT  " +
+                                    "(\"field\" = 'abc' AND \"field1\")," +
+                                    "(\"field2\" > 2 OR \"field1\")," +
+                                    "(\"field3\" > '2020-01-02' AND \"field1\")" +
+                                    "FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+            Assertions.assertTrue(resultSet.getBoolean(3));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertNull(resultSet.getString(2));
+            Assertions.assertFalse(resultSet.getBoolean(3));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertNull(resultSet.getString(2));
+            Assertions.assertFalse(resultSet.getBoolean(3));
+
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+            Assertions.assertNull(resultSet.getString(3));
             Assertions.assertFalse(resultSet.next());
         }
     }
