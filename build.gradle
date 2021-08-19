@@ -6,11 +6,41 @@ plugins {
     id 'com.github.hierynomus.license' version '0.15.0'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
     id 'org.kordamp.gradle.markdown' version '2.2.0'
+    id "de.undercouch.download" version "4.1.2"
+    id "com.github.dkorotych.gradle-maven-exec" version "2.2.1"
 }
 
 group 'software.amazon.documentdb.jdbc'
 version "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}-beta.${project.BETA_VERSION}"
 description 'documentdb-jdbc-driver'
+
+tasks.register('patchJanino') {
+    download {
+        println "Dowloading Janino Library"
+        src 'https://github.com/janino-compiler/janino/archive/4b98b5b44ee329685503e264751067fab259f7b7.zip'
+        dest buildDir
+    }
+    copy {
+        def zipFile = file("${buildDir}/4b98b5b44ee329685503e264751067fab259f7b7.zip")
+        def outputDir = file("${buildDir}/dependencies")
+        from zipTree(zipFile)
+        into outputDir
+    }
+    copy {
+        from "src/main/dependency/org/codehaus/commons/compiler/CompilerFactoryFactory.java"
+        into "${buildDir}/dependencies/janino-4b98b5b44ee329685503e264751067fab259f7b7/commons-compiler/src/main/java/org/codehaus/commons/compiler"
+    }
+    mavenexec {
+        workingDir "${buildDir}/dependencies/janino-4b98b5b44ee329685503e264751067fab259f7b7/commons-compiler"
+        goals 'package'
+        threads '2C'
+        quiet false
+    }
+    copy {
+        from "${buildDir}/dependencies/janino-4b98b5b44ee329685503e264751067fab259f7b7/commons-compiler/target/commons-compiler-3.0.11.jar"
+        into "src/main/resources"
+    }
+}
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
@@ -39,6 +69,8 @@ jar {
 }
 
 shadowJar {
+    dependsOn('patchJanino')
+
     //  Exclude driver unnecessary classes.
     exclude 'org/apache/calcite/jdbc/Driver*'
     exclude 'org/apache/calcite/avatica/remote/Driver*'
@@ -246,9 +278,6 @@ processResources {
 }
 
 repositories {
-    maven {
-        url 'https://raw.githubusercontent.com/birschick-bq/janino/brucei/ad-189/maven'
-    }
     mavenCentral()
 }
 
