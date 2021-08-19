@@ -1,4 +1,4 @@
-# Amazon DocumentDB by AWS JDBC Driver Documentation
+# Amazon DocumentDB JDBC Driver Documentation
 
 ## Overview
 
@@ -12,7 +12,7 @@ This project is licensed under the Apache-2.0 License.
 ## Documentation
 
 - Setup
-    - [Amazon DocumentDB by AWS JDBC Driver Setup](setup/setup.md)
+    - [Amazon DocumentDB JDBC Driver Setup](setup/setup.md)
     - [Using an SSH Tunnel to Connect to Amazon DocumentDB](setup/ssh-tunnel.md)
     - [BI Tool Setup](setup/bi-tool-setup.md)  
     - [Connection String Syntax and Options](setup/connection-string.md)
@@ -35,7 +35,7 @@ If you're a Tableau or other BI user, follow the directions on how to
 
 ## Setup and Usage
 
-To set up and use the DocumentDB JDBC driver, see [Amazon DocumentDB by AWS JDBC Driver Setup](setup/setup.md).
+To set up and use the DocumentDB JDBC driver, see [Amazon DocumentDB JDBC Driver Setup](setup/setup.md).
 
 ## Connection String Syntax
 
@@ -47,7 +47,7 @@ For more information about connecting to an Amazon DocumentDB database using thi
 the [connection string documentation](setup/connection-string.md) for more details.
 ## Schema Discovery
 
-The Amazon DocumentDB by AWS JDBC driver can perform automatic schema discovery and generate an SQL to
+The Amazon DocumentDB JDBC driver can perform automatic schema discovery and generate an SQL to
 DocumentDB schema mapping. See the [schema discovery documentation](schema/schema-discovery.md)
 for more details of this process.
 
@@ -67,11 +67,11 @@ information.
 
 ## SQL and JDBC Limitations
 
-The Amazon DocumentDB by AWS JDBC driver has a number of important limitations. See the
+The Amazon DocumentDB JDBC driver has a number of important limitations. See the
 [SQL and JDBC limitations documentation](sql/sql-jdbc-limitations.md) for more information.
 
 ## Troubleshooting Guide
 
-If you're having an issue using the Amazon DocumentDB by AWS JDBC driver, consult the
+If you're having an issue using the Amazon DocumentDB JDBC driver, consult the
 [Troubleshooting Guide](support/troubleshooting-guide.md) to see if has a solution for
 your issue.
