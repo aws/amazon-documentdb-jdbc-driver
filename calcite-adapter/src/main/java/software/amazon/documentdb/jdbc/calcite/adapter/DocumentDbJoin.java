@@ -120,6 +120,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
     @Override
     public void implement(final Implementor implementor) {
         // Visit all nodes to the left of the join.
+        implementor.setJoin(true);
         implementor.visitChild(0, getLeft());
         final DocumentDbTable leftTable = implementor.getDocumentDbTable();
         final DocumentDbSchemaTable leftMetadata = implementor.getMetadataTable();
@@ -128,6 +129,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // This implementor can contain operations specific to the right.
         final DocumentDbRel.Implementor rightImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
+        rightImplementor.setJoin(true);
         rightImplementor.visitChild(0, getRight());
         final DocumentDbTable rightTable = rightImplementor.getDocumentDbTable();
         final DocumentDbSchemaTable rightMetadata = rightImplementor.getMetadataTable();
@@ -148,6 +150,9 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                     leftMetadata,
                     rightMetadata);
         }
+        implementor.setProjectList(
+                DocumentDbRules.mongoFieldNames(getRowType(), implementor.getMetadataTable()));
+        implementor.setJoin(false);
     }
 
     /**

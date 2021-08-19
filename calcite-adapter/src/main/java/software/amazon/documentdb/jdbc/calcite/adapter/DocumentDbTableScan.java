@@ -28,11 +28,13 @@ import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
+import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.type.RelDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -90,6 +92,9 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         for (RelOptRule rule : DocumentDbRules.RULES) {
             planner.addRule(rule);
         }
+
+        // Do we want to keep SELECT * project?
+        planner.removeRule(CoreRules.PROJECT_REMOVE);
     }
 
     @Override public void implement(final Implementor implementor) {
@@ -100,6 +105,8 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         // Add an unwind operation for each embedded array to convert to separate rows.
         // Assumes that all queries will use aggregate and not find.
         // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
+        // Also, set the current project list (at this time this is all fields).
+        final List<String> projectList = new ArrayList<>();
         for (Entry<String, DocumentDbSchemaColumn> column : metadataTable.getColumnMap().entrySet()) {
             if (column.getValue().isIndex()) {
                 final String indexName = column.getKey();
@@ -109,7 +116,11 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
                 opts.includeArrayIndex(indexName);
                 opts.preserveNullAndEmptyArrays(true);
                 implementor.add(null, String.valueOf(Aggregates.unwind(arrayPath, opts)));
+                projectList.add(indexName);
+            } else {
+                projectList.add(column.getValue().getFieldPath());
             }
         }
+        implementor.setProjectList(projectList);
     }
 }

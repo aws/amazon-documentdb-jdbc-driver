@@ -109,6 +109,8 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
         final List<String> items = new ArrayList<>();
         final List<String> inNames = getInput().getRowType().getFieldNames();
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
+        final List<String> newFieldList = new ArrayList<>();
+
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String outName = DocumentDbRules.getNormalizedIdentifier(pair.right);
             final RexNode expandedNode = RexUtil.expandSearch(
@@ -119,12 +121,28 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
             if (pair.left instanceof RexInputRef) {
                 final RexInputRef ref = (RexInputRef) pair.left;
                 final String inName = inNames.get(ref.getIndex());
+                final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
 
-                // If projecting an existing field as is, do nothing.
-                // If renaming, replace metadata column with new name but keep reference to original path.
-                if (!inName.equals(outName)) {
-                    columnMap.put(outName, implementor.getMetadataTable().getColumnMap().get(inName));
+                columnMap.remove(inName);
+                if (implementor.isJoin()) {
+                    // If doing a join, replace the metadata entry but do not project the underlying data.
+                    // Path stays the same.
+                    columnMap.put(outName, oldColumn);
+                } else {
+                    // If not joining, replace the metadata entry and project. Path is updated.
+                    final DocumentDbMetadataColumn newColumn = DocumentDbMetadataColumn.builder()
+                            .fieldPath(oldColumn.getFieldPath())
+                            .sqlName(oldColumn.getSqlName())
+                            .sqlType(oldColumn.getSqlType())
+                            .dbType(oldColumn.getDbType())
+                            .isIndex(oldColumn.isIndex())
+                            .foreignKeyTableName(oldColumn.getForeignKeyTableName())
+                            .foreignKeyColumnName(oldColumn.getForeignKeyColumnName())
+                            .resolvedPath(outName)
+                            .build();
                     columnMap.remove(inName);
+                    columnMap.put(outName, newColumn);
+                    items.add(DocumentDbRules.maybeQuote(outName) + ": " + expr);
                 }
             } else {
                 items.add(DocumentDbRules.maybeQuote(outName) + ": " + expr);
@@ -134,14 +152,29 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                                 .fieldPath(outName)
                                 .sqlName(outName)
                                 .build());
+                newFieldList.add(outName);
             }
         }
         if (!items.isEmpty()) {
+            // If we are doing a join, we want to preserve all fields. Use $addFields only.
+            // Else, use $project.
+            final String stageString;
+            final List<String> projectList = new ArrayList<>();
+            if (implementor.isJoin()) {
+                stageString = "$addFields";
+                projectList.addAll(implementor.getProjectList());
+                projectList.addAll(newFieldList);
+            } else {
+                stageString = "$project";
+                projectList.addAll(getRowType().getFieldNames());
+            }
             final String findString = Util.toString(items, "{", ", ", "}");
-            final String aggregateString = "{$addFields: " + findString + "}";
+            final String aggregateString = "{" + stageString + ": " + findString + "}";
             final Pair<String, String> op = Pair.of(findString, aggregateString);
             implementor.add(op.left, op.right);
+            implementor.setProjectList(projectList);
         }
+
         LOGGER.info("Created projection stages of pipeline.");
         LOGGER.debug("Pipeline stages added: {}",
                 implementor.getList().stream()
