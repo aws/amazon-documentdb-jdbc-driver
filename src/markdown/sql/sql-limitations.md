@@ -21,10 +21,13 @@ A `tableExpression` must specify 1 or more tables as a comma separated list or u
 
 A `projectItem`, `groupItem` or `orderItem` can be a reference to a column, a literal or
 some combination of the former using [supported operators or functions](#operators-and-functions). 
-A `booleanExpression` is the same but must resolve to a `boolean` value.
+A `booleanExpression` is the same but must resolve to a `boolean` value. 
 
 A `projectItem` can be given an alias using `AS`. Items without an explicit name will be given
 an auto-generated column label in the result. Ordering using column aliases is allowed.
+
+Currently, any `orderItem` must also be a `projectItem`. To order by a value, it must
+be part of the `SELECT` list.
 
 Set operations `UNION`, `INTERSECT` and `EXCEPT` are not supported.
 Grouping operations using `CUBE`, `ROLLUP` or `GROUPING SETS` are not supported.
@@ -141,12 +144,15 @@ The following are all equivalent to the same inner join:
 - `SELECT * FROM "customer" CROSS JOIN "customer_subscriptions" WHERE "customer"."customer__id" = "customer_subscriptions.customer__id"`
 - `SELECT * FROM "customer", "customer_subscriptions" WHERE "customer"."customer__id" = "customer_subscriptions.customer__id"`
 
-`FULL OUTER` and `RIGHT (OUTER)` joins even with the above join conditions are not supported. 
+`FULL OUTER` and `RIGHT (OUTER)` joins even with the above join conditions are not supported.  
+Be careful with `NATURAL` keyword as it does not always meet the requirements of a supported join 
+condition. Specifying conditions explicitly is recommended.
 
 ## Data Types
 The driver recognizes the following SQL data types:
 
 - `BOOLEAN`
+  * Boolean literals must be `TRUE`, `FALSE` or `UNKNOWN`.
 - `TINYINT`
 - `SMALLINT`
 - `INTEGER` or `INT`
@@ -154,17 +160,25 @@ The driver recognizes the following SQL data types:
 - `DECIMAL`
 - `REAL` or `FLOAT`
 - `DOUBLE`
-- `CHAR`
-- `VARCHAR`
-- `BINARY`
-- `VARBINARY`
-- `DATE`
-- `TIME`
-- `TIMESTAMP`
+- `CHAR` and `VARCHAR`
+  * String literal must be enclosed in single-quotes.
+- `BINARY` and `VARBINARY`
+  * Binary string literals must be preceded by `x` and enclosed in single-quotes. Example: `x’45F0AB’`.
+- `DATE` 
+  * Date literals must be preceded by `DATE` and be enclosed in single-quotes. 
+    Example: `DATE ‘1989-07-11’`.
+- `TIME` 
+  * Time literals must be preceded by `TIME` and be enclosed in single-quotes. 
+    Example: `TIME ‘20:08:30’`.
+- `TIMESTAMP` 
+  * Timestamp literals must be preceded by `TIMESTAMP` and be enclosed in single-quotes. 
+    Example: `TIMESTAMP ‘1989-07-11 20:08:30'`.
 
 Note that while all the above can be used when constructing queries, columns themselves can 
 only be of the types `BOOLEAN`, `BIGINT`, `INTEGER`, `DECIMAL`, `DOUBLE`, `VARCHAR`, `VARBINARY` and `TIMESTAMP`. 
-See the [schema discovery or generation](/src/markdown/schema/schema-discovery.md) sections for more information.
+See the [schema discovery and generation](/src/markdown/schema/schema-discovery.md) sections for more information. 
+
+Note also that double-quotes **cannot** be used in place of single-quotes for specifying literals.
 
 ## Sorting
 When using an `ORDER BY` clause, values corresponding directly to a column will 
@@ -202,7 +216,7 @@ a function that takes `TIMESTAMP`, will be automatically cast to `TIMESTAMP`.
 ## Operators and Functions 
 
 ### Comparison Operators
-- `value1  < op > value2`  where `op` is one of : `=`, `<>`, `<`, `>`, `<=` or `>=`
+- `value1  <op> value2`  where `op` is one of : `=`, `<>`, `<`, `>`, `<=` or `>=`
 - `value IS NULL`
 - `value IS NOT NULL`
 - `value1 BETWEEN value2 AND value3`
@@ -267,7 +281,7 @@ a `TIMESTAMP`, padding the time portion with 0s.
 Note that `EXTRACT` for `WEEK` or `WEEK()` return an integer between 0 and 53. This is in line with the MongoDB
 interpretation of week numbers but other databases more commonly return a value between 1 and 53.
 
-Addition using the `YEAR`, `QUARTER`, and `MONTH` intervals is not supported in `TIMESTAMPADD`.
+Addition using the `YEAR`, `QUARTER`, and `MONTH` intervals are not supported in `TIMESTAMPADD`.
 
 ### Conditional Functions and Operators
 - `CASE` using either the simple or searched `CASE` formats

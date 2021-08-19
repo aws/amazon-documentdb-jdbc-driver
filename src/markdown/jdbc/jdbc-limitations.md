@@ -4,7 +4,7 @@
 The semantics of schema, catalogs, and tables often vary by database vendor.
 For the DocumentDB JDBC driver, the "schema" is a particular database on a DocumentDB cluster, and
 the "tables" are determined from the collections within that database 
-through [schema discovery or generation](/src/markdown/schema/schema-discovery.md).
+through [schema discovery and generation](/src/markdown/schema/schema-discovery.md).
 There is no concept of "catalogs" and a user can only work within one schema (a database)
 at a time even though they might have access to others on that cluster.
 
