@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import static org.bson.BsonType.OBJECT_ID;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.EMPTY_STRING;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.KEY_COLUMN_NONE;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.addToForeignKeysIfIsPrimary;
@@ -199,7 +200,7 @@ public class DocumentDbTableSchemaGenerator {
                     .fieldPath(fieldPath)
                     .sqlName(columnName)
                     .sqlType(nextSqlType)
-                    .dbType(bsonType)
+                    .dbType(getPromotedBsonType(bsonType, prevMetadataColumn))
                     .isIndex(false)
                     .isPrimaryKey(isPrimaryKey)
                     .index(getPrevIndexOrDefault(prevMetadataColumn, columnMap.size() + 1))
@@ -230,6 +231,26 @@ public class DocumentDbTableSchemaGenerator {
             LOGGER.debug(String.format("Added schema for table %s.", metadataTable.getSqlName()));
         }
         tableMap.put(metadataTable.getSqlName(), metadataTable);
+    }
+
+    private static BsonType getPromotedBsonType(
+            final BsonType bsonType,
+            final DocumentDbMetadataColumn prevMetadataColumn) {
+        final BsonType returnBsonType;
+        // OBJECT_ID
+        if (isPreviousOfType(prevMetadataColumn, OBJECT_ID) && bsonType != OBJECT_ID) {
+            returnBsonType = OBJECT_ID;
+        } else {
+            returnBsonType = bsonType;
+        }
+        return returnBsonType;
+    }
+
+    private static boolean isPreviousOfType(
+            final DocumentDbMetadataColumn prevMetadataColumn,
+            final BsonType testType) {
+        return prevMetadataColumn != null
+                && prevMetadataColumn.getDbType() == testType;
     }
 
     /**

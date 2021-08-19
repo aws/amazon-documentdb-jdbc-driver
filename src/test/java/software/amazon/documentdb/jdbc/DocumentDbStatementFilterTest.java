@@ -22,7 +22,9 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt64;
 import org.bson.BsonMinKey;
+import org.bson.BsonObjectId;
 import org.bson.BsonString;
+import org.bson.types.ObjectId;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -1761,6 +1763,147 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet2.next());
             Assertions.assertEquals(resultSet2.getInt(1), 101);
             Assertions.assertFalse(resultSet2.next());
+        }
+    }
+
+    @ParameterizedTest(name = "testQueryObjectId - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryObjectId(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String collection = "testQueryObjectId";
+        final BsonDocument document1 =
+                BsonDocument.parse("{ \"field\": 1 }")
+                        .append("_id", new BsonObjectId(new ObjectId("111111111111111111111111")));
+        final BsonDocument document2 =
+                BsonDocument.parse("{ \"field\": 2 }")
+                        .append("_id", new BsonObjectId(new ObjectId("222222222222222222222222")));
+        final BsonDocument document3 =
+                BsonDocument.parse("{ \"field\": 3 }")
+                        .append("_id", new BsonString("3"));
+        final BsonDocument document4 =
+                BsonDocument.parse("{ \"field\": 4 }")
+                        .append("_id", new BsonObjectId(new ObjectId("444444444444444444444444")));
+        final BsonDocument document5 =
+                BsonDocument.parse("{ \"field\": 5 }")
+                        .append("_id", new BsonString("333333333333333333333333"));
+        insertBsonDocuments(collection, new BsonDocument[]{document1, document2, document3, document4, document5});
+        // NOTE: Using ID_FORWARD to process the documents so the last record has _id with an ObjectId
+        // data type. This will allow us to search by ObjectId, as well as string.
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            // Verify that result set has correct values.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%1$s\".\"%2$s\" ORDER BY \"%2$s__id\" DESC LIMIT 1",
+                    getDatabaseName(), collection));
+            final ResultSet resultSet1 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            final String id = resultSet1.getString(collection + "__id");
+            Assertions.assertNotNull(id);
+            Assertions.assertEquals("444444444444444444444444", id);
+            Assertions.assertFalse(resultSet1.next());
+
+            // Verify that result set has correct values.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\""
+                            + " WHERE \"%s\" = '444444444444444444444444'",
+                    getDatabaseName(), collection,
+                    collection + "__id"));
+            final ResultSet resultSet2 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals(id, resultSet2.getString(collection + "__id"));
+            Assertions.assertFalse(resultSet2.next());
+
+            // Verify that result set has correct values.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\""
+                            + " WHERE \"%s\" = x'444444444444444444444444'",
+                    getDatabaseName(), collection,
+                    collection + "__id"));
+            final ResultSet resultSet3 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertTrue(resultSet3.next());
+            Assertions.assertEquals(id, resultSet3.getString(collection + "__id"));
+            Assertions.assertFalse(resultSet3.next());
+
+            // Verify that result set has correct values.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\""
+                            + " WHERE \"%s\" = '3'",
+                    getDatabaseName(), collection,
+                    collection + "__id"));
+            final ResultSet resultSet4 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet4);
+            Assertions.assertTrue(resultSet4.next());
+            Assertions.assertEquals("3", resultSet4.getString(collection + "__id"));
+            Assertions.assertFalse(resultSet4.next());
+
+            // Verify that result set has correct values.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\""
+                            + " WHERE \"%s\" = DATE '2020-01-01'",
+                    getDatabaseName(), collection,
+                    collection + "__id"));
+            final ResultSet resultSet5 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet5);
+            Assertions.assertFalse(resultSet5.next());
+
+            // Verify that result set has correct values.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\""
+                            + " WHERE \"%s\" = 12345",
+                    getDatabaseName(), collection,
+                    collection + "__id"));
+            final ResultSet resultSet6 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet6);
+            Assertions.assertFalse(resultSet6.next());
+
+            statement.execute(String.format(
+                    "SELECT * FROM \"%s\".\"%s\""
+                            + " WHERE \"%s\" < x'111111111111111111111111'",
+                    getDatabaseName(), collection,
+                    collection + "__id"));
+            final ResultSet resultSet7 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet7);
+            Assertions.assertTrue(resultSet7.next());
+            // String data type ...
+            Assertions.assertEquals("3", resultSet7.getString(collection + "__id"));
+            Assertions.assertTrue(resultSet7.next());
+            Assertions.assertEquals("333333333333333333333333", resultSet7.getString(collection + "__id"));
+            Assertions.assertFalse(resultSet7.next());
+
+            statement.execute(String.format(
+                    "SELECT * FROM \"%1$s\".\"%2$s\""
+                            + " WHERE \"%3$s\" > '3' ORDER BY %3$s",
+                    getDatabaseName(), collection,
+                    collection + "__id"));
+            final ResultSet resultSet8 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet8);
+            Assertions.assertTrue(resultSet8.next());
+            // String data type
+            Assertions.assertEquals("333333333333333333333333", resultSet8.getString(collection + "__id"));
+            Assertions.assertTrue(resultSet8.next());
+            // ObjectId data type ...
+            Assertions.assertEquals("111111111111111111111111", resultSet8.getString(collection + "__id"));
+            Assertions.assertTrue(resultSet8.next());
+            Assertions.assertEquals("222222222222222222222222", resultSet8.getString(collection + "__id"));
+            Assertions.assertTrue(resultSet8.next());
+            Assertions.assertEquals("444444444444444444444444", resultSet8.getString(collection + "__id"));
+            Assertions.assertFalse(resultSet8.next());
+
+            // String data type.
+            statement.execute(String.format(
+                    "SELECT * FROM \"%1$s\".\"%2$s\""
+                            + " WHERE \"%3$s\" = '333333333333333333333333'",
+                    getDatabaseName(), collection,
+                    collection + "__id"));
+            final ResultSet resultSet9 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet9);
+            Assertions.assertTrue(resultSet9.next());
+            Assertions.assertEquals("333333333333333333333333", resultSet9.getString(collection + "__id"));
+            Assertions.assertFalse(resultSet9.next());
         }
     }
 }
