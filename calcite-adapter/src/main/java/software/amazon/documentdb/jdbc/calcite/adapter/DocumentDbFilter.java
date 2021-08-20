@@ -32,6 +32,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.Operand;
 
 /**
  * Implementation of a {@link Filter}
@@ -88,8 +89,10 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         final DocumentDbRules.RexToMongoTranslator rexToMongoTranslator =
                 new DocumentDbRules.RexToMongoTranslator(
                         (JavaTypeFactory) getCluster().getTypeFactory(),
-                        DocumentDbRules.mongoFieldNames(getInput().getRowType(),
-                                mongoImplementor.getMetadataTable()));
+                        DocumentDbRules.mongoFieldNames(
+                                getInput().getRowType(),
+                                mongoImplementor.getMetadataTable()),
+                        mongoImplementor.getMetadataTable());
         final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
         final String match = expandedCondition.accept(rexToMongoTranslator);
 

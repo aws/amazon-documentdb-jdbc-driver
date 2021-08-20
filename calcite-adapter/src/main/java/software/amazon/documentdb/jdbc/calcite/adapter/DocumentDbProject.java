@@ -34,6 +34,7 @@ import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.Operand;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
@@ -104,8 +105,10 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
         final DocumentDbRules.RexToMongoTranslator translator =
                 new DocumentDbRules.RexToMongoTranslator(
                         (JavaTypeFactory) getCluster().getTypeFactory(),
-                        DocumentDbRules.mongoFieldNames(getInput().getRowType(),
-                                mongoImplementor.getMetadataTable()));
+                        DocumentDbRules.mongoFieldNames(
+                                getInput().getRowType(),
+                                mongoImplementor.getMetadataTable()),
+                        mongoImplementor.getMetadataTable());
         final List<String> items = new ArrayList<>();
         final List<String> inNames = getInput().getRowType().getFieldNames();
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
@@ -115,7 +118,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
             final String outName = DocumentDbRules.getNormalizedIdentifier(pair.right);
             final RexNode expandedNode = RexUtil.expandSearch(
                     implementor.getRexBuilder(), null, pair.left);
-            final String expr = expandedNode.accept(translator);
+            final Operand expr = expandedNode.accept(translator);
 
             // Check if we are projecting an existing field or generating a new expression.
             if (pair.left instanceof RexInputRef) {
