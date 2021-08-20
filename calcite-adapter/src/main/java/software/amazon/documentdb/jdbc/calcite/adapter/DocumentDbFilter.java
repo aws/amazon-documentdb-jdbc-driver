@@ -29,6 +29,7 @@ import org.apache.calcite.rex.RexUtil;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.Operand;
 
 /**
  * Implementation of a {@link Filter}
@@ -85,10 +86,12 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         final DocumentDbRules.RexToMongoTranslator rexToMongoTranslator =
                 new DocumentDbRules.RexToMongoTranslator(
                         (JavaTypeFactory) getCluster().getTypeFactory(),
-                        DocumentDbRules.mongoFieldNames(getInput().getRowType(),
-                                mongoImplementor.getMetadataTable()));
+                        DocumentDbRules.mongoFieldNames(
+                                getInput().getRowType(),
+                                mongoImplementor.getMetadataTable()),
+                        mongoImplementor.getMetadataTable());
         final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
-        final String match = expandedCondition.accept(rexToMongoTranslator);
+        final Operand match = expandedCondition.accept(rexToMongoTranslator);
         implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
         implementor.add(null, "{\"$match\": {" + BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}");
         implementor.add(null, "{\"$project\": {" + BOOLEAN_FLAG_FIELD + ":0}}");
