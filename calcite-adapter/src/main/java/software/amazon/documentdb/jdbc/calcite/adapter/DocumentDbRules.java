@@ -309,39 +309,39 @@ public final class DocumentDbRules {
                     RexToMongoTranslator::getMongoAggregateForSubstringOperator);
         }
 
-        private static String getMongoAggregateForAndOperator(final RexCall call, final List<String> strings, final String s) {
+        private static Operand getMongoAggregateForAndOperator(final RexCall call, final List<Operand> operands, final String s) {
             final StringBuilder sb = new StringBuilder();
             sb.append("{$cond: [{$and: [");
-            for (String value: strings) {
+            for (Operand value: operands) {
                 sb.append("{$eq: [true, ").append(value).append("]},");
             }
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, true,");
             sb.append("{$cond: [{$or: [");
-            for (String value: strings) {
+            for (Operand value: operands) {
                 sb.append("{$eq: [false, ").append(value).append("]},");
             }
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, false, null]}]}");
 
-            return sb.toString();
+            return new Operand(sb.toString());
         }
 
-        private static String getMongoAggregateForOrOperator(final RexCall call, final List<String> strings, final String s) {
+        private static Operand getMongoAggregateForOrOperator(final RexCall call, final List<Operand> operands, final String s) {
             final StringBuilder sb = new StringBuilder();
             sb.append("{$cond: [{$or: [");
-            for (String value: strings) {
-                sb.append("{$eq: [true, ").append(value).append("]},");
+            for (Operand value: operands) {
+                sb.append("{$eq: [true, ").append(value.getValue()).append("]},");
             }
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, true,");
             sb.append("{$cond: [{$and: [");
-            for (String value: strings) {
-                sb.append("{$eq: [false, ").append(value).append("]},");
+            for (Operand value: operands) {
+                sb.append("{$eq: [false, ").append(value.getValue()).append("]},");
             }
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, false, null]}]}");
-            return sb.toString();
+            return new Operand(sb.toString());
         }
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
