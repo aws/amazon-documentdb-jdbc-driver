@@ -1113,9 +1113,18 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
                 "\"field\": null, \n" +
                 "\"field1\": null}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105, \n" +
+                "\"field\": true, \n" +
+                "\"field1\": false}");
+        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106, \n" +
+                "\"field\": false, \n" +
+                "\"field1\": true}");
+        final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107, \n" +
+                "\"field\": false, \n" +
+                "\"field1\": false}");
 
         insertBsonDocuments(tableName,
-                new BsonDocument[]{doc1, doc2, doc3, doc4});
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7});
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);
             final ResultSet resultSet = statement.executeQuery(
@@ -1141,6 +1150,18 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet.next());
             Assertions.assertNull(resultSet.getString(1));
             Assertions.assertNull(resultSet.getString(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertFalse(resultSet.getBoolean(2));
             Assertions.assertFalse(resultSet.next());
         }
     }
