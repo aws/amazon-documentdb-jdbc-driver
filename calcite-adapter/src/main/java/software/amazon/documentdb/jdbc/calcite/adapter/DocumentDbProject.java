@@ -139,6 +139,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                             .sqlType(oldColumn.getSqlType())
                             .dbType(oldColumn.getDbType())
                             .isIndex(oldColumn.isIndex())
+                            .isPrimaryKey(oldColumn.isPrimaryKey())
                             .foreignKeyTableName(oldColumn.getForeignKeyTableName())
                             .foreignKeyColumnName(oldColumn.getForeignKeyColumnName())
                             .resolvedPath(outName)
@@ -169,6 +170,8 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                 projectList.addAll(newFieldList);
             } else {
                 stageString = "$project";
+                //Explicitly remove _id.
+                items.add("_id: 0");
                 projectList.addAll(getRowType().getFieldNames());
             }
             final String findString = Util.toString(items, "{", ", ", "}");

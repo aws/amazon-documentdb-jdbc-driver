@@ -94,7 +94,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
                                 mongoImplementor.getMetadataTable()),
                         mongoImplementor.getMetadataTable());
         final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
-        final String match = expandedCondition.accept(rexToMongoTranslator);
+        final Operand match = expandedCondition.accept(rexToMongoTranslator);
 
         if (implementor.isJoin()) {
             // If joining, add the placeholder field to the documents.
