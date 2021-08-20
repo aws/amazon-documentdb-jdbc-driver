@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
@@ -1091,6 +1092,233 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet.getBoolean(1));
             Assertions.assertTrue(resultSet.next());
             Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @ParameterizedTest(name = "testQuerySelectLogicNulls - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySelectLogicNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQuerySelectLogicNulls";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field\": true, \n" +
+                "\"field1\": null}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field\": false, \n" +
+                "\"field1\": null}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
+                "\"field\": true, \n" +
+                "\"field1\": true}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null, \n" +
+                "\"field1\": null}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105, \n" +
+                "\"field\": true, \n" +
+                "\"field1\": false}");
+        final BsonDocument doc6 = BsonDocument.parse("{\"_id\": 106, \n" +
+                "\"field\": false, \n" +
+                "\"field1\": true}");
+        final BsonDocument doc7 = BsonDocument.parse("{\"_id\": 107, \n" +
+                "\"field\": false, \n" +
+                "\"field1\": false}");
+
+        insertBsonDocuments(tableName,
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5, doc6, doc7});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT  " +
+                                    "(\"field\" AND \"field1\")," +
+                                    "(\"field\" OR \"field1\")" +
+                                    "FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertNull(resultSet.getString(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertNull(resultSet.getString(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertFalse(resultSet.getBoolean(2));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @ParameterizedTest(name = "testQuerySelectLogicManyNulls - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySelectLogicManyNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQuerySelectLogicManyNulls";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field\": true, \n" +
+                "\"field1\": true, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": null, \n" +
+                "\"field4\": true, \n" +
+                "\"field5\": true, \n" +
+                "\"field6\": false, \n" +
+                "\"field7\": false, \n" +
+                "\"field8\": true, \n" +
+                "\"field9\": true}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field\": true, \n" +
+                "\"field1\": true, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": true, \n" +
+                "\"field4\": true, \n" +
+                "\"field5\": null, \n" +
+                "\"field6\": null, \n" +
+                "\"field7\": true, \n" +
+                "\"field8\": true, \n" +
+                "\"field9\": null}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
+                "\"field\": true, \n" +
+                "\"field1\": true, \n" +
+                "\"field2\": true, \n" +
+                "\"field3\": true, \n" +
+                "\"field4\": true, \n" +
+                "\"field5\": true, \n" +
+                "\"field6\": true, \n" +
+                "\"field7\": true, \n" +
+                "\"field8\": true, \n" +
+                "\"field9\": true}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null, \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": null, \n" +
+                "\"field4\": null, \n" +
+                "\"field5\": null, \n" +
+                "\"field6\": null, \n" +
+                "\"field7\": null, \n" +
+                "\"field8\": null, \n" +
+                "\"field9\": null}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105, \n" +
+                "\"field\": null, \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": null, \n" +
+                "\"field3\": null, \n" +
+                "\"field4\": null, \n" +
+                "\"field5\": null, \n" +
+                "\"field6\": false, \n" +
+                "\"field7\": null, \n" +
+                "\"field8\": null, \n" +
+                "\"field9\": null}");
+
+        insertBsonDocuments(tableName,
+                new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT  " +
+                                    "(\"field\" AND \"field1\" AND \"field2\" AND \"field3\" AND \"field4\" AND \"field5\" AND \"field6\" AND \"field7\" AND \"field8\" AND \"field9\")," +
+                                    "(\"field\" OR \"field1\" OR \"field2\" OR \"field3\" OR \"field4\" OR \"field5\" OR \"field6\" OR \"field7\" OR \"field8\" OR \"field9\")" +
+                                    "FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertNull(resultSet.getString(2));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertNull(resultSet.getString(2));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @ParameterizedTest(name = "testQuerySelectLogicNullAndTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySelectLogicNullAndTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQuerySelectLogicNullAndTypes";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101, \n" +
+                "\"field\": \"abc\", \n" +
+                "\"field1\": true, \n" +
+                "\"field2\": 3}");
+        doc1.append("field3", new BsonDateTime(Instant.parse("2020-01-03T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \n" +
+                "\"field\": \"def\", \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": 1}");
+        doc2.append("field3", new BsonDateTime(Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \n" +
+                "\"field\": null, \n" +
+                "\"field1\": false, \n" +
+                "\"field2\": null}");
+        doc2.append("field3", new BsonDateTime(Instant.parse("2020-01-03T00:00:00.00Z").toEpochMilli()));
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": \"abc\", \n" +
+                "\"field1\": null, \n" +
+                "\"field2\": 4}");
+        doc4.append("field3", new BsonDateTime(Instant.parse("2020-01-03T00:00:00.00Z").toEpochMilli()));
+
+        insertBsonDocuments(tableName,
+                new BsonDocument[]{doc1, doc2, doc3, doc4});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT  " +
+                                    "(\"field\" = 'abc' AND \"field1\")," +
+                                    "(\"field2\" > 2 OR \"field1\")," +
+                                    "(\"field3\" > '2020-01-02' AND \"field1\")" +
+                                    "FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertTrue(resultSet.getBoolean(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+            Assertions.assertTrue(resultSet.getBoolean(3));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertNull(resultSet.getString(2));
+            Assertions.assertFalse(resultSet.getBoolean(3));
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertFalse(resultSet.getBoolean(1));
+            Assertions.assertNull(resultSet.getString(2));
+            Assertions.assertFalse(resultSet.getBoolean(3));
+
+
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertNull(resultSet.getString(1));
+            Assertions.assertTrue(resultSet.getBoolean(2));
+            Assertions.assertNull(resultSet.getString(3));
             Assertions.assertFalse(resultSet.next());
         }
     }
