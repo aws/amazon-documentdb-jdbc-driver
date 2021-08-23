@@ -106,7 +106,6 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         // Assumes that all queries will use aggregate and not find.
         // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
         // Also, set the current project list (at this time this is all fields).
-        final List<String> projectList = new ArrayList<>();
         for (Entry<String, DocumentDbSchemaColumn> column : metadataTable.getColumnMap().entrySet()) {
             if (column.getValue().isIndex()) {
                 final String indexName = column.getKey();
@@ -116,11 +115,8 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
                 opts.includeArrayIndex(indexName);
                 opts.preserveNullAndEmptyArrays(true);
                 implementor.add(null, String.valueOf(Aggregates.unwind(arrayPath, opts)));
-                projectList.add(indexName);
             } else {
-                projectList.add(column.getValue().getFieldPath());
             }
         }
-        implementor.setProjectList(projectList);
     }
 }

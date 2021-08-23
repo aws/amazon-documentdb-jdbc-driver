@@ -52,7 +52,6 @@ public interface DocumentDbRel extends RelNode {
         private DocumentDbTable documentDbTable;
         private boolean nullFiltered = false;
         private boolean join = false;
-        private List<String> projectList = new ArrayList<>();
         // DocumentDB: modified - end
 
         public List<Pair<String, String>> getList() {
@@ -115,15 +114,6 @@ public interface DocumentDbRel extends RelNode {
         public void setJoin(final boolean join) {
             this.join = join;
         }
-
-        public void setProjectList(final List<String> projectList) {
-            this.projectList = projectList;
-        }
-
-        public List<String> getProjectList() {
-            return projectList;
-        }
-
         // DocumentDB: modified - end
 
         public void visitChild(final int ordinal, final RelNode input) {

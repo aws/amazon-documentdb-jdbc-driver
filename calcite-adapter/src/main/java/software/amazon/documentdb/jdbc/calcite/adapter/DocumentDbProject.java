@@ -112,7 +112,6 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
         final List<String> items = new ArrayList<>();
         final List<String> inNames = getInput().getRowType().getFieldNames();
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
-        final List<String> newFieldList = new ArrayList<>();
 
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String outName = DocumentDbRules.getNormalizedIdentifier(pair.right);
@@ -156,29 +155,23 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                                 .fieldPath(outName)
                                 .sqlName(outName)
                                 .build());
-                newFieldList.add(outName);
             }
         }
         if (!items.isEmpty()) {
             // If we are doing a join, we want to preserve all fields. Use $addFields only.
             // Else, use $project.
             final String stageString;
-            final List<String> projectList = new ArrayList<>();
             if (implementor.isJoin()) {
                 stageString = "$addFields";
-                projectList.addAll(implementor.getProjectList());
-                projectList.addAll(newFieldList);
             } else {
                 stageString = "$project";
-                //Explicitly remove _id.
+                // Explicitly remove _id field to reduce document size.
                 items.add("_id: 0");
-                projectList.addAll(getRowType().getFieldNames());
             }
             final String findString = Util.toString(items, "{", ", ", "}");
             final String aggregateString = "{" + stageString + ": " + findString + "}";
             final Pair<String, String> op = Pair.of(findString, aggregateString);
             implementor.add(op.left, op.right);
-            implementor.setProjectList(projectList);
         }
 
         LOGGER.info("Created projection stages of pipeline.");

@@ -30,9 +30,9 @@ import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.Operand;
 import java.util.ArrayList;
 import java.util.List;
-import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.Operand;
 
 /**
  * Implementation of a {@link Filter}
@@ -102,9 +102,10 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         } else {
             // Else, project all current project items + the placeholder boolean field.
             final List<String> projectItems = new ArrayList<>();
-            for (String projectItem : implementor.getProjectList()) {
+            for (String projectItem : DocumentDbRules.mongoFieldNames(getRowType(), implementor.getMetadataTable())) {
                 projectItems.add(DocumentDbRules.maybeQuote(projectItem) + ": 1");
             }
+
             projectItems.add(BOOLEAN_FLAG_FIELD + ": " + match);
             implementor.add(null, "{\"$project\": " + Util.toString(projectItems, "{", ", ", "}") + "}");
         }

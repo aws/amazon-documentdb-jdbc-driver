@@ -150,8 +150,6 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                     leftMetadata,
                     rightMetadata);
         }
-        implementor.setProjectList(
-                DocumentDbRules.mongoFieldNames(getRowType(), implementor.getMetadataTable()));
         implementor.setJoin(false);
     }
 
