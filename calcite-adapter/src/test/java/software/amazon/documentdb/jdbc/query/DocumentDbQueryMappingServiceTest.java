@@ -1150,42 +1150,23 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$match\": " +
-                                "{\"$or\": [{\"array.field2\": {\"$exists\": true}}, " +
-                                "{\"array.field\": {\"$exists\": true}}, " +
-                                "{\"array.field1\": {\"$exists\": true}}]}}"),
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$addFields\": "
-                                + "{\"testCollection__id0\": "
-                                + "{\"$cond\": [{\"$or\": [{\"$ifNull\": [\"$array.field2\", false]}, "
-                                + "{\"$ifNull\": [\"$array.field\", false]}, "
-                                + "{\"$ifNull\": [\"$array.field1\", false]}]}, \"$_id\", null]}, \"_id\": \"$_id\"}}"),
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": " +
-                                "{\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, " +
-                                "\"Total\": {\"$sum\": 1}}}"),
+                        "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, \"Total\": {\"$sum\": 1}}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": " +
-                                "{\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", " +
-                                "\"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
+                        "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
                 result.getAggregateOperations().get(7));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": "
-                                + "{\"_id\": 1, "
-                                + "\"array.field\": 1, "
-                                + "\"array.field1\": 1, "
-                                + "\"Total\": 1, "
-                                + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$Total\", null]}, "
-                                + "{\"$gt\": [{\"$literal\": 1}, null]}]}, "
-                                + "{\"$gt\": [\"$Total\", {\"$literal\": 1}]}, null]}}}"),
+                        "{\"$project\": {\"_id\": 1, \"array.field\": 1, \"array.field1\": 1, \"Total\": 1, \"placeholderField1F84EB1G3K47\": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$Total\", null]}, {\"$gt\": [{\"$literal\": 1}, null]}]}, {\"$gt\": [\"$Total\", {\"$literal\": 1}]}, null]}}}"),
                 result.getAggregateOperations().get(8));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}}"),
