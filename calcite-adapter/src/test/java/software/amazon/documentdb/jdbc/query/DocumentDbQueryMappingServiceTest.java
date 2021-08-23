@@ -1129,10 +1129,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(14, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$match\": " +
-                                "{\"$or\": [{\"array.field\": {\"$exists\": true}}, " +
-                                "{\"array.field1\": {\"$exists\": true}}, " +
-                                "{\"array.field2\": {\"$exists\": true}}]}}"),
+                        "{\"$match\": {\"$or\": [{\"array.field2\": {\"$exists\": true}}, " +
+                                "{\"array.field\": {\"$exists\": true}}, " +
+                                "{\"array.field1\": {\"$exists\": true}}]}}"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
                 BsonDocument.parse(
