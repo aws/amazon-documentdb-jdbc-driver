@@ -55,7 +55,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -264,6 +263,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             final String aggregateString = "{ $addFields : " + newFields + "}";
             implementor.add(null, aggregateString);
         }
+        // Add operations from the left.
         leftList.forEach(pair -> implementor.add(pair.left, pair.right));
         // Add remaining operations from the right.
         rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));
