@@ -55,7 +55,7 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.lang.reflect.Array;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
