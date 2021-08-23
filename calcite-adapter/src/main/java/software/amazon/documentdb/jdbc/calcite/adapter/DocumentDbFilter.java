@@ -26,10 +26,13 @@ import org.apache.calcite.rel.core.Filter;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexUtil;
+import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.Operand;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Implementation of a {@link Filter}
@@ -92,7 +95,22 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
                         mongoImplementor.getMetadataTable());
         final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
         final Operand match = expandedCondition.accept(rexToMongoTranslator);
-        implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
+
+        if (implementor.isJoin()) {
+            // If joining, add the placeholder field to the documents.
+            implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
+        } else {
+            // Else, project all current project items + the placeholder boolean field.
+            final List<String> projectItems = new ArrayList<>();
+            for (String projectItem : DocumentDbRules.mongoFieldNames(getRowType(), implementor.getMetadataTable())) {
+                projectItems.add(DocumentDbRules.maybeQuote(projectItem) + ": 1");
+            }
+
+            projectItems.add(BOOLEAN_FLAG_FIELD + ": " + match);
+            implementor.add(null, "{\"$project\": " + Util.toString(projectItems, "{", ", ", "}") + "}");
+        }
+
+        // After matching, remove the placeholder field.
         implementor.add(null, "{\"$match\": {" + BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}");
         implementor.add(null, "{\"$project\": {" + BOOLEAN_FLAG_FIELD + ":0}}");
         LOGGER.info("Created filter stages of pipeline.");
