@@ -55,6 +55,7 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -170,7 +171,8 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             final DocumentDbSchemaTable leftTable,
             final DocumentDbSchemaTable rightTable) {
         validateSameCollectionJoin(leftTable, rightTable);
-
+        final List<Pair<String, String>> leftList = implementor.getList();
+        implementor.setList(new ArrayList<>());
 
         // Eliminate null (i.e. "unmatched") rows from any virtual tables based on join type.
         // If an inner join, eliminate any null rows from either table.
@@ -259,6 +261,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             final String aggregateString = "{ $addFields : " + newFields + "}";
             implementor.add(null, aggregateString);
         }
+        leftList.forEach(pair -> implementor.add(pair.left, pair.right));
         // Add remaining operations from the right.
         rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));
 

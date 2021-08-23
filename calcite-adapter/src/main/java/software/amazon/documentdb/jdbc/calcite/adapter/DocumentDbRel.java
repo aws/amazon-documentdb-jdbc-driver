@@ -44,7 +44,7 @@ public interface DocumentDbRel extends RelNode {
      * {@link DocumentDbRel} nodes into a MongoDB query. */
     class Implementor {
 
-        private final List<Pair<String, String>> list = new ArrayList<>();
+        private List<Pair<String, String>> list = new ArrayList<>();
         private final RexBuilder rexBuilder;
         private RelOptTable table;
         // DocumentDB: modified - start
@@ -55,6 +55,10 @@ public interface DocumentDbRel extends RelNode {
 
         public List<Pair<String, String>> getList() {
             return list;
+        }
+
+        public void setList(final List<Pair<String, String>> list) {
+            this.list = list;
         }
 
         public RexBuilder getRexBuilder() {
