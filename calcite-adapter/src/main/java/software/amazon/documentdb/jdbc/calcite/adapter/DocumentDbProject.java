@@ -143,7 +143,6 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                             .foreignKeyColumnName(oldColumn.getForeignKeyColumnName())
                             .resolvedPath(outName)
                             .build();
-                    columnMap.remove(inName);
                     columnMap.put(outName, newColumn);
                     items.add(DocumentDbRules.maybeQuote(outName) + ": " + expr);
                 }
