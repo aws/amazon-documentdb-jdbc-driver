@@ -96,8 +96,9 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
         final Operand match = expandedCondition.accept(rexToMongoTranslator);
 
-        if (implementor.isJoin()) {
-            // If joining, add the placeholder field to the documents.
+        if (implementor.isJoin() || getRowType().getFieldList().size() >= DocumentDbRules.MAX_PROJECT_FIELDS) {
+            // If joining or the project list is too large (already at max),
+            // only add the placeholder field to the documents.
             implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
         } else {
             // Else, project all current project items + the placeholder boolean field.
