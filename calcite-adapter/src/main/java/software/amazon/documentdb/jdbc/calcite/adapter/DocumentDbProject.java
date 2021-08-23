@@ -122,12 +122,29 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
             if (pair.left instanceof RexInputRef) {
                 final RexInputRef ref = (RexInputRef) pair.left;
                 final String inName = inNames.get(ref.getIndex());
+                final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
 
-                // If projecting an existing field as is, do nothing.
-                // If renaming, replace metadata column with new name but keep reference to original path.
-                if (!inName.equals(outName)) {
-                    columnMap.put(outName, implementor.getMetadataTable().getColumnMap().get(inName));
-                    columnMap.remove(inName);
+                columnMap.remove(inName);
+                if (implementor.isJoin() || getRowType().getFieldList().size() > DocumentDbRules.MAX_PROJECT_FIELDS) {
+                    // If doing a join or project list is too large (greater than max),
+                    // replace the metadata entry but do not project the underlying data.
+                    // Path stays the same.
+                    columnMap.put(outName, oldColumn);
+                } else {
+                    // If not joining, replace the metadata entry and project. Path is updated.
+                    final DocumentDbMetadataColumn newColumn = DocumentDbMetadataColumn.builder()
+                            .fieldPath(oldColumn.getFieldPath())
+                            .sqlName(oldColumn.getSqlName())
+                            .sqlType(oldColumn.getSqlType())
+                            .dbType(oldColumn.getDbType())
+                            .isIndex(oldColumn.isIndex())
+                            .isPrimaryKey(oldColumn.isPrimaryKey())
+                            .foreignKeyTableName(oldColumn.getForeignKeyTableName())
+                            .foreignKeyColumnName(oldColumn.getForeignKeyColumnName())
+                            .resolvedPath(outName)
+                            .build();
+                    columnMap.put(outName, newColumn);
+                    items.add(DocumentDbRules.maybeQuote(outName) + ": " + expr);
                 }
             } else {
                 items.add(DocumentDbRules.maybeQuote(outName) + ": " + expr);
@@ -140,8 +157,18 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
             }
         }
         if (!items.isEmpty()) {
+            // If we are doing a join, we want to preserve all fields. Use $addFields only.
+            // Else, use $project.
+            final String stageString;
+            if (implementor.isJoin() || getRowType().getFieldList().size() > DocumentDbRules.MAX_PROJECT_FIELDS) {
+                stageString = "$addFields";
+            } else {
+                stageString = "$project";
+                // Explicitly remove _id field to reduce document size.
+                items.add("_id: 0");
+            }
             final String findString = Util.toString(items, "{", ", ", "}");
-            final String aggregateString = "{$addFields: " + findString + "}";
+            final String aggregateString = "{" + stageString + ": " + findString + "}";
             final Pair<String, String> op = Pair.of(findString, aggregateString);
             implementor.add(op.left, op.right);
         }

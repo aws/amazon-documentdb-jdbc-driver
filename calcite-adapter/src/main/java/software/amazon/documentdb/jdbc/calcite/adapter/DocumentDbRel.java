@@ -51,6 +51,7 @@ public interface DocumentDbRel extends RelNode {
         private DocumentDbSchemaTable metadataTable;
         private DocumentDbTable documentDbTable;
         private boolean nullFiltered = false;
+        private boolean join = false;
         // DocumentDB: modified - end
 
         public List<Pair<String, String>> getList() {
@@ -104,6 +105,14 @@ public interface DocumentDbRel extends RelNode {
 
         public void setNullFiltered(final boolean nullFiltered) {
             this.nullFiltered = nullFiltered;
+        }
+
+        public boolean isJoin() {
+            return join;
+        }
+
+        public void setJoin(final boolean join) {
+            this.join = join;
         }
         // DocumentDB: modified - end
 

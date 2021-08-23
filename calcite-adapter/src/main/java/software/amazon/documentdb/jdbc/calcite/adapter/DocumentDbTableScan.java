@@ -28,6 +28,7 @@ import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
+import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.type.RelDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
@@ -90,6 +91,9 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         for (RelOptRule rule : DocumentDbRules.RULES) {
             planner.addRule(rule);
         }
+
+        // Keep the project node even for SELECT * queries.
+        planner.removeRule(CoreRules.PROJECT_REMOVE);
     }
 
     @Override public void implement(final Implementor implementor) {
