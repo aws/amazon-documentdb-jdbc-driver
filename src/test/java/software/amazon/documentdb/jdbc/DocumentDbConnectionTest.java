@@ -269,7 +269,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @ParameterizedTest(name = "testSshTunnelOptions - [{index}] - {arguments}")
     @DisplayName("Tests SSH tunnel options")
     @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
-    void testSshTunnelOptions(DocumentDbTestEnvironment environment) throws SQLException {
+    void testSshTunnelOptions(final DocumentDbTestEnvironment environment) throws SQLException {
         // NOTE: a "null" environment means it isn't configured to run. So bypass.
         if (environment == null) {
             return;
