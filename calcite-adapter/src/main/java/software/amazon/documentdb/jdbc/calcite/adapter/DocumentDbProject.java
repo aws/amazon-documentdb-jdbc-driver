@@ -125,8 +125,9 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                 final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
 
                 columnMap.remove(inName);
-                if (implementor.isJoin()) {
-                    // If doing a join, replace the metadata entry but do not project the underlying data.
+                if (implementor.isJoin() || getRowType().getFieldList().size() > DocumentDbRules.MAX_PROJECT_FIELDS) {
+                    // If doing a join or project list is too large (greater than max),
+                    // replace the metadata entry but do not project the underlying data.
                     // Path stays the same.
                     columnMap.put(outName, oldColumn);
                 } else {

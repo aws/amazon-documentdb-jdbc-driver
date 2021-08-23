@@ -1752,4 +1752,26 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(0));
     }
+
+    @Test
+    @DisplayName("Tests querying when select list exceeds max field limit for $project.")
+    void testLargeSelectList() throws SQLException {
+        final String query = String.format(
+                "SELECT \"%1$s\" AS \"1\", \"%1$s\" AS \"2\", \"%1$s\" AS \"3\", \"%1$s\" AS \"4\",  \"%1$s\" AS \"5\", "
+                        + "\"%1$s\" AS \"6\", \"%1$s\" AS \"7\", \"%1$s\" AS \"8\", \"%1$s\" AS \"9\",  \"%1$s\" AS \"10\","
+                        + "\"%1$s\" AS \"11\", \"%1$s\" AS \"12\", \"%1$s\" AS \"13\", \"%1$s\" AS \"14\",  \"%1$s\" AS \"15\", "
+                        + "\"%1$s\" AS \"16\", \"%1$s\" AS \"17\", \"%1$s\" AS \"18\", \"%1$s\" AS \"19\",  \"%1$s\" AS \"20\", "
+                        + "\"%1$s\" AS \"21\", \"%1$s\" AS \"22\", \"%1$s\" AS \"23\", \"%1$s\" AS \"24\",  \"%1$s\" AS \"25\", "
+                        + "\"%1$s\" AS \"26\", \"%1$s\" AS \"27\", \"%1$s\" AS \"28\", \"%1$s\" AS \"29\",  \"%1$s\" AS \"30\","
+                        + "\"%1$s\" AS \"31\", \"%1$s\" AS \"32\", \"%1$s\" AS \"33\", \"%1$s\" AS \"34\",  \"%1$s\" AS \"35\", "
+                        + "\"%1$s\" AS \"36\", \"%1$s\" AS \"37\", \"%1$s\" AS \"38\", \"%1$s\" AS \"39\",  \"%1$s\" AS \"40\", "
+                        + "\"%1$s\" AS \"41\", \"%1$s\" AS \"42\", \"%1$s\" AS \"43\", \"%1$s\" AS \"44\",  \"%1$s\" AS \"45\", "
+                        + "\"%1$s\" AS \"46\", \"%1$s\" AS \"47\", \"%1$s\" AS \"48\", \"%1$s\" AS \"49\",  \"%1$s\" AS \"50\","
+                        + "\"%1$s\" AS \"51\" FROM \"%2$s\".\"%3$s\"",
+            "field", DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result = queryMapper.get(query);
+        Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(51, result.getColumnMetaData().size());
+        Assertions.assertEquals(0, result.getAggregateOperations().size());
+    }
 }

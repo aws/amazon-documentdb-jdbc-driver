@@ -102,6 +102,8 @@ public final class DocumentDbRules {
     public static final double SORT_COST_FACTOR = 0.05;
     public static final double ENUMERABLE_COST_FACTOR = 0.1;
 
+    public static final int MAX_PROJECT_FIELDS = 50;
+
     /** Returns 'string' if it is a call to item['string'], null otherwise. */
     static String isItem(final RexCall call) {
         if (call.getOperator() != SqlStdOperatorTable.ITEM) {
