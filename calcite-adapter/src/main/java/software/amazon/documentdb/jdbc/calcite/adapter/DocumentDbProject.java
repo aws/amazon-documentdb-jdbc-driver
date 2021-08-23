@@ -160,7 +160,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
             // If we are doing a join, we want to preserve all fields. Use $addFields only.
             // Else, use $project.
             final String stageString;
-            if (implementor.isJoin()) {
+            if (implementor.isJoin() || getRowType().getFieldList().size() > DocumentDbRules.MAX_PROJECT_FIELDS) {
                 stageString = "$addFields";
             } else {
                 stageString = "$project";
