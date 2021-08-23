@@ -34,7 +34,6 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -93,7 +92,7 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
             planner.addRule(rule);
         }
 
-        // Do we want to keep SELECT * project?
+        // Keep the project node even for SELECT * queries.
         planner.removeRule(CoreRules.PROJECT_REMOVE);
     }
 
@@ -105,7 +104,6 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         // Add an unwind operation for each embedded array to convert to separate rows.
         // Assumes that all queries will use aggregate and not find.
         // Assumes that outermost arrays are added to the list first so pipeline executes correctly.
-        // Also, set the current project list (at this time this is all fields).
         for (Entry<String, DocumentDbSchemaColumn> column : metadataTable.getColumnMap().entrySet()) {
             if (column.getValue().isIndex()) {
                 final String indexName = column.getKey();
@@ -115,7 +113,6 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
                 opts.includeArrayIndex(indexName);
                 opts.preserveNullAndEmptyArrays(true);
                 implementor.add(null, String.valueOf(Aggregates.unwind(arrayPath, opts)));
-            } else {
             }
         }
     }

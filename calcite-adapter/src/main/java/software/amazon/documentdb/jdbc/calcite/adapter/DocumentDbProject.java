@@ -112,7 +112,6 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
         final List<String> items = new ArrayList<>();
         final List<String> inNames = getInput().getRowType().getFieldNames();
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
-
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String outName = DocumentDbRules.getNormalizedIdentifier(pair.right);
             final RexNode expandedNode = RexUtil.expandSearch(
@@ -173,7 +172,6 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
             final Pair<String, String> op = Pair.of(findString, aggregateString);
             implementor.add(op.left, op.right);
         }
-
         LOGGER.info("Created projection stages of pipeline.");
         LOGGER.debug("Pipeline stages added: {}",
                 implementor.getList().stream()
