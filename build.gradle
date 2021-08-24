@@ -42,6 +42,21 @@ tasks.register('patchJanino') {
     }
 }
 
+tasks.register('licenseAndNotice') {
+    copy {
+        from "${rootDir}/LICENSE"
+        into 'src/main/resources'
+    }
+    copy {
+        from "${rootDir}/NOTICE"
+        into 'src/main/resources'
+    }
+    copy {
+        from "${rootDir}/NOTICE-3RD-PARTY"
+        into 'src/main/resources'
+    }
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
@@ -70,6 +85,7 @@ jar {
 
 shadowJar {
     dependsOn('patchJanino')
+    dependsOn('licenseAndNotice')
 
     //  Exclude driver unnecessary classes.
     exclude 'org/apache/calcite/jdbc/Driver*'
@@ -326,7 +342,7 @@ dependencies {
     testImplementation      group: 'junit', name: 'junit', version: '4.13.2'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.7.2'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.7.2'
-    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '3.11.2'
+    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '3.12.3'
     testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.7.2'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
