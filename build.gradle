@@ -42,6 +42,21 @@ tasks.register('patchJanino') {
     }
 }
 
+tasks.register('licenseAndNotice') {
+    copy {
+        from "${rootDir}/LICENSE"
+        into 'src/main/resources'
+    }
+    copy {
+        from "${rootDir}/NOTICE"
+        into 'src/main/resources'
+    }
+    copy {
+        from "${rootDir}/NOTICE-3RD-PARTY"
+        into 'src/main/resources'
+    }
+}
+
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
@@ -70,6 +85,7 @@ jar {
 
 shadowJar {
     dependsOn('patchJanino')
+    dependsOn('licenseAndNotice')
 
     //  Exclude driver unnecessary classes.
     exclude 'org/apache/calcite/jdbc/Driver*'
