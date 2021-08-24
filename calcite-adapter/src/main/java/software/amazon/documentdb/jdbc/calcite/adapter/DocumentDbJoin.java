@@ -264,6 +264,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             final String aggregateString = "{ $addFields : " + newFields + "}";
             implementor.add(null, aggregateString);
         }
+        // Add operations from the left.
         leftList.forEach(pair -> implementor.add(pair.left, pair.right));
         // Add remaining operations from the right.
         rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));

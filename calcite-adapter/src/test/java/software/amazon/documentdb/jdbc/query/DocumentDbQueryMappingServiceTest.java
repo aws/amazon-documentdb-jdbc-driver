@@ -1045,8 +1045,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 innerJoinResult.getAggregateOperations().get(0));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
-                innerJoinResult.getAggregateOperations().get(2));
+                        "{\"$addFields\": {\"testCollection__id0\": {\"$cond\": [{\"$or\": [{\"$ifNull\": [\"$array.field\", false]}, " +
+                                "{\"$ifNull\": [\"$array.field1\", false]}, {\"$ifNull\": [\"$array.field2\", false]}]}, \"$_id\", null]}, \"_id\": \"$_id\"}}"),
+                innerJoinResult.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {"
@@ -1078,11 +1079,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(3, leftJoinResult.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{ \"$unwind\": {"
-                                + "\"path\": \"$array\", "
-                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
-                                + "\"preserveNullAndEmptyArrays\": true }}"),
-                leftJoinResult.getAggregateOperations().get(1));
+                        "{\"$addFields\": {\"testCollection__id0\": {\"$cond\": [{\"$or\": [{\"$ifNull\": [\"$array.field\", false]}, " +
+                                "{\"$ifNull\": [\"$array.field1\", false]}, {\"$ifNull\": [\"$array.field2\", false]}]}, \"$_id\", null]}, \"_id\": \"$_id\"}}"),
+                leftJoinResult.getAggregateOperations().get(0));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$unwind\": {\"path\": \"$array\", \"preserveNullAndEmptyArrays\": true, \"includeArrayIndex\": \"array_index_lvl_0\"}}"),
@@ -1130,6 +1129,10 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(2, result.getColumnMetaData().size());
         Assertions.assertEquals(14, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": [{\"array.field2\": {\"$exists\": true}}, {\"array.field\": {\"$exists\": true}}, {\"array.field1\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$addFields\": {\"testCollection__id0\": {\"$cond\": [{\"$or\": [{\"$ifNull\": [\"$array.field2\", false]}, " +
