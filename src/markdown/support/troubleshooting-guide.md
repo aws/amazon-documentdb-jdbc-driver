@@ -62,9 +62,9 @@ If this is still an issue after having set up an SSH tunnel, double-check the va
 If you have manually set up an SSH tunnel:
 1. Ensure the *Port* number in your connection string matches the local port number configured when using an SSH tunnel. 
    In this example, the local port is **27019** not 27017:
-      ```
-      ssh -i "ec2Access.pem" -L 27019:sample-cluster.node.us-east-1.docdb.amazonaws.com:27017 ec3-user@ec2.compute-1.amazonaws.com -N
-      ```
+   <pre>
+   <code> ssh -i "ec2Access.pem" -L <b>27019</b>:sample-cluster.node.us-east-1.docdb.amazonaws.com:27017 ec2-user@ec2.compute-1.amazonaws.com -N </code>
+   </pre>
 1. Ensure the *Hostname* in your connection string is set to `localhost`.
 
 If you are using the automatically set up SSH tunnel:  
@@ -170,6 +170,8 @@ manually delete the old schemas. Exercise caution with this method.
    db.getCollection("_sqlSchemas").drop() 
    db.getCollection("_sqlTableSchemas").drop()
    ```
+   Note that the collections cannot be dropped with the typical command `db._sqlSchemas.drop()`
+   because their names start with underscores `_`.
 ### Query Issues
 
 ##### What to look for: 
@@ -191,11 +193,11 @@ manually delete the old schemas. Exercise caution with this method.
 1. For simple validation errors, the error message may contain a `Reason:` segment. Use 
    this to troubleshoot when possible. For example, this error can be resolved 
    by correcting `TESTCOLLECTION` to `testCollection`:
-   ```
-    Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'."
-    Reason: 'From line 1, column 15 to line 1, column 37:"
-    Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'"
-   ```
+   <pre>
+   <code> Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'."
+    <b>Reason:</b> 'From line 1, column 15 to line 1, column 37:"
+    Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'" </code>
+   </pre>
 
 ## Logs
 
