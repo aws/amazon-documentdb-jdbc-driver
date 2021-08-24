@@ -76,11 +76,30 @@ shadowJar {
     exclude 'org/apache/calcite/avatica/remote/Driver*'
     exclude 'org/apache/commons/dbcp2/PoolingDriver*'
 
+    // NOTE: DO NOT relocate 'javax', 'org.apache.log4j', 'org.sl4j', 'org.codehaus'
     // Relocate (shadow) the following packages.
-    relocate 'org.apache.calcite', 'org.apache.calcite.shadow'
-    relocate 'com.google.guava', 'com.google.guava.shadow'
-    relocate 'com.google.common', 'com.google.common.shadow'
-    relocate 'org.mongodb', 'org.mongodb.shadow'
+    relocate 'com.esri', 'shadow.com.esri'
+    relocate 'com.fasterxml', 'shadow.com.fasterxml'
+    relocate 'com.google', 'shadow.com.google'
+    relocate 'com.jayway', 'shadow.com.jayway'
+    relocate 'com.jcraft', 'shadow.com.jcraft'
+    relocate 'com.mongodb', 'shadow.com.mongodb'
+    relocate 'com.yahoo', 'shadow.com.yahoo'
+    relocate 'codegen', 'shadow.codegen'
+    relocate 'net', 'shadow.net'
+    relocate 'nl', 'shadow.nl'
+    relocate 'org.apache.calcite', 'shadow.org.apache.calcite'
+    relocate 'org.apache.commons', 'shadow.org.apache.commons'
+    relocate 'org.apache.http', 'shadow.org.apache.http'
+    relocate 'org.apache.logging', 'shadow.org.apache.logging'
+    relocate 'org.apiguardian', 'shadow.org.apiguardian'
+    relocate 'org.bson', 'shadow.org.bson'
+    relocate 'org.checkerframework', 'shadow.org.checkerframework'
+    relocate 'org.mongodb', 'shadow.org.mongodb'
+    relocate 'org.objectweb', 'shadow.org.objectweb'
+    relocate 'org.pentaho', 'shadow.org.pentaho'
+    relocate 'org.yaml', 'shadow.org.yaml'
+
     // Remove any unused dependencies (excluding Calcite)
     minimize {
         exclude(dependency('org.apache.calcite::'))
