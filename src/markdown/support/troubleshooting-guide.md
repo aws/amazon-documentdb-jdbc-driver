@@ -18,7 +18,7 @@
 ###### Tableau Connection Error
     
 ```text
-An error occurred while communicating with DocumentDB by Amazon
+An error occurred while communicating with Amazon DocumentDB by AWS
 
 Bad Connection: Tableau could not connect to the data source.
 
@@ -29,7 +29,7 @@ Client view of cluster state is {type=UNKNOWN, servers=[{address=localhost:27017
 exception={com.mongodb.MongoSocketOpenException: Exception opening socket},
  caused by {java.net.ConnectException: Connection refused: connect}}]
  
-Unable to connect to the DocumentDB by Amazon server "localhost". 
+Unable to connect to the Amazon DocumentDB by AWS server "localhost". 
 Check that the server is running and that you have access privileges to the requested database.
 
 Connector Class: documentdbjdbc, Version: ...
@@ -85,7 +85,7 @@ and make sure the cluster is running and available to connect to.
 ###### Tableau Certificate Error
 
 ```text
-An error occurred while communicating with DocumentDB by Amazon
+An error occurred while communicating with Amazon DocumentDB by AWS
 
 Bad Connection: Tableau could not connect to the data source.
 
@@ -98,7 +98,7 @@ exception={com.mongodb.MongoSocketWriteException: Exception sending message},
  caused by {sun.security.validator.ValidatorException: PKIX path building failed: sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target}, 
  caused by {sun.security.provider.certpath.SunCertPathBuilderException: unable to find valid certification path to requested target}}]
  
-Unable to connect to the DocumentDB by Amazon server "localhost". 
+Unable to connect to the Amazon DocumentDB by AWS server "localhost". 
 Check that the server is running and that you have access privileges to the requested database.
 
 Connector Class: documentdbjdbc, Version: ...

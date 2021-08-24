@@ -16,6 +16,8 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
+import com.google.common.io.BaseEncoding;
+import lombok.Getter;
 import lombok.SneakyThrows;
 import org.apache.calcite.adapter.enumerable.RexImpTable;
 import org.apache.calcite.adapter.enumerable.RexToLixTranslator;
@@ -45,8 +47,10 @@ import org.apache.calcite.sql.fun.SqlLibraryOperators;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Bug;
+import org.apache.calcite.util.DateString;
 import org.apache.calcite.util.Util;
 import org.apache.calcite.util.trace.CalciteTrace;
+import org.bson.BsonType;
 import org.slf4j.Logger;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
@@ -65,7 +69,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.BiFunction;
+import java.util.regex.Pattern;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
@@ -75,9 +81,10 @@ import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isN
  * calling convention.
  */
 public final class DocumentDbRules {
-    private DocumentDbRules() { }
+    private static final Logger LOGGER = CalciteTrace.getPlannerTracer();
+    private static final Pattern OBJECT_ID_PATTERN = Pattern.compile("^[0-9a-zA-Z]{24}$");
 
-    protected static final Logger LOGGER = CalciteTrace.getPlannerTracer();
+    private DocumentDbRules() { }
 
     @SuppressWarnings("MutablePublicArray")
     static final RelOptRule[] RULES = {
@@ -94,6 +101,8 @@ public final class DocumentDbRules {
     public static final double JOIN_COST_FACTOR = 0.1;
     public static final double SORT_COST_FACTOR = 0.05;
     public static final double ENUMERABLE_COST_FACTOR = 0.1;
+
+    public static final int MAX_PROJECT_FIELDS = 50;
 
     /** Returns 'string' if it is a call to item['string'], null otherwise. */
     static String isItem(final RexCall call) {
@@ -194,14 +203,15 @@ public final class DocumentDbRules {
 
     /** Translator from {@link RexNode} to strings in MongoDB's expression
      * language. */
-    static class RexToMongoTranslator extends RexVisitorImpl<String> {
+    static class RexToMongoTranslator extends RexVisitorImpl<Operand> {
         private final JavaTypeFactory typeFactory;
         private final List<String> inFields;
+        private final DocumentDbSchemaTable schemaTable;
 
         private static final Map<SqlOperator, String> MONGO_OPERATORS =
                 new HashMap<>();
         private static final Map<SqlOperator,
-                BiFunction<RexCall, List<String>, String>> REX_CALL_TO_MONGO_MAP = new HashMap<>();
+                BiFunction<RexCall, List<Operand>, Operand>> REX_CALL_TO_MONGO_MAP = new HashMap<>();
 
         static {
             // Arithmetic
@@ -246,10 +256,10 @@ public final class DocumentDbRules {
                     RexToMongoTranslator::getMongoAggregateForIntegerDivide);
             // Boolean
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.AND,
-                    (call, strings) -> getMongoAggregateForOperator(
+                    (call, strings) -> getMongoAggregateForAndOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.OR,
-                    (call, strings) -> getMongoAggregateForOperator(
+                    (call, strings) -> getMongoAggregateForOrOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.NOT,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
@@ -301,63 +311,112 @@ public final class DocumentDbRules {
                     RexToMongoTranslator::getMongoAggregateForSubstringOperator);
         }
 
+        private static Operand getMongoAggregateForAndOperator(final RexCall call, final List<Operand> operands, final String s) {
+            final StringBuilder sb = new StringBuilder();
+            sb.append("{$cond: [{$and: [");
+            for (Operand value: operands) {
+                sb.append("{$eq: [true, ").append(value).append("]},");
+            }
+            sb.deleteCharAt(sb.length() - 1);
+            sb.append("]}, true,");
+            sb.append("{$cond: [{$or: [");
+            for (Operand value: operands) {
+                sb.append("{$eq: [false, ").append(value).append("]},");
+            }
+            sb.deleteCharAt(sb.length() - 1);
+            sb.append("]}, false, null]}]}");
+
+            return new Operand(sb.toString());
+        }
+
+        private static Operand getMongoAggregateForOrOperator(final RexCall call, final List<Operand> operands, final String s) {
+            final StringBuilder sb = new StringBuilder();
+            sb.append("{$cond: [{$or: [");
+            for (Operand value: operands) {
+                sb.append("{$eq: [true, ").append(value.getValue()).append("]},");
+            }
+            sb.deleteCharAt(sb.length() - 1);
+            sb.append("]}, true,");
+            sb.append("{$cond: [{$and: [");
+            for (Operand value: operands) {
+                sb.append("{$eq: [false, ").append(value.getValue()).append("]},");
+            }
+            sb.deleteCharAt(sb.length() - 1);
+            sb.append("]}, false, null]}]}");
+            return new Operand(sb.toString());
+        }
+
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
-                final List<String> inFields) {
+                final List<String> inFields,
+                final DocumentDbSchemaTable schemaTable) {
             super(true);
             this.typeFactory = typeFactory;
             this.inFields = inFields;
+            this.schemaTable = schemaTable;
         }
 
-        @Override public String visitLiteral(final RexLiteral literal) {
+        @Override public Operand visitLiteral(final RexLiteral literal) {
             if (literal.getValue() == null) {
-                return "null";
+                return new Operand("null");
             }
 
             switch (literal.getType().getSqlTypeName()) {
                 case DOUBLE:
                 case DECIMAL:
-                    return "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
+                    return new Operand("{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}");
                 case BIGINT:
                 case INTERVAL_DAY:
                 case INTERVAL_HOUR:
                 case INTERVAL_MINUTE:
                 case INTERVAL_SECOND:
                     // Convert supported intervals to milliseconds.
-                    return "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
+                    return new Operand("{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}");
                 case DATE:
-                    return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Integer.class) + "\" } }";
+                    // NOTE: Need to get the number of milliseconds from Epoch (not # of days).
+                    final DateString dateString = literal.getValueAs(DateString.class);
+                    return new Operand("{\"$date\": {\"$numberLong\": \"" + dateString.getMillisSinceEpoch() + "\" } }");
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                     // Convert from date in milliseconds to MongoDb date.
-                    return "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }";
+                    return new Operand("{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }");
+                case BINARY:
+                case VARBINARY:
+                    final String base64Literal = BaseEncoding.base64()
+                            .encode(literal.getValueAs(byte[].class));
+                    final String binaryFormat = "{\"$binary\": {\"base64\": \""
+                            + base64Literal
+                            + "\", \"subType\": \"00\"}}";
+                    return new Operand(binaryFormat);
                 default:
-                    return "{\"$literal\": "
+                    return new Operand("{\"$literal\": "
                             + RexToLixTranslator.translateLiteral(literal, literal.getType(),
                             typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
-                            + "}";
+                            + "}");
             }
         }
 
-        @Override public String visitInputRef(final RexInputRef inputRef) {
-            return maybeQuote(
-                    "$" + inFields.get(inputRef.getIndex()));
+        @Override public Operand visitInputRef(final RexInputRef inputRef) {
+            // NOTE: Pass the column metadata with the operand.
+            return new Operand(
+                    maybeQuote("$" + inFields.get(inputRef.getIndex())),
+                    schemaTable.getColumns().get(inputRef.getIndex()));
         }
 
         @SneakyThrows
-        @Override public String visitCall(final RexCall call) {
+        @Override public Operand visitCall(final RexCall call) {
             final String name = isItem(call);
             if (name != null) {
-                return "'$" + name + "'";
+                return new Operand("'$" + name + "'");
             }
 
-            final List<String> strings = visitList(call.operands);
+            final List<Operand> strings = visitList(call.operands);
             if (call.getKind() == SqlKind.CAST || call.getKind() == SqlKind.REINTERPRET) {
                 // TODO: Handle case when DocumentDB supports $convert.
                 return strings.get(0);
             }
 
             if (REX_CALL_TO_MONGO_MAP.containsKey(call.getOperator())) {
-                final String result = REX_CALL_TO_MONGO_MAP.get(call.getOperator()).apply(call, strings);
+                final Operand result = REX_CALL_TO_MONGO_MAP.get(call.getOperator()).apply(call, strings);
                 if (result != null) {
                     return result;
                 }
@@ -367,13 +426,13 @@ public final class DocumentDbRules {
                     + " is not supported by DocumentDbRules");
         }
 
-        private static String getMongoAggregateForIntegerDivide(final RexCall call, final List<String> strings) {
+        private static Operand getMongoAggregateForIntegerDivide(final RexCall call, final List<Operand> strings) {
             return getIntegerDivisionOperation(strings.get(0), strings.get(1));
         }
 
-        private static String getMongoAggregateForCase(
+        private static Operand getMongoAggregateForCase(
                 final RexCall call,
-                final List<String> strings) {
+                final List<Operand> strings) {
             final StringBuilder sb = new StringBuilder();
             final StringBuilder finish = new StringBuilder();
             // case(a, b, c)  -> $cond:[a, b, c]
@@ -397,40 +456,40 @@ public final class DocumentDbRules {
                 }
             }
             sb.append(finish);
-            return sb.toString();
+            return new Operand(sb.toString());
         }
 
-        private static String getMongoAggregateForItem(
+        private static Operand getMongoAggregateForItem(
                 final RexCall call,
-                final List<String> strings) {
+                final List<Operand> strings) {
             final RexNode op1 = call.operands.get(1);
             if (op1 instanceof RexLiteral
                     && op1.getType().getSqlTypeName() == SqlTypeName.INTEGER) {
                 if (!Bug.CALCITE_194_FIXED) {
-                    return "'" + stripQuotes(strings.get(0)) + "["
-                            + ((RexLiteral) op1).getValue2() + "]'";
+                    return new Operand("'" + stripQuotes(strings.get(0).getValue()) + "["
+                            + ((RexLiteral) op1).getValue2() + "]'");
                 }
-                return strings.get(0) + "[" + strings.get(1) + "]";
+                return new Operand(strings.get(0) + "[" + strings.get(1) + "]");
             }
             return null;
         }
 
         @SneakyThrows
-        private static String getMongoAggregateForComparisonOperator(
+        private static Operand getMongoAggregateForComparisonOperator(
                 final RexCall call,
-                final List<String> strings,
+                final List<Operand> strings,
                 final String stdOperator) {
             // {$cond: [<null check expression>, <comparison expression>, null]}
             final String condExpr = "{\"$cond\": [" + getNullCheckExpr(strings) +
                     ", " +
                     getMongoAggregateForOperator(call, strings, stdOperator) +
                     ", null]}";
-            return condExpr;
+            return new Operand(condExpr);
         }
 
-        private static String getNullCheckExpr(final List<String> strings) {
+        private static String getNullCheckExpr(final List<Operand> strings) {
             final StringBuilder nullCheckOperator = new StringBuilder("{\"$and\": [");
-            for (String s : strings) {
+            for (Operand s : strings) {
                 nullCheckOperator.append("{\"$gt\": [");
                 nullCheckOperator.append(s);
                 nullCheckOperator.append(", null]},");
@@ -440,21 +499,21 @@ public final class DocumentDbRules {
             return nullCheckOperator.toString();
         }
 
-        private static String getMongoAggregateForNullOperator(
-                final List<String> strings,
+        private static Operand getMongoAggregateForNullOperator(
+                final List<Operand> strings,
                 final String stdOperator) {
-            return "{" + stdOperator + ": [" + strings.get(0) + ", null]}";
+            return new Operand("{" + stdOperator + ": [" + strings.get(0) + ", null]}");
         }
 
-        private static String getMongoAggregateForSubstringOperator(
+        private static Operand getMongoAggregateForSubstringOperator(
                 final RexCall call,
-                final List<String> strings) {
-            final List<String> inputs = new ArrayList<>(strings);
-            inputs.set(1, "{$subtract: [" + inputs.get(1) + ", 1]}"); // Conversion from one-indexed to zero-indexed
+                final List<Operand> strings) {
+            final List<Operand> inputs = new ArrayList<>(strings);
+            inputs.set(1, new Operand("{$subtract: [" + inputs.get(1) + ", 1]}")); // Conversion from one-indexed to zero-indexed
             if (inputs.size() == 2) {
-                inputs.add(String.valueOf(Integer.MAX_VALUE));
+                inputs.add(new Operand(String.valueOf(Integer.MAX_VALUE)));
             }
-            return "{$substrCP: [" + Util.commaList(inputs) + "]}";
+            return new Operand("{$substrCP: [" + Util.commaList(inputs) + "]}");
         }
 
     }
@@ -466,12 +525,15 @@ public final class DocumentDbRules {
     }
 
     @SneakyThrows
-    private static String getMongoAggregateForOperator(
+    private static Operand getMongoAggregateForOperator(
             final RexCall call,
-            final List<String> strings,
+            final List<Operand> strings,
             final String stdOperator) {
         verifySupportedType(call);
-        return "{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}";
+        if (hasObjectIdAndLiteral(call, strings)) {
+            return new Operand(getObjectIdAggregateForOperator(call, strings, stdOperator));
+        }
+        return new Operand("{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}");
     }
 
     private static void verifySupportedType(final RexCall call)
@@ -485,7 +547,7 @@ public final class DocumentDbRules {
         }
     }
 
-    private static String getIntegerDivisionOperation(final String value, final String divisor) {
+    private static Operand getIntegerDivisionOperation(final String value, final String divisor) {
         // TODO: when $trunc is supported in DocumentDB, add back.
         //final String intDivideOptFormat = "{ \"$trunc\": [ {\"$divide\": [%s]}, 0 ]}";
         // NOTE: $mod, $subtract, and $divide - together, perform integer division
@@ -493,8 +555,104 @@ public final class DocumentDbRules {
                 "{\"$mod\": [%s, %s]}", value, divisor);
         final String subtractRemainder = String.format(
                 "{\"$subtract\": [%s, %s]}", value, modulo);
-        return String.format(
-                "{\"$divide\": [%s, %s]}", subtractRemainder, divisor);
+        return Operand.format("{\"$divide\": [%s, %s]}", subtractRemainder, divisor);
+    }
+
+    private static Operand getIntegerDivisionOperation(final Operand value, final Operand divisor) {
+        return getIntegerDivisionOperation(value.getValue(), divisor.getValue());
+    }
+
+    private static String getObjectIdAggregateForOperator(
+            final RexCall call,
+            final List<Operand> strings,
+            final String stdOperator) {
+        // $or together the $oid and native operations.
+        final String oidOperation = "{" + maybeQuote(stdOperator)
+                + ": [" + Util.commaList(reformatObjectIdOperands(call, strings)) + "]}";
+        final String nativeOperation = "{" + maybeQuote(stdOperator)
+                + ": [" + Util.commaList(strings) + "]}";
+        return "{\"$or\": [" + oidOperation + ", " + nativeOperation + "]}";
+    }
+
+    private static boolean hasObjectIdAndLiteral(
+            final RexCall call,
+            final List<Operand> strings) {
+        final Operand objectIdOperand = strings.stream()
+                .filter(operand -> operand.getColumn() != null
+                        && operand.getColumn().getDbType() == BsonType.OBJECT_ID)
+                .findFirst().orElse(null);
+        if (objectIdOperand == null) {
+            return false;
+        }
+        for (int index = 0; index < strings.size(); index++) {
+            final Operand operand = strings.get(index);
+            if (operand == objectIdOperand || !(call.operands.get(index) instanceof RexLiteral)) {
+                continue;
+            }
+            final RexLiteral literal = (RexLiteral) call.operands.get(index);
+            switch (literal.getTypeName()) {
+                case BINARY:
+                case VARBINARY:
+                    final byte[] valueAsByteArray = literal.getValueAs(byte[].class);
+                    if (valueAsByteArray.length == 12) {
+                        return true;
+                    }
+                    break;
+                case CHAR:
+                case VARCHAR:
+                    final String valueAsString = literal.getValueAs(String.class);
+                    if (OBJECT_ID_PATTERN.matcher(valueAsString).matches()) {
+                        return true;
+                    }
+                    break;
+            }
+        }
+        return false;
+    }
+
+    private static List<Operand> reformatObjectIdOperands(
+            final RexCall call,
+            final List<Operand> strings) {
+        final List<Operand> copyOfStrings = new ArrayList<>();
+        for (int index = 0; index < strings.size(); index++) {
+            final Operand operand = strings.get(index);
+            if (call.operands.get(index) instanceof RexLiteral) {
+                final RexLiteral literal = (RexLiteral) call.operands.get(index);
+                copyOfStrings.add(reformatObjectIdLiteral(literal, operand));
+            } else {
+                copyOfStrings.add(operand);
+            }
+        }
+        return copyOfStrings;
+    }
+
+    private static Operand reformatObjectIdLiteral(
+            final RexLiteral literal,
+            final Operand operand) {
+        switch (literal.getTypeName()) {
+            case BINARY:
+            case VARBINARY:
+                final byte[] valueAsByteArray = literal.getValueAs(byte[].class);
+                if (valueAsByteArray.length == 12) {
+                    final String value = "{\"$oid\": \""
+                            + BaseEncoding.base16().encode(valueAsByteArray)
+                            + "\"}";
+                    return new Operand(value);
+                } else {
+                    return operand;
+                }
+            case CHAR:
+            case VARCHAR:
+                final String valueAsString = literal.getValueAs(String.class);
+                if (OBJECT_ID_PATTERN.matcher(valueAsString).matches()) {
+                    final String value = "{\"$oid\": \"" + valueAsString + "\"}";
+                    return new Operand(value);
+                } else {
+                    return operand;
+                }
+            default:
+                return operand;
+        }
     }
 
     private static class DateFunctionTranslator {
@@ -519,16 +677,16 @@ public final class DocumentDbRules {
             DATE_PART_OPERATORS.put(TimeUnitRange.ISOYEAR, "$isoWeekYear");
         }
 
-        private static String translateCurrentTimestamp(final RexCall rexCall, final List<String> strings) {
-            return "new Date()";
+        private static Operand translateCurrentTimestamp(final RexCall rexCall, final List<Operand> strings) {
+            return new Operand("new Date()");
         }
 
-        private static String translateDateAdd(final RexCall call, final List<String> strings) {
+        private static Operand translateDateAdd(final RexCall call, final List<Operand> strings) {
             // TODO: Check for unsupported intervals and throw error/emulate in some other way.
-            return "{ \"$add\":" + "[" + Util.commaList(strings) + "]}";
+            return new Operand("{ \"$add\":" + "[" + Util.commaList(strings) + "]}");
         }
 
-        private static String translateDateDiff(final RexCall call, final List<String> strings) {
+        private static Operand translateDateDiff(final RexCall call, final List<Operand> strings) {
             final TimeUnitRange interval = call.getType().getIntervalQualifier().timeUnitRange;
             switch (interval) {
                 case YEAR:
@@ -544,21 +702,21 @@ public final class DocumentDbRules {
             }
         }
 
-        private static String formatDateDiffYear(final List<String> strings) {
+        private static Operand formatDateDiffYear(final List<Operand> strings) {
             final String dateDiffYearFormat =
                     "{'$subtract': [{'$year': %1$s}, {'$year': %2$s}]}";
-            return String.format(dateDiffYearFormat, strings.get(0), strings.get(1));
+            return Operand.format(dateDiffYearFormat, strings.get(0), strings.get(1));
         }
 
-        private static String formatDateDiffMonth(final List<String> strings, final TimeUnitRange timeUnitRange) {
-            final String yearPartMultiplier = timeUnitRange == timeUnitRange.QUARTER ? "4" : "12";
+        private static Operand formatDateDiffMonth(final List<Operand> strings, final TimeUnitRange timeUnitRange) {
+            final String yearPartMultiplier = timeUnitRange == TimeUnitRange.QUARTER ? "4" : "12";
             final String monthPart1 =
-                    timeUnitRange == timeUnitRange.QUARTER
-                            ? translateExtractQuarter(strings.get(0))
+                    timeUnitRange == TimeUnitRange.QUARTER
+                            ? translateExtractQuarter(strings.get(0)).getValue()
                             : String.format("{'$month': %s}", strings.get(0));
             final String monthPart2 =
-                    timeUnitRange == timeUnitRange.QUARTER
-                            ? translateExtractQuarter(strings.get(1))
+                    timeUnitRange == TimeUnitRange.QUARTER
+                            ? translateExtractQuarter(strings.get(1)).getValue()
                             : String.format("{'$month': %s}", strings.get(1));
             final String dateDiffMonthFormat =
                     "{'$subtract': [ "
@@ -568,7 +726,7 @@ public final class DocumentDbRules {
                             + "{'$add': [ "
                             + "{'$multiply': [%1$s, {'$year': %3$s}]}, "
                             + "%5$s]}]}";
-            return String.format(
+            return Operand.format(
                     dateDiffMonthFormat,
                     yearPartMultiplier,
                     strings.get(0),
@@ -577,7 +735,7 @@ public final class DocumentDbRules {
                     monthPart2);
         }
 
-        private static String translateExtract(final RexCall call, final List<String> strings) {
+        private static Operand translateExtract(final RexCall call, final List<Operand> strings) {
             // The first argument to extract is the interval (literal)
             // and the second argument is the date (can be any node evaluating to a date).
             final RexLiteral literal = (RexLiteral) call.getOperands().get(0);
@@ -586,20 +744,20 @@ public final class DocumentDbRules {
             if (range == TimeUnitRange.QUARTER) {
                 return translateExtractQuarter(strings.get(1));
             }
-            return "{ " + quote(DATE_PART_OPERATORS.get(range)) + ": " + strings.get(1) + "}";
+            return new Operand("{ " + quote(DATE_PART_OPERATORS.get(range)) + ": " + strings.get(1) + "}");
         }
 
-        private static String translateExtractQuarter(final String date) {
+        private static Operand translateExtractQuarter(final Operand date) {
             final String extractQuarterFormatString =
                     "{'$cond': [{'$lte': [{'$month': %1$s}, 3]}, 1,"
                             + " {'$cond': [{'$lte': [{'$month': %1$s}, 6]}, 2,"
                             + " {'$cond': [{'$lte': [{'$month': %1$s}, 9]}, 3,"
                             + " {'$cond': [{'$lte': [{'$month': %1$s}, 12]}, 4,"
                             + " null]}]}]}]}";
-            return String.format(extractQuarterFormatString, date);
+            return Operand.format(extractQuarterFormatString, date);
         }
 
-        public static String translateDayName(final RexCall rexCall, final List<String> strings) {
+        public static Operand translateDayName(final RexCall rexCall, final List<Operand> strings) {
             final String dayNameFormatString =
                     " {'$cond': [{'$eq': [{'$dayOfWeek': %8$s}, 1]}, '%1$s',"
                             + " {'$cond': [{'$eq': [{'$dayOfWeek': %8$s}, 2]}, '%2$s',"
@@ -609,7 +767,7 @@ public final class DocumentDbRules {
                             + " {'$cond': [{'$eq': [{'$dayOfWeek': %8$s}, 6]}, '%6$s',"
                             + " {'$cond': [{'$eq': [{'$dayOfWeek': %8$s}, 7]}, '%7$s',"
                             + " null]}]}]}]}]}]}]}";
-            return String.format(dayNameFormatString,
+            return Operand.format(dayNameFormatString,
                     DayOfWeek.SUNDAY.getDisplayName(TextStyle.FULL, Locale.getDefault()),
                     DayOfWeek.MONDAY.getDisplayName(TextStyle.FULL, Locale.getDefault()),
                     DayOfWeek.TUESDAY.getDisplayName(TextStyle.FULL, Locale.getDefault()),
@@ -620,7 +778,7 @@ public final class DocumentDbRules {
                     strings.get(0));
         }
 
-        public static String translateMonthName(final RexCall rexCall, final List<String> strings) {
+        public static Operand translateMonthName(final RexCall rexCall, final List<Operand> strings) {
             final String monthNameFormatString =
                     "{'$cond': [{'$eq': [{'$month': %13$s}, 1]}, '%1$s',"
                     + " {'$cond': [{'$eq': [{'$month': %13$s}, 2]}, '%2$s',"
@@ -635,7 +793,7 @@ public final class DocumentDbRules {
                     + " {'$cond': [{'$eq': [{'$month': %13$s}, 11]}, '%11$s',"
                     + " {'$cond': [{'$eq': [{'$month': %13$s}, 12]}, '%12$s',"
                     + " null]}]}]}]}]}]}]}]}]}]}]}]}";
-            return String.format(monthNameFormatString,
+            return Operand.format(monthNameFormatString,
                     Month.JANUARY.getDisplayName(TextStyle.FULL, Locale.getDefault()),
                     Month.FEBRUARY.getDisplayName(TextStyle.FULL, Locale.getDefault()),
                     Month.MARCH.getDisplayName(TextStyle.FULL, Locale.getDefault()),
@@ -652,7 +810,7 @@ public final class DocumentDbRules {
         }
 
         @SneakyThrows
-        private static String translateFloor(final RexCall rexCall, final List<String> strings) {
+        private static Operand translateFloor(final RexCall rexCall, final List<Operand> strings) {
             // TODO: Add support for integer floor with one operand
             if (rexCall.operands.size() != 2) {
                 return null;
@@ -670,9 +828,9 @@ public final class DocumentDbRules {
             switch (timeUnitRange) {
                 case YEAR:
                 case MONTH:
-                    return formatYearMonthFloorOperation(strings, timeUnitRange);
+                    return new Operand(formatYearMonthFloorOperation(strings, timeUnitRange));
                 case QUARTER:
-                    return formatQuarterFloorOperation(strings);
+                    return new Operand(formatQuarterFloorOperation(strings));
                 case WEEK:
                 case DAY:
                 case HOUR:
@@ -687,14 +845,14 @@ public final class DocumentDbRules {
         }
 
         private static String formatYearMonthFloorOperation(
-                final List<String> strings,
+                final List<Operand> strings,
                 final TimeUnitRange timeUnitRange) {
             final String monthFormat = timeUnitRange == TimeUnitRange.YEAR ? "01" : "%m";
             return formatYearMonthFloorOperation(strings.get(0), monthFormat);
         }
 
         private static String formatYearMonthFloorOperation(
-                final String dateOperand,
+                final Operand dateOperand,
                 final String monthFormat) {
             final String yearFormat = "%Y";
             return String.format(
@@ -704,8 +862,8 @@ public final class DocumentDbRules {
                     dateOperand, yearFormat, monthFormat);
         }
 
-        private static String formatMillisecondFloorOperation(
-                final List<String> strings,
+        private static Operand formatMillisecondFloorOperation(
+                final List<Operand> strings,
                 final TimeUnitRange timeUnitRange) throws SQLFeatureNotSupportedException {
 
             final Instant baseDate = timeUnitRange == TimeUnitRange.WEEK
@@ -717,15 +875,15 @@ public final class DocumentDbRules {
             final String subtract = String.format(
                     "{\"$subtract\": [%s, {\"$date\": {\"$numberLong\": \"%d\"}}]}",
                     strings.get(0), baseDate.toEpochMilli());
-            final String divide = getIntegerDivisionOperation(subtract, divisor);
+            final Operand divide = getIntegerDivisionOperation(subtract, divisor);
             final String multiply =  String.format(
                     "{\"$multiply\": [%s, %s]}", divisor, divide);
-            return String.format(
+            return Operand.format(
                     "{\"$add\": [{\"$date\": {\"$numberLong\": \"%d\"}}, %s]}",
                     baseDate.toEpochMilli(), multiply);
         }
 
-        private static String formatQuarterFloorOperation(final List<String> strings) {
+        private static String formatQuarterFloorOperation(final List<Operand> strings) {
             final String truncateQuarterFormatString =
                     "{'$cond': [{'$lte': [{'$month': %1$s}, 3]}, %2$s,"
                             + " {'$cond': [{'$lte': [{'$month': %1$s}, 6]}, %3$s,"
@@ -1083,6 +1241,74 @@ public final class DocumentDbRules {
                 LOGGER.warn(e.toString());
                 return null;
             }
+        }
+    }
+
+    /**
+     * Container for operands with optional column metadata.
+     */
+    @Getter
+    static class Operand {
+        private final String value;
+        private final DocumentDbSchemaColumn column;
+
+        /**
+         * Constructs an Operand from a String value.
+         *
+         * @param value the String value.
+         */
+        public Operand(final String value) {
+            this(value, null);
+        }
+
+        /**
+         * Constructs an Operand from a String value and column metadata.
+         *
+         * @param value the String value.
+         * @param column the column metadata.
+         */
+        public Operand(
+                final String value,
+                final DocumentDbSchemaColumn column) {
+            this.value = value;
+            this.column = column;
+        }
+
+        /**
+         * Formats the string value using the {@link String#format(String, Object...)} method.
+         *
+         * @param format the format string.
+         * @param args the optional arguments.
+         * @return the Operand with the value formatted.
+         */
+        public static Operand format(final String format, final Object... args) {
+            return new Operand(String.format(format, args));
+        }
+
+        @Override
+        public String toString() {
+            return value;
+        }
+
+        @Override
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o instanceof String) {
+                final String stringValue = (String) o;
+                return stringValue.equals(this.getValue());
+            }
+            if (!(o instanceof Operand)) {
+                return false;
+            }
+            final Operand that = (Operand) o;
+            return Objects.equals(getValue(), that.getValue());
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(getValue());
         }
     }
 

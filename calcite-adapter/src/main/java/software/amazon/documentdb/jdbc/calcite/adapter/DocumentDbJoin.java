@@ -120,6 +120,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
     @Override
     public void implement(final Implementor implementor) {
         // Visit all nodes to the left of the join.
+        implementor.setJoin(true);
         implementor.visitChild(0, getLeft());
         final DocumentDbTable leftTable = implementor.getDocumentDbTable();
         final DocumentDbSchemaTable leftMetadata = implementor.getMetadataTable();
@@ -128,6 +129,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // This implementor can contain operations specific to the right.
         final DocumentDbRel.Implementor rightImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
+        rightImplementor.setJoin(true);
         rightImplementor.visitChild(0, getRight());
         final DocumentDbTable rightTable = rightImplementor.getDocumentDbTable();
         final DocumentDbSchemaTable rightMetadata = rightImplementor.getMetadataTable();
@@ -148,6 +150,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                     leftMetadata,
                     rightMetadata);
         }
+        implementor.setJoin(false);
     }
 
     /**
@@ -170,9 +173,8 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             final DocumentDbSchemaTable leftTable,
             final DocumentDbSchemaTable rightTable) {
         validateSameCollectionJoin(leftTable, rightTable);
-
-        // Add remaining operations from the right.
-        rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));
+        final List<Pair<String, String>> leftList = implementor.getList();
+        implementor.setList(new ArrayList<>());
 
         // Eliminate null (i.e. "unmatched") rows from any virtual tables based on join type.
         // If an inner join, eliminate any null rows from either table.
@@ -184,29 +186,6 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         final Supplier<String> rightFilter = () -> buildFieldsExistMatchFilter(rightFilterColumns);
         final String filterLeft;
         final String filterRight;
-        switch (getJoinType()) {
-            case INNER:
-                filterLeft = leftFilter.get();
-                filterRight = rightFilter.get();
-                if (filterLeft != null) {
-                    implementor.add(null, filterLeft);
-                }
-                if (filterRight != null) {
-                    implementor.add(null, filterRight);
-                }
-                implementor.setNullFiltered(true);
-                break;
-            case LEFT:
-                filterLeft = leftFilter.get();
-                if (filterLeft != null) {
-                    implementor.add(null, filterLeft);
-                }
-                implementor.setNullFiltered(true);
-                break;
-            default:
-                throw new IllegalArgumentException(
-                        SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
-        }
 
         final boolean rightIsVirtual = isTableVirtual(rightTable);
         final boolean leftIsVirtual = isTableVirtual(leftTable);
@@ -256,12 +235,38 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                 columnMap.put(key, entry.getValue());
             }
         }
-
+        switch (getJoinType()) {
+            case INNER:
+                filterLeft = leftFilter.get();
+                filterRight = rightFilter.get();
+                if (filterLeft != null) {
+                    implementor.add(null, filterLeft);
+                }
+                if (filterRight != null) {
+                    implementor.add(null, filterRight);
+                }
+                implementor.setNullFiltered(true);
+                break;
+            case LEFT:
+                filterLeft = leftFilter.get();
+                if (filterLeft != null) {
+                    implementor.add(null, filterLeft);
+                }
+                implementor.setNullFiltered(true);
+                break;
+            default:
+                throw new IllegalArgumentException(
+                        SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
+        }
         if (!renames.isEmpty()) {
             final String newFields = Util.toString(renames, "{", ", ", "}");
             final String aggregateString = "{ $addFields : " + newFields + "}";
             implementor.add(null, aggregateString);
         }
+        // Add operations from the left.
+        leftList.forEach(pair -> implementor.add(pair.left, pair.right));
+        // Add remaining operations from the right.
+        rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));
 
         final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
                 .builder()
@@ -329,11 +334,11 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                 .filter(c -> !c.isPrimaryKey()
                         && c.getForeignKeyTableName() == null
                         && !(c instanceof DocumentDbMetadataColumn &&
-                                ((DocumentDbMetadataColumn)c).isGenerated())
+                        ((DocumentDbMetadataColumn)c).isGenerated())
                         && !(c.getSqlType() == null ||
-                             c.getSqlType() == JdbcType.ARRAY ||
-                             c.getSqlType() == JdbcType.JAVA_OBJECT ||
-                             c.getSqlType() == JdbcType.NULL))
+                        c.getSqlType() == JdbcType.ARRAY ||
+                        c.getSqlType() == JdbcType.JAVA_OBJECT ||
+                        c.getSqlType() == JdbcType.NULL))
                 .collect(Collectors.toList());
         return ImmutableList.copyOf(columns);
     }

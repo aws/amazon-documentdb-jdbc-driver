@@ -22,6 +22,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
@@ -34,6 +36,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.stream.Stream;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
@@ -84,7 +87,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     void testIsValidWhenConnectionIsValid() throws SQLException {
         try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
                 DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, VALID_CONNECTION_PROPERTIES)) {
-            // NOTE: Observed approximate 10 .. 11 seconds delay before first heartbeat is returned.
+            // NOTE: Observed approximate 10 … 11 seconds delay before first heartbeat is returned.
             final int timeoutSeconds = 15;
             Assertions.assertTrue(connection.isValid(timeoutSeconds));
         }
@@ -209,7 +212,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         final ResultSet procedures = metadata.getProcedures(null, null, null);
         Assertions.assertFalse(procedures.next());
         final ResultSet catalogs = metadata.getCatalogs();
-        // No records indicates we don't support/use catalogs.
+        // No records indicate we don't support/use catalogs.
         Assertions.assertFalse(catalogs.next());
         final ResultSet columnPrivileges = metadata.getColumnPrivileges(null,
                 null, null, null);
@@ -263,14 +266,18 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(tableTypes.next());
     }
 
-    @Test
+    @ParameterizedTest(name = "testSshTunnelOptions - [{index}] - {arguments}")
     @DisplayName("Tests SSH tunnel options")
-    void testSshTunnelOptions() throws SQLException {
+    @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
+    void testSshTunnelOptions(final DocumentDbTestEnvironment environment) throws SQLException {
+        // NOTE: a "null" environment means it isn't configured to run. So bypass.
+        if (environment == null) {
+            return;
+        }
+
         final String docDbUserProperty = "DOC_DB_USER";
         final String docDbHostProperty = "DOC_DB_HOST";
         final String docDbPrivKeyFileProperty = "DOC_DB_PRIV_KEY_FILE";
-        final DocumentDbTestEnvironment environment = DocumentDbTestEnvironmentFactory
-                .getDocumentDb40SshTunnelEnvironment();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(environment.getJdbcConnectionString());
 
@@ -290,6 +297,18 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         try (Connection connection = DriverManager.getConnection("jdbc:documentdb:", properties)) {
             Assertions.assertTrue(connection instanceof DocumentDbConnection);
             Assertions.assertTrue(connection.isValid(10));
+        }
+    }
+
+    private Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {
+        if (DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
+                .anyMatch(e -> e ==  DocumentDbTestEnvironmentFactory
+                        .getDocumentDb40SshTunnelEnvironment())) {
+            return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
+                    .filter(e -> e == DocumentDbTestEnvironmentFactory
+                            .getDocumentDb40SshTunnelEnvironment());
+        } else {
+            return Stream.of((DocumentDbTestEnvironment) null);
         }
     }
 }

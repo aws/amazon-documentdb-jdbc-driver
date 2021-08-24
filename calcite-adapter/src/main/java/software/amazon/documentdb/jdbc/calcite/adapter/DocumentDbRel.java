@@ -44,17 +44,22 @@ public interface DocumentDbRel extends RelNode {
      * {@link DocumentDbRel} nodes into a MongoDB query. */
     class Implementor {
 
-        private final List<Pair<String, String>> list = new ArrayList<>();
+        private List<Pair<String, String>> list = new ArrayList<>();
         private final RexBuilder rexBuilder;
         private RelOptTable table;
         // DocumentDB: modified - start
         private DocumentDbSchemaTable metadataTable;
         private DocumentDbTable documentDbTable;
         private boolean nullFiltered = false;
+        private boolean join = false;
         // DocumentDB: modified - end
 
         public List<Pair<String, String>> getList() {
             return list;
+        }
+
+        public void setList(final List<Pair<String, String>> list) {
+            this.list = list;
         }
 
         public RexBuilder getRexBuilder() {
@@ -104,6 +109,14 @@ public interface DocumentDbRel extends RelNode {
 
         public void setNullFiltered(final boolean nullFiltered) {
             this.nullFiltered = nullFiltered;
+        }
+
+        public boolean isJoin() {
+            return join;
+        }
+
+        public void setJoin(final boolean join) {
+            this.join = join;
         }
         // DocumentDB: modified - end
 
