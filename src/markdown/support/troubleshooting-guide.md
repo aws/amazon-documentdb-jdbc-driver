@@ -1,14 +1,21 @@
 # Troubleshooting Guide
 
-## Connection Issues
+- [Common Issues]()
+   * [Connection Issues]()
+   * [Schema Issues]()
+   * [Query Issues]()
+- [Logs]()
 
-### Invalid host or port number
+## Common Issues
+### Connection Issues
 
-#### What to look for:
+#### Invalid host or port number
+
+##### What to look for:
 
 -  `java.net.ConnectException: Connection refused: connect`
 
-##### Tableau Connection Error
+###### Tableau Connection Error
     
 ```text
 An error occurred while communicating with DocumentDB by Amazon
@@ -28,7 +35,7 @@ Check that the server is running and that you have access privileges to the requ
 Connector Class: documentdbjdbc, Version: ...
 ```
 
-##### DbVisualizer Connection Error
+###### DbVisualizer Connection Error
 
 ```text
 An error occurred while establishing the connection:
@@ -41,7 +48,7 @@ exception={com.mongodb.MongoSocketOpenException: Exception opening socket},
  caused by {java.net.ConnectException: Connection refused: connect}}]
 ```
 
-#### What to do:
+##### What to do:
 This problem suggests that you are unable to reach the DocumentDB cluster. Most commonly, this is 
 because you are outside the cluster's VPC. To connect to an Amazon DocumentDB cluster from outside 
 an Amazon VPC, you can use an SSH tunnel. The driver allows users to set up an SSH tunnel manually 
@@ -49,7 +56,7 @@ or pass additional parameters in the connecting string so that the driver can cr
 See [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/ssh-tunnel.md) for more information 
 on both methods. 
 
-If this is still an issue after having setup the SSH tunnel, double-check the values of *Port* or 
+If this is still an issue after having set up an SSH tunnel, double-check the values of *Port* or 
 *Hostname*.
 
 If you have manually set up an SSH tunnel:
@@ -65,17 +72,17 @@ If you are using the automatically set up SSH tunnel:
 1. Ensure the *Hostname* in your connection string is set to the cluster hostname and **not** `localhost`.
 
 If the issue is unrelated to SSH tunneling, 
-double check other parameters in your [connection string]()
+double check other parameters in your [connection string](../setup/connection-string.md)
 and make sure the cluster is running and available to connect to.
 
-### Internally Embedded Certificate Authority Issue       
+#### Internally Embedded Certificate Authority Issue       
 
-#### What to look for:
+##### What to look for:
 
 -  `unable to find valid certification path to requested target`
 -  `Server's certificate with common name ... is not trusted`
 
-##### Tableau Certificate Error
+###### Tableau Certificate Error
 
 ```text
 An error occurred while communicating with DocumentDB by Amazon
@@ -97,7 +104,7 @@ Check that the server is running and that you have access privileges to the requ
 Connector Class: documentdbjdbc, Version: ...
 ```
 
-##### DbVisualizer Certificate Error
+###### DbVisualizer Certificate Error
 
 ```text
 Server's certificate with common name ... is not trusted.
@@ -112,8 +119,8 @@ The online security resources may give a pointer how to fix this.
    See [Specifying the Amazon RDS Certificate Authority Certificate File](../setup/amazon-ca-certs.md). 
 1. Copy the file to your home directory.
 1. Provide the root certificate file name in the connection. 
-   1. Tableau: *TLS Certificate Authority File (Optional)* : `~/rds-ca-2019-root.pem`
-   1. DbVisualizer: `jdbc:documentdb://localhost:27017/test?tls=true&tlsAllowInvalidHostnames=true&tlsCAFile=~/rds-ca-2019-root.pem`
+   - Tableau: *TLS Certificate Authority File (Optional)* : `~/rds-ca-2019-root.pem`
+   - DbVisualizer: `jdbc:documentdb://localhost:27017/test?tls=true&tlsAllowInvalidHostnames=true&tlsCAFile=~/rds-ca-2019-root.pem`
     
 ### Invalid hostname 
 #### What to look for: 
@@ -137,21 +144,69 @@ The online security resources may give a pointer how to fix this.
 ### Schema Out of Date
 
 #### What to look for: 
-1. Cannot find new collection(s) as tables in SQL schema.
-1. Cannot find new document field(s) as columns in SQL table schema.
+- Cannot find new collection(s) as tables in SQL schema.
+- Cannot find new document field(s) as columns in SQL table schema.
 
 #### What to do:
 
 1. To update the SQL schema for your database, run the command line interface to 
 [generate a new schema](../schema/manage-schema-cli.md).
-1.  For example:
+   For example:
     ```text
     java -jar document-db-1.0.SNAPSHOT-all.jar --generate-new \
     --server localhost:27019 --database test -u ajones --tls --tls-allow-invalid-hostnames
-    ```
-## Query Issues
+    ``` 
+    
+If you have set up the `mongo` shell or have set up a tool like 
+[MongoDB Compass](https://www.mongodb.com/products/compass), you can also 
+manually delete the old schemas. Exercise caution with this method.
 
-#### What to look for: 
+1. Connect to the cluster using your tool of choice.
+1. Navigate to your target database. 
+1. Drop the collections `_sqlSchemas` and `_sqlTableSchemas`. 
+   On the `mongo` shell, this can be done as follows: 
+   ```
+   use <database> 
+   db.getCollection("_sqlSchemas").drop() 
+   db.getCollection("_sqlTableSchemas").drop()
+   ```
+### Query Issues
 
-#### What to do: 
-1. Double check that the identifiers using
+##### What to look for: 
+
+- `Unsupported SQL syntax  ...`
+- `Unable to parse SQL ...`
+
+##### What to do: 
+1. Check that your query follows the [expected format](../sql/sql-jdbc-limitations.md#basic-query-format).
+1. Check that the [identifiers]() 
+   matching a SQL keyword are either quoted using `"` or are using fully-qualified names (ex: `table.column`). 
+   Using double quotes and fully-qualified names for all queries in general is recommended. 
+   Note that using single quotes in place of double quotes is not allowed and that all identifiers are case-sensitive.
+1. Check that you are not terminating your statement with a semicolon `;`. This is not allowed.  
+1. If using any literals, check that they are [formatted correctly](). Note that literals use 
+   single quotes instead of double quotes.
+1. If using any [operators or functions](), check that they are supported and are being called 
+   correctly.
+1. For simple validation errors, the error message may contain a `Reason:` segment. Use 
+   this to troubleshoot when possible. For example, this error can be resolved 
+   by correcting `TESTCOLLECTION` to `testCollection`:
+   ```
+    Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'."
+    Reason: 'From line 1, column 15 to line 1, column 37:"
+    Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'"
+   ```
+
+## Logs
+
+When troubleshooting, it can be helpful to view the logs so that you might be able 
+to resolve the issue on your own or at least have more context to provide when seeking support.  
+The driver's logs will be written to `/tmp/logs/DocumentDB_JDBC.log`.
+
+Many BI tools also provide an interface for users to easily view logs. Tableau, for example, 
+has [Tableau Log Viewer](https://github.com/tableau/tableau-log-viewer). 
+Tableau Desktop stores the logs in the `Logs` subfolder under `My Tableau Repository` which is typically 
+under `Documents` although this may vary depending on how Tableau was installed. 
+The JDBC driver's logs will be in the `jprotocolserver.log` file. 
+
+Refer to the documentation of your tool of choice for similar instructions.
