@@ -1,10 +1,10 @@
 # Troubleshooting Guide
 
-- [Common Issues]()
-   * [Connection Issues]()
-   * [Schema Issues]()
-   * [Query Issues]()
-- [Logs]()
+- [Common Issues](#common-issues)
+   * [Connection Issues](#connection-issues)
+   * [Schema Issues](#schema-issues)
+   * [Query Issues](#query-issues)
+- [Logs](#logs)
 
 ## Common Issues
 ### Connection Issues
@@ -16,7 +16,7 @@
 -  `java.net.ConnectException: Connection refused: connect`
 
 ###### Tableau Connection Error
-    
+
 ```text
 An error occurred while communicating with Amazon DocumentDB by AWS
 
@@ -178,16 +178,16 @@ manually delete the old schemas. Exercise caution with this method.
 - `Unable to parse SQL ...`
 
 ##### What to do: 
-1. Check that your query follows the [expected format](../sql/sql-jdbc-limitations.md#basic-query-format).
-1. Check that the [identifiers]() 
+1. Check that your query follows the [expected format](../sql/sql-limitations.md#basic-query-format).
+1. Check that the [identifiers](../sql/sql-limitations.md#identifiers) 
    matching a SQL keyword are either quoted using `"` or are using fully-qualified names (ex: `table.column`). 
    Using double quotes and fully-qualified names for all queries in general is recommended. 
    Note that using single quotes in place of double quotes is not allowed and that all identifiers are case-sensitive.
 1. Check that you are not terminating your statement with a semicolon `;`. This is not allowed.  
-1. If using any literals, check that they are [formatted correctly](). Note that literals use 
-   single quotes instead of double quotes.
-1. If using any [operators or functions](), check that they are supported and are being called 
-   correctly.
+1. If using any literals, check that they are [formatted correctly](../sql/sql-limitations.md#data-types). 
+   Note that literals use single quotes instead of double quotes.
+1. If using any [operators or functions](../sql/sql-limitations.md#operators-and-functions), 
+   check that they are supported and are being called correctly.
 1. For simple validation errors, the error message may contain a `Reason:` segment. Use 
    this to troubleshoot when possible. For example, this error can be resolved 
    by correcting `TESTCOLLECTION` to `testCollection`:

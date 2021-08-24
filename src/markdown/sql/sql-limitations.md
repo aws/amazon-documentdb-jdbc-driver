@@ -176,7 +176,7 @@ The driver recognizes the following SQL data types:
 
 Note that while all the above can be used when constructing queries, columns themselves can 
 only be of the types `BOOLEAN`, `BIGINT`, `INTEGER`, `DECIMAL`, `DOUBLE`, `VARCHAR`, `VARBINARY` and `TIMESTAMP`. 
-See the [schema discovery and generation](/src/markdown/schema/schema-discovery.md) sections for more information. 
+See the [schema discovery and generation](../schema/schema-discovery.md) sections for more information. 
 
 Note also that double-quotes **cannot** be used in place of single-quotes for specifying literals.
 
