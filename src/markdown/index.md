@@ -67,6 +67,11 @@ See the [schema management documentation](schema/manage-schema-cli.md) and
 [table schemas JSON format](schema/table-schemas-json-format.md) for further
 information.
 
+**Note**: A common schema management task is to regenerate or clear the existing schema that has
+become out of date when your database has changed, for example, when there are new collections or new
+fields in an existing collection. To regenerate or clear the existing schema, please refer to the
+[Schema Out of Date](#schema-out-of-date) topic in the troubleshooting guide.
+
 ## SQL and JDBC Limitations
 
 The Amazon DocumentDB JDBC driver has a number of important limitations. See the
