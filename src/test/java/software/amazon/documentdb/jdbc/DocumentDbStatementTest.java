@@ -54,12 +54,10 @@ class DocumentDbStatementTest {
 
     @AfterEach
     void afterEach() throws Exception {
-        if (testEnvironment != null) {
-            final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                    .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
-            try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
-                schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
-            }
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
+            schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         }
     }
 
