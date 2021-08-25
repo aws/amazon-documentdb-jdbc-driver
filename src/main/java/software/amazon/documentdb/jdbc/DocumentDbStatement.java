@@ -16,17 +16,21 @@
 
 package software.amazon.documentdb.jdbc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.Statement;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
+
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.FETCH_SIZE_DEFAULT;
 
 /**
  * DocumentDb implementation of DatabaseMetadata.
  */
 class DocumentDbStatement extends Statement implements java.sql.Statement {
 
-    private static final int FETCH_SIZE_DEFAULT = 2096;
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbStatement.class);
     private int queryTimeout;
     private final DocumentDbQueryExecutor queryExecutor;
 
@@ -38,8 +42,7 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     DocumentDbStatement(
             final DocumentDbConnection connection) throws SQLException {
         super(connection);
-        // Set a larger fetch size, by default.
-        this.setFetchSize(FETCH_SIZE_DEFAULT);
+        setDefaultFetchSize(connection);
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
                 connection.getDatabaseMetadata(),
@@ -50,6 +53,17 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
                 mappingService,
                 getQueryTimeout(),
                 getFetchSize());
+    }
+
+    private void setDefaultFetchSize(final DocumentDbConnection connection) throws SQLException {
+        Integer defaultFetchSize = connection.getConnectionProperties().getDefaultFetchSize();
+        if (defaultFetchSize == null) {
+            defaultFetchSize = FETCH_SIZE_DEFAULT;
+        }
+        if (defaultFetchSize != FETCH_SIZE_DEFAULT) {
+            LOGGER.debug("Setting custom default fetch size: {}", defaultFetchSize);
+        }
+        setFetchSize(defaultFetchSize);
     }
 
     /**

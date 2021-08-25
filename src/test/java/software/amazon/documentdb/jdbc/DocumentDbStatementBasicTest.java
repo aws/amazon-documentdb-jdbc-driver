@@ -25,12 +25,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 
 import java.io.IOException;
 import java.sql.Blob;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
@@ -1322,60 +1320,6 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet.getBoolean(2));
             Assertions.assertNull(resultSet.getString(3));
             Assertions.assertFalse(resultSet.next());
-        }
-    }
-
-    @ParameterizedTest(name = "testQueryPerformanceEmployees - [{index}] - {arguments}")
-    @MethodSource({"getTestEnvironments"})
-    void testQueryPerformanceEmployees(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
-        setTestEnvironment(null);
-        if (!testEnvironment.equals(DocumentDbTestEnvironmentFactory.getDocumentDb40SshTunnelEnvironment())) {
-            return;
-        }
-        final String databaseName = "performance";
-        final String tableName = "employer";
-        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
-        properties.setDatabase(databaseName);
-
-        try (Connection connection = DriverManager.getConnection("jdbc:documentdb:", properties)) {
-            final Statement statement = getDocumentDbStatement(connection);
-            long totalExecutionTime = 0;
-            long firstExecutionTime = 0;
-            final int numberOfTestsRuns = 11;
-            final int limit = 1024;
-            statement.setFetchSize(limit/1);
-            for (int i = 0; i < numberOfTestsRuns; i++) {
-                final Instant start = Instant.now();
-                final ResultSet resultSet = statement.executeQuery(
-                        String.format("SELECT employer__id,name,sector,createDate " +
-                                        " FROM \"%s\".\"%s\" LIMIT %d",
-                                databaseName, tableName, limit));
-                Assertions.assertNotNull(resultSet);
-                Assertions.assertEquals(4, resultSet.getMetaData().getColumnCount());
-                int rowCount = 0;
-                while (resultSet.next()) {
-                    rowCount++;
-                }
-                final Instant stop = Instant.now();
-                if (i != 0) {
-                    totalExecutionTime =
-                            totalExecutionTime + (stop.toEpochMilli() - start.toEpochMilli());
-                } else {
-                    firstExecutionTime = (stop.toEpochMilli() - start.toEpochMilli());
-                }
-                Assertions.assertEquals(limit, rowCount);
-            }
-            System.out.println(String.format("First execution time (ms): %d",
-                    firstExecutionTime));
-            System.out.println(String.format("Average execution time excluding first (ms): %d",
-                    (totalExecutionTime / numberOfTestsRuns - 1)));
-            final long expectedMaxAverageTime = 1600;
-            Assertions.assertTrue(
-                    expectedMaxAverageTime > (totalExecutionTime / (numberOfTestsRuns - 1)),
-                    () -> String.format(
-                            "Average execution time greater than %d milliseconds.",
-                            expectedMaxAverageTime));
         }
     }
 }
