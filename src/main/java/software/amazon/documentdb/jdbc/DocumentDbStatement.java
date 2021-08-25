@@ -25,6 +25,8 @@ import java.sql.SQLException;
  * DocumentDb implementation of DatabaseMetadata.
  */
 class DocumentDbStatement extends Statement implements java.sql.Statement {
+
+    private static final int FETCH_SIZE_DEFAULT = 2096;
     private int queryTimeout;
     private final DocumentDbQueryExecutor queryExecutor;
 
@@ -36,6 +38,8 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
     DocumentDbStatement(
             final DocumentDbConnection connection) throws SQLException {
         super(connection);
+        // Set a larger fetch size, by default.
+        this.setFetchSize(FETCH_SIZE_DEFAULT);
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
                 connection.getDatabaseMetadata(),
