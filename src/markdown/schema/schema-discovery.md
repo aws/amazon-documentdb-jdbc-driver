@@ -22,7 +22,7 @@ In general, schema discovery works as follows:
    document and for arrays, the array index.
 4. Virtual tables created will use
    the naming convention `collection_field`, where the name of the table is the name of the collection followed by the 
-   field containing the virtual table, with underscores in betwee. This can be embedded to any depth for complex fields that
+   field containing the virtual table, with underscores in between. This can be embedded to any depth for complex fields that
    contain more complex fields within them (e.g.,  `collection_field1_field2_field3`).
 
 ### Schema Generation Limitations
