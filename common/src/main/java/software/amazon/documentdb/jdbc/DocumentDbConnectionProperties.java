@@ -62,6 +62,7 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
+    public static final int FETCH_SIZE_DEFAULT = 2000;
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -508,6 +509,32 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Sets the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     * It is the number of records to retrieve in a single batch.
+     * The maximum number of records retrieved in a single batch may also be limited by the overall
+     * memory size of the result. The value can be changed by calling the `Statement.setFetchSize`
+     * JDBC method. Default is '2000'.
+     *
+     * @param defaultFetchSize the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     */
+    public void setDefaultFetchSize(final String defaultFetchSize) {
+        setProperty(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName(), defaultFetchSize);
+    }
+
+    /**
+     * Gets the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     * It is the number of records to retrieve in a single batch.
+     * The maximum number of records retrieved in a single batch may also be limited by the overall
+     * memory size of the result. The value can be changed by calling the `Statement.setFetchSize`
+     * JDBC method. Default is '2000'.
+     *
+     * @return the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     */
+    public Integer getDefaultFetchSize() {
+        return getPropertyAsInteger(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName());
+    }
+
+    /**
      * Builds the MongoClientSettings from properties.
      *
      * @return a {@link MongoClientSettings} object.
@@ -651,6 +678,9 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getSshKnownHostsFile() != null && !DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getDefaultValue().equals(getSshKnownHostsFile())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE, getSshKnownHostsFile());
+        }
+        if (getDefaultFetchSize() != Integer.parseInt(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE, getDefaultFetchSize());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,
