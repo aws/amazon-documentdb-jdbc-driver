@@ -9,6 +9,22 @@ The driver will determine if a cached version of the schema for that collection 
 If a cached version does not exist, it will sample the collection for documents and create a schema
 based on the following behavior.
 
+### Basics of Schema Discovery
+
+In general, schema discovery works as follows:
+
+1. A DocumentDB collection is mapped to a SQL table. There will always be a SQL table with the same name as the collection.
+
+2. Each DocumentDB collection's "simple" (i.e., not sub-document or array) field becomes a SQL column.
+
+3. Each DocumentDB collection's "complex" (i.e., sub-document or array) field becomes an additional SQL virtual table, with
+   a foreign key relationship between these tables from the same collection based on the id field for that 
+   document and for arrays, the array index.
+4. SQL virtual tables created will use
+   the naming convention `collection_field`, where the name of the table is the name of the collection followed by the 
+   field containing the virtual table, with underscores in between. This can be embedded to any depth for complex fields that
+   contain more complex fields within them (e.g.,  `collection_field1_field2_field3`).
+
 ### Schema Generation Limitations
 
 The DocumentDB JDBC driver imposes a limit on the length of identifiers at 128 characters.
