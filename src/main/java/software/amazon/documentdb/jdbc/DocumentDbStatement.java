@@ -38,11 +38,12 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
      * DocumentDbStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
      *
      * @param connection the connection.
+     * @throws SQLException if unable to construct a new {@link java.sql.Statement}.
      */
     DocumentDbStatement(
             final DocumentDbConnection connection) throws SQLException {
         super(connection);
-        setDefaultFetchSize(connection);
+        setDefaultFetchSize(this, connection.getConnectionProperties());
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
                 connection.getDatabaseMetadata(),
@@ -55,15 +56,24 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
                 getFetchSize());
     }
 
-    private void setDefaultFetchSize(final DocumentDbConnection connection) throws SQLException {
-        Integer defaultFetchSize = connection.getConnectionProperties().getDefaultFetchSize();
+    /**
+     * Sets the default fetch size on the {@link java.sql.Statement} object.
+     *
+     * @param statement the Statement to set.
+     * @param properties the
+     * @throws SQLException if unable to set the fetch size.
+     */
+    static void setDefaultFetchSize(
+            final java.sql.Statement statement,
+            final DocumentDbConnectionProperties properties) throws SQLException {
+        Integer defaultFetchSize = properties.getDefaultFetchSize();
         if (defaultFetchSize == null) {
             defaultFetchSize = FETCH_SIZE_DEFAULT;
         }
         if (defaultFetchSize != FETCH_SIZE_DEFAULT) {
             LOGGER.debug("Setting custom default fetch size: {}", defaultFetchSize);
         }
-        setFetchSize(defaultFetchSize);
+        statement.setFetchSize(defaultFetchSize);
     }
 
     /**
