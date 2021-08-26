@@ -17,10 +17,10 @@ In general, schema discovery works as follows:
 
 2. Each DocumentDB collection's "simple" (i.e., not sub-document or array) field becomes a SQL column.
 
-3. Each DocumentDB collection's "complex" (i.e., sub-document or array) field becomes an additional SQL table, with
+3. Each DocumentDB collection's "complex" (i.e., sub-document or array) field becomes an additional SQL virtual table, with
    a foreign key relationship between these tables from the same collection based on the id field for that 
    document and for arrays, the array index.
-4. Virtual tables created will use
+4. SQL virtual tables created will use
    the naming convention `collection_field`, where the name of the table is the name of the collection followed by the 
    field containing the virtual table, with underscores in between. This can be embedded to any depth for complex fields that
    contain more complex fields within them (e.g.,  `collection_field1_field2_field3`).
