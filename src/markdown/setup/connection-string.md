@@ -84,7 +84,11 @@
     - `all` - Sample all the documents in the collection.
 - `scanLimit` (int) The number of documents to sample. The value must be a positive integer.
   The default value is `1000`. If `scanMethod` is set to `all`, this option is ignored.
-- `schemaName` (string) The name of the SQL mapping schema for the database. Defaults to `_default`.  
+- `schemaName` (string) The name of the SQL mapping schema for the database. Defaults to `_default`.
+- `defaultFetchSize` (int) The default fetch size (in records) when retrieving results from 
+  Amazon DocumentDB. It is the number of records to retrieve in a single batch. The maximum number 
+  of records retrieved in a single batch may also be limited by the overall memory size of the result.
+  The value can be changed by calling the `Statement.setFetchSize` JDBC method. Default is `2000`.
 
 ## Examples
 
