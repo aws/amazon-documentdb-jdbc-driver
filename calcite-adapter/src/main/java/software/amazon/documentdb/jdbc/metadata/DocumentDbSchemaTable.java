@@ -105,6 +105,11 @@ public class DocumentDbSchemaTable {
     @BsonProperty(COLUMNS_PROPERTY)
     private final List<DocumentDbSchemaColumn> columns;
 
+    @Setter
+    @BsonIgnore
+    @JsonIgnore
+    private long estimatedRecordCount = -1;
+
     /**
      * Creates an instance from deserializing a document.
      *

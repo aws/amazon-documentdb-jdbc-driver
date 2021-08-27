@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.UnwindOptions;
+import org.apache.calcite.adapter.enumerable.EnumerableRules;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -94,6 +95,8 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
 
         // Keep the project node even for SELECT * queries.
         planner.removeRule(CoreRules.PROJECT_REMOVE);
+        planner.removeRule(EnumerableRules.ENUMERABLE_AGGREGATE_RULE);
+        planner.removeRule(EnumerableRules.ENUMERABLE_PROJECT_RULE);
     }
 
     @Override public void implement(final Implementor implementor) {
