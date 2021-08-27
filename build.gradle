@@ -51,10 +51,6 @@ tasks.register('licenseAndNotice') {
         from "${rootDir}/NOTICE"
         into 'src/main/resources'
     }
-    copy {
-        from "${rootDir}/NOTICE-3RD-PARTY"
-        into 'src/main/resources'
-    }
 }
 
 java {
