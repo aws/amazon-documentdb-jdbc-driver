@@ -44,9 +44,12 @@
     }
 
     // Use default (and only) replica set.
-    if (attr["v-replica-set"] === "true") {
-        params[REPLICA_SET_KEY] = "rs0";
+    if (attr["v-replica-set"] === "true") {s
+        if (attr["v-ssh-tunnel"] === "false") {
+            params[REPLICA_SET_KEY] = "rs0";
+        }
     }
+
 
     // Add scan limit if set.
     if (attr["v-scan-limit"]) {
