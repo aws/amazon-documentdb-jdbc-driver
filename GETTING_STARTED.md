@@ -8,11 +8,11 @@ This document provides instructions on how to install and set up Java (JDK 1.8) 
     3. [Cloning Source Code onto Local Computer](#cloning-source-code-onto-local-computer)
     4. [Building Project with Gradle](#building-project-with-gradle)
     5. [Setting Up Environment to Run DocumentDB Tests](#setting-up-environment-to-run-documentdb-tests)
-        1. [Connect to a DocumentDB Cluster Using an SSH Tunnel](#connect-to-a-documentdb-cluster-using-an-ssh-tunnel)
+        1. [Connect to a DocumentDB Cluster Using a SSH Tunnel](#connect-to-a-documentdb-cluster-using-a-ssh-tunnel)
             1. [Prerequisites](#prerequisites)
             2. [References](#references)
             3. [Creating an EC2 Instance in a VPC](#creating-an-ec2-instance-in-a-vpc)
-            4. [Create a DocumentDB Cluster and an SSH Tunnel](#create-a-documentdb-cluster-and-an-ssh-tunnel)
+            4. [Create a DocumentDB Cluster and a SSH Tunnel](#create-a-documentdb-cluster-and-a-ssh-tunnel)
             5. [Connect with TLS](#connect-with-tls)
             6. [Connect Programmatically](#connect-programmatically)
                 1. [Without TLS](#without-tls)
@@ -60,11 +60,11 @@ the above step.
    ![Gradle Build](src/markdown/images/getting-started/gradle-build.png)
 
 ### Setting Up Environment to Run DocumentDB Tests
-This section describes how to connect to a DocumentDB cluster using an SSH tunnel and details the setup needed to run 
+This section describes how to connect to a DocumentDB cluster using a SSH tunnel and details the setup needed to run 
 tests against the DocumentDB instance.
 
-#### Connect to a DocumentDB Cluster Using an SSH Tunnel
-Since DocumentDB is currently a VPC-only service, you need to set up an SSH tunnel using an EC2 instance running in the 
+#### Connect to a DocumentDB Cluster Using a SSH Tunnel
+Since DocumentDB is currently a VPC-only service, you need to set up a SSH tunnel using an EC2 instance running in the 
 same VPC as your DocumentDB cluster (Note that SSH tunnelling will not work for connecting in replica set mode).
 
 ##### Prerequisites
@@ -120,7 +120,7 @@ and download it. Make sure to keep track of this file.
    
    ![Example output SSH Tunnel to EC2 instance](src/markdown/images/getting-started/example-output-ssh-to-ec2.png)
    
-##### Create a DocumentDB Cluster and an SSH Tunnel
+##### Create a DocumentDB Cluster and a SSH Tunnel
 1. Navigate to the DocumentDB dashboard. From the sidebar, select **Parameter Groups** and click **Create**. 
 2. Flip the TLS and TTL Monitor switches to disabled. You can leave the TLS switch as enabled if you want to connect 
 with TLS right away.
@@ -158,7 +158,7 @@ rather than the cluster endpoint since we have set up the SSH tunnel.
    ~~~
    
 ##### Connect with TLS
-When connecting to a TLS-enabled cluster you can follow the same steps to set up an SSH tunnel but will need to also 
+When connecting to a TLS-enabled cluster you can follow the same steps to set up a SSH tunnel but will need to also 
 download the Amazon DocumentDB Certificate Authority (CA) file before trying to connect.
 1. Download the CA file.
 
@@ -169,7 +169,7 @@ download the Amazon DocumentDB Certificate Authority (CA) file before trying to 
 2. Set up the SSH tunnel. See step 3 in section [Setting Up Environment Variables](#setting-up-environment-variables) 
 for command to start SSH port-forwarding tunnel. 
 
-3. Open another terminal window and connect using the `mongo` shell. Note that since we are using an SSH tunnel to 
+3. Open another terminal window and connect using the `mongo` shell. Note that since we are using a SSH tunnel to 
 access the cluster from localhost, the server certificate does not match the hostname. It is expecting a hostname like 
 `sample-cluster.xxxxxxxxxxxx.us-east-1.docdb.amazonaws.com:27017` not `127.0.0.1:27017`. We have to pass the 
 `--tlsAllowInvalidHostnames` flag or the handshake will fail.
@@ -238,7 +238,7 @@ class:
 
 2. Ensure the private key file <key pair name>.pem is in the location set by the environment variable 
 `DOC_DB_PRIV_KEY_FILE`.
-3. Start an SSH port-forwarding tunnel:
+3. Start a SSH port-forwarding tunnel:
 
    ~~~
    ssh [-f] -N -i ~/.ssh/<key-pair-name>.pem -L $DOC_DB_LOCAL_PORT:$DOC_DB_HOST:27017 $DOC_DB_USER
