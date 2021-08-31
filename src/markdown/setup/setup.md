@@ -6,8 +6,8 @@
     - [JRE or JDK](#jre-or-jdk) 
     - [DocumentDB JDBC Driver](#documentdb-jdbc-driver)
 - [Specifying the Amazon RDS Certificate Authority Certificate File](#specifying-the-amazon-rds-certificate-authority-certificate-file) 
-- [Using an SSH Tunnel to Connect to Amazon DocumentDB](#using-a-ssh-tunnel-to-connect-to-amazon-documentdb)
-- [Next Steps](#next-steps)
+- [Using a SSH Tunnel to Connect to Amazon DocumentDB](#using-a-ssh-tunnel-to-connect-to-amazon-documentdb)
+- [Driver Setup in BI Applications](#driver-setup-in-bi-applications)
     
 ## Prerequisites
 
