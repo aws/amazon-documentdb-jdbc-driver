@@ -47,7 +47,7 @@ exception={com.mongodb.MongoSocketOpenException: Exception opening socket},
   Additionally, if your development environment is in a different Amazon VPC, you can also use 
   VPC Peering and connect to your Amazon DocumentDB cluster from another Amazon VPC in the 
   same region or a different region.
-1. Also see [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/ssh-tunnel.md)
+1. Also see [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb).
 1. Ensure the *Port* number matches the local port number configured when using an SSH tunnel.
 1. Ensure the *Hostname* is set to `localhost` when using an SSH tunnel.
       
@@ -92,7 +92,7 @@ The online security resources may give a pointer how to fix this.
 #### What to do:
 
 1. Download the latest root certificate authority file. 
-   See [Specifying the Amazon RDS Certificate Authority Certificate File](../setup/amazon-ca-certs.md). 
+   See [Specifying the Amazon RDS Certificate Authority Certificate File](../setup/setup.md#specifying-the-amazon-rds-certificate-authority-certificate-file). 
 1. Copy the file to your home directory.
 1. Provide the root certificate file name in the connection. 
    1. Tableau: *TLS Certificate Authority File (Optional)* : `~/rds-ca-2019-root.pem`

@@ -96,10 +96,11 @@ jdbc:documentdb://localhost/customer?tlsAllowInvalidHostnames=true
 
 #### Notes:
 
-1. An external [SSH tunnel](ssh-tunnel.md) is being used where the local port is `27017` (`27017` is default).
-1. The Amazon DocumentDB database name is `customer`.
-1. The Amazon DocumentDB is TLS-enabled (`tls=true` is default)
-1. User and password values are passed to the JDBC driver using **Properties**.
+1. An external [SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the local 
+port is `27017` (`27017` is default).
+2. The Amazon DocumentDB database name is `customer`.
+3. The Amazon DocumentDB is TLS-enabled (`tls=true` is default)
+4. User and password values are passed to the JDBC driver using **Properties**.
 
 ### Connecting to an Amazon DocumentDB Cluster on Non-Default Port
 
@@ -109,7 +110,8 @@ jdbc:documentdb://localhost:27117/customer?tlsAllowInvalidHostnames=true
 
 #### Notes:
 
-1. An external [SSH tunnel](ssh-tunnel.md) is being used where the local port is `27117`.
+1. An external [SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the local 
+port is `27117`.
 1. The Amazon DocumentDB database name is `customer`.
 1. The Amazon DocumentDB is TLS-enabled (`tls=true` is default).
 1. User and password values are passed to the JDBC driver using **Properties**.
@@ -137,9 +139,10 @@ jdbc:documentdb://localhost/customer?tlsAllowInvalidHostnames=true&scanMethod=id
 
 #### Notes:
 
-1. An external [SSH tunnel](ssh-tunnel.md) is being used where the local port is `27017` (`27017` is default).
-1. The Amazon DocumentDB database name is `customer`.
-1. The Amazon DocumentDB is TLS-enabled (`tls=true` is default).
-1. User and password values are passed to the JDBC driver using **Properties**.
-1. The scan method `idForward` will order the result using the `_id` column in the collection.
-1. The scan limit `5000` will limit the number of scanned documents to 5000.
+1. An external [SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the 
+local port is `27017` (`27017` is default).
+2. The Amazon DocumentDB database name is `customer`.
+3. The Amazon DocumentDB is TLS-enabled (`tls=true` is default).
+4. User and password values are passed to the JDBC driver using **Properties**.
+5. The scan method `idForward` will order the result using the `_id` column in the collection.
+6. The scan limit `5000` will limit the number of scanned documents to 5000.
