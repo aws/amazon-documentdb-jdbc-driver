@@ -44,7 +44,7 @@
     }
 
     // Use default (and only) replica set.
-    if (attr["v-replica-set"] === "true") {s
+    if (attr["v-replica-set"] === "true") {
         if (attr["v-ssh-tunnel"] === "false") {
             params[REPLICA_SET_KEY] = "rs0";
         }
