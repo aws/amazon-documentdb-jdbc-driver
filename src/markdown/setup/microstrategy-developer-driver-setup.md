@@ -10,7 +10,7 @@ Intelligence Server Machine.
     - E.g. On Linux, driver files should be copied to `<MSTR_INSTALL_HOME>/JDBC`. (eg; `/opt/MicroStrategy/JDBC`).
     
 3. Launch the MicroStrategy Developer application and login into MicroStrategy Analytics Modules.
-4. Navigate to **Microstrategy Analytics Modules > Administration > Configuration Managers > Database Instances > New > Database Instance**
+4. Navigate to **MicroStrategy Analytics Modules > Administration > Configuration Managers > Database Instances > New > Database Instance**
 or click on the icon as shown in the image below.
 
     ![New Database Instance](../images/microstrategy/microstrategy-new-database.png)
@@ -54,7 +54,7 @@ or click on the icon as shown in the image below.
     
 6. Users should now be able to connect successfully via JDBC from both the **Warehouse Catalog** and **Data Import**.
 
-#### Connecting to Amazon DocumentDB Using Microstrategy Developer Warehouse Catalog
+#### Connecting to Amazon DocumentDB Using MicroStrategy Developer Warehouse Catalog
 1. In the main menu navigate to and select **Schema > Create New Project**.
 2. Choose a **Project Name** and **Directory**.
 3. Click **Select tables from the Warehouse Catalog**.
