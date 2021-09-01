@@ -60,6 +60,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperty.SCHEM
 import static software.amazon.documentdb.jdbc.DocumentDbMain.COMPLETE_OPTIONS;
 import static software.amazon.documentdb.jdbc.DocumentDbMain.tryGetConnectionProperties;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.DEFAULT_SCHEMA_NAME;
+import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader.TABLE_SCHEMA_COLLECTION;
 
 class DocumentDbMainTest {
 
@@ -278,21 +279,54 @@ class DocumentDbMainTest {
     void testRemove(final DocumentDbTestEnvironment testEnvironment)
             throws ParseException, SQLException {
         setConnectionProperties(testEnvironment);
-        final String[] args = buildArguments("-r", CUSTOM_SCHEMA_NAME);
-        final CommandLineParser parser = new DefaultParser();
-        final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
-        final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
-        final StringBuilder output = new StringBuilder();
-        Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties, output));
-        Assertions.assertEquals(properties.getHostname(), newProperties.getHostname());
-        Assertions.assertEquals(properties.getDatabase(), newProperties.getDatabase());
-        Assertions.assertEquals(properties.getUser(), newProperties.getUser());
-        Assertions.assertEquals(CUSTOM_SCHEMA_NAME, newProperties.getSchemaName());
-        Assertions.assertEquals(properties.getTlsEnabled(), newProperties.getTlsEnabled());
-        Assertions.assertEquals(properties.getTlsAllowInvalidHostnames(), newProperties.getTlsAllowInvalidHostnames());
+        final String collectionName1 = createSimpleCollection(testEnvironment);
+        final String collectionName2 = createSimpleCollection(testEnvironment);
 
-        DocumentDbMain.handleCommandLine(args, output);
-        Assertions.assertEquals(String.format("Removed schema '%s'.", CUSTOM_SCHEMA_NAME), output.toString());
+        try {
+            final StringBuilder output = new StringBuilder();
+            String[] args = buildArguments("-g", CUSTOM_SCHEMA_NAME);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(
+                    String.format("New schema '%s', version '1' generated.", CUSTOM_SCHEMA_NAME),
+                    output.toString());
+
+            args = buildArguments("-r", CUSTOM_SCHEMA_NAME);
+            final CommandLineParser parser = new DefaultParser();
+            final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
+            final DocumentDbConnectionProperties newProperties = new DocumentDbConnectionProperties();
+
+            Assertions.assertTrue(tryGetConnectionProperties(commandLine, newProperties, output));
+            Assertions.assertEquals(properties.getHostname(), newProperties.getHostname());
+            Assertions.assertEquals(properties.getDatabase(), newProperties.getDatabase());
+            Assertions.assertEquals(properties.getUser(), newProperties.getUser());
+            Assertions.assertEquals(CUSTOM_SCHEMA_NAME, newProperties.getSchemaName());
+            Assertions.assertEquals(properties.getTlsEnabled(), newProperties.getTlsEnabled());
+            Assertions.assertEquals(properties.getTlsAllowInvalidHostnames(),
+                    newProperties.getTlsAllowInvalidHostnames());
+
+            output.setLength(0);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(String.format("Removed schema '%s'.", CUSTOM_SCHEMA_NAME),
+                    output.toString());
+
+            output.setLength(0);
+            args = buildArguments("-g", CUSTOM_SCHEMA_NAME);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(
+                    String.format("New schema '%s', version '1' generated.", CUSTOM_SCHEMA_NAME),
+                    output.toString());
+
+            // drop the table schemas to be inconsistent.
+            dropCollection(testEnvironment, TABLE_SCHEMA_COLLECTION);
+            args = buildArguments("-r", CUSTOM_SCHEMA_NAME);
+            output.setLength(0);
+            DocumentDbMain.handleCommandLine(args, output);
+            Assertions.assertEquals(String.format("Removed schema '%s'.", CUSTOM_SCHEMA_NAME),
+                    output.toString());
+        } finally {
+            dropCollection(testEnvironment, collectionName1);
+            dropCollection(testEnvironment, collectionName2);
+        }
     }
 
     @ParameterizedTest(name = "testListSchema - [{index}] - {arguments}")
