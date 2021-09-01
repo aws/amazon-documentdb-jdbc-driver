@@ -50,6 +50,7 @@ import java.util.concurrent.Executor;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
 /**
  * DocumentDb implementation of Connection.
@@ -173,13 +174,24 @@ public class DocumentDbConnection extends Connection
 
     private void ensureDatabaseMetadata() throws SQLException {
         if (metadata == null) {
-            databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
-                    connectionProperties,
-                    connectionProperties.getSchemaName(),
-                    VERSION_LATEST_OR_NEW,
-                    getMongoClient());
-            metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
+            final int version = connectionProperties.getRefreshSchema() == true
+                    ? VERSION_NEW
+                    : VERSION_LATEST_OR_NEW;
+            setMetadata(version);
         }
+    }
+
+    private void setMetadata(final int version) throws SQLException {
+        databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
+                connectionProperties,
+                connectionProperties.getSchemaName(),
+                version,
+                getMongoClient());
+        metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
+    }
+
+    void refreshDatabaseMetadata() throws SQLException {
+        setMetadata(VERSION_NEW);
     }
 
     DocumentDbDatabaseSchemaMetadata getDatabaseMetadata()

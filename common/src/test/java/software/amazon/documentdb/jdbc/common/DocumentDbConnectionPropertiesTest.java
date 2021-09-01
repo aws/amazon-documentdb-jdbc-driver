@@ -64,6 +64,7 @@ public class DocumentDbConnectionPropertiesTest {
         properties.setSshStrictHostKeyChecking("false");
         properties.setSshKnownHostsFile("~/.ssh/unknown_hosts");
         properties.setDefaultFetchSize("1000");
+        properties.setRefreshSchema("true");
 
         // Get properties.
         Assertions.assertEquals("USER", properties.getUser());
@@ -86,6 +87,7 @@ public class DocumentDbConnectionPropertiesTest {
         Assertions.assertFalse(properties.getSshStrictHostKeyChecking());
         Assertions.assertEquals("~/.ssh/unknown_hosts", properties.getSshKnownHostsFile());
         Assertions.assertEquals(1000, properties.getDefaultFetchSize());
+        Assertions.assertTrue(properties.getRefreshSchema());
 
         // Build sanitized connection string.
         Assertions.assertEquals(
@@ -100,7 +102,8 @@ public class DocumentDbConnectionPropertiesTest {
                         + "&sshPrivateKeyFile=~/.ssh/test-file-name.pem"
                         + "&sshStrictHostKeyChecking=false"
                         + "&sshKnownHostsFile=~/.ssh/unknown_hosts"
-                        + "&defaultFetchSize=1000",
+                        + "&defaultFetchSize=1000"
+                        + "&refreshSchema=true",
                 properties.buildSanitizedConnectionString());
 
         // Build client settings.
@@ -218,7 +221,8 @@ public class DocumentDbConnectionPropertiesTest {
                 "&" + DocumentDbConnectionProperty.SSH_PRIVATE_KEY_PASSPHRASE.getName() + "=" + "passphrase" +
                 "&" + DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getName() + "=" + "false" +
                 "&" + DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getName() + "=" + "~/.ssh/known_hosts" +
-                "&" + DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName() + "=" + "1000";
+                "&" + DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName() + "=" + "1000" +
+                "&" + DocumentDbConnectionProperty.REFRESH_SCHEMA.getName() + "=" + "true";
         properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());

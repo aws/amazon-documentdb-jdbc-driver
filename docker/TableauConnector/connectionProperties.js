@@ -21,6 +21,7 @@
     const SSH_PRIVATE_KEY_PASSPHRASE="sshPrivateKeyPassphrase"
     const SSH_STRICT_HOST_KEY_CHECKING="sshStrictHostKeyChecking"
     const SSH_KNOWN_HOSTS_FILE="sshKnownHostsFile"
+    const REFRESH_SCHEMA="refreshSchema"
 
     // Get optional parameters.
     var params = {};
@@ -37,6 +38,7 @@
     params[SSH_PRIVATE_KEY_PASSPHRASE] = attr["v-ssh-priv-key-passphrase"];
     params[SSH_STRICT_HOST_KEY_CHECKING] = attr["v-ssh-strict-host-key-check"];
     params[SSH_KNOWN_HOSTS_FILE] = attr["v-ssh-known-hosts-file"];
+    params[REFRESH_SCHEMA] = attr["v-refresh-schema"];
 
     // Add schema name if set.
     if (attr["v-schema-name"]) {

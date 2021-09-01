@@ -143,4 +143,11 @@
     <field name="v-schema-name" label="Schema Name" value-type="string" category="advanced" default-value="_default">
         <validation-rule reg-exp="^[_0-9a-zA-Z]+$"/>
     </field>
+
+    <field name="v-refresh-schema" label="Refresh Schema (Caution: use only when necessary to update schema.)" value-type="boolean" category="advanced" default-value="false">
+        <boolean-options>
+            <false-value value="false" />
+            <true-value value="true" />
+        </boolean-options>
+    </field>
 </connection-fields>
