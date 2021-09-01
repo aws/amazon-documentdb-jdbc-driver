@@ -2,7 +2,7 @@
 [Link to product webpage](https://sourceforge.net/projects/squirrel-sql/).
 
 #### Adding the Amazon DocumentDB JDBC Driver
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 2. Launch the SQuirrel SQL Client application.
 3. Ensure the **Drivers** tab is selected.
 4. Navigate to menu path ***Drivers > New Driver ...***
@@ -18,7 +18,7 @@
 12. Click the **OK** button to create and save the driver settings.
 
 #### Connecting to Amazon DocumentDB Using SQuirreL SQL Client
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 2. Launch the SQuirrel SQL Client application.
 3. Ensure the **Aliases** table is selected.
 4. Navigate the menu path **Aliases > New Alias...**.

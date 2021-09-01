@@ -17,7 +17,7 @@ Click the plus icon (or menu path **Driver > Create Driver**)
 5. Close the dialog. The **DocumentDB** JDBC driver will be setup and ready to use.
 
 #### Connecting to Amazon DocumentDB Using DbVisualizer
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 2. Navigate the menu path **Database > Create Database Connection**.
 3. For the **Name** field, enter a descriptive name for the connection.
 4. For the **Driver (JDBC)** field, choose the **DocumentDB** driver you created earlier.

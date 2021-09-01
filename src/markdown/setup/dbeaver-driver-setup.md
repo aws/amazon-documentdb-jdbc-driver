@@ -2,7 +2,7 @@
 [Link to product webpage](https://dbeaver.io).
 
 #### Adding the Amazon DocumentDB JDBC Driver
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 2. Launch the **DBeaver** application.
 3. In the main menu, navigate to and select **Database > Driver Manager > New**.
     1. In **Settings** tab, for **Driver Name** field, enter a descriptive name (e.g. AmazonDocDB)

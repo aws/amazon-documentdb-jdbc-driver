@@ -6,7 +6,7 @@
     - [JRE or JDK](#jre-or-jdk) 
     - [DocumentDB JDBC Driver](#documentdb-jdbc-driver)
 - [Specifying the Amazon RDS Certificate Authority Certificate File](#specifying-the-amazon-rds-certificate-authority-certificate-file) 
-- [Using a SSH Tunnel to Connect to Amazon DocumentDB](#using-a-ssh-tunnel-to-connect-to-amazon-documentdb)
+- [Using an SSH Tunnel to Connect to Amazon DocumentDB](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb)
 - [Driver Setup in BI Applications](#driver-setup-in-bi-applications)
     
 ## Prerequisites
@@ -19,7 +19,7 @@ Note that DocumentDB is a Virtual Private Cloud (VPC) only service.
 If you will be connecting from a local machine outside the cluster's VPC, you will need to 
 create an SSH connection to an Amazon EC2 instance. In this case, launch your cluster using the instructions in 
 [Connect with EC2](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect-ec2.html). 
-See [Using an SSH Tunnel to Connect to Amazon DocumentDB](#using-a-ssh-tunnel-to-connect-to-amazon-documentdb) 
+See [Using an SSH Tunnel to Connect to Amazon DocumentDB](#using-an-ssh-tunnel-to-connect-to-amazon-documentdb) 
 for more information on SSH tunneling and when you might need it.
 
 ### JRE or JDK
@@ -47,7 +47,7 @@ if you want to provide a new Amazon RDS Certificate Authority root certificate, 
 To determine whether your cluster is TLS-enabled, you can 
 [check the value of your cluster's `tls` parameter](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect_programmatically.html#connect_programmatically-determine_tls_value).
 
-## Using a SSH Tunnel to Connect to Amazon DocumentDB
+## Using an SSH Tunnel to Connect to Amazon DocumentDB
 Amazon DocumentDB (with MongoDB compatibility) clusters are deployed within an Amazon Virtual Private Cloud (Amazon VPC). 
 They can be accessed directly by Amazon EC2 instances or other AWS services that are deployed in the same Amazon VPC. 
 Additionally, Amazon DocumentDB can be accessed by EC2 instances 
@@ -58,7 +58,7 @@ from outside the cluster's VPC. This will be the case for most users not running
 on a VM in the same VPC as the DocumentDB cluster. When connecting from outside the VPC, 
 you can use SSH tunneling (also known as  _port forwarding_) to access your Amazon DocumentDB resources.
 
-There are two options to create a SSH tunnel:
+There are two options to create an SSH tunnel:
 1. Internally, using the [SSH tunnel options](connection-string.md) (minimally, `sshUser`, `sshHost`, and 
 `sshPrivateKeyFile`).
 2. Externally, using the `ssh` application. For further information on creating an external SSH tunnel, please refer to
@@ -67,14 +67,14 @@ the documentation on [Connecting from Outside an Amazon VPC](https://docs.aws.am
 
 To create an SSH tunnel, you need an Amazon EC2 instance running in the same Amazon VPC as your Amazon DocumentDB 
 cluster. You can either use an existing EC2 instance in the same VPC as your cluster or create one. Connecting from 
-outside the Amazon VPC using a SSH tunnel will have the following impact on the [JDBC connection string](connection-string.md):
+outside the Amazon VPC using an SSH tunnel will have the following impact on the [JDBC connection string](connection-string.md):
 1. If your cluster has Transport Layer Security (TLS) enabled, you will need to add the `tlsAllowInvalidHostNames=true` 
 option.
 2. As the SSH tunnel is running on your local computer, the host name must be set to `localhost`.
 3. If your local port (`-L <local-port>:<cluster-host>:<remote-port>`) configured for the SSH tunnel is not the default
 port (27017) for Amazon DocumentDB, ensure the connection string host setting for your SSH tunnel is properly set in the
 [JDBC connection string](connection-string.md).
-4. The `replicaSet` option is not supported when using a SSH tunnel.
+4. The `replicaSet` option is not supported when using an SSH tunnel.
 
 Start an SSH port-forwarding tunnel to the cluster with the following command:
 

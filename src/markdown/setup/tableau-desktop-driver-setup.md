@@ -23,7 +23,7 @@
     ![Select a Connector](../images/tableau/tableau-connector.png)
 
 #### Connecting to Amazon DocumentDB Using Tableau - External SSH Tunnel
-1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 
 2. Enter the parameters. **Hostname**, **Port**, **Database**, **Username** and **Password**
    are required while the others are optional. Descriptions for each parameter can be found in

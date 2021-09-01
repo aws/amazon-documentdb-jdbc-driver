@@ -46,7 +46,7 @@ jdbc:documentdb://localhost/customer?tlsAllowInvalidHostnames=true
 
 #### Notes:
 
-1. An external [SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the local 
+1. An external [SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the local 
 port is `27017` (`27017` is default).
 2. The Amazon DocumentDB database name is `customer`.
 3. The Amazon DocumentDB is TLS-enabled (`tls=true` is default)
@@ -60,7 +60,7 @@ jdbc:documentdb://localhost:27117/customer?tlsAllowInvalidHostnames=true
 
 #### Notes:
 
-1. An external [SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the local 
+1. An external [SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the local 
 port is `27117`.
 1. The Amazon DocumentDB database name is `customer`.
 1. The Amazon DocumentDB is TLS-enabled (`tls=true` is default).
@@ -89,7 +89,7 @@ jdbc:documentdb://localhost/customer?tlsAllowInvalidHostnames=true&scanMethod=id
 
 #### Notes:
 
-1. An external [SSH tunnel](setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the 
+1. An external [SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb) is being used where the 
 local port is `27017` (`27017` is default).
 2. The Amazon DocumentDB database name is `customer`.
 3. The Amazon DocumentDB is TLS-enabled (`tls=true` is default).

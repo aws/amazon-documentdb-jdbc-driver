@@ -47,7 +47,7 @@ exception={com.mongodb.MongoSocketOpenException: Exception opening socket},
   Additionally, if your development environment is in a different Amazon VPC, you can also use 
   VPC Peering and connect to your Amazon DocumentDB cluster from another Amazon VPC in the 
   same region or a different region.
-1. Also see [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/setup.md#using-a-ssh-tunnel-to-connect-to-amazon-documentdb).
+1. Also see [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
 1. Ensure the *Port* number matches the local port number configured when using an SSH tunnel.
 1. Ensure the *Hostname* is set to `localhost` when using an SSH tunnel.
       
