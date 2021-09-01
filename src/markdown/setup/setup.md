@@ -28,7 +28,6 @@ or later is installed on your computer. You can download the Java SE Runtime Env
 [here](https://www.oracle.com/ca-en/java/technologies/javase-jre8-downloads.html).  
 
 ### DocumentDB JDBC Driver
-<!-- >TODO: Get link for DocumentDB JDBC driver. -->
 Download the DocumentDB JDBC driver [here](https://github.com/aws/amazon-documentdb-jdbc-driver/releases). The driver is packaged as a single JAR file
 (e.g., `documentdb-jdbc-1.0-SNAPSHOT-all.jar`).
 
@@ -119,5 +118,5 @@ To learn how to set up the driver in various BI tools, instructions are outlined
 1. [Tableau Desktop](tableau-desktop-driver-setup.md) 
 2. [DbVisualizer](dbvisualizer-driver-setup.md)
 3. [SQuirrel SQL Client](squirrel-sql-client-driver-setup.md) ([Link to product webpage](https://www.dbvis.com/))
-4. [Dbeaver](dbeaver-driver-setup.md)
+4. [DBeaver](dbeaver-driver-setup.md)
 5. [MicroStrategy Developer](microstrategy-developer-driver-setup.md)
