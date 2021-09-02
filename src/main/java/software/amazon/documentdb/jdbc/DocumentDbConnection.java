@@ -49,6 +49,7 @@ import java.util.concurrent.Executor;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperty.REFRESH_SCHEMA;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
@@ -174,9 +175,17 @@ public class DocumentDbConnection extends Connection
 
     private void ensureDatabaseMetadata() throws SQLException {
         if (metadata == null) {
-            final int version = connectionProperties.getRefreshSchema() == true
-                    ? VERSION_NEW
-                    : VERSION_LATEST_OR_NEW;
+            final int version;
+            if (connectionProperties.getRefreshSchema())  {
+                version = VERSION_NEW;
+                LOGGER.warn("The '{}' option is enabled and will cause a new"
+                        + " version of the SQL schema to be generated."
+                        + " This can lead to poor performance."
+                        + " Please disable this option when it is no longer needed.",
+                        REFRESH_SCHEMA.getName());
+            } else {
+                version = VERSION_LATEST_OR_NEW;
+            }
             setMetadata(version);
         }
     }
