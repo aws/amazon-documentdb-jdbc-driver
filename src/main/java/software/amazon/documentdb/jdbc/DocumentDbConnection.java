@@ -49,7 +49,9 @@ import java.util.concurrent.Executor;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperty.REFRESH_SCHEMA;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
 /**
  * DocumentDb implementation of Connection.
@@ -173,13 +175,32 @@ public class DocumentDbConnection extends Connection
 
     private void ensureDatabaseMetadata() throws SQLException {
         if (metadata == null) {
-            databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
-                    connectionProperties,
-                    connectionProperties.getSchemaName(),
-                    VERSION_LATEST_OR_NEW,
-                    getMongoClient());
-            metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
+            final int version;
+            if (connectionProperties.getRefreshSchema())  {
+                version = VERSION_NEW;
+                LOGGER.warn("The '{}' option is enabled and will cause a new"
+                        + " version of the SQL schema to be generated."
+                        + " This can lead to poor performance."
+                        + " Please disable this option when it is no longer needed.",
+                        REFRESH_SCHEMA.getName());
+            } else {
+                version = VERSION_LATEST_OR_NEW;
+            }
+            setMetadata(version);
         }
+    }
+
+    private void setMetadata(final int version) throws SQLException {
+        databaseMetadata = DocumentDbDatabaseSchemaMetadata.get(
+                connectionProperties,
+                connectionProperties.getSchemaName(),
+                version,
+                getMongoClient());
+        metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
+    }
+
+    void refreshDatabaseMetadata() throws SQLException {
+        setMetadata(VERSION_NEW);
     }
 
     DocumentDbDatabaseSchemaMetadata getDatabaseMetadata()

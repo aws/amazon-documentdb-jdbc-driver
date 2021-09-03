@@ -29,6 +29,7 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
+import software.amazon.documentdb.jdbc.persist.SchemaReader;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
@@ -67,6 +68,8 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         final String connectionString = String.format(
                 "jdbc:documentdb://%s:%s@%s:%s/%s?tls=false", USERNAME, PASSWORD, HOSTNAME, getMongoPort(), DATABASE);
         basicConnection = DriverManager.getConnection(connectionString);
+        // Ensure we have the initial schema.
+        Assertions.assertNotNull(basicConnection.getMetaData());
     }
 
     @AfterAll
@@ -298,6 +301,88 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
             Assertions.assertTrue(connection instanceof DocumentDbConnection);
             Assertions.assertTrue(connection.isValid(10));
         }
+    }
+
+    @Test()
+    @DisplayName("Tests refreshing the schema from a connection.")
+    void testRefreshSchema() throws Exception {
+        final DocumentDbConnectionProperties properties =
+                new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
+
+        int expectedVersion = 1;
+        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+            Assertions.assertNotNull(schema);
+            Assertions.assertEquals(expectedVersion, schema.getSchemaVersion());
+        }
+
+        properties.setRefreshSchema("true");
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            final int timeoutSeconds = 15;
+            Assertions.assertTrue(connection.isValid(timeoutSeconds));
+            Assertions.assertNotNull(connection.getDatabaseMetadata());
+        }
+        expectedVersion++;
+
+        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+            Assertions.assertNotNull(schema);
+            Assertions.assertEquals(expectedVersion, schema.getSchemaVersion());
+        }
+
+        properties.setRefreshSchema("true");
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            final int timeoutSeconds = 15;
+            Assertions.assertTrue(connection.isValid(timeoutSeconds));
+            Assertions.assertNotNull(connection.getDatabaseMetadata());
+        }
+        expectedVersion++;
+
+        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+            Assertions.assertNotNull(schema);
+            Assertions.assertEquals(expectedVersion, schema.getSchemaVersion());
+        }
+
+        properties.setRefreshSchema("true");
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            final int timeoutSeconds = 15;
+            Assertions.assertTrue(connection.isValid(timeoutSeconds));
+            Assertions.assertNotNull(connection.getDatabaseMetadata());
+        }
+        expectedVersion++;
+
+        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+            Assertions.assertNotNull(schema);
+            Assertions.assertEquals(expectedVersion, schema.getSchemaVersion());
+        }
+
+        properties.setRefreshSchema("false");
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            final int timeoutSeconds = 15;
+            Assertions.assertTrue(connection.isValid(timeoutSeconds));
+            Assertions.assertNotNull(connection.getDatabaseMetadata());
+        }
+
+        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+                VALID_CONNECTION_PROPERTIES, null)) {
+            final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
+            Assertions.assertNotNull(schema);
+            Assertions.assertEquals(expectedVersion, schema.getSchemaVersion());
+        }
+
+        // Always false unless value is non-null and case-insensitive equal to "true".
+        properties.setRefreshSchema("notTrue");
+        Assertions.assertFalse(properties.getRefreshSchema());
     }
 
     private Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {

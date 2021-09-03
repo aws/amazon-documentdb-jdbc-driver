@@ -71,6 +71,8 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
             "The path to the 'known_hosts' file used for checking the target host for the SSH tunnel when option 'sshStrictHostKeyChecking' is 'true'. Default is '~/.ssh/known_hosts'."),
     DEFAULT_FETCH_SIZE("defaultFetchSize", String.valueOf(DocumentDbConnectionProperties.FETCH_SIZE_DEFAULT),
             "The default fetch size (in records) when retrieving results from Amazon DocumentDB. It is the number of records to retrieve in a single batch. The maximum number of records retrieved in a single batch may also be limited by the overall memory size of the result. The value can be changed by calling the `Statement.setFetchSize` JDBC method. Default is '2000'."),
+    REFRESH_SCHEMA("refreshSchema", "false",
+            "Refreshes any existing schema with a newly generated schema when the connection first requires the schema. Note that this will remove any existing schema customizations and will reduce performance for the first query or metadata inquiry."),
     ;
 
     // Unsupported MongoDB connection properties that will be ignored but should have warnings.
