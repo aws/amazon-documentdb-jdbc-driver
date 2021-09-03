@@ -13,8 +13,6 @@ This project is licensed under the Apache-2.0 License.
 
 - Setup
     - [Amazon DocumentDB JDBC Driver Setup](setup/setup.md)
-    - [Using an SSH Tunnel to Connect to Amazon DocumentDB](setup/ssh-tunnel.md)
-    - [BI Tool Setup](setup/bi-tool-setup.md)  
     - [Connection String Syntax and Options](setup/connection-string.md)
 - Managing Schema
     - [Schema Discovery and Generation](schema/schema-discovery.md)
@@ -31,9 +29,9 @@ This project is licensed under the Apache-2.0 License.
 
 Follow the [requirements and setup directions](setup/setup.md) to get you environment ready to use the
 Amazon DocumentDB JDBC driver. Assuming your Amazon DocumentDB cluster is hosted in a private VPC, 
-you'll want to [create an SSH tunnel](setup/ssh-tunnel.md) to bridge to your cluster in the VPC.
-If you're a Tableau or other BI user, follow the directions on how to 
-[setup and use BI tools](setup/bi-tool-setup.md) with the driver.
+you'll want to [create an SSH tunnel](setup/setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb) to bridge to 
+your cluster in the VPC. If you're a Tableau or other BI user, follow the directions on how to 
+[setup and use BI tools](setup/setup.md#driver-setup-in-bi-applications) with the driver.
 
 ## Setup and Usage
 
