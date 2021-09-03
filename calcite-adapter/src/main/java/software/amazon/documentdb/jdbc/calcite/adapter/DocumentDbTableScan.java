@@ -96,7 +96,7 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         // Keep the project node even for SELECT * queries.
         planner.removeRule(CoreRules.PROJECT_REMOVE);
 
-        // Remove extra $limit on joins
+        // Remove extra $limit on joins.
         planner.removeRule(CoreRules.SORT_JOIN_TRANSPOSE);
 
         // Remove enumerable rules to ensure we always do push-down instead regardless of cost.

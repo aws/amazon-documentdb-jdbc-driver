@@ -61,7 +61,6 @@ public class DocumentDbTable extends AbstractQueryableTable
         implements TranslatableTable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbTable.class);
-    private static final int UNKNOWN_RECORD_COUNT = -1;
     private static volatile Map<JdbcType, RelDataType> jdbcTypeToRelDataType = null;
 
     private final String collectionName;
@@ -74,7 +73,7 @@ public class DocumentDbTable extends AbstractQueryableTable
         super(Object[].class);
         this.collectionName = collectionName;
         this.tableMetadata = tableMetadata;
-        this.statistic = tableMetadata.getEstimatedRecordCount() == UNKNOWN_RECORD_COUNT
+        this.statistic = tableMetadata.getEstimatedRecordCount() == DocumentDbSchemaTable.UNKNOWN_RECORD_COUNT
                 ? Statistics.UNKNOWN
                 : Statistics.of(tableMetadata.getEstimatedRecordCount(), null);
     }
