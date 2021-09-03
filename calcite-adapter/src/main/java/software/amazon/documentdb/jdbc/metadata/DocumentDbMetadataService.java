@@ -134,7 +134,7 @@ public class DocumentDbMetadataService {
                     // Return specific version or null.
                     if (schema != null) {
                         LOGGER.info(String.format("Retrieved schema %s version %d in %d ms.",
-                                schemaName, schemaVersion,
+                                schema.getSchemaName(), schema.getSchemaVersion(),
                                 Instant.now().toEpochMilli() - beginRetrieval.toEpochMilli()));
                     } else {
                         LOGGER.info("Could not find schema {} in database {}.", schemaName,
@@ -335,6 +335,7 @@ public class DocumentDbMetadataService {
                     properties.getDatabase(),
                     schemaVersion,
                     new LinkedHashMap<>());
+            LOGGER.info("A new schema {} will be created.", schemaName);
         }
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
         try {

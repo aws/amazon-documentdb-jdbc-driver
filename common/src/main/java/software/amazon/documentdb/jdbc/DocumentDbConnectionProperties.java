@@ -535,6 +535,36 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Sets indicator of whether to refresh any existing schema with a newly generated schema when
+     * the connection first requires the schema. Note that this will remove any existing schema
+     * customizations and will reduce performance for the first query or metadata inquiry.
+     *
+     * @param refreshSchema  indicator of whether to refresh any existing schema with a newly
+     *                       generated schema when the connection first requires the schema.
+     *                       Note that this will remove any existing schema customizations and
+     *                       will reduce performance for the first query or metadata inquiry.
+     */
+    public void setRefreshSchema(final String refreshSchema) {
+        setProperty(DocumentDbConnectionProperty.REFRESH_SCHEMA.getName(), refreshSchema);
+    }
+
+    /**
+     * Gets indicator of whether to refresh any existing schema with a newly generated schema when
+     * the connection first requires the schema. Note that this will remove any existing schema
+     * customizations and will reduce performance for the first query or metadata inquiry.
+     *
+     * @return indicator of whether to refresh any existing schema with a newly generated schema
+     *         when the connection first requires the schema. Note that this will remove any
+     *         existing schema customizations and will reduce performance for the first query or
+     *         metadata inquiry.
+     */
+    public Boolean getRefreshSchema() {
+        return Boolean.parseBoolean(getProperty(
+                        DocumentDbConnectionProperty.REFRESH_SCHEMA.getName(),
+                        DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue()));
+    }
+
+    /**
      * Builds the MongoClientSettings from properties.
      *
      * @return a {@link MongoClientSettings} object.
@@ -681,6 +711,9 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getDefaultFetchSize() != Integer.parseInt(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getDefaultValue())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE, getDefaultFetchSize());
+        }
+        if (getRefreshSchema() != Boolean.parseBoolean(DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.REFRESH_SCHEMA, getRefreshSchema());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,

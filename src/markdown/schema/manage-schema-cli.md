@@ -61,7 +61,7 @@ The miscellaneous options provide more information about this interface.
 ### Generate Schema using Default Schema Name
 
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --generate-new \
+> java -jar document-db-1.0.0-all.jar --generate-new \
         --server localhost:27019 --database test -u ajones --tls --tls-allow-invalid-hostnames
 Password:
 
@@ -71,7 +71,7 @@ New schema '_default', version '1' generated.
 ### Generate Schema using Custom Schema Name
 
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --generate-new --schema-name=products \
+> java -jar document-db-1.0.0-all.jar --generate-new --schema-name=products \
         --server localhost:27019 --database test -u ajones --tls --tls-allow-invalid-hostnames
 Password:
 
@@ -80,7 +80,7 @@ New schema 'products', version '1' generated.
 
 ### Removing Custom Schema
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --remove --schema-name=products \
+> java -jar document-db-1.0.0-all.jar --remove --schema-name=products \
         --server localhost:27019 --database test -u ajones --tls --tls-allow-invalid-hostnames
 Password:
 
@@ -90,7 +90,7 @@ Removed schema 'products'.
 ### Password as Option
 
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --generate-new \
+> java -jar document-db-1.0.0-all.jar --generate-new \
         --server localhost:27019 --database test -u ajones -p secret --tls --tls-allow-invalid-hostnames
 
 New schema '_default', version '2' generated.
@@ -99,7 +99,7 @@ New schema '_default', version '2' generated.
 ### Listing Schema
 
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --list-schema \
+> java -jar document-db-1.0.0-all.jar --list-schema \
         --server localhost:27019 --database test -u ajones -p secret --tls --tls-allow-invalid-hostnames
 
 Name=_default, Version=1, SQL Name=test, Modified=2021-06-01T10:35:08-07:00
@@ -108,7 +108,7 @@ Name=_default, Version=1, SQL Name=test, Modified=2021-06-01T10:35:08-07:00
 ### Listing Table Schema
 
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --list-tables \
+> java -jar document-db-1.0.0-all.jar --list-tables \
         --server localhost:27019 --database test -u ajones -p secret --tls --tls-allow-invalid-hostnames
 
 products
@@ -125,7 +125,7 @@ projects
 ### Exporting Schema to Stdout
 
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --export=products,products_for \
+> java -jar document-db-1.0.0-all.jar --export=products,products_for \
         --server localhost:27019 --database test -u ajones -p secret --tls --tls-allow-invalid-hostnames
 
 [ {
@@ -152,7 +152,7 @@ projects
 ### Exporting Schema to File
 
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --export=products,products_for -o "sql-schema.json" \
+> java -jar document-db-1.0.0-all.jar --export=products,products_for -o "sql-schema.json" \
         --server localhost:27019 --database test -u ajones -p secret --tls --tls-allow-invalid-hostnames
 > cd ~
 > cat sql-schema.json
@@ -180,6 +180,6 @@ projects
 ### Importing Schema
 
 ```
-> java -jar document-db-1.0.SNAPSHOT-all.jar --import=sql-schema.json \
+> java -jar document-db-1.0.0-all.jar --import=sql-schema.json \
         --server localhost:27019 --database test -u ajones -p secret --tls --tls-allow-invalid-hostnames
 ```

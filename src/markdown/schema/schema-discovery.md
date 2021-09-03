@@ -123,7 +123,7 @@ encountered.
 
 The following diagram shows the way in which scalar-scalar data type conflicts are resolved.
 
-![Scalar-Scalar Promotion](../images/ScalarDataTypePromotion-transparent.png)
+![Scalar-Scalar Promotion](../images/schema-discovery/scalardatatypepromotion-transparent.png)
 
 ### Object and Array Data Type Handling
 

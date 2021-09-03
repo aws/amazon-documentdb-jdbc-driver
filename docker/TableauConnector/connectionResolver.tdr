@@ -31,6 +31,7 @@
           <attr>v-scan-method</attr> 
           <attr>v-scan-limit</attr>
           <attr>v-schema-name</attr>
+          <attr>v-refresh-schema</attr>
         </attribute-list>
       </required-attributes>
     </connection-normalizer>

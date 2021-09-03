@@ -53,8 +53,8 @@ This problem suggests that you are unable to reach the DocumentDB cluster. Most 
 because you are outside the cluster's VPC. To connect to an Amazon DocumentDB cluster from outside 
 an Amazon VPC, you can use an SSH tunnel. The driver allows users to set up an SSH tunnel manually 
 or pass additional parameters in the connecting string so that the driver can create one automatically. 
-See [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/ssh-tunnel.md) for more information 
-on both methods. 
+See [Using an SSH Tunnel to Connect to Amazon DocumentDB](../setup/setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb) 
+for more information on both methods. 
 
 If this is still an issue after having set up an SSH tunnel, double-check the values of *Port* or 
 *Hostname*.
@@ -116,7 +116,7 @@ The online security resources may give a pointer how to fix this.
 #### What to do:
 
 1. Download the latest root certificate authority file. 
-   See [Specifying the Amazon RDS Certificate Authority Certificate File](../setup/amazon-ca-certs.md). 
+   See [Specifying the Amazon RDS Certificate Authority Certificate File](../setup/setup.md#specifying-the-amazon-rds-certificate-authority-certificate-file). 
 1. Copy the file to your home directory.
 1. Provide the root certificate file name in the connection. 
    - Tableau: *TLS Certificate Authority File (Optional)* : `~/rds-ca-2019-root.pem`
@@ -153,7 +153,7 @@ The online security resources may give a pointer how to fix this.
 [generate a new schema](../schema/manage-schema-cli.md).
    For example:
     ```text
-    java -jar document-db-1.0.SNAPSHOT-all.jar --generate-new \
+    java -jar document-db-1.0.0-all.jar --generate-new \
     --server localhost:27019 --database test -u ajones --tls --tls-allow-invalid-hostnames
     ``` 
     
