@@ -454,12 +454,7 @@ public class DocumentDbMetadataService {
         final MongoCollection<Document> collection = client
                 .getDatabase(properties.getDatabase())
                 .getCollection(schemaTable.getCollectionName());
-        try {
-            final long estimatedRecordCount = collection.estimatedDocumentCount(options);
-            schemaTable.setEstimatedRecordCount(estimatedRecordCount);
-        } catch (Exception e) {
-            // NOTE: Not supported before 3.8
-            LOGGER.debug(e.getMessage(), e);
-        }
+        final long estimatedRecordCount = collection.estimatedDocumentCount(options);
+        schemaTable.setEstimatedRecordCount(estimatedRecordCount);
     }
 }

@@ -118,12 +118,10 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
      * @return the query context that has the target collection, aggregation stages, and result set metadata.
      */
     public DocumentDbMqlQueryContext get(final String sql, final long maxRowCount) throws SQLException {
-        // Add another limit if using setMaxRows.
-        final Query<Object> query =
-                Query.of(
-                        maxRowCount > 0
-                                ? String.format("SELECT * FROM ( %s ) LIMIT %d", sql, maxRowCount)
-                                : sql);
+        // Add limit if using setMaxRows.
+        final String limitedSQL =
+                maxRowCount > 0 ? String.format("SELECT * FROM ( %s ) LIMIT %d", sql, maxRowCount) : sql;
+        final Query<Object> query = Query.of(limitedSQL);
 
         // In prepareSql:
         // -    We validate the sql based on the schema and turn this into a tree. (SQL->AST)
