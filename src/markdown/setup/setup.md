@@ -29,7 +29,7 @@ or later is installed on your computer. You can download the Java SE Runtime Env
 
 ### DocumentDB JDBC Driver
 Download the DocumentDB JDBC driver [here](https://github.com/aws/amazon-documentdb-jdbc-driver/releases). The driver is packaged as a single JAR file
-(e.g., `documentdb-jdbc-1.0-SNAPSHOT-all.jar`).
+(e.g., `documentdb-jdbc-1.0.0-all.jar`).
 
 ## Specifying the Amazon RDS Certificate Authority Certificate File
 If you are connecting to a TLS-enabled cluster, you may want to specify the Amazon RDS Certificate Authority certificate 

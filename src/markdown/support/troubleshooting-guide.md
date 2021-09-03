@@ -112,6 +112,6 @@ The online security resources may give a pointer how to fix this.
 [generate a new schema](../schema/manage-schema-cli.md).
 1.  For example:
     ```text
-    java -jar document-db-1.0.SNAPSHOT-all.jar --generate-new \
+    java -jar document-db-1.0.0-all.jar --generate-new \
     --server localhost:27019 --database test -u ajones --tls --tls-allow-invalid-hostnames
     ```
