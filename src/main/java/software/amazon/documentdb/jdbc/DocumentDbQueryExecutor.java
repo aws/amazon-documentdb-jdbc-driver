@@ -26,7 +26,6 @@ import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
-import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
@@ -168,7 +167,8 @@ public class DocumentDbQueryExecutor {
 
         LOGGER.info("Query {}: Beginning translation of query.", queryId);
         LOGGER.debug("Query {}: {}", queryId, sql);
-        final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql);
+        final long maxRows = statement.getLargeMaxRows();
+        final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql, maxRows);
         LOGGER.info("Query {}: Took {} ms to translate query.", queryId,
                 Instant.now().toEpochMilli() - beginTranslation.toEpochMilli());
         if (!(statement.getConnection() instanceof DocumentDbConnection)) {
@@ -185,12 +185,6 @@ public class DocumentDbQueryExecutor {
 
         // Only add limit if maxRows is non-zero.
         final List<Bson> aggregateOperations = queryContext.getAggregateOperations();
-        final long maxRows = statement.getLargeMaxRows();
-        if (maxRows > 0) {
-            // Use push-down to apply maxRows limit.
-            aggregateOperations.add(BsonDocument.parse(
-                    String.format("{\"$limit\": {\"$numberLong\": \"%d\"}}", maxRows)));
-        }
 
         AggregateIterable<Document> iterable = collection.aggregate(aggregateOperations);
         if (getQueryTimeout() > 0) {

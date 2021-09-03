@@ -52,6 +52,7 @@ public class DocumentDbSchemaTable {
     public static final String UUID_PROPERTY = "uuid";
     public static final String COLLECTION_NAME_PROPERTY = "collectionName";
     public static final String COLUMNS_PROPERTY = "columns";
+    public static final int UNKNOWN_RECORD_COUNT = -1;
 
     /**
      * The unique ID for the table schema.
@@ -104,6 +105,11 @@ public class DocumentDbSchemaTable {
     @JsonProperty(COLUMNS_PROPERTY)
     @BsonProperty(COLUMNS_PROPERTY)
     private final List<DocumentDbSchemaColumn> columns;
+
+    @Setter
+    @BsonIgnore
+    @JsonIgnore
+    private long estimatedRecordCount = UNKNOWN_RECORD_COUNT;
 
     /**
      * Creates an instance from deserializing a document.

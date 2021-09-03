@@ -35,6 +35,8 @@ import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.schema.SchemaPlus;
+import org.apache.calcite.schema.Statistic;
+import org.apache.calcite.schema.Statistics;
 import org.apache.calcite.schema.TranslatableTable;
 import org.apache.calcite.schema.impl.AbstractTableQueryable;
 import org.apache.calcite.sql.type.SqlTypeName;
@@ -63,6 +65,7 @@ public class DocumentDbTable extends AbstractQueryableTable
 
     private final String collectionName;
     private final DocumentDbSchemaTable tableMetadata;
+    private final Statistic statistic;
 
     protected DocumentDbTable(
             final String collectionName,
@@ -70,6 +73,14 @@ public class DocumentDbTable extends AbstractQueryableTable
         super(Object[].class);
         this.collectionName = collectionName;
         this.tableMetadata = tableMetadata;
+        this.statistic = tableMetadata.getEstimatedRecordCount() == DocumentDbSchemaTable.UNKNOWN_RECORD_COUNT
+                ? Statistics.UNKNOWN
+                : Statistics.of(tableMetadata.getEstimatedRecordCount(), null);
+    }
+
+    @Override
+    public Statistic getStatistic() {
+        return statistic;
     }
 
     @Override public String toString() {

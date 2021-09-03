@@ -103,15 +103,15 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
         final DocumentDbRel.Implementor mongoImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
         mongoImplementor.visitChild(0, getInput());
+        final List<String> inNames = getInput().getRowType().getFieldNames();
         final DocumentDbRules.RexToMongoTranslator translator =
                 new DocumentDbRules.RexToMongoTranslator(
                         (JavaTypeFactory) getCluster().getTypeFactory(),
                         DocumentDbRules.mongoFieldNames(
                                 getInput().getRowType(),
                                 mongoImplementor.getMetadataTable()),
-                        mongoImplementor.getMetadataTable());
+                        inNames, mongoImplementor.getMetadataTable());
         final List<String> items = new ArrayList<>();
-        final List<String> inNames = getInput().getRowType().getFieldNames();
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
         for (Pair<RexNode, String> pair : getNamedProjects()) {
             final String outName = DocumentDbRules.getNormalizedIdentifier(pair.right);

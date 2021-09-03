@@ -92,6 +92,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
                         DocumentDbRules.mongoFieldNames(
                                 getInput().getRowType(),
                                 mongoImplementor.getMetadataTable()),
+                        getInput().getRowType().getFieldNames(),
                         mongoImplementor.getMetadataTable());
         final RexNode expandedCondition = RexUtil.expandSearch(implementor.getRexBuilder(), null, condition);
         final Operand match = expandedCondition.accept(rexToMongoTranslator);

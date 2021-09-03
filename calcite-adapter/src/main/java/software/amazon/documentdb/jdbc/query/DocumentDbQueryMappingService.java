@@ -114,10 +114,14 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
     /**
      * Uses CalcitePrepare API to parse and validate sql and convert to MQL.
      * @param sql the query in sql
+     * @param maxRowCount the max number of rows to return
      * @return the query context that has the target collection, aggregation stages, and result set metadata.
      */
-    public DocumentDbMqlQueryContext get(final String sql) throws SQLException {
-        final Query<Object> query = Query.of(sql);
+    public DocumentDbMqlQueryContext get(final String sql, final long maxRowCount) throws SQLException {
+        // Add limit if using setMaxRows.
+        final String limitedSQL =
+                maxRowCount > 0 ? String.format("SELECT * FROM ( %s ) LIMIT %d", sql, maxRowCount) : sql;
+        final Query<Object> query = Query.of(limitedSQL);
 
         // In prepareSql:
         // -    We validate the sql based on the schema and turn this into a tree. (SQL->AST)
@@ -149,6 +153,16 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
         }
         // Query could be parsed but cannot be executed in pure MQL (likely involves nested queries).
         throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.UNSUPPORTED_SQL, sql);
+    }
+
+    /**
+     * Uses CalcitePrepare API to parse and validate sql and convert to MQL.
+     * Assumes no max row count set.
+     * @param sql the query in sql
+     * @return the query context that has the target collection, aggregation stages, and result set metadata.
+     */
+    public DocumentDbMqlQueryContext get(final String sql) throws SQLException {
+        return get(sql, 0);
     }
 
     private String getExceptionMessages(final Throwable e) {

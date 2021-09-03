@@ -21,9 +21,11 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.EstimatedDocumentCountOptions;
 import lombok.NonNull;
 import lombok.SneakyThrows;
 import org.bson.BsonDocument;
+import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -44,6 +46,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -181,7 +184,11 @@ public class DocumentDbMetadataService {
         // Otherwise, assume it's in the stored location.
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
         try {
-            return schemaReader.readTable(schemaName, schemaVersion, tableId);
+            final DocumentDbSchemaTable schemaTable = schemaReader.readTable(schemaName, schemaVersion, tableId);
+            if (client != null) {
+                setEstimatedRecordCount(properties, client, schemaTable);
+            }
+            return schemaTable;
         } finally {
             closeSchemaReader(schemaReader);
         }
@@ -221,13 +228,20 @@ public class DocumentDbMetadataService {
         // Otherwise, assume it's in the stored location.
         final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
         try {
-            return schemaReader.readTables(schemaName, schemaVersion, remainingTableIds)
+            final Map<String, DocumentDbSchemaTable> schemaTables = schemaReader
+                    .readTables(schemaName, schemaVersion, remainingTableIds)
                     .stream()
                     .collect(Collectors.toMap(
                             DocumentDbSchemaTable::getId,
                             table -> table,
                             (o, d) -> d,
                             LinkedHashMap::new));
+            if (client != null) {
+                for (DocumentDbSchemaTable schemaTable : schemaTables.values()) {
+                    setEstimatedRecordCount(properties, client, schemaTable);
+                }
+            }
+            return schemaTables;
         } finally {
             closeSchemaReader(schemaReader);
         }
@@ -430,5 +444,18 @@ public class DocumentDbMetadataService {
         } catch (Exception e) {
             throw new SQLException(e.getMessage(), e);
         }
+    }
+
+    private static void setEstimatedRecordCount(
+            final DocumentDbConnectionProperties properties,
+            final MongoClient client,
+            final DocumentDbSchemaTable schemaTable) {
+        final EstimatedDocumentCountOptions options = new EstimatedDocumentCountOptions()
+                .maxTime(1, TimeUnit.SECONDS);
+        final MongoCollection<Document> collection = client
+                .getDatabase(properties.getDatabase())
+                .getCollection(schemaTable.getCollectionName());
+        final long estimatedRecordCount = collection.estimatedDocumentCount(options);
+        schemaTable.setEstimatedRecordCount(estimatedRecordCount);
     }
 }
