@@ -349,7 +349,7 @@ public final class DocumentDbRules {
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
                 final List<String> inFields,
-                List<String> keys, final DocumentDbSchemaTable schemaTable) {
+                final List<String> keys, final DocumentDbSchemaTable schemaTable) {
             super(true);
             this.typeFactory = typeFactory;
             this.inFields = inFields;
