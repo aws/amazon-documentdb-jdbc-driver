@@ -61,17 +61,6 @@ you can use SSH tunneling (also known as  _port forwarding_) to access your Amaz
 There are two options to create an SSH tunnel:
 1. Internally, using the [SSH tunnel options](connection-string.md) (minimally, `sshUser`, `sshHost`, and 
 `sshPrivateKeyFile`).
-    - Note that for port and hostname do NOT use localhost. Use the hostname/IP address of the 
-    DocumentDB server or cluster and use the port number the server or cluster is listening on. For example: 
-    
-        ~~~
-        jdbc:documentdb://<cluster-host>/<database-name>?tlsAllowInvalidHostnames=true&sshUser=<ssh-username>&sshHost=<ssh-hostname>&sshPrivateKeyFile=<ssh-key-pair-name>.pem
-        ~~~
-    
-        where `<ssh-username>` is identical to `<ec2-username>` and `<ssh-hostname>` is identical to 
-        `<public-IPv4-DNS-name>` in the external SSH port-forwarding tunnel command shown 
-        [below](#using-an-external-ssh-tunnel-to-connect-to-amazon-documentdb).
-    
 2. Externally, using the `ssh` application. For further information on creating an external SSH tunnel, please refer to
 the documentation on [Connecting from Outside an Amazon VPC](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect-from-outside-a-vpc.html)
 
