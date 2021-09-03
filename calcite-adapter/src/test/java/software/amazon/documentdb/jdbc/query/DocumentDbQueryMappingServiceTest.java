@@ -1830,9 +1830,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     @Test
     @DisplayName("Tests $limit is produced when max rows is passed.")
     void testMaxRows() throws SQLException {
-        String query =
+        final String query =
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, COLLECTION_NAME);
-        DocumentDbMqlQueryContext result = queryMapper.get(query, 10);
+        final DocumentDbMqlQueryContext result = queryMapper.get(query, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(1, result.getColumnMetaData().size());
         Assertions.assertEquals(2, result.getAggregateOperations().size());
