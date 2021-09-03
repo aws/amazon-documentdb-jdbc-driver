@@ -321,6 +321,7 @@ public class DocumentDbMetadataService {
                     properties.getDatabase(),
                     schemaVersion,
                     new LinkedHashMap<>());
+            LOGGER.info("A new schema {} will be created.", schemaName);
         }
         final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
         try {
