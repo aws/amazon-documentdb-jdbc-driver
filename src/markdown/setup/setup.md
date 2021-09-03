@@ -61,6 +61,17 @@ you can use SSH tunneling (also known as  _port forwarding_) to access your Amaz
 There are two options to create an SSH tunnel:
 1. Internally, using the [SSH tunnel options](connection-string.md) (minimally, `sshUser`, `sshHost`, and 
 `sshPrivateKeyFile`).
+    - Note that for port and hostname do NOT use localhost. Use the hostname/IP address of the 
+    DocumentDB server or cluster and use the port number the server or cluster is listening on. For example: 
+    
+        ~~~
+        jdbc:documentdb://<cluster-host>/<database-name>?tlsAllowInvalidHostnames=true&sshUser=<ssh-username>&sshHost=<ssh-hostname>&sshPrivateKeyFile=<ssh-key-pair-name>.pem
+        ~~~
+    
+        where `<ssh-username>` is identical to `<ec2-username>` and `<ssh-hostname>` is identical to 
+        `<public-IPv4-DNS-name>` in the external SSH port-forwarding tunnel command shown 
+        [below](#using-an-external-ssh-tunnel-to-connect-to-amazon-documentdb).
+    
 2. Externally, using the `ssh` application. For further information on creating an external SSH tunnel, please refer to
 the documentation on [Connecting from Outside an Amazon VPC](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect-from-outside-a-vpc.html)
 
@@ -70,8 +81,8 @@ cluster. You can either use an existing EC2 instance in the same VPC as your clu
 outside the Amazon VPC using an SSH tunnel will have the following impact on the [JDBC connection string](connection-string.md):
 1. If your cluster has Transport Layer Security (TLS) enabled, you will need to add the `tlsAllowInvalidHostNames=true` 
 option.
-2. As the SSH tunnel is running on your local computer, the host name must be set to `localhost`.
-3. If your local port (`-L <local-port>:<cluster-host>:<remote-port>`) configured for the SSH tunnel is not the default
+2. For external SSH, since the SSH tunnel is running on your local computer, the host name must be set to `localhost`.
+3. For external SSH, if your local port (`-L <local-port>:<cluster-host>:<remote-port>`) configured for the SSH tunnel is not the default
 port (27017) for Amazon DocumentDB, ensure the connection string host setting for your SSH tunnel is properly set in the
 [JDBC connection string](connection-string.md).
 4. The `replicaSet` option is not supported when using an SSH tunnel.
