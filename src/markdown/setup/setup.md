@@ -64,7 +64,7 @@ There are two options to create an SSH tunnel:
 2. Externally, using the `ssh` application. For further information on creating an external SSH tunnel, please refer to
 the documentation on [Connecting from Outside an Amazon VPC](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect-from-outside-a-vpc.html)
 
-
+### The JDBC Connection String When Using an SSH Tunnel
 To create an SSH tunnel, you need an Amazon EC2 instance running in the same Amazon VPC as your Amazon DocumentDB 
 cluster. You can either use an existing EC2 instance in the same VPC as your cluster or create one. Connecting from 
 outside the Amazon VPC using an SSH tunnel will have the following impact on the [JDBC connection string](connection-string.md):
@@ -76,6 +76,7 @@ port (27017) for Amazon DocumentDB, ensure the connection string host setting fo
 [JDBC connection string](connection-string.md).
 4. The `replicaSet` option is not supported when using an SSH tunnel.
 
+### Using an External SSH Tunnel to Connect to Amazon DocumentDB
 Start an SSH port-forwarding tunnel to the cluster with the following command:
 
 ~~~
