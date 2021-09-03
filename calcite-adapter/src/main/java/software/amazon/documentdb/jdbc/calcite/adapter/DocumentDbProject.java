@@ -52,6 +52,7 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
 
     private static final Logger LOGGER =
             LoggerFactory.getLogger(DocumentDbProject.class.getName());
+    private static final String ID_FIELD = "_id";
 
     /**
      * Creates a new {@link DocumentDbProject}
@@ -164,8 +165,11 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                 stageString = "$addFields";
             } else {
                 stageString = "$project";
-                // Explicitly remove _id field to reduce document size.
-                items.add("_id: 0");
+
+                // Explicitly remove _id field to reduce document size if it is not in output.
+                if (!getRowType().getFieldNames().contains(ID_FIELD)) {
+                    items.add(ID_FIELD + ": 0");
+                }
             }
             final String findString = Util.toString(items, "{", ", ", "}");
             final String aggregateString = "{" + stageString + ": " + findString + "}";

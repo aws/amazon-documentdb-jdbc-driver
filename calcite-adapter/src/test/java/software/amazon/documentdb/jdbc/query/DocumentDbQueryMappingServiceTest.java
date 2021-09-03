@@ -48,6 +48,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     private static final String COLLECTION_NAME = "testCollection";
     private static final String OTHER_COLLECTION_NAME = "otherTestCollection";
     private static final String DATE_COLLECTION_NAME = "dateTestCollection";
+    private static final String NESTED_ID_COLLECTION_NAME = "nestedIdCollection";
     private static final String COLLECTION_EXTRA_FIELD = "fieldTestCollection";
     private static DocumentDbQueryMappingService queryMapper;
     private static DocumentDbConnectionProperties connectionProperties;
@@ -77,6 +78,9 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final BsonDocument document3 =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"fieldA\": 3, \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
+        final BsonDocument nestedIddocument =
+                BsonDocument.parse(
+                        "{ \"_id\" : \"key\", \"document\" : { \"_id\" : 1, \"field1\": \"value\" } }");
 
         client = createMongoClient(ADMIN_DATABASE, USER, PASSWORD);
 
@@ -87,6 +91,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         insertBsonDocuments(DATE_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{doc1}, client);
         insertBsonDocuments(
                 COLLECTION_EXTRA_FIELD, DATABASE_NAME, new BsonDocument[]{document3}, client);
+        insertBsonDocuments(NESTED_ID_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{nestedIddocument}, client);
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
                 DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW, client);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata, client);
@@ -1843,5 +1848,37 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse(
                         "{\"$project\": {\"fieldTestCollection__id\": \"$fieldTestCollection__id0\", \"fieldA\": \"$fieldA\", \"field\": \"$array.field\", \"_id\": 0}}"),
                 result.getAggregateOperations().get(3));
+    }
+
+    @Test
+    @DisplayName("Tests that fields can be selected with the column name '_id' ")
+    void testIdAsColumnName() throws SQLException {
+        // Get a base table with a rename.
+        final String basicQuery =
+                String.format("SELECT \"testCollection__id\" AS \"_id\" FROM \"%s\".\"%s\"", DATABASE_NAME, COLLECTION_NAME);
+        DocumentDbMqlQueryContext result = queryMapper.get(basicQuery);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(1, result.getAggregateOperations().size());
+
+        // Make sure there is no $_id: 0 here.
+        Assertions.assertEquals(BsonDocument.parse("{\"$project\": {\"_id\": '$_id'} }"), result.getAggregateOperations().get(0));
+
+        // Get a table with nested _id.
+        final String nestedTableQuery =
+                String.format("SELECT * FROM \"%s\".\"%s\"",
+                        DATABASE_NAME,
+                        NESTED_ID_COLLECTION_NAME + "_document");
+        result = queryMapper.get(nestedTableQuery);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(NESTED_ID_COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(3, result.getColumnMetaData().size());
+        Assertions.assertEquals(2, result.getAggregateOperations().size());
+
+        // Make sure there is no $_id: 0 here.
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"nestedIdCollection__id\": \"$_id\", \"_id\": \"$document._id\", \"field1\": \"$document.field1\"}}"),
+                result.getAggregateOperations().get(1));
     }
 }
