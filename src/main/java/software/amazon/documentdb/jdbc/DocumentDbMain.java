@@ -62,13 +62,11 @@ import java.io.Console;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URISyntaxException;
-import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -81,8 +79,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -124,10 +120,7 @@ public class DocumentDbMain {
     private static final List<Option> REQUIRED_OPTIONS;
     private static final List<Option> OPTIONAL_OPTIONS;
     // String constants
-    private static final String ARCHIVE_VERSION_DEFAULT = "1.0.0";
-    private static final String IMPLEMENTATION_VERSION_ATTR_NAME = "Implementation-Version";
     private static final String LIBRARY_NAME_DEFAULT = "documentdb-jdbc";
-    private static final String MANIFEST_MF_RESOURCE_NAME = "META-INF/MANIFEST.MF";
 
     // Option string constants
     private static final String DATABASE_OPTION_FLAG = "d";
@@ -990,26 +983,7 @@ public class DocumentDbMain {
     }
 
     private static String getArchiveVersion() {
-        final String archiveVersion;
-        final URLClassLoader cl = (URLClassLoader) DocumentDbMain.class.getClassLoader();
-        final InputStream resource = cl.getResourceAsStream(MANIFEST_MF_RESOURCE_NAME);
-        Manifest manifest = null;
-        try {
-            manifest = new Manifest(resource);
-        } catch (IOException e) {
-            LOGGER.error(e.getMessage());
-        }
-        if (manifest != null) {
-            final Attributes attributes = manifest.getMainAttributes();
-            if (attributes != null) {
-                archiveVersion = attributes.getValue(IMPLEMENTATION_VERSION_ATTR_NAME);
-            } else {
-                archiveVersion = ARCHIVE_VERSION_DEFAULT;
-            }
-        } else {
-            archiveVersion = ARCHIVE_VERSION_DEFAULT;
-        }
-        return archiveVersion;
+        return DocumentDbDriver.DRIVER_VERSION;
     }
 
     private static Option buildVersionOption() {

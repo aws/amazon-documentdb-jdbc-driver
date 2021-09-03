@@ -25,6 +25,8 @@ import java.sql.Connection;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 
+import static software.amazon.documentdb.jdbc.DocumentDbStatement.setDefaultFetchSize;
+
 /**
  * DocumentDb implementation of PreparedStatement.
  */
@@ -37,10 +39,12 @@ public class DocumentDbPreparedStatement extends PreparedStatement
      * DocumentDbPreparedStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
      * @param connection Connection Object.
      * @param sql Sql query.
+     * @throws SQLException if unable to construct a new {@link java.sql.PreparedStatement}.
      */
     public DocumentDbPreparedStatement(final Connection connection, final String sql) throws SQLException {
         super(connection, sql);
         final DocumentDbConnection documentDbConnection = (DocumentDbConnection)getConnection();
+        setDefaultFetchSize(this, documentDbConnection.getConnectionProperties());
         final DocumentDbConnectionProperties connectionProperties = documentDbConnection
                 .getConnectionProperties();
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(

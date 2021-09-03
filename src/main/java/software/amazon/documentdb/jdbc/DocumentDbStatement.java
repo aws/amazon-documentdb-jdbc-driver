@@ -16,15 +16,21 @@
 
 package software.amazon.documentdb.jdbc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.Statement;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.FETCH_SIZE_DEFAULT;
+
 /**
  * DocumentDb implementation of DatabaseMetadata.
  */
 class DocumentDbStatement extends Statement implements java.sql.Statement {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbStatement.class);
     private int queryTimeout;
     private final DocumentDbQueryExecutor queryExecutor;
 
@@ -32,10 +38,12 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
      * DocumentDbStatement constructor, creates DocumentDbQueryExecutor and initializes super class.
      *
      * @param connection the connection.
+     * @throws SQLException if unable to construct a new {@link java.sql.Statement}.
      */
     DocumentDbStatement(
             final DocumentDbConnection connection) throws SQLException {
         super(connection);
+        setDefaultFetchSize(this, connection.getConnectionProperties());
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
                 connection.getDatabaseMetadata(),
@@ -46,6 +54,26 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
                 mappingService,
                 getQueryTimeout(),
                 getFetchSize());
+    }
+
+    /**
+     * Sets the default fetch size on the {@link java.sql.Statement} object.
+     *
+     * @param statement the Statement to set.
+     * @param properties the
+     * @throws SQLException if unable to set the fetch size.
+     */
+    static void setDefaultFetchSize(
+            final java.sql.Statement statement,
+            final DocumentDbConnectionProperties properties) throws SQLException {
+        Integer defaultFetchSize = properties.getDefaultFetchSize();
+        if (defaultFetchSize == null) {
+            defaultFetchSize = FETCH_SIZE_DEFAULT;
+        }
+        if (defaultFetchSize != FETCH_SIZE_DEFAULT) {
+            LOGGER.debug("Setting custom default fetch size: {}", defaultFetchSize);
+        }
+        statement.setFetchSize(defaultFetchSize);
     }
 
     /**

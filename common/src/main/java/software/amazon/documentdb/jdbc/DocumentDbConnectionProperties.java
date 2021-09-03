@@ -62,6 +62,7 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
+    public static final int FETCH_SIZE_DEFAULT = 2000;
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -508,6 +509,62 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Sets the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     * It is the number of records to retrieve in a single batch.
+     * The maximum number of records retrieved in a single batch may also be limited by the overall
+     * memory size of the result. The value can be changed by calling the `Statement.setFetchSize`
+     * JDBC method. Default is '2000'.
+     *
+     * @param defaultFetchSize the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     */
+    public void setDefaultFetchSize(final String defaultFetchSize) {
+        setProperty(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName(), defaultFetchSize);
+    }
+
+    /**
+     * Gets the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     * It is the number of records to retrieve in a single batch.
+     * The maximum number of records retrieved in a single batch may also be limited by the overall
+     * memory size of the result. The value can be changed by calling the `Statement.setFetchSize`
+     * JDBC method. Default is '2000'.
+     *
+     * @return the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     */
+    public Integer getDefaultFetchSize() {
+        return getPropertyAsInteger(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName());
+    }
+
+    /**
+     * Sets indicator of whether to refresh any existing schema with a newly generated schema when
+     * the connection first requires the schema. Note that this will remove any existing schema
+     * customizations and will reduce performance for the first query or metadata inquiry.
+     *
+     * @param refreshSchema  indicator of whether to refresh any existing schema with a newly
+     *                       generated schema when the connection first requires the schema.
+     *                       Note that this will remove any existing schema customizations and
+     *                       will reduce performance for the first query or metadata inquiry.
+     */
+    public void setRefreshSchema(final String refreshSchema) {
+        setProperty(DocumentDbConnectionProperty.REFRESH_SCHEMA.getName(), refreshSchema);
+    }
+
+    /**
+     * Gets indicator of whether to refresh any existing schema with a newly generated schema when
+     * the connection first requires the schema. Note that this will remove any existing schema
+     * customizations and will reduce performance for the first query or metadata inquiry.
+     *
+     * @return indicator of whether to refresh any existing schema with a newly generated schema
+     *         when the connection first requires the schema. Note that this will remove any
+     *         existing schema customizations and will reduce performance for the first query or
+     *         metadata inquiry.
+     */
+    public Boolean getRefreshSchema() {
+        return Boolean.parseBoolean(getProperty(
+                        DocumentDbConnectionProperty.REFRESH_SCHEMA.getName(),
+                        DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue()));
+    }
+
+    /**
      * Builds the MongoClientSettings from properties.
      *
      * @return a {@link MongoClientSettings} object.
@@ -651,6 +708,12 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getSshKnownHostsFile() != null && !DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getDefaultValue().equals(getSshKnownHostsFile())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE, getSshKnownHostsFile());
+        }
+        if (getDefaultFetchSize() != Integer.parseInt(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE, getDefaultFetchSize());
+        }
+        if (getRefreshSchema() != Boolean.parseBoolean(DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.REFRESH_SCHEMA, getRefreshSchema());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,

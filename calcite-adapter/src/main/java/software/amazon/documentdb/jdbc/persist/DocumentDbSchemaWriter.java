@@ -525,11 +525,13 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
             final DeleteResult result = session != null
                     ? tableSchemasCollection.deleteMany(session, allTableReferencesFilter)
                     : tableSchemasCollection.deleteMany(allTableReferencesFilter);
-            if (!result.wasAcknowledged() || result.getDeletedCount() != tableReferencesFilter
-                    .size()) {
+            if (!result.wasAcknowledged()) {
                 throw SqlError.createSQLException(LOGGER,
                         SqlState.DATA_EXCEPTION,
                         SqlError.DELETE_TABLE_SCHEMA_FAILED);
+            } else if (result.getDeletedCount() != tableReferencesFilter.size()) {
+                LOGGER.warn(SqlError.lookup(SqlError.DELETE_TABLE_SCHEMA_INCONSISTENT,
+                        tableReferencesFilter.size(), result.getDeletedCount()));
             }
         }
     }

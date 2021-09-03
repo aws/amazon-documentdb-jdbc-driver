@@ -19,6 +19,7 @@
 | Option | Description | Default |
 |--------|-------------|---------------|
 | `appName` | (string) Sets the logical name of the application. | `NONE`
+| `defaultFetchSize` | (int) The default fetch size (in records) when retrieving results fromAmazon DocumentDB. It is the number of records to retrieve in a single batch. The maximum numberof records retrieved in a single batch may also be limited by the overall memory size of the result. The value can be changed by calling the `Statement.setFetchSize` JDBC method. | `2000`
 | `loginTimeoutSec` | (int) How long a connection can take to be opened before timing out (in seconds). Alias for connectTimeoutMS but using seconds. | `NONE`
 | `readPreference` | (enum/string) The read preference for this connection. Allowed values: `primary`, `primaryPreferred`, `secondary`, `secondaryPreferred` or `nearest`. | `primary`
 | `replicaSet` | (string) Name of replica set to connect to. For now, passing a name other than `rs0` will log a warning. | `NONE`
