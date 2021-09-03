@@ -206,6 +206,7 @@ public final class DocumentDbRules {
     static class RexToMongoTranslator extends RexVisitorImpl<Operand> {
         private final JavaTypeFactory typeFactory;
         private final List<String> inFields;
+        private final List<String> keys;
         private final DocumentDbSchemaTable schemaTable;
 
         private static final Map<SqlOperator, String> MONGO_OPERATORS =
@@ -348,10 +349,11 @@ public final class DocumentDbRules {
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
                 final List<String> inFields,
-                final DocumentDbSchemaTable schemaTable) {
+                List<String> keys, final DocumentDbSchemaTable schemaTable) {
             super(true);
             this.typeFactory = typeFactory;
             this.inFields = inFields;
+            this.keys = keys;
             this.schemaTable = schemaTable;
         }
 
@@ -399,7 +401,7 @@ public final class DocumentDbRules {
             // NOTE: Pass the column metadata with the operand.
             return new Operand(
                     maybeQuote("$" + inFields.get(inputRef.getIndex())),
-                    schemaTable.getColumns().get(inputRef.getIndex()));
+                    schemaTable.getColumnMap().get(keys.get(inputRef.getIndex())));
         }
 
         @SneakyThrows

@@ -107,23 +107,21 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         Assertions.assertEquals(1, result1.getColumnMetaData().size());
         Assertions.assertEquals(4, result1.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {"
-                        + "\"_id\": 1, "
-                        + "\"field\": 1, "
-                        + "\"dateField\": 1, "
-                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                        + ": {\"$or\": [{\"$eq\": [\"$_id\", "
-                        + "{\"$oid\": \"123456789012345678901234\"}]}, {\"$eq\": [\"$_id\", "
-                        + "{\"$literal\": \"123456789012345678901234\"}]}]}}}"),
+                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
                 result1.getAggregateOperations().get(0));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
-                result1.getAggregateOperations().get(1));
+                "{\"$project\": {"
+                        + "\"objectIdCollection__id\": 1, "
+                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                        + ": {\"$or\": [{\"$eq\": [\"$objectIdCollection__id\", "
+                        + "{\"$oid\": \"123456789012345678901234\"}]}, "
+                        + "{\"$eq\": [\"$objectIdCollection__id\", {\"$literal\": \"123456789012345678901234\"}]}]}}}"),
+        result1.getAggregateOperations().get(1));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
                 result1.getAggregateOperations().get(2));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result1.getAggregateOperations().get(3));
 
         // In-memory substring and concatenation.
@@ -139,22 +137,21 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         Assertions.assertEquals(1, result2.getColumnMetaData().size());
         Assertions.assertEquals(4, result2.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+        Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {"
-                        + "\"_id\": 1, "
-                        + "\"field\": 1, "
-                        + "\"dateField\": 1, "
+                        + "\"objectIdCollection__id\": 1, "
                         + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                        + ": {\"$or\": [{\"$eq\": [\"$_id\", {\"$oid\": \"123456789012345678901234\"}]}, "
-                        + "{\"$eq\": [\"$_id\", {\"$literal\": \"123456789012345678901234\"}]}]}}}"),
-                result2.getAggregateOperations().get(0));
+                        + ": {\"$or\": [{\"$eq\": [\"$objectIdCollection__id\", "
+                        + "{\"$oid\": \"123456789012345678901234\"}]}, "
+                        + "{\"$eq\": [\"$objectIdCollection__id\", {\"$literal\": \"123456789012345678901234\"}]}]}}}"),
+        result2.getAggregateOperations().get(1));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
-                result1.getAggregateOperations().get(1));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result1.getAggregateOperations().get(2));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result1.getAggregateOperations().get(3));
 
         // Hex string
@@ -170,22 +167,21 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         Assertions.assertEquals(1, result3.getColumnMetaData().size());
         Assertions.assertEquals(4, result3.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+        Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {"
-                        + "\"_id\": 1, "
-                        + "\"field\": 1, "
-                        + "\"dateField\": 1, "
+                        + "\"objectIdCollection__id\": 1, "
                         + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                        + ": {\"$or\": [{\"$eq\": [\"$_id\", {\"$oid\": \"123456789012345678901234\"}]}, "
-                        + "{\"$eq\": [\"$_id\", {\"$binary\": {\"base64\": \"EjRWeJASNFZ4kBI0\", \"subType\": \"00\"}}]}]}}}"),
-                result3.getAggregateOperations().get(0));
+                        + ": {\"$or\": [{\"$eq\": [\"$objectIdCollection__id\", {\"$oid\": \"123456789012345678901234\"}]}, "
+                        + "{\"$eq\": [\"$objectIdCollection__id\", "
+                        + "{\"$binary\": {\"base64\": \"EjRWeJASNFZ4kBI0\", \"subType\": \"00\"}}]}]}}}"),
+                result3.getAggregateOperations().get(1));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
-                result1.getAggregateOperations().get(1));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result1.getAggregateOperations().get(2));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result1.getAggregateOperations().get(3));
 
         // String
@@ -200,22 +196,19 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         Assertions.assertEquals(1, result4.getColumnMetaData().size());
         Assertions.assertEquals(4, result4.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {"
-                        + "\"_id\": 1, "
-                        + "\"field\": 1, "
-                        + "\"dateField\": 1, "
-                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                        + ": {\"$eq\": [\"$_id\", {\"$literal\": \"arbitrary string\"}]}}}"),
+                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
                 result4.getAggregateOperations().get(0));
         Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"objectIdCollection__id\": 1, "
+                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                        + ": {\"$eq\": [\"$objectIdCollection__id\", {\"$literal\": \"arbitrary string\"}]}}}"),
+                result4.getAggregateOperations().get(1));
+        Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
-                result1.getAggregateOperations().get(1));
+                result4.getAggregateOperations().get(2));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
-                result1.getAggregateOperations().get(2));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
-                result1.getAggregateOperations().get(3));
+                result4.getAggregateOperations().get(3));
 
         // Long integer
         final String query5 =
@@ -229,22 +222,21 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         Assertions.assertEquals(1, result5.getColumnMetaData().size());
         Assertions.assertEquals(4, result5.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {"
-                        + "\"_id\": 1, "
-                        + "\"field\": 1, "
-                        + "\"dateField\": 1, "
-                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                        + ": {\"$eq\": [\"$_id\", 4223372036854775807]}}}"),
+                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
                 result5.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+            BsonDocument.parse(
+                "{\"$project\": {"
+                        + "\"objectIdCollection__id\": 1, "
+                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                        + ": {\"$eq\": [\"$objectIdCollection__id\", 4223372036854775807]}}}"),
+            result5.getAggregateOperations().get(1));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
-                result1.getAggregateOperations().get(1));
+                result5.getAggregateOperations().get(2));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
-                result1.getAggregateOperations().get(2));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
-                result1.getAggregateOperations().get(3));
+                result5.getAggregateOperations().get(3));
 
         // Byte array
         final String query6 =
@@ -258,22 +250,20 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         Assertions.assertEquals(1, result6.getColumnMetaData().size());
         Assertions.assertEquals(4, result6.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+        Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {"
-                        + "\"_id\": 1, "
-                        + "\"field\": 1, "
-                        + "\"dateField\": 1, "
+                        + "\"objectIdCollection__id\": 1, "
                         + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                        + ": {\"$eq\": [\"$_id\", "
+                        + ": {\"$eq\": [\"$objectIdCollection__id\", "
                         + "{\"$binary\": {\"base64\": \"ASNFZ4mrze8=\", \"subType\": \"00\"}}]}}}"),
-                result6.getAggregateOperations().get(0));
+                result6.getAggregateOperations().get(1));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
-                result1.getAggregateOperations().get(1));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result1.getAggregateOperations().get(2));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"objectIdCollection__id\": \"$_id\", \"_id\": 0}}"),
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
                 result1.getAggregateOperations().get(3));
     }
 }
