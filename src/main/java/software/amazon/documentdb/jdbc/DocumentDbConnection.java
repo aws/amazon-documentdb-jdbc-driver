@@ -30,6 +30,8 @@ import com.mongodb.client.MongoDatabase;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.SneakyThrows;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,6 +47,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Arrays;
 import java.util.concurrent.Executor;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
@@ -69,6 +72,7 @@ public class DocumentDbConnection extends Connection
     public static final String NO = "no";
     public static final String LOCALHOST = "localhost";
     public static final int DEFAULT_DOCUMENTDB_PORT = 27017;
+    public static final int DEFAULT_SSH_PORT = 22;
 
     private final DocumentDbConnectionProperties connectionProperties;
     private DocumentDbDatabaseMetaData metadata;
@@ -316,19 +320,31 @@ public class DocumentDbConnection extends Connection
     private static SshPortForwardingSession getPortForwardingSession(
             final DocumentDbConnectionProperties connectionProperties,
             final Session session) throws JSchException {
-        final int portSeparatorIndex = connectionProperties.getHostname().indexOf(':');
+        final Pair<String, Integer> clusterHostAndPort = getHostAndPort(
+                connectionProperties.getHostname(), DEFAULT_DOCUMENTDB_PORT);
+        final int localPort = session.setPortForwardingL(
+                LOCALHOST, 0, clusterHostAndPort.getLeft(), clusterHostAndPort.getRight());
+        return new SshPortForwardingSession(session, localPort);
+    }
+
+    private static Pair<String, Integer> getHostAndPort(
+            final String hostname,
+            final int defaultPort) {
+        final int portSeparatorIndex = hostname.indexOf(':');
         final String clusterHost;
         final int clusterPort;
+        final Pair<String, Integer> hostPort;
         if (portSeparatorIndex >= 0) {
-            clusterHost = connectionProperties.getHostname().substring(0, portSeparatorIndex);
+            clusterHost = hostname.substring(0, portSeparatorIndex);
             clusterPort = Integer.parseInt(
-                    connectionProperties.getHostname().substring(portSeparatorIndex + 1));
+                    hostname.substring(portSeparatorIndex + 1));
+            hostPort = new ImmutablePair<>(clusterHost, clusterPort);
         } else {
-            clusterHost = connectionProperties.getHostname();
-            clusterPort = DEFAULT_DOCUMENTDB_PORT;
+            clusterHost = hostname;
+            clusterPort = defaultPort;
+            hostPort = new ImmutablePair<>(clusterHost, clusterPort);
         }
-        final int localPort = session.setPortForwardingL(LOCALHOST, 0, clusterHost, clusterPort);
-        return new SshPortForwardingSession(session, localPort);
+        return hostPort;
     }
 
     private static void connectSession(
@@ -358,20 +374,11 @@ public class DocumentDbConnection extends Connection
             final DocumentDbConnectionProperties connectionProperties,
             final JSch jSch) throws SQLException {
         final String sshUsername = connectionProperties.getSshUser();
-        final String sshHostname;
-        final int sshPort;
-        final int portSeparatorIndex = connectionProperties.getSshHostname().indexOf(':');
-        if (portSeparatorIndex >= 0) {
-            sshHostname = connectionProperties.getSshHostname().substring(0, portSeparatorIndex);
-            sshPort = Integer.parseInt(
-                    connectionProperties.getSshHostname().substring(portSeparatorIndex + 1));
-        } else {
-            sshHostname = connectionProperties.getSshHostname();
-            sshPort = 22;
-        }
+        final Pair<String, Integer> sshHostAndPort = getHostAndPort(
+                connectionProperties.getSshHostname(), DEFAULT_SSH_PORT);
         setKnownHostsFile(connectionProperties, jSch);
         try {
-            return jSch.getSession(sshUsername, sshHostname, sshPort);
+            return jSch.getSession(sshUsername, sshHostAndPort.getLeft(), sshHostAndPort.getRight());
         } catch (JSchException e) {
             throw new SQLException(e.getMessage(), e);
         }
@@ -385,14 +392,21 @@ public class DocumentDbConnection extends Connection
             session.setConfig(STRICT_HOST_KEY_CHECKING, NO);
             return;
         }
-        setHostKeyType(jSch, session);
+        setHostKeyType(connectionProperties, jSch, session);
     }
 
-    private static void setHostKeyType(final JSch jSch, final Session session) {
+    private static void setHostKeyType(
+            final DocumentDbConnectionProperties connectionProperties,
+            final JSch jSch, final Session session) {
         final HostKeyRepository keyRepository = jSch.getHostKeyRepository();
         final HostKey[] hostKeys = keyRepository.getHostKey();
+        final Pair<String, Integer> sshHostAndPort = getHostAndPort(
+                connectionProperties.getSshHostname(), DEFAULT_SSH_PORT);
+        final HostKey hostKey = Arrays.stream(hostKeys)
+                .filter(hk -> hk.getHost().equals(sshHostAndPort.getLeft()))
+                .findFirst().orElse(null);
         // This will ensure a match between how the host key was hashed in the known_hosts file.
-        final String hostKeyType = (hostKeys.length > 0) ? hostKeys[0].getType() : null;
+        final String hostKeyType = (hostKey != null) ? hostKey.getType() : null;
         // Set the hash algorithm
         if (hostKeyType != null) {
             session.setConfig(SERVER_HOST_KEY, hostKeyType);
