@@ -139,6 +139,19 @@ The online security resources may give a pointer how to fix this.
 1. Double check that your username and password are correct. 
 2. Make sure that the user you are logging in with has the right access privileges to the target database.
 
+### Missing Entries in Known Hosts File
+#### What to look for:
+
+- `UnknownHostKey: <hostname>. ECDSA key fingerprint is <fingerprint>`
+- `UnknownHostKey: <hostname>. RSA key fingerprint is <fingerprint>`
+- `UnknownHostKey: <hostname>. ED25519 key fingerprint is <fingerprint>`
+
+#### What to do:
+
+1. Follow the directions on
+[Maintaining the Known Hosts File](../setup/maintain_known_hosts.md) to add one 
+or more entries to your known hosts file.
+
 ## Schema Issues
 
 ### Schema Out of Date
