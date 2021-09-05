@@ -330,21 +330,18 @@ public class DocumentDbConnection extends Connection
     private static Pair<String, Integer> getHostAndPort(
             final String hostname,
             final int defaultPort) {
-        final int portSeparatorIndex = hostname.indexOf(':');
         final String clusterHost;
         final int clusterPort;
-        final Pair<String, Integer> hostPort;
+        final int portSeparatorIndex = hostname.indexOf(':');
         if (portSeparatorIndex >= 0) {
             clusterHost = hostname.substring(0, portSeparatorIndex);
             clusterPort = Integer.parseInt(
                     hostname.substring(portSeparatorIndex + 1));
-            hostPort = new ImmutablePair<>(clusterHost, clusterPort);
         } else {
             clusterHost = hostname;
             clusterPort = defaultPort;
-            hostPort = new ImmutablePair<>(clusterHost, clusterPort);
         }
-        return hostPort;
+        return new ImmutablePair<>(clusterHost, clusterPort);
     }
 
     private static void connectSession(
