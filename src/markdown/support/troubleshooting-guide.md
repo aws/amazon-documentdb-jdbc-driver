@@ -249,7 +249,7 @@ To set these properties, use the `JAVA_TOOL_OPTIONS` environment variables with 
 For example:
 - In Windows:`set JAVA_TOOL_OPTIONS=-Ddocumentdb.jdbc.log.level=DEBUG`
 - In MacOS/Linux: `export JAVA_TOOL_OPTIONS=-Ddocumentdb.jdbc.log.level=DEBUG`
-    - Or in DbVisualizer Tools Properties:
+    - Or in DbVisualizer Tools Properties (version 12.1.2 or later):
         - `-Ddocumentdb.jdbc.log.level=DEBUG`
         - `-Ddocumentdb.jdbc.log.console.threshold=ALL`
         - Additionally the following files `slf4j-api.jar` and `slf4j-nop.jar` needs to be removed from the DbVisualizer 
