@@ -216,35 +216,26 @@ Refer to the documentation of your tool of choice for similar instructions.
 ### Setting Logging Level and Location
 There are the following levels of logging:
 
-~~~
-FATAL: shows messages at a FATAL level only
-ERROR: shows messages classified as ERROR and FATAL
-WARNING: shows messages classified as WARNING, ERROR and FATAL
-INFO: shows messages classified as INFO, WARNING, ERROR and FATAL
-DEBUG: shows messages classified as DEBUG, INFO, WARNING, ERROR and FATAL
-TRACE: shows messages classified as TRACE, DEBUG, INFO, WARNING, ERROR and FATAL
-ALL: shows messages classified as TRACE, DEBUG, INFO, WARNING, ERROR and FATAL
-OFF: no log messages displayed    
-~~~
+| Property Value | Description |
+|--------|-------------|
+| `FATAL` | Shows messages at a FATAL level only.|
+| `ERROR` | Shows messages classified as ERROR and FATAL.|
+| `WARNING` | Shows messages classified as WARNING, ERROR and FATAL.|
+| `INFO` | Shows messages classified as INFO, WARNING, ERROR and FATAL.|
+| `DEBUG` | Shows messages classified as DEBUG, INFO, WARNING, ERROR and FATAL.|
+| `TRACE` | Shows messages classified as TRACE, DEBUG, INFO, WARNING, ERROR and FATAL.|
+| `ALL` | Shows messages classified as TRACE, DEBUG, INFO, WARNING, ERROR and FATAL.|
+| `OFF` | No log messages displayed.|
 
-The level for all sources/appenders is: 
-- `documentdb.jdbc.log.level=<log-level>` 
-- default: `<log-level>=INFO`
-
-The location for file logging is: 
-- `documentdb.jdbc.log.file.path=<full-log-file-path>` 
-- default: `<full-log-file-path>=~/.documentdb/logs/documentdb-jdbc.log`
-
-The threshold for file logging is: 
-- `documentdb.jdbc.log.file.threshold=<file-threshold-level>` 
-- default: `<file-threshold-level>=ALL`
-
-The threshold for console logging is: 
-- `documentdb.jdbc.log.console.threshold=<console-threshold-level>` 
-- default: `<console-threshold-level>=ERROR`
+| Property Name | Description | Default |
+|--------|-------------|---------------|
+| `documentdb.jdbc.log.level` | The log level for all sources/appenders. | `INFO` |
+| `documentdb.jdbc.log.file.path` | The location for file logging. | `~/.documentdb/logs/documentdb-jdbc.log` |
+| `documentdb.jdbc.log.file.threshold` | The threshold for file logging. | `ALL` |
+| `documentdb.jdbc.log.console.threshold` | The threshold for console logging. | `ERROR` |
 
 To set these properties, use the `JAVA_TOOL_OPTIONS` environment variables with the following format 
-`-D<prop-name>=<prop-value>`. 
+`-D<property-name>=<property-value>`. 
 
 For example:
 - In Windows:`set JAVA_TOOL_OPTIONS=-Ddocumentdb.jdbc.log.level=DEBUG`
