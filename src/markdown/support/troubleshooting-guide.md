@@ -212,3 +212,50 @@ under `Documents` although this may vary depending on how Tableau was installed.
 The JDBC driver's logs will be in the `jprotocolserver.log` file. 
 
 Refer to the documentation of your tool of choice for similar instructions.
+
+### Setting Logging Level and Location
+There are the following levels of logging:
+
+~~~
+FATAL: shows messages at a FATAL level only
+ERROR: shows messages classified as ERROR and FATAL
+WARNING: shows messages classified as WARNING, ERROR and FATAL
+INFO: shows messages classified as INFO, WARNING, ERROR and FATAL
+DEBUG: shows messages classified as DEBUG, INFO, WARNING, ERROR and FATAL
+TRACE: shows messages classified as TRACE, DEBUG, INFO, WARNING, ERROR and FATAL
+ALL: shows messages classified as TRACE, DEBUG, INFO, WARNING, ERROR and FATAL
+OFF: no log messages displayed    
+~~~
+
+The level for all sources/appenders is: 
+- `documentdb.jdbc.log.level=<log-level>` 
+- default: `<log-level>=INFO`
+
+The location for file logging is: 
+- `documentdb.jdbc.log.file.path=<full-log-file-path>` 
+- default: `<full-log-file-path>=~/.documentdb/logs/documentdb-jdbc.log`
+
+The threshold for file logging is: 
+- `documentdb.jdbc.log.file.threshold=<file-threshold-level>` 
+- default: `<file-threshold-level>=ALL`
+
+The threshold for console logging is: 
+- `documentdb.jdbc.log.console.threshold=<console-threshold-level>` 
+- default: `<console-threshold-level>=ERROR`
+
+To set these properties, use the `JAVA_TOOL_OPTIONS` environment variables with the following format 
+`-D<prop-name>=<prop-value>`. 
+
+For example:
+- In Windows:`set JAVA_TOOL_OPTIONS=-Ddocumentdb.jdbc.log.level=DEBUG`
+- In MacOS/Linux: `export JAVA_TOOL_OPTIONS=-Ddocumentdb.jdbc.log.level=DEBUG`
+    - Or in DbVisualizer Tools Properties:
+        - `-Ddocumentdb.jdbc.log.level=DEBUG`
+        - `-Ddocumentdb.jdbc.log.console.threshold=ALL`
+        - Additionally the following files `slf4j-api.jar` and `slf4j-nop.jar` needs to be removed from the DbVisualizer 
+        `lib` folder.
+        
+- In Tableau, a parameter must be used in the command line or terminal:
+    - In Windows: `start "" "c:\program files\Tableau\Tableau [version]\bin\tableau.exe" -DLogLevel=DEBUG`
+    - In MacOS: `/Applications/Tableau\ Desktop\[version].app/Contents/MacOS/Tableau -DLogLevel=DEBUG`
+    - Tableau logs are located at: `{user.home}/Documents/My Tableau Repository/Logs`
