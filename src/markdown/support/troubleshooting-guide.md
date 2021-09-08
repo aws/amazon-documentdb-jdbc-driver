@@ -203,7 +203,7 @@ manually delete the old schemas. Exercise caution with this method.
 
 When troubleshooting, it can be helpful to view the logs so that you might be able 
 to resolve the issue on your own or at least have more context to provide when seeking support. 
-The driver's logs will be written to `/.documentdb/logs/documentdb-jdbc.log`.
+The driver's logs will be written to `~/.documentdb/logs/documentdb-jdbc.log`.
 
 Many BI tools also provide an interface for users to easily view logs. Tableau, for example, 
 has [Tableau Log Viewer](https://github.com/tableau/tableau-log-viewer). 
