@@ -202,8 +202,8 @@ manually delete the old schemas. Exercise caution with this method.
 ## Logs
 
 When troubleshooting, it can be helpful to view the logs so that you might be able 
-to resolve the issue on your own or at least have more context to provide when seeking support.  
-The driver's logs will be written to `/tmp/logs/DocumentDB_JDBC.log`.
+to resolve the issue on your own or at least have more context to provide when seeking support. 
+The driver's logs will be written to `~/.documentdb/logs/documentdb-jdbc.log`.
 
 Many BI tools also provide an interface for users to easily view logs. Tableau, for example, 
 has [Tableau Log Viewer](https://github.com/tableau/tableau-log-viewer). 
@@ -212,3 +212,41 @@ under `Documents` although this may vary depending on how Tableau was installed.
 The JDBC driver's logs will be in the `jprotocolserver.log` file. 
 
 Refer to the documentation of your tool of choice for similar instructions.
+
+### Setting Logging Level and Location
+There are the following levels of logging:
+
+| Property Value | Description |
+|--------|-------------|
+| `FATAL` | Shows messages at a FATAL level only.|
+| `ERROR` | Shows messages classified as ERROR and FATAL.|
+| `WARNING` | Shows messages classified as WARNING, ERROR and FATAL.|
+| `INFO` | Shows messages classified as INFO, WARNING, ERROR and FATAL.|
+| `DEBUG` | Shows messages classified as DEBUG, INFO, WARNING, ERROR and FATAL.|
+| `TRACE` | Shows messages classified as TRACE, DEBUG, INFO, WARNING, ERROR and FATAL.|
+| `ALL` | Shows messages classified as TRACE, DEBUG, INFO, WARNING, ERROR and FATAL.|
+| `OFF` | No log messages displayed.|
+
+| Property Name | Description | Default |
+|--------|-------------|---------------|
+| `documentdb.jdbc.log.level` | The log level for all sources/appenders. | `INFO` |
+| `documentdb.jdbc.log.file.path` | The location for file logging. | `~/.documentdb/logs/documentdb-jdbc.log` |
+| `documentdb.jdbc.log.file.threshold` | The threshold for file logging. | `ALL` |
+| `documentdb.jdbc.log.console.threshold` | The threshold for console logging. | `ERROR` |
+
+To set these properties, use the `JAVA_TOOL_OPTIONS` environment variables with the following format 
+`-D<property-name>=<property-value>`. 
+
+For example:
+- In Windows:`set JAVA_TOOL_OPTIONS=-Ddocumentdb.jdbc.log.level=DEBUG`
+- In MacOS/Linux: `export JAVA_TOOL_OPTIONS=-Ddocumentdb.jdbc.log.level=DEBUG`
+    - Or in DbVisualizer Tools Properties (version 12.1.2 or later):
+        - `-Ddocumentdb.jdbc.log.level=DEBUG`
+        - `-Ddocumentdb.jdbc.log.console.threshold=ALL`
+        - Additionally the following files `slf4j-api.jar` and `slf4j-nop.jar` needs to be removed from the DbVisualizer 
+        `lib` folder.
+        
+- In Tableau, a parameter must be used in the command line or terminal:
+    - In Windows: `start "" "c:\program files\Tableau\Tableau [version]\bin\tableau.exe" -DLogLevel=DEBUG`
+    - In MacOS: `/Applications/Tableau\ Desktop\[version].app/Contents/MacOS/Tableau -DLogLevel=DEBUG`
+    - Tableau logs are located at: `{user.home}/Documents/My Tableau Repository/Logs`
