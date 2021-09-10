@@ -348,7 +348,7 @@ public class DocumentDbConnection extends Connection
             final JSch jSch) throws JSchException {
         final String privateKey = getPath(connectionProperties.getSshPrivateKeyFile()).toString();
         // If passPhrase protected, will need to provide this, too.
-        final String passPhrase = isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())
+        final String passPhrase = !isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())
                 ? connectionProperties.getSshPrivateKeyPassphrase()
                 : null;
         jSch.addIdentity(privateKey, passPhrase);
