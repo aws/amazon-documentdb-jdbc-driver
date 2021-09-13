@@ -16,7 +16,6 @@
 
 package software.amazon.documentdb.jdbc.persist;
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Streams;
 import com.mongodb.MongoException;
 import com.mongodb.client.ClientSession;
@@ -24,7 +23,6 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.UpdateOptions;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
@@ -45,14 +43,9 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
 import java.sql.SQLException;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Date;
-import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -64,7 +57,6 @@ import static com.mongodb.client.model.Updates.combine;
 import static com.mongodb.client.model.Updates.set;
 import static com.mongodb.client.model.Updates.setOnInsert;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NONE;
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.ID_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.MODIFY_DATE_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SCHEMA_NAME_PROPERTY;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SCHEMA_VERSION_PROPERTY;
@@ -141,22 +133,20 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
         final DocumentDbSchema latestSchema = getSchema(
                 schemaName, VERSION_LATEST_OR_NONE, database);
         final int schemaVersion = getSchemaVersion(schema, latestSchema) + 1;
-        final Set<String> tableReferences = getTableReferences(latestSchema);
+        final Set<String> tableReferences = tableSchemas.stream()
+                .map(DocumentDbSchemaTable::getId)
+                .collect(Collectors.toSet());
 
         // Determine which table references to update/delete.
         final MongoCollection<Document> tableSchemasCollection = database
                 .getCollection(TABLE_SCHEMA_COLLECTION);
-        final Map<String, String> tableMap = getExistingTableMap(
-                tableReferences, tableSchemasCollection);
-        final List<String> tableReferencesToDelete = resolveTableReferenceUpdates(
-                tableSchemas, tableReferences, tableMap);
 
         final boolean supportsMultiDocTransactions = supportsMultiDocTransactions(
                 client, database);
         runTransactedSession(
                 client,
                 supportsMultiDocTransactions,
-                session -> deleteAndUpsertSchemaHandleSecurityException(
+                session -> upsertSchemaHandleSecurityException(
                         session,
                         tableSchemasCollection,
                         database,
@@ -164,8 +154,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
                         schemaVersion,
                         schema,
                         tableSchemas,
-                        tableReferences,
-                        tableReferencesToDelete));
+                        tableReferences));
     }
 
     @Override
@@ -218,7 +207,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
     }
 
     @SneakyThrows
-    private void deleteAndUpsertSchemaHandleSecurityException(
+    private void upsertSchemaHandleSecurityException(
             final ClientSession session,
             final MongoCollection<Document> tableSchemasCollection,
             final MongoDatabase database,
@@ -226,20 +215,18 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
             final int schemaVersion,
             final DocumentDbSchema schema,
             final Collection<DocumentDbSchemaTable> tableSchemas,
-            final Set<String> tableReferences,
-            final List<String> tableReferencesToDelete) {
+            final Set<String> tableReferences) {
         final MongoCollection<DocumentDbSchema> schemaCollection = database
                 .getCollection(SCHEMA_COLLECTION, DocumentDbSchema.class);
         try {
-            deleteAndUpsertSchema(session,
+            upsertSchema(session,
                     schemaCollection,
                     tableSchemasCollection,
                     schemaName,
                     schemaVersion,
                     schema,
                     tableSchemas,
-                    tableReferences,
-                    tableReferencesToDelete);
+                    tableReferences);
         } catch (MongoException e) {
             if (isAuthorizationFailure(e)) {
                 throw new DocumentDbSchemaSecurityException(e.getMessage(), e);
@@ -301,7 +288,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
         upsertDatabaseSchema(session, schemasCollection, schema);
     }
 
-    private void deleteAndUpsertSchema(
+    private void upsertSchema(
             final ClientSession session,
             final MongoCollection<DocumentDbSchema> schemaCollection,
             final MongoCollection<Document> tableSchemasCollection,
@@ -309,10 +296,7 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
             final int schemaVersion,
             final DocumentDbSchema schema,
             final Collection<DocumentDbSchemaTable> tableSchemas,
-            final Set<String> tableReferences,
-            final List<String> tableReferencesToDelete) throws SQLException {
-        deletePreviousSchema(session, schemaCollection, tableSchemasCollection,
-                schemaName, tableReferencesToDelete);
+            final Set<String> tableReferences) throws SQLException {
         upsertNewSchema(session, schemaCollection, tableSchemasCollection, schemaName,
                 schemaVersion, schema, tableSchemas, tableReferences);
     }
@@ -321,15 +305,6 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
             throws DocumentDbSchemaSecurityException {
         createCollectionIfNotExists(database, SCHEMA_COLLECTION);
         createCollectionIfNotExists(database, TABLE_SCHEMA_COLLECTION);
-    }
-
-    private Map<String, String> getExistingTableMap(
-            final Set<String> tableReferences,
-            final MongoCollection<Document> tableSchemasCollection) {
-        return Lists.newArrayList(() ->
-                getTableSchemaSqlNames(tableSchemasCollection, tableReferences)).stream()
-                .collect(Collectors.toMap(
-                        t -> t.getString(SQL_NAME_PROPERTY), t -> t.getString(ID_PROPERTY)));
     }
 
     private void upsertNewSchema(
@@ -355,43 +330,6 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
         upsertDatabaseSchema(session, schemaCollection, newSchema);
     }
 
-    private void deletePreviousSchema(
-            final ClientSession session,
-            final MongoCollection<DocumentDbSchema> schemaCollection,
-            final MongoCollection<Document> tableSchemasCollection,
-            final String schemaName,
-            final List<String> tableReferencesToDelete) throws SQLException {
-        // Delete the table schema associated with this database schema.
-        deleteTableSchemas(session, tableSchemasCollection, tableReferencesToDelete);
-        // Delete existing schema
-        deleteDatabaseSchema(session, schemaCollection, schemaName, 0);
-    }
-
-    private List<String> resolveTableReferenceUpdates(
-            final Collection<DocumentDbSchemaTable> tableSchemas,
-            final Set<String> tableReferences,
-            final Map<String, String> tableMap) {
-        final List<String> tableReferencesToDelete = new ArrayList<>();
-        for (DocumentDbSchemaTable tableSchema : tableSchemas) {
-            if (tableMap.containsKey(tableSchema.getSqlName())) {
-                // remove existing
-                final String tableId = tableMap.get(tableSchema.getSqlName());
-                tableReferencesToDelete.add(tableId);
-                // update schema table references list
-                tableReferences.remove(tableId);
-            }
-            // write the table schema
-            tableReferences.add(tableSchema.getId());
-        }
-        return tableReferencesToDelete;
-    }
-
-    private HashSet<String> getTableReferences(final DocumentDbSchema latestSchema) {
-        return latestSchema != null
-                ? new HashSet<>(latestSchema.getTableReferences())
-                : new HashSet<>();
-    }
-
     private int getSchemaVersion(
             final DocumentDbSchema schema,
             final DocumentDbSchema latestSchema) {
@@ -403,21 +341,6 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
     static MongoDatabase getDatabase(final MongoClient client, final String databaseName) {
         return client.getDatabase(databaseName)
                 .withCodecRegistry(POJO_CODEC_REGISTRY);
-    }
-
-    private Iterator<Document> getTableSchemaSqlNames(
-            final MongoCollection<Document> tableSchemasCollection,
-            final Set<String> tableReferences) {
-        if (!tableReferences.isEmpty()) {
-            final List<Bson> idFilter = tableReferences.stream()
-                    .map(tableId -> eq("_id", tableId))
-                    .collect(Collectors.toList());
-            return tableSchemasCollection
-                    .find(or(idFilter))
-                    .projection(Projections.include(ID_PROPERTY, SQL_NAME_PROPERTY))
-                    .iterator();
-        }
-        return Collections.emptyIterator();
     }
 
     private static boolean supportsMultiDocTransactions(
