@@ -56,6 +56,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPropertiesFromConnectionString;
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.SCHEMA_TABLE_ID_SEPARATOR;
 
 class DocumentDbSchemaWriterTest {
     private static final String DATABASE_NAME = "testDb";
@@ -105,24 +106,49 @@ class DocumentDbSchemaWriterTest {
     @DisplayName("Tests updating table schema.")
     @ParameterizedTest(name = "testWriteTableSchema - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
-    void testWriteTableSchema(final DocumentDbTestEnvironment testEnvironment) throws SQLException, DocumentDbSchemaSecurityException {
+    void testWriteTableSchema(final DocumentDbTestEnvironment testEnvironment) throws Exception {
         final DocumentDbConnectionProperties properties = getConnectionProperties(testEnvironment);
         final String collectionName = "testWriteTableSchema";
         final Map<String, DocumentDbSchemaTable> metadata = getSchemaTableMap(collectionName);
         final DocumentDbSchema schema = new DocumentDbSchema(DATABASE_NAME, 1, metadata);
-        final SchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
-        writer.write(schema, schema.getTableMap().values());
+        final String newUuid = UUID.randomUUID().toString();
+        final String newSqlName = UUID.randomUUID().toString();
 
-        final DocumentDbSchemaTable schemaTable = schema.getTableMap().get(collectionName);
-        schemaTable.setUuid(UUID.randomUUID().toString());
-        writer.update(schema, Collections.singletonList(schemaTable));
+        try (SchemaWriter writer = new DocumentDbSchemaWriter(properties, null)) {
+            // Write initial schema
+            writer.write(schema, schema.getTableMap().values());
+
+            // Update the schema to create a new one.
+            final DocumentDbSchemaTable schemaTable = schema.getTableMap().get(collectionName);
+            schemaTable.setUuid(newUuid);
+            schemaTable.setSqlName(newSqlName);
+            writer.update(schema, Collections.singletonList(schemaTable));
+        }
+
+        // Ensure both versions exist.
+        try (SchemaReader reader = new DocumentDbSchemaReader(properties, null)) {
+            final DocumentDbSchema schema1 = reader.read(schema.getSchemaName(), 1);
+            Assertions.assertNotNull(schema1);
+            Assertions.assertEquals(schema, schema1);
+            Assertions.assertEquals(schema.getTableReferences().size(),
+                    schema1.getTableReferences().size());
+            Assertions.assertArrayEquals(
+                    schema.getTableReferences().toArray(new String[0]),
+                    schema1.getTableReferences().toArray(new String[0]));
+            final DocumentDbSchema schema2 = reader.read(schema.getSchemaName(), 2);
+            Assertions.assertNotNull(schema2);
+            Assertions.assertEquals(1, schema2.getTableReferences().size());
+            Assertions.assertEquals(
+                    newSqlName + SCHEMA_TABLE_ID_SEPARATOR + newUuid,
+                    schema2.getTableReferences().toArray(new String[0])[0]);
+        }
     }
 
     @DisplayName("Tests failing to write schema for restricted user.")
     @ParameterizedTest(name = "testWriteSchemaRestrictedUser - [{index}] - {arguments}")
     @MethodSource("getTestEnvironments")
     void testWriteSchemaRestrictedUser(final DocumentDbTestEnvironment testEnvironment)
-        throws SQLException, DocumentDbSchemaSecurityException {
+        throws SQLException {
 
         final DocumentDbConnectionProperties properties = getConnectionProperties(testEnvironment, true);
         final String collectionName = "testWriteTableSchema";
