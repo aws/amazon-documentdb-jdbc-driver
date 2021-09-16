@@ -225,10 +225,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                                     .resolvedPath(newKey)
                                     .build();
                     columnMap.put(newKey, newRightColumn);
-
-                    if (column.isIndex()) {
-                        resolutionNeedsUnwind = true;
-                    }
+                    resolutionNeedsUnwind = column.isIndex() || resolutionNeedsUnwind;
 
                     // Handle any column renames.
                     final String leftPath = DocumentDbRules.getPath(leftColumn, true);
@@ -532,7 +529,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                     .isIndex(oldColumn.isIndex())
                     .foreignKeyColumnName(oldColumn.getForeignKeyColumnName())
                     .foreignKeyTableName(oldColumn.getForeignKeyTableName())
-                    .resolvedPath(combinePath(rightMatches, entry.getValue().getFieldPath()))
+                    .resolvedPath(combinePath(rightMatches, DocumentDbRules.getPath(oldColumn, false)))
                     .build();
             columnMap.put(key, newColumn);
         }

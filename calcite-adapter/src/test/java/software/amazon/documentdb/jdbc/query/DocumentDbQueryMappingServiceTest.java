@@ -1236,7 +1236,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"field1\": \"$array.field1\", "
                                 + "\"field2\": \"$array.field2\", "
                                 + "\"otherTestCollection__id\": \"$otherTestCollection_otherArray._id\", "
-                                + "\"otherArray_index_lvl_0\": \"$otherArray_index_lvl_0\", "
+                                + "\"otherArray_index_lvl_0\": \"$otherTestCollection_otherArray.otherArray_index_lvl_0\", "
                                 + "\"field0\": \"$otherTestCollection_otherArray.otherArray.field\", "
                                 + "\"field3\": \"$otherTestCollection_otherArray.otherArray.field3\", "
                                 + "\"_id\": 0}}"),
@@ -1297,7 +1297,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"field1\": \"$array.field1\", "
                                 + "\"field2\": \"$array.field2\", "
                                 + "\"otherTestCollection__id\": \"$otherTestCollection_otherArray._id\", "
-                                + "\"otherArray_index_lvl_0\": \"$otherArray_index_lvl_0\", "
+                                + "\"otherArray_index_lvl_0\": \"$otherTestCollection_otherArray.otherArray_index_lvl_0\", "
                                 + "\"field0\": \"$otherTestCollection_otherArray.otherArray.field\", "
                                 + "\"field3\": \"$otherTestCollection_otherArray.otherArray.field3\", "
                                 + "\"_id\": 0}}"),

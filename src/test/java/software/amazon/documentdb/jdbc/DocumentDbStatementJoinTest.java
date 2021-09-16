@@ -1066,21 +1066,14 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
             final ResultSet resultSet1 =
                     statement.executeQuery(
                             String.format(
-                                    "SELECT * FROM \"%s\".\"%s\" "
-                                            + "LEFT OUTER JOIN \"%s\".\"%s\" "
-                                            + "ON \"%s\".\"%s\" = \"%s\".\"%s\" "
-                                            + "AND \"%s\".\"%s\" = \"%s\".\"%s\"",
+                                    "SELECT * FROM \"%1$s\".\"%2$s\" "
+                                            + "LEFT OUTER JOIN \"%1$s\".\"%3$s\" "
+                                            + "ON \"%2$s\".\"%4$s\" = \"%3$s\".\"%4$s\" "
+                                            + "AND \"%2$s\".\"%5$s\" = \"%3$s\".\"%5$s\"",
                                     getDatabaseName(),
                                     tableName + "_array",
-                                    getDatabaseName(),
-                                    tableName + "_array_field1",
-                                    tableName + "_array",
-                                    tableName + "__id",
                                     tableName + "_array_field1",
                                     tableName + "__id",
-                                    tableName + "_array",
-                                    "array_index_lvl_0",
-                                    tableName + "_array_field1",
                                     "array_index_lvl_0"));
             Assertions.assertNotNull(resultSet1);
             int rowCount = 0;
@@ -1093,21 +1086,14 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
             final ResultSet resultSet2 =
                     statement.executeQuery(
                             String.format(
-                                    "SELECT * FROM \"%s\".\"%s\" "
-                                            + "INNER JOIN \"%s\".\"%s\" "
-                                            + "ON \"%s\".\"%s\" = \"%s\".\"%s\" "
-                                            + "AND \"%s\".\"%s\" = \"%s\".\"%s\"",
+                                    "SELECT * FROM \"%1$s\".\"%2$s\" "
+                                            + "INNER JOIN \"%1$s\".\"%3$s\" "
+                                            + "ON \"%2$s\".\"%4$s\" = \"%3$s\".\"%4$s\" "
+                                            + "AND \"%2$s\".\"%5$s\" = \"%3$s\".\"%5$s\"",
                                     getDatabaseName(),
                                     tableName + "_array",
-                                    getDatabaseName(),
-                                    tableName + "_array_field1",
-                                    tableName + "_array",
-                                    tableName + "__id",
                                     tableName + "_array_field1",
                                     tableName + "__id",
-                                    tableName + "_array",
-                                    "array_index_lvl_0",
-                                    tableName + "_array_field1",
                                     "array_index_lvl_0"));
             Assertions.assertNotNull(resultSet2);
             rowCount = 0;
@@ -1122,27 +1108,16 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
             final ResultSet resultSet3 =
                     statement.executeQuery(
                             String.format(
-                                    "SELECT * FROM \"%s\".\"%s\" "
-                                            + "LEFT OUTER JOIN \"%s\".\"%s\" "
-                                            + "ON \"%s\".\"%s\" = \"%s\".\"%s\" "
-                                            + "AND \"%s\".\"%s\" = \"%s\".\"%s\""
-                                            + "WHERE \"%s\".\"%s\" IS NULL "
-                                            + "AND \"%s\".\"%s\" IS NULL ",
+                                    "SELECT * FROM \"%1$s\".\"%2$s\" "
+                                            + "LEFT OUTER JOIN \"%1$s\".\"%3$s\" "
+                                            + "ON \"%2$s\".\"%4$s\" = \"%3$s\".\"%4$s\" "
+                                            + "AND \"%2$s\".\"%5$s\" = \"%3$s\".\"%5$s\""
+                                            + "WHERE \"%3$s\".\"%4$s\" IS NULL "
+                                            + "AND \"%3$s\".\"%5$s\" IS NULL ",
                                     getDatabaseName(),
                                     tableName + "_array",
-                                    getDatabaseName(),
-                                    tableName + "_array_field1",
-                                    tableName + "_array",
-                                    tableName + "__id",
                                     tableName + "_array_field1",
                                     tableName + "__id",
-                                    tableName + "_array",
-                                    "array_index_lvl_0",
-                                    tableName + "_array_field1",
-                                    "array_index_lvl_0",
-                                    tableName + "_array_field1",
-                                    tableName + "__id",
-                                    tableName + "_array_field1",
                                     "array_index_lvl_0"));
             Assertions.assertNotNull(resultSet3);
             rowCount = 0;
