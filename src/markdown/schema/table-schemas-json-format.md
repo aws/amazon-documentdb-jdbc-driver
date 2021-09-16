@@ -31,9 +31,9 @@ The exported JSON format has the following characteristics:
     1. `foreignKeyColumnName` - (_optional_) The SQL column name of the foreign key.
        Values are _case-sensitive_. 
 
-Although you can add or remove any column as foreign key or as primary key,
+Although you can add or remove any column as primary or foreign key,
 it is not recommended and can generate unexpected behaviour. DocumentDb driver uses
-primary and foreign keys to validate same collection join.
+primary and foreign keys to validate and perform table joins from the same collection.
 
 ### Uniqueness Requirement
 
