@@ -97,7 +97,9 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
     }
 
     @Override public void implement(final Implementor implementor) {
+        final boolean isJoin = implementor.isJoin();
         implementor.visitChild(0, getInput());
+        implementor.setJoin(isJoin);
 
         // DocumentDB: modified - start
         final DocumentDbRel.Implementor mongoImplementor =

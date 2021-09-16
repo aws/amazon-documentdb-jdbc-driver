@@ -72,7 +72,9 @@ public class DocumentDbSort extends Sort implements DocumentDbRel {
     }
 
     @Override public void implement(final Implementor implementor) {
+        final boolean isJoin = implementor.isJoin();
         implementor.visitChild(0, getInput());
+        implementor.setJoin(isJoin);
         if (!collation.getFieldCollations().isEmpty()) {
             final List<String> keys = new ArrayList<>();
             for (RelFieldCollation fieldCollation : collation.getFieldCollations()) {
