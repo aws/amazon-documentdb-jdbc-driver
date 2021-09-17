@@ -37,7 +37,9 @@ import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbSchemaFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
+import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -1729,6 +1731,137 @@ class DocumentDbTableSchemaGeneratorTest {
                 .map(schemaColumn -> schemaColumn.getSqlName().length()
                         <= DEFAULT_IDENTIFIER_MAX_LENGTH)
                 .forEach(Assertions::assertTrue);
+    }
+
+    @DisplayName("Tests that even deeply nested documents and array have name length less than max.")
+    @Test
+    void testFinraIssue() {
+        final String documentString =
+                "{\n"
+                + "    \"_id\": {\n"
+                + "        \"$oid\": \"60b52ec9277981664d15378d\"\n"
+                + "    },\n"
+                + "    \"createdTimestamp\": {\n"
+                + "        \"$date\": \"2021-05-31T18:45:29.984Z\"\n"
+                + "    },\n"
+                + "    \"createdBy\": \"Trusted User\",\n"
+                + "    \"data\": {\n"
+                + "        \"_id\": {\n"
+                + "            \"$oid\": \"60b52ec7277981664d1536f1\"\n"
+                + "        },\n"
+                + "        \"id\": \"645d7431-8988-46ec-9619-2a6c23699c72\",\n"
+                + "        \"individualCrdNumber\": {\n"
+                + "            \"$numberLong\": \"4945896\"\n"
+                + "        },\n"
+                + "        \"instanceNumber\": {\n"
+                + "            \"$numberLong\": \"2\"\n"
+                + "        },\n"
+                + "        \"firmCrdNumber\": {\n"
+                + "            \"$numberLong\": \"79\"\n"
+                + "        },\n"
+                + "        \"lastReferencedFiling\": {},\n"
+                + "        \"employeeBillingCode\": \"JPM-JPMS\",\n"
+                + "        \"independentContractorFlag\": false,\n"
+                + "        \"status\": {\n"
+                + "            \"code\": \"ACTIVE\",\n"
+                + "            \"ruleTrace\": {\n"
+                + "                \"code\": \"EMPLOYMENT\"\n"
+                + "            },\n"
+                + "            \"startDate\": {\n"
+                + "                \"$date\": \"2005-09-19T04:00:00.000Z\"\n"
+                + "            }\n"
+                + "        },\n"
+                + "        \"roles\": [],\n"
+                + "        \"locations\": [{\n"
+                + "                \"_id\": \"68528a92-6bc2-45f5-9ff4-0317ce99f8f0\",\n"
+                + "                \"typeCode\": \"LOCATEDAT\",\n"
+                + "                \"primary\": {\n"
+                + "                    \"flag\": false,\n"
+                + "                    \"ruleTrace\": {}\n"
+                + "                },\n"
+                + "                \"roleCode\": \"STAFF\",\n"
+                + "                \"startDate\": {\n"
+                + "                    \"$date\": \"2005-09-19T04:00:00.000Z\"\n"
+                + "                },\n"
+                + "                \"endDate\": {\n"
+                + "                    \"$date\": \"2006-05-10T04:00:00.000Z\"\n"
+                + "                },\n"
+                + "                \"nonRegisteredBranch\": {\n"
+                + "                    \"privateResidenceFlag\": false,\n"
+                + "                    \"firmBillingCode\": \"920\",\n"
+                + "                    \"address\": {\n"
+                + "                        \"addressLine1\": \"ONE FEDERAL STREET, 29TH FLOOR\",\n"
+                + "                        \"cityName\": \"BOSTON\",\n"
+                + "                        \"countryCode\": \"USA\",\n"
+                + "                        \"postalCode\": \"02110\",\n"
+                + "                        \"stateCode\": \"MA\"\n"
+                + "                    }\n"
+                + "                }\n"
+                + "            }, {\n"
+                + "                \"_id\": \"ceda889f-8cf4-4f0c-8fb2-e8cfbbcfb796\",\n"
+                + "                \"typeCode\": \"LOCATEDAT\",\n"
+                + "                \"primary\": {\n"
+                + "                    \"flag\": true,\n"
+                + "                    \"ruleTrace\": {\n"
+                + "                        \"code\": \"SET_PRIMARY_LOC_REGISTERED_LOCATED_AT_02\"\n"
+                + "                    }\n"
+                + "                },\n"
+                + "                \"roleCode\": \"STAFF\",\n"
+                + "                \"startDate\": {\n"
+                + "                    \"$date\": \"2005-09-19T04:00:00.000Z\"\n"
+                + "                },\n"
+                + "                \"branchCrdNumber\": {\n"
+                + "                    \"$numberLong\": \"116402\"\n"
+                + "                }\n"
+                + "            }\n"
+                + "        ],\n"
+                + "        \"fingerprint\": {\n"
+                + "            \"classification\": \"PRVD\",\n"
+                + "            \"cards\": [{\n"
+                + "                    \"_id\": \"b9796e19-0ec1-4086-9cfc-0688839c63eb\",\n"
+                + "                    \"ruleTrace\": {\n"
+                + "                        \"code\": \"EMPLOYMENT_FINGERPRINT_ASSOCIATION_03\"\n"
+                + "                    }\n"
+                + "                }\n"
+                + "            ]\n"
+                + "        },\n"
+                + "        \"version\": {\n"
+                + "            \"$numberLong\": \"1\"\n"
+                + "        },\n"
+                + "        \"createdTimestamp\": {\n"
+                + "            \"$date\": \"2021-05-31T18:45:29.984Z\"\n"
+                + "        },\n"
+                + "        \"createdBy\": \"Trusted User\",\n"
+                + "        \"lastModifiedTimestamp\": {\n"
+                + "            \"$date\": \"2021-05-31T18:45:29.984Z\"\n"
+                + "        },\n"
+                + "        \"lastModifiedBy\": \"Trusted User\"\n"
+                + "    },\n"
+                + "    \"_class\": \"org.finra.lara.domain.registration.model.EmploymentHistoryEntity\"\n"
+                + "}\n";
+        final BsonDocument doc = BsonDocument.parse(documentString);
+        final Map<String, DocumentDbSchemaTable> tableMap = DocumentDbTableSchemaGenerator
+                .generate("employmentHistory", Collections.singleton(doc).iterator());
+        // Ensure index column is correctly generated
+        Assertions.assertEquals(14, tableMap.size());
+        final DocumentDbSchemaTable table1 = tableMap.get("employmentHistory_data_locations");
+        Assertions.assertNotNull(table1);
+        Assertions.assertNotNull(table1.getColumnMap().get("data_locations_index_lvl_0"));
+        final DocumentDbSchemaTable table2 = tableMap.get("employmentHistory_data_locations_primary");
+        Assertions.assertNotNull(table2);
+        Assertions.assertNotNull(table2.getColumnMap().get("data_locations_index_lvl_0"));
+        final DocumentDbSchemaTable table3 = tableMap.get("employmentHistory_data_locations_nonRegisteredBranch");
+        Assertions.assertNotNull(table3);
+        Assertions.assertNotNull(table3.getColumnMap().get("data_locations_index_lvl_0"));
+        final DocumentDbSchemaTable table4 = tableMap.get("employmentHistory_data_locations_nonRegisteredBranch_address");
+        Assertions.assertNotNull(table4);
+        Assertions.assertNotNull(table4.getColumnMap().get("data_locations_index_lvl_0"));
+        final DocumentDbSchemaTable table5 = tableMap.get("employmentHistory_data_fingerprint_cards");
+        Assertions.assertNotNull(table5);
+        Assertions.assertNotNull(table5.getColumnMap().get("data_fingerprint_cards_index_lvl_0"));
+        final DocumentDbSchemaTable table6 = tableMap.get("employmentHistory_data_fingerprint_cards_ruleTrace");
+        Assertions.assertNotNull(table6);
+        Assertions.assertNotNull(table6.getColumnMap().get("data_fingerprint_cards_index_lvl_0"));
     }
 
     private boolean producesVirtualTable(final BsonType bsonType, final BsonType nextBsonType) {
