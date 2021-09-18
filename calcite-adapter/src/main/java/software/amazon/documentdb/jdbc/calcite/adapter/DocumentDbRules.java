@@ -148,12 +148,12 @@ public final class DocumentDbRules {
 
     static String getPath(final DocumentDbSchemaColumn column, final boolean useOriginalPaths) {
         final String path;
-        if (column.isIndex()) {
-            path = column.getSqlName();
-        } else if (column instanceof DocumentDbMetadataColumn
+        if (column instanceof DocumentDbMetadataColumn
                 && (!isNullOrWhitespace(((DocumentDbMetadataColumn) column).getResolvedPath())
                 && !useOriginalPaths)) {
             path = ((DocumentDbMetadataColumn) column).getResolvedPath();
+        } else if (column.isIndex()) {
+            path = column.getSqlName();
         } else {
             path = column.getFieldPath();
         }

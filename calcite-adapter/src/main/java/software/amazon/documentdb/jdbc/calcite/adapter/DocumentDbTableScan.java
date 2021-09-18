@@ -124,8 +124,15 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
                 arrayPath = "$" + arrayPath;
                 opts.includeArrayIndex(indexName);
                 opts.preserveNullAndEmptyArrays(true);
-                implementor.add(null, String.valueOf(Aggregates.unwind(arrayPath, opts)));
+                implementor.addUnwind(String.valueOf(Aggregates.unwind(arrayPath, opts)));
             }
+        }
+
+        // Filter out any rows for which the table does not exist.
+        final String matchFilter = DocumentDbJoin
+                .buildFieldsExistMatchFilter(DocumentDbJoin.getFilterColumns(metadataTable));
+        if (matchFilter != null && DocumentDbJoin.isTableVirtual(metadataTable)) {
+            implementor.setVirtualTableFilter(matchFilter);
         }
     }
 }
