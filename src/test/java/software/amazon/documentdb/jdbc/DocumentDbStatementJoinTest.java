@@ -93,6 +93,76 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         }
     }
 
+    /**
+     * Test querying for a virtual table from a doubly nested document.
+     *
+     * @throws SQLException occurs if executing the statement or retrieving a value fails.
+     */
+    @DisplayName("Test querying for a virtual table from a doubly nested document.")
+    @ParameterizedTest(name = "testQueryWithThreeLevelDocument - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithThreeLevelDocument(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final BsonDocument document =
+                BsonDocument.parse(
+                        "{ \"_id\" : \"key\", \"doc\" : { \"field\" : 1, \"doc2\" : { \"field2\" : \"value\" } } }");
+        insertBsonDocuments(
+                "testComplex3LevelDocument", new BsonDocument[]{document});
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+
+            // Verify the base table.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testComplex3LevelDocument"));
+            Assertions.assertNotNull(resultSet1);
+
+            // Verify the nested table from the field doc.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"", getDatabaseName(),
+                                    "testComplex3LevelDocument_doc"));
+            Assertions.assertNotNull(resultSet2);
+
+            // Verify the nested table from the field doc2 from the field doc.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), "testComplex3LevelDocument_doc_doc2"));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertTrue(resultSet3.next());
+            Assertions.assertEquals("key", resultSet3.getString("testComplex3LevelDocument__id"));
+            Assertions.assertEquals("value", resultSet3.getString("field2"));
+
+            // Verify JOIN on the 3 tables to produce 5 columns and 1 row.
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%s\".\"%s\" "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s "
+                                            + "INNER JOIN \"%s\".\"%s\" "
+                                            + "ON %s = %s",
+                                    getDatabaseName(), "testComplex3LevelDocument",
+                                    getDatabaseName(), "testComplex3LevelDocument_doc",
+                                    "\"testComplex3LevelDocument\".\"testComplex3LevelDocument__id\"",
+                                    "\"testComplex3LevelDocument_doc\".\"testComplex3LevelDocument__id\"",
+                                    getDatabaseName(), "testComplex3LevelDocument_doc_doc2",
+                                    "\"testComplex3LevelDocument_doc\".\"testComplex3LevelDocument__id\"",
+                                    "\"testComplex3LevelDocument_doc_doc2\".\"testComplex3LevelDocument__id\""));
+            Assertions.assertNotNull(resultSet4);
+            Assertions.assertEquals(5, resultSet4.getMetaData().getColumnCount());
+            int rowCount = 0;
+            while (resultSet4.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(1, rowCount);
+        }
+    }
 
     /**
      * Test querying for a virtual table from a nested scalar array.

@@ -81,9 +81,7 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
 
     @Override
     public void implement(final Implementor implementor) {
-        final boolean isJoin = implementor.isJoin();
         implementor.visitChild(0, getInput());
-        implementor.setJoin(isJoin);
         // DocumentDB: modified - start
         final DocumentDbRel.Implementor mongoImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());

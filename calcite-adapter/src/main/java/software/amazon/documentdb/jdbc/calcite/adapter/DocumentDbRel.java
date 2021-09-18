@@ -122,7 +122,9 @@ public interface DocumentDbRel extends RelNode {
 
         public void visitChild(final int ordinal, final RelNode input) {
             assert ordinal == 0;
+            final boolean isJoin = isJoin();
             ((DocumentDbRel) input).implement(this);
+            setJoin(isJoin);
         }
     }
 }

@@ -120,9 +120,7 @@ public class DocumentDbAggregate
     }
 
     @Override public void implement(final Implementor implementor) {
-        final boolean isJoin = implementor.isJoin();
         implementor.visitChild(0, getInput());
-        implementor.setJoin(isJoin);
         final List<String> list = new ArrayList<>();
         final DocumentDbRel.Implementor mongoImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
