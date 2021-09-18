@@ -43,8 +43,8 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRel.Implementor;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 import java.util.AbstractList;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -158,19 +158,29 @@ public class DocumentDbToEnumerableConverter
     }
 
     /**
-     * Adds aggregation stage to handle virtual tables that may be null.
+     * Adds aggregation stage to handle virtual tables.
      * @param implementor the implementor.
      */
     public static void handleVirtualTable(final Implementor implementor) {
-        final DocumentDbSchemaTable tableMetadata = implementor.getMetadataTable();
-        // Add a match operation if it is a virtual table to remove null rows.
-        if (!implementor.isNullFiltered() && DocumentDbJoin.isTableVirtual(tableMetadata)) {
-            final String matchFilter = DocumentDbJoin
-                    .buildFieldsExistMatchFilter(DocumentDbJoin.getFilterColumns(tableMetadata));
-            if (matchFilter != null) {
-                implementor.add(0, null, matchFilter);
-            }
+        final List<Pair<String, String>> stages = new ArrayList<>();
+
+        // Add the column resolutions and any unwinds.
+        // Order depends on whether the resolution relies on any unwound columns.
+        if (implementor.isResolutionNeedsUnwind()) {
+            implementor.getUnwinds().forEach(op -> stages.add(Pair.of(null, op)));
+            implementor.getCollisionResolutions().forEach(op -> stages.add(Pair.of(null, op)));
+        } else {
+            implementor.getCollisionResolutions().forEach(op -> stages.add(Pair.of(null, op)));
+            implementor.getUnwinds().forEach(op -> stages.add(Pair.of(null, op)));
+        }
+
+        // Add filter to remove purely null rows. Skipped if any joins were done beforehand.
+        if (!implementor.isNullFiltered() && implementor.getVirtualTableFilter() != null) {
+            stages.add(Pair.of(null, implementor.getVirtualTableFilter()));
         }
         implementor.setNullFiltered(true);
+
+        stages.addAll(implementor.getList());
+        implementor.setList(stages);
     }
 }

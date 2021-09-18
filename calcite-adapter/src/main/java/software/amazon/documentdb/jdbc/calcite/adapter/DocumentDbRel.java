@@ -44,14 +44,19 @@ public interface DocumentDbRel extends RelNode {
      * {@link DocumentDbRel} nodes into a MongoDB query. */
     class Implementor {
 
+        // DocumentDB: modified - start
         private List<Pair<String, String>> list = new ArrayList<>();
         private final RexBuilder rexBuilder;
         private RelOptTable table;
-        // DocumentDB: modified - start
         private DocumentDbSchemaTable metadataTable;
         private DocumentDbTable documentDbTable;
+        private List<String> unwinds = new ArrayList<>();
+        private List<String> collisionResolutions = new ArrayList<>();
+        private String virtualTableFilter;
         private boolean nullFiltered = false;
         private boolean join = false;
+        private boolean resolutionNeedsUnwind = false;
+
         // DocumentDB: modified - end
 
         public List<Pair<String, String>> getList() {
@@ -101,6 +106,39 @@ public interface DocumentDbRel extends RelNode {
 
         public void add(final int index, final String findOp, final String aggOp) {
             list.add(index, Pair.of(findOp, aggOp));
+        }
+
+        public void addUnwind(final String op) {
+            unwinds.add(op);
+
+        }
+
+        public List<String> getUnwinds() {
+            return unwinds;
+        }
+
+        public void setVirtualTableFilter(final String op) {
+            this.virtualTableFilter = op;
+        }
+
+        public String getVirtualTableFilter() {
+            return virtualTableFilter;
+        }
+
+        public void addCollisionResolution(final String op) {
+            collisionResolutions.add(op);
+        }
+
+        public List<String> getCollisionResolutions() {
+            return collisionResolutions;
+        }
+
+        public void setResolutionNeedsUnwind(final boolean resolutionNeedsUnwind) {
+            this.resolutionNeedsUnwind = resolutionNeedsUnwind;
+        }
+
+        public boolean isResolutionNeedsUnwind() {
+            return resolutionNeedsUnwind;
         }
 
         public boolean isNullFiltered() {

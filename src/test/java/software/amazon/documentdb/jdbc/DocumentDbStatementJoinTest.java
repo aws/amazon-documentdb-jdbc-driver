@@ -1048,6 +1048,87 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         }
     }
 
+    @DisplayName("Tests joins with array of two level documents.")
+    @ParameterizedTest(name = "testQueryWithArrayOfTwoLevelDocuments - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryWithArrayOfTwoLevelDocuments(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryWithArrayOfTwoLevelDocuments";
+        final BsonDocument document =
+                BsonDocument.parse(
+                        "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": { \"field2\" : 2, \"field3\" : \"value\" } }, { \"field\" : 1 } ]}");
+        insertBsonDocuments(
+                tableName, new BsonDocument[]{document});
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+
+            // Verify LEFT OUTER JOIN on the nested table and 2nd nested table to produce 2 rows.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%1$s\".\"%2$s\" "
+                                            + "LEFT OUTER JOIN \"%1$s\".\"%3$s\" "
+                                            + "ON \"%2$s\".\"%4$s\" = \"%3$s\".\"%4$s\" "
+                                            + "AND \"%2$s\".\"%5$s\" = \"%3$s\".\"%5$s\"",
+                                    getDatabaseName(),
+                                    tableName + "_array",
+                                    tableName + "_array_field1",
+                                    tableName + "__id",
+                                    "array_index_lvl_0"));
+            Assertions.assertNotNull(resultSet1);
+            int rowCount = 0;
+            while (resultSet1.next()) {
+                rowCount++;
+            }
+            Assertions.assertEquals(2, rowCount);
+
+            // Verify INNER JOIN on the nested table and 2nd nested table to produce 1 row.
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%1$s\".\"%2$s\" "
+                                            + "INNER JOIN \"%1$s\".\"%3$s\" "
+                                            + "ON \"%2$s\".\"%4$s\" = \"%3$s\".\"%4$s\" "
+                                            + "AND \"%2$s\".\"%5$s\" = \"%3$s\".\"%5$s\"",
+                                    getDatabaseName(),
+                                    tableName + "_array",
+                                    tableName + "_array_field1",
+                                    tableName + "__id",
+                                    "array_index_lvl_0"));
+            Assertions.assertNotNull(resultSet2);
+            rowCount = 0;
+            while (resultSet2.next()) {
+                Assertions.assertEquals("key", resultSet2.getString(tableName + "__id0"));
+                Assertions.assertEquals(0, resultSet2.getInt("array_index_lvl_00"));
+                rowCount++;
+            }
+            Assertions.assertEquals(1, rowCount);
+
+            // Verify LEFT OUTER JOIN on the nested table and 2nd nested table with filter to produce 1 row.
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * FROM \"%1$s\".\"%2$s\" "
+                                            + "LEFT OUTER JOIN \"%1$s\".\"%3$s\" "
+                                            + "ON \"%2$s\".\"%4$s\" = \"%3$s\".\"%4$s\" "
+                                            + "AND \"%2$s\".\"%5$s\" = \"%3$s\".\"%5$s\""
+                                            + "WHERE \"%3$s\".\"%4$s\" IS NULL "
+                                            + "AND \"%3$s\".\"%5$s\" IS NULL ",
+                                    getDatabaseName(),
+                                    tableName + "_array",
+                                    tableName + "_array_field1",
+                                    tableName + "__id",
+                                    "array_index_lvl_0"));
+            Assertions.assertNotNull(resultSet3);
+            rowCount = 0;
+            while (resultSet3.next()) {
+                Assertions.assertNull(resultSet3.getString(tableName + "__id0"));
+                rowCount++;
+            }
+            Assertions.assertEquals(1, rowCount);
+        }
+    }
+
     @DisplayName("Test adding filter after doing multiple joins.")
     @ParameterizedTest(name = "testFilterWithMultipleJoins - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
