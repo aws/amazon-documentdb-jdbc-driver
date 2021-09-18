@@ -1128,4 +1128,42 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
             Assertions.assertEquals(1, rowCount);
         }
     }
+
+    @DisplayName("Test adding filter after doing multiple joins.")
+    @ParameterizedTest(name = "testFilterWithMultipleJoins - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testFilterWithMultipleJoins(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testFilterWithMultipleJoins";
+        final BsonDocument document1 =
+                BsonDocument.parse(
+                        "{ \"_id\" : \"key1\",  \"document\": { \"field\": 1, \"array\" : [ 1, 2, 3 ] } }");
+        final BsonDocument document2 =
+                BsonDocument.parse(
+                        "{ \"_id\" : \"key2\",  \"document\": { \"field\": 2, \"array\" : [ 4, 5, 6 ] } }");
+        insertBsonDocuments(tableName, new BsonDocument[]{document1, document2});
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+
+            final ResultSet resultSet =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT \"%1$s\".\"%1$s__id\", \"%2$s\".\"field\" "
+                                            + "FROM \"%3$s\".\"%1$s\" "
+                                            + "LEFT OUTER JOIN \"%3$s\".\"%4$s\" "
+                                            + "ON \"%1$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\""
+                                            + "LEFT OUTER JOIN \"%3$s\".\"%2$s\" "
+                                            + "ON \"%1$s\".\"%1$s__id\" = \"%2$s\".\"%1$s__id\" "
+                                            + "WHERE \"%4$s\".\"value\" = 1",
+                                    tableName,
+                                    tableName + "_document",
+                                    getDatabaseName(),
+                                    tableName + "_document_array"));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertEquals(2, resultSet.getMetaData().getColumnCount());
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(1, resultSet.getInt(2));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
 }
