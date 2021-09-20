@@ -371,11 +371,12 @@ public class DocumentDbTableSchemaGenerator {
             final String indexColumnName = toName(
                     combinePath(path, INDEX_COLUMN_NAME_PREFIX + level),
                     columnNameMap);
+            final DocumentDbMetadataColumn indexColumn;
             if (!columnMap.containsKey(indexColumnName)) {
                 // Add index column. Although it has no path in the original document, we will
                 // use the path of the generated index field once the original document is unwound.
                 primaryKeyColumn++;
-                metadataColumn = DocumentDbMetadataColumn
+                indexColumn = DocumentDbMetadataColumn
                         .builder()
                         .sqlName(indexColumnName)
                         .fieldPath(path)  // Once unwound, the index will be at root level so path = name.
@@ -389,9 +390,13 @@ public class DocumentDbTableSchemaGenerator {
                         .arrayIndexLevel(level)
                         .isGenerated(true)
                         .build();
-                columnMap.put(metadataColumn.getSqlName(), metadataColumn);
-                foreignKeys.add(metadataColumn);
+                columnMap.put(indexColumn.getSqlName(), indexColumn);
+            } else {
+                // Cast exception should not occur, because we are always creating DocumentDbMetadataColumn.
+                indexColumn = (DocumentDbMetadataColumn) columnMap.get(indexColumnName);
             }
+            // Add index column to foreign keys
+            foreignKeys.add(indexColumn);
         }
 
         // Add documents, arrays or just the scalar value.
@@ -450,7 +455,7 @@ public class DocumentDbTableSchemaGenerator {
                 Collectors.toMap(
                         DocumentDbSchemaColumn::getSqlName,
                         DocumentDbSchemaColumn::getSqlName));
-        // Get column if it already exists so we can preserve index order.
+        // Get column if it already exists, so we can preserve index order.
         final String valueColumnName = toName(VALUE_COLUMN_NAME, columnNameMap);
         final DocumentDbMetadataColumn prevMetadataColumn = (DocumentDbMetadataColumn) columnMap
                 .get(valueColumnName);
