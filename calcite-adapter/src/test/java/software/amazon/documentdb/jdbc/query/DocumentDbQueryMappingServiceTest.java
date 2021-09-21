@@ -1879,4 +1879,130 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(1));
     }
+
+    @Test
+    @DisplayName("Tests $limit is produced when max rows is passed.")
+    void testOrderByWithMaxRows() throws SQLException {
+        final String queryWithAscendingSort =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" ORDER BY \"%s\" ASC",
+                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+        final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": ["
+                                + "{\"array.field\": {\"$exists\": true}}, "
+                                + "{\"array.field1\": {\"$exists\": true}}, "
+                                + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": "
+                                + "{\"testCollection__id\": \"$_id\", "
+                                + "\"array_index_lvl_0\": \"$array_index_lvl_0\", "
+                                + "\"field\": \"$array.field\", "
+                                + "\"field1\": \"$array.field1\", "
+                                + "\"field2\": \"$array.field2\", "
+                                + "\"_id\": 0}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests $limit is produced when max rows is passed.")
+    void testOrderByWithMaxRowsandLimit() throws SQLException {
+        final String queryWithAscendingSort =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" ORDER BY \"%s\" ASC LIMIT 5",
+                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+        final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": ["
+                                + "{\"array.field\": {\"$exists\": true}}, "
+                                + "{\"array.field1\": {\"$exists\": true}}, "
+                                + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": "
+                                + "{\"testCollection__id\": \"$_id\", "
+                                + "\"array_index_lvl_0\": \"$array_index_lvl_0\", "
+                                + "\"field\": \"$array.field\", "
+                                + "\"field1\": \"$array.field1\", "
+                                + "\"field2\": \"$array.field2\", "
+                                + "\"_id\": 0}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 5}"), result.getAggregateOperations().get(4));
+    }
+
+    @Test
+    @DisplayName("Tests $limit is produced when max rows is passed.")
+    void testOrderByWithMaxRowsAndInnerLimit() throws SQLException {
+        final String queryWithAscendingSort =
+                String.format(
+                        "SELECT * FROM ( SELECT * FROM \"%s\".\"%s\" LIMIT 20 ) ORDER BY \"%s\" ASC",
+                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+        final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": ["
+                                + "{\"array.field\": {\"$exists\": true}}, "
+                                + "{\"array.field1\": {\"$exists\": true}}, "
+                                + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": "
+                                + "{\"testCollection__id\": \"$_id\", "
+                                + "\"array_index_lvl_0\": \"$array_index_lvl_0\", "
+                                + "\"field\": \"$array.field\", "
+                                + "\"field1\": \"$array.field1\", "
+                                + "\"field2\": \"$array.field2\", "
+                                + "\"_id\": 0}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 5}"), result.getAggregateOperations().get(4));
+    }
 }
