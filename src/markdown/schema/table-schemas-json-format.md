@@ -23,13 +23,20 @@ The exported JSON format has the following characteristics:
        Allowed values: `"binary"`,`"boolean"`,`"date_time"`,`"decimal128"`,`"double"`,`"int32"`,`"int64"`,
       `"max_key"`,`"min_key"`,`"null"`,`"object_id"`,`"string"`. 
        At this time, the query engine ignores this value. It is recommended to not change this value
-       from the generated value. 
+       from the generated value.
+    1. `isIndex` - (optional) The indicator of whether the column is an index for the underlying array. 
+       Allowed values: true or false.   
     1. `isPrimaryKey` - (_optional_) A boolean indicator of whether the column is part of the 
        primary key for this table. Allowed values: `true` or `false`.
     1. `foreignKeyTableName` - (_optional_) The SQL table name of the foreign key.
        Values are _case-sensitive_.
     1. `foreignKeyColumnName` - (_optional_) The SQL column name of the foreign key.
        Values are _case-sensitive_.
+    
+
+Although you can add or remove any column as primary or foreign key,
+it is not recommended and can generate unexpected behaviour. DocumentDb driver uses
+primary and foreign keys to validate and perform table joins from the same collection.
 
 ### Uniqueness Requirement
 
