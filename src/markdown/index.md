@@ -14,6 +14,7 @@ This project is licensed under the Apache-2.0 License.
 - Setup
     - [Amazon DocumentDB JDBC Driver Setup](setup/setup.md)
     - [Connection String Syntax and Options](setup/connection-string.md)
+    - [Maintaining the Known Hosts File](setup/maintain_known_hosts.md)
 - Managing Schema
     - [Schema Discovery and Generation](schema/schema-discovery.md)
     - [Managing Schema Using the Command Line Interface](schema/manage-schema-cli.md)
