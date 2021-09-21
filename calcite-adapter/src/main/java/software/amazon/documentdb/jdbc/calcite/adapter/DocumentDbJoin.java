@@ -46,6 +46,8 @@ import org.apache.calcite.util.JsonBuilder;
 import org.apache.calcite.util.Pair;
 import org.apache.calcite.util.Util;
 import org.checkerframework.checker.nullness.qual.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
@@ -71,6 +73,9 @@ import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGene
  * Implementation of {@link Join} in DocumentDb.
  */
 public class DocumentDbJoin extends Join implements DocumentDbRel {
+
+    private static final Logger LOGGER =
+            LoggerFactory.getLogger(DocumentDbJoin.class.getName());
 
     /**
      * Creates a new {@link DocumentDbJoin}
@@ -115,6 +120,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
     @Override
     public void implement(final Implementor implementor) {
         // Visit all nodes to the left of the join.
+        implementor.setJoin(true);
         implementor.visitChild(0, getLeft());
         final DocumentDbTable leftTable = implementor.getDocumentDbTable();
         final DocumentDbSchemaTable leftMetadata = implementor.getMetadataTable();
@@ -123,6 +129,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // This implementor can contain operations specific to the right.
         final DocumentDbRel.Implementor rightImplementor =
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
+        rightImplementor.setJoin(true);
         rightImplementor.visitChild(0, getRight());
         final DocumentDbTable rightTable = rightImplementor.getDocumentDbTable();
         final DocumentDbSchemaTable rightMetadata = rightImplementor.getMetadataTable();
@@ -143,6 +150,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                     leftMetadata,
                     rightMetadata);
         }
+        implementor.setJoin(false);
     }
 
     /**
@@ -165,9 +173,8 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             final DocumentDbSchemaTable leftTable,
             final DocumentDbSchemaTable rightTable) {
         validateSameCollectionJoin(leftTable, rightTable);
-
-        // Add remaining operations from the right.
-        rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));
+        final List<Pair<String, String>> leftList = implementor.getList();
+        implementor.setList(new ArrayList<>());
 
         // Eliminate null (i.e. "unmatched") rows from any virtual tables based on join type.
         // If an inner join, eliminate any null rows from either table.
@@ -179,6 +186,82 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         final Supplier<String> rightFilter = () -> buildFieldsExistMatchFilter(rightFilterColumns);
         final String filterLeft;
         final String filterRight;
+
+        final boolean rightIsVirtual = isTableVirtual(rightTable);
+        final boolean leftIsVirtual = isTableVirtual(leftTable);
+
+        // Filter out unneeded columns from the left and right sides.
+        final Map<String, DocumentDbSchemaColumn> leftColumns = getRequiredColumns(leftTable, this::getLeft);
+        final Map<String, DocumentDbSchemaColumn> rightColumns = getRequiredColumns(rightTable, this::getRight);
+
+        // Create a new metadata table representing the denormalized form that will be used
+        // in later parts of the query. Resolve collisions from the right table.
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(leftColumns);
+        final List<String> resolutions = new ArrayList<>();
+        boolean resolutionNeedsUnwind = implementor.isResolutionNeedsUnwind() || rightImplementor.isResolutionNeedsUnwind();
+        final Set<String> usedKeys = new LinkedHashSet<>(columnMap.keySet());
+        for (Entry<String, DocumentDbSchemaColumn> entry : rightColumns.entrySet()) {
+            final String key = entry.getKey();
+            if (columnMap.containsKey(key)) {
+                final String newKey =
+                        SqlValidatorUtil.uniquify(key, usedKeys, SqlValidatorUtil.EXPR_SUGGESTER);
+                final DocumentDbSchemaColumn leftColumn = columnMap.get(key);
+
+                // If the columns correspond to the same field, they may have different values depending on
+                // join type. Create a new column and add a new field.
+                if (entry.getValue().getFieldPath().equals(leftColumn.getFieldPath())) {
+                    columnMap.put(newKey, entry.getValue());
+                    final DocumentDbSchemaColumn column = entry.getValue();
+                    final DocumentDbSchemaColumn newRightColumn =
+                            DocumentDbMetadataColumn.builder()
+                                    .fieldPath(column.getFieldPath())
+                                    .sqlName(newKey)
+                                    .sqlType(column.getSqlType())
+                                    .dbType(column.getDbType())
+                                    .isIndex(column.isIndex())
+                                    .isPrimaryKey(column.isPrimaryKey())
+                                    .foreignKeyTableName(column.getForeignKeyTableName())
+                                    .foreignKeyColumnName(column.getForeignKeyColumnName())
+                                    .resolvedPath(newKey)
+                                    .build();
+                    columnMap.put(newKey, newRightColumn);
+                    resolutionNeedsUnwind = column.isIndex() || resolutionNeedsUnwind;
+
+                    // Handle any column renames.
+                    final String leftPath = DocumentDbRules.getPath(leftColumn, true);
+                    final String rightPath = DocumentDbRules.getPath(entry.getValue(), true);
+                    handleColumnRename(
+                            resolutions, newKey, rightPath, rightIsVirtual, rightFilterColumns);
+                    handleColumnRename(
+                            resolutions,
+                            leftPath,
+                            leftPath,
+                            leftIsVirtual,
+                            leftFilterColumns);
+                } else {
+                    columnMap.put(newKey, entry.getValue());
+                }
+            } else {
+                columnMap.put(key, entry.getValue());
+            }
+        }
+
+        implementor.setResolutionNeedsUnwind(resolutionNeedsUnwind);
+
+        // Add any unwinds from the right.
+        rightImplementor.getUnwinds().forEach(op -> {
+            if (!implementor.getUnwinds().contains(op)) {
+               implementor.addUnwind(op);
+            }
+        });
+
+        // Add the renames.
+        if (!resolutions.isEmpty()) {
+            final String newFields = Util.toString(resolutions, "{", ", ", "}");
+            final String aggregateString = "{ $addFields : " + newFields + "}";
+           implementor.addCollisionResolution(aggregateString);
+        }
+
         switch (getJoinType()) {
             case INNER:
                 filterLeft = leftFilter.get();
@@ -203,60 +286,10 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                         SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
         }
 
-        final boolean rightIsVirtual = isTableVirtual(rightTable);
-        final boolean leftIsVirtual = isTableVirtual(leftTable);
-
-        // Filter out unneeded columns from the left and right sides.
-        final Map<String, DocumentDbSchemaColumn> leftColumns = getRequiredColumns(leftTable, this::getLeft);
-        final Map<String, DocumentDbSchemaColumn> rightColumns = getRequiredColumns(rightTable, this::getRight);
-
-        // Create a new metadata table representing the denormalized form that will be used
-        // in later parts of the query. Resolve column naming collisions from the right table.
-        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(leftColumns);
-        final List<String> renames = new ArrayList<>();
-        final Set<String> usedKeys = new LinkedHashSet<>(columnMap.keySet());
-        for (Entry<String, DocumentDbSchemaColumn> entry : rightColumns.entrySet()) {
-            final String key = entry.getKey();
-            if (columnMap.containsKey(key)) {
-                final String newKey = SqlValidatorUtil.uniquify(key, usedKeys, SqlValidatorUtil.EXPR_SUGGESTER);
-                final DocumentDbSchemaColumn leftColumn = columnMap.get(key);
-
-                // If the columns correspond to the same field, they may have different values depending on join
-                // type. Create a new column and add a new field.
-                if (entry.getValue().getFieldPath().equals(leftColumn.getFieldPath())) {
-                    columnMap.put(newKey, entry.getValue());
-                    final DocumentDbSchemaColumn column = entry.getValue();
-                    final DocumentDbSchemaColumn newRightColumn = DocumentDbMetadataColumn.builder()
-                            .fieldPath(column.getFieldPath())
-                            .sqlName(newKey)
-                            .sqlType(column.getSqlType())
-                            .dbType(column.getDbType())
-                            .isIndex(column.isIndex())
-                            .isPrimaryKey(column.isPrimaryKey())
-                            .foreignKeyTableName(column.getForeignKeyTableName())
-                            .foreignKeyColumnName(column.getForeignKeyColumnName())
-                            .resolvedPath(newKey)
-                            .build();
-                    columnMap.put(newKey, newRightColumn);
-
-                    // Handle any column renames
-                    handleColumnRename(renames, newKey, entry.getValue().getFieldPath(),
-                            rightIsVirtual, rightFilterColumns);
-                    handleColumnRename(renames, leftColumn.getFieldPath(), leftColumn.getFieldPath(),
-                            leftIsVirtual, leftFilterColumns);
-                } else {
-                    columnMap.put(newKey, entry.getValue());
-                }
-            } else {
-                columnMap.put(key, entry.getValue());
-            }
-        }
-
-        if (!renames.isEmpty()) {
-            final String newFields = Util.toString(renames, "{", ", ", "}");
-            final String aggregateString = "{ $addFields : " + newFields + "}";
-            implementor.add(null, aggregateString);
-        }
+        // Add any remaining operations from the left.
+        leftList.forEach(pair -> implementor.add(pair.left, pair.right));
+        // Add remaining operations from the right.
+        rightImplementor.getList().forEach(pair -> implementor.add(pair.left, pair.right));
 
         final DocumentDbMetadataTable metadata = DocumentDbMetadataTable
                 .builder()
@@ -324,11 +357,11 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                 .filter(c -> !c.isPrimaryKey()
                         && c.getForeignKeyTableName() == null
                         && !(c instanceof DocumentDbMetadataColumn &&
-                                ((DocumentDbMetadataColumn)c).isGenerated())
+                        ((DocumentDbMetadataColumn)c).isGenerated())
                         && !(c.getSqlType() == null ||
-                             c.getSqlType() == JdbcType.ARRAY ||
-                             c.getSqlType() == JdbcType.JAVA_OBJECT ||
-                             c.getSqlType() == JdbcType.NULL))
+                        c.getSqlType() == JdbcType.ARRAY ||
+                        c.getSqlType() == JdbcType.JAVA_OBJECT ||
+                        c.getSqlType() == JdbcType.NULL))
                 .collect(Collectors.toList());
         return ImmutableList.copyOf(columns);
     }
@@ -468,8 +501,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             final String rightCollectionName,
             final DocumentDbSchemaTable leftTable,
             final DocumentDbSchemaTable rightTable) {
-        // Remove null rows from the left and right, if any.
-        DocumentDbToEnumerableConverter.handleVirtualTable(implementor);
+        // Remove null rows from right, if any.
         DocumentDbToEnumerableConverter.handleVirtualTable(rightImplementor);
 
         // Validate that this is a simple equality join.
@@ -497,7 +529,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                     .isIndex(oldColumn.isIndex())
                     .foreignKeyColumnName(oldColumn.getForeignKeyColumnName())
                     .foreignKeyTableName(oldColumn.getForeignKeyTableName())
-                    .resolvedPath(combinePath(rightMatches, entry.getValue().getFieldPath()))
+                    .resolvedPath(combinePath(rightMatches, DocumentDbRules.getPath(oldColumn, false)))
                     .build();
             columnMap.put(key, newColumn);
         }
@@ -567,6 +599,11 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
                 throw new IllegalArgumentException(SqlError.lookup(SqlError.UNSUPPORTED_JOIN_TYPE, getJoinType().name()));
         }
         implementor.add(null, String.valueOf(Aggregates.unwind("$" + rightMatches, opts)));
+        LOGGER.debug("Created join stages of pipeline.");
+        LOGGER.debug("Pipeline stages added: {}",
+                implementor.getList().stream()
+                        .map(c -> c.right)
+                        .toArray());
     }
 
     /**

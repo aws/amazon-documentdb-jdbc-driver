@@ -59,9 +59,11 @@ import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter.isA
 /**
  * Implementation of the {@link SchemaReader} for DocumentDB storage.
  */
-public class DocumentDbSchemaReader implements SchemaReader {
+public class DocumentDbSchemaReader implements SchemaReader, AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchemaReader.class);
     private final DocumentDbConnectionProperties properties;
+    private final MongoClient client;
+    private final boolean closeClient;
 
     public static final String DEFAULT_SCHEMA_NAME = DocumentDbSchema.DEFAULT_SCHEMA_NAME;
     public static final String SCHEMA_COLLECTION = "_sqlSchemas";
@@ -76,12 +78,19 @@ public class DocumentDbSchemaReader implements SchemaReader {
                     .build()));
 
     /**
-     * Constructs an new {@link DocumentDbSchemaReader} with given connection properties.
+     * Constructs a new {@link DocumentDbSchemaReader} with given connection properties.
      *
      * @param properties the connection properties for connecting to database.
+     * @param client the {@link MongoClient} client.
+     *
      */
-    public DocumentDbSchemaReader(final @NonNull DocumentDbConnectionProperties properties) {
+    public DocumentDbSchemaReader(final @NonNull DocumentDbConnectionProperties properties,
+            final MongoClient client) {
         this.properties = properties;
+        this.client = client != null
+                ? client
+                : MongoClients.create(properties.buildMongoClientSettings());
+        this.closeClient = client == null;
     }
 
     @Override
@@ -91,10 +100,8 @@ public class DocumentDbSchemaReader implements SchemaReader {
 
     @Override
     public List<DocumentDbSchema> list() throws SQLException {
-        try (MongoClient client = MongoClients.create(properties.buildMongoClientSettings())) {
-            final MongoDatabase database = client.getDatabase(properties.getDatabase());
-            return getAllSchema(database);
-        }
+        final MongoDatabase database = client.getDatabase(properties.getDatabase());
+        return getAllSchema(database);
     }
 
     @Nullable
@@ -106,10 +113,8 @@ public class DocumentDbSchemaReader implements SchemaReader {
     @Nullable
     @Override
     public DocumentDbSchema read(final @NonNull String schemaName, final int schemaVersion) {
-        try (MongoClient client = MongoClients.create(properties.buildMongoClientSettings())) {
-            final MongoDatabase database = getDatabase(client, properties.getDatabase());
-            return getSchema(schemaName, schemaVersion, database);
-        }
+        final MongoDatabase database = getDatabase(client, properties.getDatabase());
+        return getSchema(schemaName, schemaVersion, database);
     }
 
     static DocumentDbSchema getSchema(
@@ -137,15 +142,13 @@ public class DocumentDbSchemaReader implements SchemaReader {
             final @NonNull String schemaName,
             final int schemaVersion,
             final @NonNull String tableId) {
-        try (MongoClient client = MongoClients.create(properties.buildMongoClientSettings())) {
-            final MongoDatabase database = getDatabase(client, properties.getDatabase());
-            // Attempt to retrieve the table associated with the table ID.
-            final MongoCollection<DocumentDbSchemaTable> tableSchemasCollection = database
-                    .getCollection(TABLE_SCHEMA_COLLECTION, DocumentDbSchemaTable.class);
-            return tableSchemasCollection
-                    .find(getTableSchemaFilter(tableId))
-                    .first();
-        }
+        final MongoDatabase database = getDatabase(client, properties.getDatabase());
+        // Attempt to retrieve the table associated with the table ID.
+        final MongoCollection<DocumentDbSchemaTable> tableSchemasCollection = database
+                .getCollection(TABLE_SCHEMA_COLLECTION, DocumentDbSchemaTable.class);
+        return tableSchemasCollection
+                .find(getTableSchemaFilter(tableId))
+                .first();
     }
 
     @Override
@@ -153,20 +156,18 @@ public class DocumentDbSchemaReader implements SchemaReader {
             final String schemaName,
             final int schemaVersion,
             final Set<String> tableIds) {
-        try (MongoClient client = MongoClients.create(properties.buildMongoClientSettings())) {
-            final MongoDatabase database = getDatabase(client, properties.getDatabase());
+        final MongoDatabase database = getDatabase(client, properties.getDatabase());
 
-            // Attempt to retrieve the tables associated with the table ID.
-            final MongoCollection<DocumentDbSchemaTable> tableSchemasCollection = database
-                    .getCollection(TABLE_SCHEMA_COLLECTION, DocumentDbSchemaTable.class)
-                    .withCodecRegistry(POJO_CODEC_REGISTRY);
-            final List<Bson> tableFilters = tableIds.stream()
-                    .map(DocumentDbSchemaWriter::getTableSchemaFilter)
-                    .collect(Collectors.toList());
-            return StreamSupport.stream(
-                    tableSchemasCollection.find(or(tableFilters)).spliterator(), false)
-                    .collect(Collectors.toList());
-        }
+        // Attempt to retrieve the tables associated with the table ID.
+        final MongoCollection<DocumentDbSchemaTable> tableSchemasCollection = database
+                .getCollection(TABLE_SCHEMA_COLLECTION, DocumentDbSchemaTable.class)
+                .withCodecRegistry(POJO_CODEC_REGISTRY);
+        final List<Bson> tableFilters = tableIds.stream()
+                .map(DocumentDbSchemaWriter::getTableSchemaFilter)
+                .collect(Collectors.toList());
+        return StreamSupport.stream(
+                        tableSchemasCollection.find(or(tableFilters)).spliterator(), false)
+                .collect(Collectors.toList());
     }
 
     static List<DocumentDbSchema> getAllSchema(final MongoDatabase database) {
@@ -186,6 +187,13 @@ public class DocumentDbSchemaReader implements SchemaReader {
                 return new ArrayList<>();
             }
             throw e;
+        }
+    }
+
+    @Override
+    public void close() {
+        if (closeClient && client != null) {
+            client.close();
         }
     }
 }

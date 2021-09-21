@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
+import static org.bson.BsonType.OBJECT_ID;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.EMPTY_STRING;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.KEY_COLUMN_NONE;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbTableSchemaGeneratorHelper.addToForeignKeysIfIsPrimary;
@@ -99,6 +100,9 @@ public class DocumentDbTableSchemaGenerator {
                                 c -> c,
                                 (o, d) -> o,
                                 LinkedHashMap::new));
+                if (LOGGER.isDebugEnabled() && !tableMap.containsKey(table.getSqlName())) {
+                    LOGGER.debug(String.format("Added schema for table %s.", table.getSqlName()));
+                }
                 tableMap.put(table.getSqlName(), DocumentDbMetadataTable.builder()
                         .sqlName(table.getSqlName())
                         .collectionName(table.getCollectionName())
@@ -173,6 +177,13 @@ public class DocumentDbTableSchemaGenerator {
             // in the root document.
             final JdbcType prevSqlType = getPrevSqlTypeOrDefault(prevMetadataColumn);
             final JdbcType nextSqlType = getSqlTypeIfIsPrimaryKey(bsonType, prevSqlType, isPrimaryKey);
+            if (LOGGER.isDebugEnabled()) {
+                final JdbcType currentDocType = getSqlTypeIfIsPrimaryKey(bsonType, JdbcType.NULL, isPrimaryKey);
+                if (!prevSqlType.equals(currentDocType) && prevMetadataColumn != null) {
+                    LOGGER.debug(String.format("Type conflict in table %s, types %s and %s mapped to %s.",
+                            tableName, prevSqlType.name(), currentDocType, nextSqlType.name()));
+                }
+            }
 
             processComplexTypes(
                     tableMap,
@@ -189,7 +200,7 @@ public class DocumentDbTableSchemaGenerator {
                     .fieldPath(fieldPath)
                     .sqlName(columnName)
                     .sqlType(nextSqlType)
-                    .dbType(bsonType)
+                    .dbType(getPromotedBsonType(bsonType, prevMetadataColumn))
                     .isIndex(false)
                     .isPrimaryKey(isPrimaryKey)
                     .index(getPrevIndexOrDefault(prevMetadataColumn, columnMap.size() + 1))
@@ -216,7 +227,30 @@ public class DocumentDbTableSchemaGenerator {
                 .collectionName(collectionName)
                 .columns(columnMap)
                 .build();
+        if (LOGGER.isDebugEnabled() && !tableMap.containsKey(metadataTable.getSqlName())) {
+            LOGGER.debug(String.format("Added schema for table %s.", metadataTable.getSqlName()));
+        }
         tableMap.put(metadataTable.getSqlName(), metadataTable);
+    }
+
+    private static BsonType getPromotedBsonType(
+            final BsonType bsonType,
+            final DocumentDbMetadataColumn prevMetadataColumn) {
+        final BsonType returnBsonType;
+        // OBJECT_ID
+        if (isPreviousOfType(prevMetadataColumn, OBJECT_ID) && bsonType != OBJECT_ID) {
+            returnBsonType = OBJECT_ID;
+        } else {
+            returnBsonType = bsonType;
+        }
+        return returnBsonType;
+    }
+
+    private static boolean isPreviousOfType(
+            final DocumentDbMetadataColumn prevMetadataColumn,
+            final BsonType testType) {
+        return prevMetadataColumn != null
+                && prevMetadataColumn.getDbType() == testType;
     }
 
     /**
@@ -268,6 +302,13 @@ public class DocumentDbTableSchemaGenerator {
         sqlType = prevSqlType;
         for (BsonValue element : array) {
             sqlType = getPromotedSqlType(element.getBsonType(), sqlType);
+            if (LOGGER.isDebugEnabled()) {
+                final JdbcType currentSqlType = getPromotedSqlType(element.getBsonType(), JdbcType.NULL);
+                if (!prevSqlType.equals(currentSqlType)) {
+                    LOGGER.debug(String.format("Type conflict in array table %s, types %s and %s mapped to %s.",
+                            tableName, prevSqlType.name(), currentSqlType, sqlType.name()));
+                }
+            }
         }
         if (!isComplexType(sqlType)) {
             if (isComplexType(prevSqlType)) {
@@ -434,6 +475,9 @@ public class DocumentDbTableSchemaGenerator {
                 .collectionName(collectionName)
                 .columns(columnMap)
                 .build();
+        if (LOGGER.isDebugEnabled() && !tableMap.containsKey(metadataTable.getSqlName())) {
+            LOGGER.debug(String.format("Added schema for table %s.", metadataTable.getSqlName()));
+        }
         tableMap.put(metadataTable.getSqlName(), metadataTable);
     }
 

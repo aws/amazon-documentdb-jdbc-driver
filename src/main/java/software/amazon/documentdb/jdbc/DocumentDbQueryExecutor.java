@@ -27,6 +27,7 @@ import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
@@ -36,6 +37,7 @@ import software.amazon.documentdb.jdbc.query.DocumentDbMqlQueryContext;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -81,15 +83,19 @@ public class DocumentDbQueryExecutor {
      * This function wraps query cancellation and ensures query state is kept consistent.
      *
      * @throws SQLException If query cancellation fails or cannot be executed.
+     * @param isClosing An indicator for whether the statement is closing.
      */
-    protected void cancelQuery() throws SQLException {
+    protected void cancelQuery(final boolean isClosing) throws SQLException {
         synchronized (queryStateLock) {
-            if (queryState.equals(QueryState.NOT_STARTED)) {
+            if (queryState.equals(QueryState.CANCELED)) {
+                return;
+            } else if (queryState.equals(QueryState.NOT_STARTED)) {
+                if (isClosing) {
+                    return;
+                }
                 throw SqlError.createSQLException(
-                        LOGGER, SqlState.OPERATION_CANCELED, SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
-            } else if (queryState.equals(QueryState.CANCELED)) {
-                throw SqlError.createSQLException(
-                        LOGGER, SqlState.OPERATION_CANCELED, SqlError.QUERY_CANCELED);
+                        LOGGER, SqlState.OPERATION_CANCELED,
+                        SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
             }
             performCancel();
             queryState = QueryState.CANCELED;
@@ -157,37 +163,49 @@ public class DocumentDbQueryExecutor {
      */
     @VisibleForTesting
     protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
-        final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql);
+        final Instant beginTranslation = Instant.now();
 
+        LOGGER.info("Query {}: Beginning translation of query.", queryId);
+        LOGGER.debug("Query {}: {}", queryId, sql);
+        final long maxRows = statement.getLargeMaxRows();
+        final DocumentDbMqlQueryContext queryContext = queryMapper.get(sql, maxRows);
+        LOGGER.info("Query {}: Took {} ms to translate query.", queryId,
+                Instant.now().toEpochMilli() - beginTranslation.toEpochMilli());
         if (!(statement.getConnection() instanceof DocumentDbConnection)) {
             throw new SQLException("Unexpected operation state.");
         }
-
+        final Instant beginExecution = Instant.now();
         final DocumentDbConnection connection = (DocumentDbConnection) statement.getConnection();
         final DocumentDbConnectionProperties properties = connection.getConnectionProperties();
-        final MongoClientSettings settings = properties.buildMongoClientSettings();
-        final MongoClient client = MongoClients.create(settings);
+        final MongoClient client = connection.getMongoClient();
+
         final MongoDatabase database = client.getDatabase(properties.getDatabase());
         final MongoCollection<Document> collection = database
                 .getCollection(queryContext.getCollectionName());
-        AggregateIterable<Document> iterable = collection
-                .aggregate(queryContext.getAggregateOperations());
+
+        // Only add limit if maxRows is non-zero.
+        final List<Bson> aggregateOperations = queryContext.getAggregateOperations();
+
+        AggregateIterable<Document> iterable = collection.aggregate(aggregateOperations);
         if (getQueryTimeout() > 0) {
             iterable = iterable.maxTime(getQueryTimeout(), TimeUnit.SECONDS);
         }
         if (getFetchSize() > 0) {
             iterable = iterable.batchSize(getFetchSize());
         }
-        final MongoCursor<Document> iterator = iterable.iterator();
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
+        final MongoCursor<Document> iterator = iterable.iterator();
+        LOGGER.info("Query {}: Took {} ms to execute query and retrieve first batch of results.", queryId,
+                Instant.now().toEpochMilli() - beginExecution.toEpochMilli());
+        LOGGER.debug("Query {}: Executed on collection {} with following pipeline operations: {}",
+                queryId, queryContext.getCollectionName(), queryContext.getAggregateOperations().toString());
         return new DocumentDbResultSet(
                 this.statement,
                 iterator,
                 columnMetaData,
-                queryContext.getPaths(),
-                client);
+                queryContext.getPaths());
     }
 
     private void resetQueryState() {
@@ -220,7 +238,7 @@ public class DocumentDbQueryExecutor {
                         SqlError.QUERY_NOT_STARTED_OR_COMPLETE);
             }
 
-            // If there is more than 1 result then more than 1 operations have been given same id
+            // If there is more than 1 result then more than 1 operations have been given same id,
             // and we do not know which to cancel.
             if (ops.size() != 1) {
                 throw SqlError.createSQLException(

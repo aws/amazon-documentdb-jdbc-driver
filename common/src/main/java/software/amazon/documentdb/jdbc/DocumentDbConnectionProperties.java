@@ -39,6 +39,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.CertificateFactory;
@@ -60,6 +61,8 @@ public class DocumentDbConnectionProperties extends Properties {
             LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
+    public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
+    public static final int FETCH_SIZE_DEFAULT = 2000;
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -189,7 +192,7 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Gets TLS enabled flag.
      *
-     * @return tlsEnabled {@code true} if TLS/SSL is enabled; {@code false} otherwise..
+     * @return tlsEnabled {@code true} if TLS/SSL is enabled; {@code false} otherwise.
      */
     public boolean getTlsEnabled() {
         return Boolean.parseBoolean(
@@ -362,7 +365,7 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Sets the schema name for persisted schema.
      *
-     * @param schemaName the name of he schema.
+     * @param schemaName the name of the schema.
      */
     public void setSchemaName(final String schemaName) {
         setProperty(DocumentDbConnectionProperty.SCHEMA_NAME.getName(), schemaName);
@@ -387,20 +390,222 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
-     * Builds the MongoClientSettings from properties
-     * @return a MongoClientSettings object.
+     * Sets the SSH tunnel user.
+     *
+     * @param sshUser the SSH tunnel user.
+     */
+    public void setSshUser(final String sshUser) {
+        setProperty(DocumentDbConnectionProperty.SSH_USER.getName(), sshUser);
+    }
+
+    /**
+     * Gets the SSH tunnel user.
+     *
+     * @return the SSH tunnel user.
+     */
+    public String getSshUser() {
+        return getProperty(DocumentDbConnectionProperty.SSH_USER.getName());
+    }
+
+    /**
+     * Sets the SSH tunnel host name. Can optionally contain the port number using `host-name:port'
+     * syntax. If port is not provided, port 22 is assumed.
+     *
+     * @param sshHostname the SSH tunnel host name and optional port number.
+     */
+    public void setSshHostname(final String sshHostname) {
+        setProperty(DocumentDbConnectionProperty.SSH_HOSTNAME.getName(), sshHostname);
+    }
+
+    /**
+     * Gets the SSH tunnel host name and optional port number.
+     *
+     * @return the SSH tunnel host name and optional port number.
+     */
+    public String getSshHostname() {
+        return getProperty(DocumentDbConnectionProperty.SSH_HOSTNAME.getName());
+    }
+
+    /**
+     * Sets the file path of the private key file. Can be prefixed with '~' to indicate the
+     * current user's home directory.
+     *
+     * @param sshPrivateKeyFile the file path of the private key file.
+     */
+    public void setSshPrivateKeyFile(final String sshPrivateKeyFile) {
+        setProperty(DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE.getName(), sshPrivateKeyFile);
+    }
+
+    /**
+     * Gets the file path of the private key file.
+     *
+     * @return the file path of the private key file.
+     */
+    public String getSshPrivateKeyFile() {
+        return getProperty(DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE.getName());
+    }
+
+    /**
+     * Sets the passphrase of the private key file. If not set, no passphrase will be used.
+     *
+     * @param sshPrivateKeyPassphrase the passphrase of the private key file
+     */
+    public void setSshPrivateKeyPassphrase(final String sshPrivateKeyPassphrase) {
+        setProperty(
+                DocumentDbConnectionProperty.SSH_PRIVATE_KEY_PASSPHRASE.getName(),
+                sshPrivateKeyPassphrase);
+    }
+
+    /**
+     * Gets the passphrase of the private key file.
+     *
+     * @return the passphrase of the private key file
+     */
+    public String getSshPrivateKeyPassphrase() {
+        return getProperty(DocumentDbConnectionProperty.SSH_PRIVATE_KEY_PASSPHRASE.getName());
+    }
+
+    /**
+     * Sets the indicator for whether the SSH tunnel will perform strict host key checking. When
+     * {@code true}, the 'known_hosts' file is checked to ensure the hashed host key is the same
+     * as the target host.
+     *
+     * @param sshStrictHostKeyChecking the indicator for whether the SSH tunnel will perform strict
+     *                                 host key checking.
+     */
+    public void setSshStrictHostKeyChecking(final String sshStrictHostKeyChecking) {
+        setProperty(
+                DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getName(),
+                String.valueOf(Boolean.parseBoolean(sshStrictHostKeyChecking)));
+    }
+
+    /**
+     * Gets the indicator for whether the SSH tunnel will perform strict host key checking.
+     *
+     * @return the indicator for whether the SSH tunnel will perform strict host key checking.
+     */
+    public boolean getSshStrictHostKeyChecking() {
+        return Boolean.parseBoolean(getProperty(
+                DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getName(),
+                DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getDefaultValue()));
+    }
+
+    /**
+     * Gets the file path to the 'known_hosts' file. If not set, '~/.ssh/known_hosts' is assumed.
+     *
+     * @param sshKnownHostsFile the file path to the 'known_hosts' file.
+     */
+    public void setSshKnownHostsFile(final String sshKnownHostsFile) {
+        setProperty(DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getName(), sshKnownHostsFile);
+    }
+
+    /**
+     * Gets the file path to the 'known_hosts' file.
+     *
+     * @return the file path to the 'known_hosts' file.
+     */
+    public String getSshKnownHostsFile() {
+        return getProperty(DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getName());
+    }
+
+    /**
+     * Sets the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     * It is the number of records to retrieve in a single batch.
+     * The maximum number of records retrieved in a single batch may also be limited by the overall
+     * memory size of the result. The value can be changed by calling the `Statement.setFetchSize`
+     * JDBC method. Default is '2000'.
+     *
+     * @param defaultFetchSize the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     */
+    public void setDefaultFetchSize(final String defaultFetchSize) {
+        setProperty(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName(), defaultFetchSize);
+    }
+
+    /**
+     * Gets the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     * It is the number of records to retrieve in a single batch.
+     * The maximum number of records retrieved in a single batch may also be limited by the overall
+     * memory size of the result. The value can be changed by calling the `Statement.setFetchSize`
+     * JDBC method. Default is '2000'.
+     *
+     * @return the default fetch size (in records) when retrieving results from Amazon DocumentDB.
+     */
+    public Integer getDefaultFetchSize() {
+        return getPropertyAsInteger(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName());
+    }
+
+    /**
+     * Sets indicator of whether to refresh any existing schema with a newly generated schema when
+     * the connection first requires the schema. Note that this will remove any existing schema
+     * customizations and will reduce performance for the first query or metadata inquiry.
+     *
+     * @param refreshSchema  indicator of whether to refresh any existing schema with a newly
+     *                       generated schema when the connection first requires the schema.
+     *                       Note that this will remove any existing schema customizations and
+     *                       will reduce performance for the first query or metadata inquiry.
+     */
+    public void setRefreshSchema(final String refreshSchema) {
+        setProperty(DocumentDbConnectionProperty.REFRESH_SCHEMA.getName(), refreshSchema);
+    }
+
+    /**
+     * Gets indicator of whether to refresh any existing schema with a newly generated schema when
+     * the connection first requires the schema. Note that this will remove any existing schema
+     * customizations and will reduce performance for the first query or metadata inquiry.
+     *
+     * @return indicator of whether to refresh any existing schema with a newly generated schema
+     *         when the connection first requires the schema. Note that this will remove any
+     *         existing schema customizations and will reduce performance for the first query or
+     *         metadata inquiry.
+     */
+    public Boolean getRefreshSchema() {
+        return Boolean.parseBoolean(getProperty(
+                        DocumentDbConnectionProperty.REFRESH_SCHEMA.getName(),
+                        DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue()));
+    }
+
+    /**
+     * Builds the MongoClientSettings from properties.
+     *
+     * @return a {@link MongoClientSettings} object.
      */
     public MongoClientSettings buildMongoClientSettings() {
         return buildMongoClientSettings(null);
     }
 
     /**
-     * Builds the MongoClientSettings from properties
+     * Builds the MongoClientSettings from properties.
+     *
+     * @param sshLocalPort the local port number for an internal SSH tunnel. A port number of zero
+     *                     indicates there is no valid internal SSH tunnel started.
+     * @return a {@link MongoClientSettings} object.
+     */
+    public MongoClientSettings buildMongoClientSettings(final int sshLocalPort) {
+        return buildMongoClientSettings(null, sshLocalPort);
+    }
+
+    /**
+     * Builds the MongoClientSettings from properties.
+     *
      * @param serverMonitorListener the server monitor listener
-     * @return a MongoClientSettings object.
+     * @return a {@link MongoClientSettings} object.
      */
     public MongoClientSettings buildMongoClientSettings(
             final ServerMonitorListener serverMonitorListener) {
+        return buildMongoClientSettings(serverMonitorListener, 0);
+    }
+
+    /**
+     * Builds the MongoClientSettings from properties.
+     *
+     * @param serverMonitorListener the server monitor listener
+     * @param sshLocalPort the local port number for an internal SSH tunnel. A port number of zero
+     *                     indicates there is no valid internal SSH tunnel started.
+     * @return a {@link MongoClientSettings} object.
+     */
+    public MongoClientSettings buildMongoClientSettings(
+            final ServerMonitorListener serverMonitorListener,
+            final int sshLocalPort) {
 
         final MongoClientSettings.Builder clientSettingsBuilder = MongoClientSettings.builder();
 
@@ -417,7 +622,7 @@ public class DocumentDbConnectionProperties extends Properties {
         applyServerSettings(clientSettingsBuilder, serverMonitorListener);
 
         // Set the cluster configuration.
-        applyClusterSettings(clientSettingsBuilder);
+        applyClusterSettings(clientSettingsBuilder, sshLocalPort);
 
         // Set the socket configuration.
         applySocketSettings(clientSettingsBuilder);
@@ -485,6 +690,30 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getTlsCAFilePath() != null) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_CA_FILE, getTlsCAFilePath());
+        }
+        if (!DocumentDbConnectionProperty.SCHEMA_NAME.getDefaultValue().equals(getSchemaName())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SCHEMA_NAME, getSchemaName());
+        }
+        if (getSshUser() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_USER, getSshUser());
+        }
+        if (getSshHostname() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_HOSTNAME, getSshHostname());
+        }
+        if (getSshPrivateKeyFile() != null) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE, getSshPrivateKeyFile());
+        }
+        if (getSshStrictHostKeyChecking() != Boolean.parseBoolean(DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING, getSshStrictHostKeyChecking());
+        }
+        if (getSshKnownHostsFile() != null && !DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getDefaultValue().equals(getSshKnownHostsFile())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE, getSshKnownHostsFile());
+        }
+        if (getDefaultFetchSize() != Integer.parseInt(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE, getDefaultFetchSize());
+        }
+        if (getRefreshSchema() != Boolean.parseBoolean(DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.REFRESH_SCHEMA, getRefreshSchema());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,
@@ -712,8 +941,14 @@ public class DocumentDbConnectionProperties extends Properties {
      * @param clientSettingsBuilder The client settings builder to apply the properties to.
      */
     private void applyClusterSettings(
-            final MongoClientSettings.Builder clientSettingsBuilder) {
-        final String host = getHostname();
+            final MongoClientSettings.Builder clientSettingsBuilder,
+            final int sshLocalPort) {
+        final String host;
+        if (enableSshTunnel() && sshLocalPort > 0) {
+            host = String.format("localhost:%d", sshLocalPort);
+        } else {
+            host = getHostname();
+        }
         final String replicaSetName = getReplicaSet();
 
         clientSettingsBuilder.applyToClusterSettings(
@@ -726,6 +961,20 @@ public class DocumentDbConnectionProperties extends Properties {
                         b.requiredReplicaSetName(replicaSetName);
                     }
                 });
+    }
+
+    /**
+     * Gets indicator of whether the options indicate the SSH port forwarding tunnel
+     * should be enabled.
+     *
+     * @return {@code true} if the SSH port forwarding tunnel should be enabled,
+     * otherwise {@code false}.
+     */
+    public boolean enableSshTunnel() {
+        return !isNullOrWhitespace(getSshUser())
+                && !isNullOrWhitespace(getSshHostname())
+                && !isNullOrWhitespace(getSshPrivateKeyFile())
+                && Files.exists(getPath(getSshPrivateKeyFile()));
     }
 
     /**
@@ -787,15 +1036,7 @@ public class DocumentDbConnectionProperties extends Properties {
         } else {
             final String tlsCAFileName = getTlsCAFilePath();
             final Path tlsCAFileNamePath;
-            if (tlsCAFileName.matches("^~[/\\\\].*$")) {
-                final String userHomePath = System.getProperty(USER_HOME_PROPERTY);
-                tlsCAFileNamePath = Paths
-                        .get(tlsCAFileName.replaceFirst("~", Matcher
-                                .quoteReplacement(userHomePath)))
-                        .toAbsolutePath();
-            } else {
-                tlsCAFileNamePath = Paths.get(tlsCAFileName).toAbsolutePath();
-            }
+            tlsCAFileNamePath = getPath(tlsCAFileName);
             if (tlsCAFileNamePath.toFile().exists()) {
                 inputStream = new FileInputStream(tlsCAFileNamePath.toFile());
             } else {
@@ -807,6 +1048,22 @@ public class DocumentDbConnectionProperties extends Properties {
             }
         }
         return inputStream;
+    }
+
+    /**
+     * Gets an absolute path from the given file path. It performs the substitution for a leading
+     * '~' to be replaced by the user's home directory.
+     *
+     * @param filePath the given file path to process.
+     * @return a {@link Path} for the absolution path for the given file path.
+     */
+    public static Path getPath(final String filePath) {
+        if (filePath.matches(HOME_PATH_PREFIX_REG_EXPR)) {
+            final String userHomePath = Matcher.quoteReplacement(
+                    System.getProperty(USER_HOME_PROPERTY));
+            return Paths.get(filePath.replaceFirst("~", userHomePath)).toAbsolutePath();
+        }
+        return Paths.get(filePath).toAbsolutePath();
     }
 
     /**

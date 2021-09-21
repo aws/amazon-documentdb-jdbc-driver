@@ -28,7 +28,7 @@ import java.util.Collection;
  * Writing the schema can be done in one of two ways. A complete update of database and table
  * schema - or just updating a single table.
  */
-public interface SchemaWriter {
+public interface SchemaWriter extends AutoCloseable {
     /**
      * Writes the complete schema for the database including any associated tables.
      *

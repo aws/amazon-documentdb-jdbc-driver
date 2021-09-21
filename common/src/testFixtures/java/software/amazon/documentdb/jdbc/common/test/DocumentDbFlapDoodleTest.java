@@ -38,7 +38,6 @@ import org.bson.types.Decimal128;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
-import java.io.IOException;
 import java.time.Instant;
 import java.util.Collections;
 
@@ -61,7 +60,6 @@ public class DocumentDbFlapDoodleTest extends DocumentDbTest {
      * @param databaseName the name of database to grant access for the user.
      * @param username the user name to create.
      * @param password the password for the user.
-     * @throws IOException if unable to start the mongo shell process.
      */
     protected static void createUser(
             final String databaseName,
@@ -132,13 +130,21 @@ public class DocumentDbFlapDoodleTest extends DocumentDbTest {
             final String password,
             final BsonDocument[] documents) {
         try (MongoClient client = createMongoClient(ADMIN_DATABASE, user, password)) {
-            final MongoDatabase database = client.getDatabase(databaseName);
-            final MongoCollection<BsonDocument> collection =
-                    database.getCollection(collectionName, BsonDocument.class);
-            for (int count = 0; count < documents.length; count++) {
-                collection.insertOne(documents[count]);
-                Assertions.assertEquals(count + 1, collection.countDocuments());
-            }
+            insertBsonDocuments(collectionName, databaseName, documents, client);
+        }
+    }
+
+    protected static void insertBsonDocuments(
+            final String collectionName,
+            final String databaseName,
+            final BsonDocument[] documents,
+            final MongoClient client) {
+        final MongoDatabase database = client.getDatabase(databaseName);
+        final MongoCollection<BsonDocument> collection =
+                database.getCollection(collectionName, BsonDocument.class);
+        for (int count = 0; count < documents.length; count++) {
+            collection.insertOne(documents[count]);
+            Assertions.assertEquals(count + 1, collection.countDocuments());
         }
     }
 }

@@ -139,6 +139,21 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     }
 
     @Override
+    public int getDriverMajorVersion() {
+        return DocumentDbDriver.DRIVER_MAJOR_VERSION;
+    }
+
+    @Override
+    public int getDriverMinorVersion() {
+        return DocumentDbDriver.DRIVER_MINOR_VERSION;
+    }
+
+    @Override
+    public String getDriverVersion() {
+        return DocumentDbDriver.DRIVER_VERSION;
+    }
+
+    @Override
     public String getSQLKeywords() {
         return "";
     }
@@ -709,6 +724,21 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     public ResultSet getClientInfoProperties() throws SQLException {
         // TODO: Implement
         throw new SQLFeatureNotSupportedException();
+    }
+
+    @Override
+    public boolean supportsFullOuterJoins() {
+        return false;
+    }
+
+    @Override
+    public boolean nullsAreSortedLow() {
+        return true;
+    }
+
+    @Override
+    public int getMaxTablesInSelect() {
+        return 0;
     }
 
     /**

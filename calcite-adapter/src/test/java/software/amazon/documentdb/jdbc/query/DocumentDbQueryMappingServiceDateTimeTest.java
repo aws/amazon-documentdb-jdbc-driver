@@ -16,17 +16,23 @@
 
 package software.amazon.documentdb.jdbc.query;
 
+import com.mongodb.client.MongoClient;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.bson.BsonArray;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
+import org.bson.BsonInt64;
+import org.bson.BsonString;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
+import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbFilter;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
@@ -49,6 +55,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
     private static final String DATE_COLLECTION_NAME = "dateTestCollection";
     private static DocumentDbQueryMappingService queryMapper;
     private static DocumentDbConnectionProperties connectionProperties;
+    private static MongoClient client;
 
     @BeforeAll
     @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
@@ -71,22 +78,24 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         "{ \"_id\" : \"key1\", \"otherArray\" : [ { \"field\" : 1, \"field3\": \"value\" }, { \"field\" : 2, \"field3\" : \"value\" } ]}");
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
+        client = createMongoClient(ADMIN_DATABASE, USER, PASSWORD);
 
         insertBsonDocuments(
-                COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{document});
+                COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{document}, client);
         insertBsonDocuments(
-                OTHER_COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD, new BsonDocument[]{otherDocument});
-        insertBsonDocuments(DATE_COLLECTION_NAME, DATABASE_NAME, USER, PASSWORD,
-                new BsonDocument[]{doc1});
+                OTHER_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{otherDocument}, client);
+        insertBsonDocuments(DATE_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{doc1}, client);
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
-                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW);
-        queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
+                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW, client);
+        queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata, client);
     }
 
     @AfterAll
-    static void afterAll() throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(connectionProperties);
-        schemaWriter.remove("id");
+    static void afterAll() throws Exception {
+        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(connectionProperties, client)) {
+            schemaWriter.remove("id");
+        }
+        client.close();
     }
 
     /**
@@ -112,18 +121,16 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(6, result.getColumnMetaData().size());
         Assertions.assertEquals(1, result.getAggregateOperations().size());
-        Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{\"$addFields\":"
-                                + " {\"EXPR$0\": {\"$add\": [\"$field\", {\"$multiply\": [604800000, 1]}]},"
-                                + " \"EXPR$1\": {\"$add\": [\"$field\", {\"$multiply\": [86400000, 2]}]},"
-                                + " \"EXPR$2\": {\"$add\": [\"$field\", {\"$multiply\": [3600000, 3]}]},"
-                                + " \"EXPR$3\": {\"$add\": [\"$field\", {\"$multiply\": [60000, 4]}]},"
-                                + " \"EXPR$4\": {\"$add\": [\"$field\", {\"$multiply\": [1000, 5]}]},"
-                                + " \"EXPR$5\": {\"$add\": [\"$field\", {\"$divide\":"
-                                + " [{\"$subtract\": [{\"$multiply\": [1, 6]},"
-                                + " {\"$mod\": [{\"$multiply\": [1, 6]}, 1000]}]}, 1000]}]}}}").toJson(),
-                ((BsonDocument)result.getAggregateOperations().get(0)).toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {"
+                        + "\"EXPR$0\": {\"$add\": [\"$field\", {\"$multiply\": [604800000, {\"$literal\": 1}]}]}, "
+                        + "\"EXPR$1\": {\"$add\": [\"$field\", {\"$multiply\": [86400000, {\"$literal\": 2}]}]}, "
+                        + "\"EXPR$2\": {\"$add\": [\"$field\", {\"$multiply\": [3600000, {\"$literal\": 3}]}]}, "
+                        + "\"EXPR$3\": {\"$add\": [\"$field\", {\"$multiply\": [60000, {\"$literal\": 4}]}]}, "
+                        + "\"EXPR$4\": {\"$add\": [\"$field\", {\"$multiply\": [1000, {\"$literal\": 5}]}]}, "
+                        + "\"EXPR$5\": {\"$add\": [\"$field\", {\"$divide\": [{\"$subtract\": [{\"$multiply\": [1, {\"$literal\": 6}]}, {\"$mod\": [{\"$multiply\": [1, {\"$literal\": 6}]}, {\"$literal\": 1000}]}]}, {\"$literal\": 1000}]}]}, "
+                        + "\"_id\": 0}}").toJson(),
+                ((BsonDocument) result.getAggregateOperations().get(0)).toJson());
 
         final String extractQuery =
                 String.format(
@@ -147,7 +154,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         Assertions.assertEquals(1, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$addFields\":"
+                        "{\"$project\":"
                                 + " {\"EXPR$0\": {\"$year\": \"$field\"},"
                                 + " \"EXPR$1\": {\"$month\": \"$field\"},"
                                 + " \"EXPR$2\": {\"$week\": \"$field\"},"
@@ -162,7 +169,8 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                                 + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, 2,"
                                 + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3,"
                                 + " {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]}, 4,"
-                                + " null]}]}]}]}}}"),
+                                + " null]}]}]}]}, "
+                                + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(0));
 
         final String timestampDiffQuery =
@@ -173,23 +181,32 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                                 + "TIMESTAMPDIFF(HOUR, \"field\", \"field\"), "
                                 + "TIMESTAMPDIFF(MINUTE, \"field\", \"field\"), "
                                 + "TIMESTAMPDIFF(SECOND, \"field\", \"field\"), "
-                                + "TIMESTAMPDIFF(MICROSECOND, \"field\", \"field\") "
+                                + "TIMESTAMPDIFF(MICROSECOND, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(YEAR, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(QUARTER, \"field\", \"field\"), "
+                                + "TIMESTAMPDIFF(MONTH, \"field\", \"field\")"
                                 + "FROM \"%s\".\"%s\"",
                         DATABASE_NAME, DATE_COLLECTION_NAME);
         result = queryMapper.get(timestampDiffQuery);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
-        Assertions.assertEquals(6, result.getColumnMetaData().size());
+        Assertions.assertEquals(9, result.getColumnMetaData().size());
         Assertions.assertEquals(1, result.getAggregateOperations().size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\":"
-                        + " {\"EXPR$0\": {\"$divide\": [{\"$subtract\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]}, {\"$mod\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]}, 604800]}]}, 604800]},"
-                        + " \"EXPR$1\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 86400000]}]}, 86400000]},"
-                        + " \"EXPR$2\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 3600000]}]}, 3600000]},"
-                        + " \"EXPR$3\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 60000]}]}, 60000]},"
-                        + " \"EXPR$4\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]},"
-                        + " \"EXPR$5\": {\"$multiply\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, 1000]}]}, 1000]}, 1000000]}}}"),
-                result.getAggregateOperations().get(0));
+                    "{\"$project\":"
+                            + " {\"EXPR$0\": {\"$divide\": [{\"$subtract\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$literal\": 1000}]}]}, {\"$literal\": 1000}]}, {\"$mod\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$literal\": 1000}]}]}, {\"$literal\": 1000}]}, {\"$literal\": 604800}]}]}, {\"$literal\": 604800}]},"
+                            + " \"EXPR$1\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$literal\": 86400000}]}]}, {\"$literal\": 86400000}]},"
+                            + " \"EXPR$2\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$literal\": 3600000}]}]}, {\"$literal\": 3600000}]},"
+                            + " \"EXPR$3\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$literal\": 60000}]}]}, {\"$literal\": 60000}]},"
+                            + " \"EXPR$4\": {\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$literal\": 1000}]}]}, {\"$literal\": 1000}]},"
+                            + " \"EXPR$5\": {\"$multiply\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$literal\": 1000}]}]}, {\"$literal\": 1000}]}, {\"$literal\": 1000000}]},"
+                            + " \"EXPR$6\": {\"$subtract\": [{\"$year\": \"$field\"}, {\"$year\": \"$field\"}]},"
+                            + " \"EXPR$7\": {\"$subtract\": ["
+                            + "     {\"$add\": [{\"$multiply\": [4, {\"$year\": \"$field\"}]}, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]}, 1, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, 2, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]}, 4, null]}]}]}]}]},"
+                            + "     {\"$add\": [{\"$multiply\": [4, {\"$year\": \"$field\"}]}, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]}, 1, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 6]}, 2, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 9]}, 3, {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]}, 4, null]}]}]}]}]}]},"
+                            + " \"EXPR$8\": {\"$subtract\": [{\"$add\": [{\"$multiply\": [12, {\"$year\": \"$field\"}]}, {\"$month\": \"$field\"}]}, {\"$add\": [{\"$multiply\": [12, {\"$year\": \"$field\"}]}, {\"$month\": \"$field\"}]}]}, "
+                            + " \"_id\": 0}}"),
+        result.getAggregateOperations().get(0));
     }
 
     /**
@@ -212,17 +229,17 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         BsonDocument rootDoc = result1.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        BsonDocument addFieldsDoc = rootDoc.getDocument("$project");
         Assertions.assertNotNull(addFieldsDoc);
         BsonDateTime cstDateTime = addFieldsDoc.getDateTime("cts");
         Assertions.assertNotNull(cstDateTime);
         BsonDocument expectedDoc = BsonDocument.parse(
-                "{\"$addFields\": "
+                "{\"$project\": "
                         + "{\"cts\": "
                         + "{\"$date\": "
                         + "{\"$numberLong\": "
                         + "\"" + cstDateTime.getValue() + "\""
-                        + "}}}}");
+                        + "}}, \"_id\": 0}}");
         Assertions.assertEquals(
                 expectedDoc,
                 result1.getAggregateOperations().get(0));
@@ -240,17 +257,17 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         rootDoc = result2.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        addFieldsDoc = rootDoc.getDocument("$addFields");
+        addFieldsDoc = rootDoc.getDocument("$project");
         Assertions.assertNotNull(addFieldsDoc);
         cstDateTime = addFieldsDoc.getDateTime("cts");
         Assertions.assertNotNull(cstDateTime);
         expectedDoc = BsonDocument.parse(
-                "{\"$addFields\": "
+                "{\"$project\": "
                         + "{\"cts\": "
                         + "{\"$date\": "
                         + "{\"$numberLong\": "
                         + "\"" + cstDateTime.getValue() + "\""
-                        + "}}}}");
+                        + "}}, \"_id\": 0}}");
         Assertions.assertEquals(
                 expectedDoc,
                 result2.getAggregateOperations().get(0));
@@ -268,17 +285,17 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         rootDoc = result3.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        addFieldsDoc = rootDoc.getDocument("$addFields");
+        addFieldsDoc = rootDoc.getDocument("$project");
         Assertions.assertNotNull(addFieldsDoc);
         cstDateTime = addFieldsDoc.getDateTime("cts");
         Assertions.assertNotNull(cstDateTime);
         expectedDoc = BsonDocument.parse(
-                "{\"$addFields\": "
+                "{\"$project\": "
                         + "{\"cts\": "
                         + "{\"$date\": "
                         + "{\"$numberLong\": "
                         + "\"" + cstDateTime.getValue() + "\""
-                        + "}}}}");
+                        + "}}, \"_id\": 0}}");
         Assertions.assertEquals(
                 expectedDoc,
                 result3.getAggregateOperations().get(0));
@@ -341,7 +358,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         final List<Bson> operations = context.getAggregateOperations();
         Assertions.assertEquals(1, operations.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": {\"cts\":"
+                "{\"$project\": {\"cts\":"
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 1]}, \"Sunday\","
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 2]}, \"Monday\","
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 3]}, \"Tuesday\","
@@ -349,7 +366,8 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 5]}, \"Thursday\","
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 6]}, \"Friday\","
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 7]}, \"Saturday\","
-                        + " null]}]}]}]}]}]}]}}}"), operations.get(0));
+                        + " null]}]}]}]}]}]}]}, "
+                        + " \"_id\": 0}}"), operations.get(0));
 
         final String dayNameQuery2 =
                 String.format(
@@ -361,7 +379,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         final List<Bson> operations2 = context2.getAggregateOperations();
         Assertions.assertEquals(1, operations2.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": {\"cts\":"
+                "{\"$project\": {\"cts\":"
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 1]}, \"Sunday\","
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 2]}, \"Monday\","
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 3]}, \"Tuesday\","
@@ -369,7 +387,8 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 5]}, \"Thursday\","
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 6]}, \"Friday\","
                         + " {\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": null}, 7]}, \"Saturday\","
-                        + " null]}]}]}]}]}]}]}}}"), operations2.get(0));
+                        + " null]}]}]}]}]}]}]}, "
+                        + " \"_id\": 0}}"), operations2.get(0));
     }
 
     /**
@@ -389,7 +408,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         final List<Bson> operations = context.getAggregateOperations();
         Assertions.assertEquals(1, operations.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": {\"cts\":"
+                "{\"$project\": {\"cts\":"
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 1]}, \"January\","
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 2]}, \"February\","
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 3]}, \"March\","
@@ -402,7 +421,8 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 10]}, \"October\","
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 11]}, \"November\","
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 12]}, \"December\","
-                        + " null]}]}]}]}]}]}]}]}]}]}]}]}}}"), operations.get(0));
+                        + " null]}]}]}]}]}]}]}]}]}]}]}]}, "
+                        + " \"_id\": 0}}"), operations.get(0));
 
         final String dayNameQuery2 =
                 String.format(
@@ -414,7 +434,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         final List<Bson> operations2 = context2.getAggregateOperations();
         Assertions.assertEquals(1, operations2.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": {\"cts\":"
+                "{\"$project\": {\"cts\":"
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 1]}, \"January\","
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 2]}, \"February\","
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 3]}, \"March\","
@@ -427,7 +447,8 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 10]}, \"October\","
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 11]}, \"November\","
                         + " {\"$cond\": [{\"$eq\": [{\"$month\": null}, 12]}, \"December\","
-                        + " null]}]}]}]}]}]}]}]}]}]}]}]}}}"), operations2.get(0));
+                        + " null]}]}]}]}]}]}]}]}]}]}]}]}, "
+                        + " \"_id\": 0 }}"), operations2.get(0));
     }
 
     @Test
@@ -450,7 +471,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         final List<Bson> operations = context.getAggregateOperations();
         Assertions.assertEquals(1, operations.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\":"
+                "{\"$project\":"
                         + " {\"EXPR$0\": {\"$dateFromString\": {\"dateString\":"
                         + " {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-01-01T00:00:00Z\"}}}},"
                         + " \"EXPR$1\": {\"$dateFromString\": {\"dateString\":"
@@ -479,7 +500,8 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + " {\"$multiply\": [1, {\"$divide\": [{\"$subtract\":"
                         + " [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
                         + " {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-01T00:00:00Z\"}]},"
-                        + " 1]}]}, 1]}]}]}}}").toJson(),
+                        + " 1]}]}, 1]}]}]}, "
+                        + " \"_id\": 0}}").toJson(),
                 ((BsonDocument) operations.get(0)).toJson());
 
         final String floorDayQuery1 =
@@ -493,7 +515,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         final List<Bson> operations1 = context1.getAggregateOperations();
         Assertions.assertEquals(1, operations1.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\":"
+                "{\"$project\":"
                         + " {\"EXPR$0\": "
                         + "   {\"$add\": ["
                         + "     {\"$date\": \"1970-01-05T00:00:00Z\"}, "
@@ -501,7 +523,8 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + "       {\"$divide\": ["
                         + "         {\"$subtract\": ["
                         + "           {\"$subtract\": [\"$field\", {\"$date\": \"1970-01-05T00:00:00Z\"}]}, "
-                        + "           {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-05T00:00:00Z\"}]}, 604800000]}]}, 604800000]}]}]}}}").toJson(),
+                        + "           {\"$mod\": [{\"$subtract\": [\"$field\", {\"$date\": \"1970-01-05T00:00:00Z\"}]}, 604800000]}]}, 604800000]}]}]}, "
+                        + " \"_id\": 0}}").toJson(),
                 ((BsonDocument) operations1.get(0)).toJson());
 
         final String floorDayQuery2 =
@@ -517,7 +540,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         final List<Bson> operations2 = context2.getAggregateOperations();
         Assertions.assertEquals(1, operations2.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\":"
+                "{\"$project\":"
                         + " {\"EXPR$0\":"
                         + "   {\"$add\": ["
                         + "     {\"$date\": \"1970-01-05T00:00:00Z\"}, "
@@ -536,10 +559,10 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + "                   \"$field\", "
                         + "                   {\"$date\": \"1970-01-05T00:00:00Z\"}]"
                         + "                 }, "
-                        + "                 1000]"
+                        + "                 {\"$literal\": 1000}]"
                         + "               }]"
                         + "             }, "
-                        + "             1000]"
+                        + "             {\"$literal\": 1000}]"
                         + "           }, "
                         + "           {\"$mod\": ["
                         + "             {\"$divide\": ["
@@ -553,18 +576,19 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + "                     \"$field\", "
                         + "                     {\"$date\": \"1970-01-05T00:00:00Z\"}]"
                         + "                   }, "
-                        + "                   1000]"
+                        + "                   {\"$literal\": 1000}]"
                         + "                 }]"
                         + "               }, "
-                        + "               1000]"
+                        + "               {\"$literal\": 1000}]"
                         + "             }, "
-                        + "             604800]"
+                        + "             {\"$literal\": 604800}]"
                         + "           }]"
                         + "         }, "
-                        + "         604800]"
+                        + "         {\"$literal\": 604800}]"
                         + "       }]"
                         + "     }]"
-                        + "   }"
+                        + "   }, "
+                        + " \"_id\": 0 "
                         + " }"
                         + "}").toJson(),
                 ((BsonDocument) operations2.get(0)).toJson());
@@ -579,7 +603,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
         final List<Bson> operations3 = context3.getAggregateOperations();
         Assertions.assertEquals(1, operations3.size());
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\":"
+                "{\"$project\":"
                         + " {\"EXPR$0\": "
                         + "   {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 3]},"
                         + "     {\"$dateFromString\": {\"dateString\": {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-01-01T00:00:00Z\"}}}},"
@@ -589,7 +613,258 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbFlapDoo
                         + "     {\"$dateFromString\": {\"dateString\": {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-07-01T00:00:00Z\"}}}},"
                         + "   {\"$cond\": [{\"$lte\": [{\"$month\": \"$field\"}, 12]},"
                         + "     {\"$dateFromString\": {\"dateString\": {\"$dateToString\": {\"date\": \"$field\", \"format\": \"%Y-10-01T00:00:00Z\"}}}},"
-                        + "   null]}]}]}]}}}").toJson(),
+                        + "   null]}]}]}]}, "
+                        + " \"_id\": 0 }}").toJson(),
                 ((BsonDocument) operations3.get(0)).toJson());
+    }
+
+    @Test
+    @DisplayName("Tests MONTHNAME in WHERE clause.")
+    void testWhereMonthName() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE MONTHNAME(\"field\") = 'February'",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(4, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {"
+                        + "\"_id\": 1, "
+                        + "\"field\": 1, "
+                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                        + ": {\"$eq\": [{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 1]}, \"January\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 2]}, \"February\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 3]}, \"March\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 4]}, \"April\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 5]}, \"May\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 6]}, \"June\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 7]}, \"July\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 8]}, \"August\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 9]}, \"September\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 10]}, \"October\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 11]}, \"November\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$month\": \"$field\"}, 12]}, \"December\", null]}]}]}]}]}]}]}]}]}]}]}]}, "
+                        + "{\"$literal\": \"February\"}]}}}"),
+                operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"),
+                operations.get(3));
+    }
+
+    @Test
+    @DisplayName("Tests DAYNAME in WHERE clause.")
+    void testWhereDayName() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE DAYNAME(\"field\") = 'Tuesday'",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(4, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {"
+                        + "\"_id\": 1, "
+                        + "\"field\": 1, "
+                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                        + ": {\"$eq\": [{\"$cond\": [{\"$eq\": ["
+                        + "{\"$dayOfWeek\": \"$field\"}, 1]}, \"Sunday\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 2]}, \"Monday\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 3]}, \"Tuesday\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 4]}, \"Wednesday\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 5]}, \"Thursday\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 6]}, \"Friday\", "
+                        + "{\"$cond\": [{\"$eq\": [{\"$dayOfWeek\": \"$field\"}, 7]}, \"Saturday\", null]}]}]}]}]}]}]}, "
+                        + "{\"$literal\": \"Tuesday\"}]}}}"),
+                operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"),
+                operations.get(3));
+    }
+
+    @Test
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
+    @DisplayName("Tests CURRENT_DATE in WHERE clause.")
+    void testWhereCurrentDate() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" <> CURRENT_DATE",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        final BsonDocument rootDoc = context.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
+                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+        Assertions.assertNotNull(cstDateTime);
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, {\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
+    @DisplayName("Tests CURRENT_TIME in WHERE clause.")
+    void testWhereCurrentTime() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE CAST(\"field\" AS TIME) <> CURRENT_TIME",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        final BsonDocument rootDoc = context.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
+                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+        Assertions.assertNotNull(cstDateTime);
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, " +
+                        "{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
+    @DisplayName("Tests CURRENT_TIMESTAMP in WHERE clause.")
+    void testWhereCurrentTimestamp() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" WHERE CAST(\"field\" as TIMESTAMP) <> CURRENT_TIMESTAMP",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(3, operations.size());
+        final BsonDocument rootDoc = context.getAggregateOperations()
+                .get(0).toBsonDocument(BsonDocument.class, null);
+        Assertions.assertNotNull(rootDoc);
+        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        Assertions.assertNotNull(addFieldsDoc);
+        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
+                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+        Assertions.assertNotNull(cstDateTime);
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
+                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, " +
+                        "{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+    }
+
+    @Test
+    @DisplayName("Tests date extract in WHERE clause.")
+    void testWhereExtract() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE EXTRACT(YEAR FROM \"field\") = 2021",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(4, operations.size());
+        final BsonArray array = new BsonArray();
+        array.add(new BsonDocument("$year", new BsonString("$field")));
+        array.add(new BsonInt64(2021));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {"
+                        + "\"_id\": 1, "
+                        + "\"field\": 1, "
+                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                        + ": {'$eq': [{ '$year': '$field'}, {\"$numberLong\": \"2021\"}]}}}"),
+                operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"),
+                operations.get(3));
+    }
+
+    @Test
+    @DisplayName("Tests TIMESTAMPADD in WHERE clause.")
+    void testWhereTimestampAdd() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPADD(DAY, 3, \"field\") = '2020-01-04'",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(4, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {"
+                        + "\"_id\": 1, "
+                        + "\"field\": 1, "
+                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                        + ": {\"$eq\": [{\"$add\": [\"$field\", {$numberLong: \"259200000\"}]}, {\"$date\": \"2020-01-04T00:00:00Z\"}]}}}"),
+        operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"),
+                operations.get(3));
+    }
+
+    @Test
+    @DisplayName("Tests TIMESTAMPDIFF in WHERE clause.")
+    void testWhereTimestampDiff() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPDIFF(DAY, \"field\", \"field\") = 0",
+                        DATABASE_NAME, DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(4, operations.size());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {"
+                        + "\"_id\": 1, "
+                        + "\"field\": 1, "
+                        + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                        + ": {\"$eq\": [{\"$divide\": [{\"$subtract\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$mod\": [{\"$subtract\": [\"$field\", \"$field\"]}, {\"$literal\": 86400000}]}]}, {\"$literal\": 86400000}]}, {\"$literal\": 0}]}}}"),
+                operations.get(0));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"),
+                operations.get(3));
     }
 }

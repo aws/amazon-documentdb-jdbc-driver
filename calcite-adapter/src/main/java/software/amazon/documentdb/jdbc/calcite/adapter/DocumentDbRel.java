@@ -44,17 +44,27 @@ public interface DocumentDbRel extends RelNode {
      * {@link DocumentDbRel} nodes into a MongoDB query. */
     class Implementor {
 
-        private final List<Pair<String, String>> list = new ArrayList<>();
+        // DocumentDB: modified - start
+        private List<Pair<String, String>> list = new ArrayList<>();
         private final RexBuilder rexBuilder;
         private RelOptTable table;
-        // DocumentDB: modified - start
         private DocumentDbSchemaTable metadataTable;
         private DocumentDbTable documentDbTable;
+        private List<String> unwinds = new ArrayList<>();
+        private List<String> collisionResolutions = new ArrayList<>();
+        private String virtualTableFilter;
         private boolean nullFiltered = false;
+        private boolean join = false;
+        private boolean resolutionNeedsUnwind = false;
+
         // DocumentDB: modified - end
 
         public List<Pair<String, String>> getList() {
             return list;
+        }
+
+        public void setList(final List<Pair<String, String>> list) {
+            this.list = list;
         }
 
         public RexBuilder getRexBuilder() {
@@ -98,6 +108,39 @@ public interface DocumentDbRel extends RelNode {
             list.add(index, Pair.of(findOp, aggOp));
         }
 
+        public void addUnwind(final String op) {
+            unwinds.add(op);
+
+        }
+
+        public List<String> getUnwinds() {
+            return unwinds;
+        }
+
+        public void setVirtualTableFilter(final String op) {
+            this.virtualTableFilter = op;
+        }
+
+        public String getVirtualTableFilter() {
+            return virtualTableFilter;
+        }
+
+        public void addCollisionResolution(final String op) {
+            collisionResolutions.add(op);
+        }
+
+        public List<String> getCollisionResolutions() {
+            return collisionResolutions;
+        }
+
+        public void setResolutionNeedsUnwind(final boolean resolutionNeedsUnwind) {
+            this.resolutionNeedsUnwind = resolutionNeedsUnwind;
+        }
+
+        public boolean isResolutionNeedsUnwind() {
+            return resolutionNeedsUnwind;
+        }
+
         public boolean isNullFiltered() {
             return nullFiltered;
         }
@@ -105,11 +148,21 @@ public interface DocumentDbRel extends RelNode {
         public void setNullFiltered(final boolean nullFiltered) {
             this.nullFiltered = nullFiltered;
         }
+
+        public boolean isJoin() {
+            return join;
+        }
+
+        public void setJoin(final boolean join) {
+            this.join = join;
+        }
         // DocumentDB: modified - end
 
         public void visitChild(final int ordinal, final RelNode input) {
             assert ordinal == 0;
+            final boolean isJoin = isJoin();
             ((DocumentDbRel) input).implement(this);
+            setJoin(isJoin);
         }
     }
 }

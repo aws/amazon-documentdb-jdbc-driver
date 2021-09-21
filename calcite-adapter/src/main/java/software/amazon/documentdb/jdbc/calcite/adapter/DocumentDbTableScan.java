@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.client.model.Aggregates;
 import com.mongodb.client.model.UnwindOptions;
+import org.apache.calcite.adapter.enumerable.EnumerableRules;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptCost;
 import org.apache.calcite.plan.RelOptPlanner;
@@ -28,6 +29,7 @@ import org.apache.calcite.plan.RelTraitSet;
 import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.core.TableScan;
 import org.apache.calcite.rel.metadata.RelMetadataQuery;
+import org.apache.calcite.rel.rules.CoreRules;
 import org.apache.calcite.rel.type.RelDataType;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
@@ -90,6 +92,20 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         for (RelOptRule rule : DocumentDbRules.RULES) {
             planner.addRule(rule);
         }
+
+        // Keep the project node even for SELECT * queries.
+        planner.removeRule(CoreRules.PROJECT_REMOVE);
+
+        // Remove extra $limit on joins.
+        planner.removeRule(CoreRules.SORT_JOIN_TRANSPOSE);
+
+        // Remove enumerable rules to ensure we always do push-down instead regardless of cost.
+        planner.removeRule(EnumerableRules.ENUMERABLE_AGGREGATE_RULE);
+        planner.removeRule(EnumerableRules.ENUMERABLE_PROJECT_RULE);
+        planner.removeRule(EnumerableRules.ENUMERABLE_JOIN_RULE);
+        planner.removeRule(EnumerableRules.ENUMERABLE_LIMIT_RULE);
+        planner.removeRule(EnumerableRules.ENUMERABLE_SORT_RULE);
+        planner.removeRule(EnumerableRules.ENUMERABLE_FILTER_RULE);
     }
 
     @Override public void implement(final Implementor implementor) {
@@ -108,8 +124,15 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
                 arrayPath = "$" + arrayPath;
                 opts.includeArrayIndex(indexName);
                 opts.preserveNullAndEmptyArrays(true);
-                implementor.add(null, String.valueOf(Aggregates.unwind(arrayPath, opts)));
+                implementor.addUnwind(String.valueOf(Aggregates.unwind(arrayPath, opts)));
             }
+        }
+
+        // Filter out any rows for which the table does not exist.
+        final String matchFilter = DocumentDbJoin
+                .buildFieldsExistMatchFilter(DocumentDbJoin.getFilterColumns(metadataTable));
+        if (matchFilter != null && DocumentDbJoin.isTableVirtual(metadataTable)) {
+            implementor.setVirtualTableFilter(matchFilter);
         }
     }
 }

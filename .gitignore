@@ -3,6 +3,7 @@
 *.iml
 *.iws
 *.ipr
+*.jar
  
 # Mac
 .DS_Store
@@ -21,3 +22,7 @@ build/
 *.jar
 *.war
 *.ear
+
+# LICENSE and NOTICE
+/src/main/resources/LICENSE
+/src/main/resources/NOTICE

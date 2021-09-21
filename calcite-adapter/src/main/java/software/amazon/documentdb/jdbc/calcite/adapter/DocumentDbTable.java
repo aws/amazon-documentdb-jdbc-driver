@@ -19,7 +19,6 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 import com.google.common.collect.ImmutableMap;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import lombok.SneakyThrows;
@@ -36,6 +35,8 @@ import org.apache.calcite.rel.RelNode;
 import org.apache.calcite.rel.type.RelDataType;
 import org.apache.calcite.rel.type.RelDataTypeFactory;
 import org.apache.calcite.schema.SchemaPlus;
+import org.apache.calcite.schema.Statistic;
+import org.apache.calcite.schema.Statistics;
 import org.apache.calcite.schema.TranslatableTable;
 import org.apache.calcite.schema.impl.AbstractTableQueryable;
 import org.apache.calcite.sql.type.SqlTypeName;
@@ -44,7 +45,6 @@ import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
@@ -65,6 +65,7 @@ public class DocumentDbTable extends AbstractQueryableTable
 
     private final String collectionName;
     private final DocumentDbSchemaTable tableMetadata;
+    private final Statistic statistic;
 
     protected DocumentDbTable(
             final String collectionName,
@@ -72,6 +73,14 @@ public class DocumentDbTable extends AbstractQueryableTable
         super(Object[].class);
         this.collectionName = collectionName;
         this.tableMetadata = tableMetadata;
+        this.statistic = tableMetadata.getEstimatedRecordCount() == DocumentDbSchemaTable.UNKNOWN_RECORD_COUNT
+                ? Statistics.UNKNOWN
+                : Statistics.of(tableMetadata.getEstimatedRecordCount(), null);
+    }
+
+    @Override
+    public Statistic getStatistic() {
+        return statistic;
     }
 
     @Override public String toString() {
@@ -137,19 +146,19 @@ public class DocumentDbTable extends AbstractQueryableTable
      * <p>For example,
      * <code>zipsTable.find("{state: 'OR'}", "{city: 1, zipcode: 1}")</code></p>
      *
-     * @param properties Connection properties
+     * @param client {@link MongoClient} client
      * @param filterJson Filter JSON string, or null
      * @param projectJson Project JSON string, or null
      * @param fields List of fields to project; or null to return map
      * @return Enumerator of results
      */
     private Enumerable<Object> find(
-            final DocumentDbConnectionProperties properties,
+            final MongoClient client,
+            final String databaseName,
             final String filterJson,
             final String projectJson,
             final List<Entry<String, Class<?>>> fields) {
-        final MongoClient client = MongoClients.create(properties.buildMongoClientSettings());
-        final MongoDatabase database = client.getDatabase(properties.getDatabase());
+        final MongoDatabase database = client.getDatabase(databaseName);
         final MongoCollection<Document> collection =
                 database.getCollection(collectionName);
         final Bson filter = filterJson == null
@@ -162,7 +171,7 @@ public class DocumentDbTable extends AbstractQueryableTable
             @Override public Enumerator<Object> enumerator() {
                 final FindIterable<Document> cursor =
                         collection.find(filter).projection(project);
-                return new DocumentDbEnumerator(cursor.iterator(), getter, client);
+                return new DocumentDbEnumerator(cursor.iterator(), getter);
             }
         };
     }
@@ -175,14 +184,16 @@ public class DocumentDbTable extends AbstractQueryableTable
      * "{$group: {_id: '$city', c: {$sum: 1}, p: {$sum: '$pop'}}}")
      * </code></p>
      *
-     * @param properties Connection properties
+     * @param client {@link MongoClient} client.
+     * @param databaseName Name of the database
      * @param fields List of fields to project; or null to return map
      * @param paths List of paths
      * @param operations One or more JSON strings
      * @return Enumerator of results
      */
     Enumerable<Object> aggregate(
-            final DocumentDbConnectionProperties properties,
+            final MongoClient client,
+            final String databaseName,
             final List<Entry<String, Class<?>>> fields,
             final List<String> paths,
             final List<String> operations) {
@@ -195,7 +206,11 @@ public class DocumentDbTable extends AbstractQueryableTable
         final Function1<Document, Object> getter =
                 DocumentDbEnumerator.getter(fields, tableMetadata);
         // Return this instead of the anonymous class to get more information from CalciteSignature.
-        return new DocumentDbEnumerable(properties, collectionName, list, getter, paths);
+        return new DocumentDbEnumerable(
+                client,
+                databaseName,
+                collectionName,
+                list, getter, paths);
     }
 
     /** Implementation of {@link org.apache.calcite.linq4j.Queryable} based on
@@ -212,12 +227,16 @@ public class DocumentDbTable extends AbstractQueryableTable
         @Override public Enumerator<T> enumerator() {
             //noinspection unchecked
             final Enumerable<T> enumerable =
-                    (Enumerable<T>) getTable().find(getProperties(), null, null, null);
+                    (Enumerable<T>) getTable().find(getClient(), getDatabaseName(), null, null, null);
             return enumerable.enumerator();
         }
 
-        private DocumentDbConnectionProperties getProperties() {
-            return schema.unwrap(DocumentDbSchema.class).getProperties();
+        private MongoClient getClient() {
+            return schema.unwrap(DocumentDbSchema.class).getClient();
+        }
+
+        private String getDatabaseName() {
+            return schema.unwrap(DocumentDbSchema.class).getDatabaseName();
         }
 
         private DocumentDbTable getTable() {
@@ -233,7 +252,8 @@ public class DocumentDbTable extends AbstractQueryableTable
         public Enumerable<Object> aggregate(final List<Entry<String, Class<?>>> fields,
                 final List<String> paths,
                 final List<String> operations) {
-            return getTable().aggregate(getProperties(), fields, paths, operations);
+            return getTable()
+                    .aggregate(getClient(), getDatabaseName(), fields, paths, operations);
         }
 
         /** Called via code-generation.
@@ -248,7 +268,8 @@ public class DocumentDbTable extends AbstractQueryableTable
         @SuppressWarnings("UnusedDeclaration")
         public Enumerable<Object> find(final String filterJson,
                 final String projectJson, final List<Entry<String, Class<?>>> fields) {
-            return getTable().find(getProperties(), filterJson, projectJson, fields);
+            return getTable()
+                    .find(getClient(), getDatabaseName(), filterJson, projectJson, fields);
         }
     }
 

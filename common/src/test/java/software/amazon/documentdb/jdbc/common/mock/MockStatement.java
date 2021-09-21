@@ -40,7 +40,7 @@ public class MockStatement extends Statement implements java.sql.Statement {
     }
 
     @Override
-    protected void cancelQuery() throws SQLException {
+    protected void cancelQuery(final boolean isClosing) throws SQLException {
 
     }
 

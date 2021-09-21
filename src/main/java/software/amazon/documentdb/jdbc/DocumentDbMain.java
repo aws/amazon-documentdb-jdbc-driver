@@ -34,6 +34,8 @@ import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.DuplicateKeyException;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import lombok.Getter;
 import lombok.NonNull;
 import org.apache.commons.cli.CommandLine;
@@ -60,13 +62,11 @@ import java.io.Console;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URISyntaxException;
-import java.net.URLClassLoader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -79,8 +79,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
-import java.util.jar.Attributes;
-import java.util.jar.Manifest;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
@@ -122,10 +120,7 @@ public class DocumentDbMain {
     private static final List<Option> REQUIRED_OPTIONS;
     private static final List<Option> OPTIONAL_OPTIONS;
     // String constants
-    private static final String ARCHIVE_VERSION_DEFAULT = "1.0.0";
-    private static final String IMPLEMENTATION_VERSION_ATTR_NAME = "Implementation-Version";
     private static final String LIBRARY_NAME_DEFAULT = "documentdb-jdbc";
-    private static final String MANIFEST_MF_RESOURCE_NAME = "META-INF/MANIFEST.MF";
 
     // Option string constants
     private static final String DATABASE_OPTION_FLAG = "d";
@@ -237,6 +232,8 @@ public class DocumentDbMain {
     private static final String NEW_SCHEMA_VERSION_GENERATED_MESSAGE =
             "New schema '%s', version '%s' generated.";
     private static final String REMOVED_SCHEMA_MESSAGE = "Removed schema '%s'.";
+
+    private static MongoClient client;
 
     static {
         ARCHIVE_VERSION = getArchiveVersion();
@@ -356,6 +353,8 @@ public class DocumentDbMain {
             output.append(e.getClass().getSimpleName())
                     .append(": ")
                     .append(e.getMessage());
+        } finally {
+            closeClient();
         }
     }
 
@@ -390,6 +389,20 @@ public class DocumentDbMain {
         }
     }
 
+    private static MongoClient getMongoClient(final DocumentDbConnectionProperties properties) {
+        if (client == null) {
+            client = MongoClients.create(properties.buildMongoClientSettings());
+        }
+        return client;
+    }
+
+    private static void closeClient() {
+        if (client != null) {
+            client.close();
+            client = null;
+        }
+    }
+
     private static void performImport(
             final CommandLine commandLine,
             final DocumentDbConnectionProperties properties,
@@ -421,7 +434,8 @@ public class DocumentDbMain {
             DocumentDbDatabaseSchemaMetadata.update(
                     properties,
                     properties.getSchemaName(),
-                    schemaTableList);
+                    schemaTableList,
+                    getMongoClient(properties));
         } catch (SQLException | DocumentDbSchemaSecurityException e) {
             output.append(e.getClass().getSimpleName())
                     .append(" ")
@@ -515,8 +529,11 @@ public class DocumentDbMain {
         final List<String> requestedTableList = requestedTableNames != null
                 ? Arrays.asList(requestedTableNames)
                 : new ArrayList<>();
-        final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), VERSION_LATEST_OR_NONE);
+        final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata.get(
+                properties,
+                properties.getSchemaName(),
+                VERSION_LATEST_OR_NONE,
+                getMongoClient(properties));
         if (schema == null) {
             // No schema to export.
             return;
@@ -590,7 +607,7 @@ public class DocumentDbMain {
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
         final List<DocumentDbSchema> schemas = DocumentDbDatabaseSchemaMetadata.getSchemaList(
-                properties);
+                properties, getMongoClient(properties));
         for (DocumentDbSchema schema : schemas) {
             output.append(String.format("Name=%s, Version=%d, SQL Name=%s, Modified=%s%n",
                     maybeQuote(schema.getSchemaName()),
@@ -605,8 +622,11 @@ public class DocumentDbMain {
     private static void performListTables(
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
-        final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), VERSION_LATEST_OR_NONE);
+        final DocumentDbDatabaseSchemaMetadata schema = DocumentDbDatabaseSchemaMetadata.get(
+                properties,
+                properties.getSchemaName(),
+                VERSION_LATEST_OR_NONE,
+                getMongoClient(properties));
         if (schema != null) {
             final List<String> sortedTableNames = schema.getTableSchemaMap().keySet().stream()
                     .sorted()
@@ -625,15 +645,21 @@ public class DocumentDbMain {
     private static void performRemove(
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
-        DocumentDbDatabaseSchemaMetadata.remove(properties, properties.getSchemaName());
+        DocumentDbDatabaseSchemaMetadata.remove(
+                properties,
+                properties.getSchemaName(),
+                getMongoClient(properties));
         output.append(String.format(REMOVED_SCHEMA_MESSAGE, properties.getSchemaName()));
     }
 
     private static void performGenerateNew(
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
-        final DocumentDbDatabaseSchemaMetadata schema =  DocumentDbDatabaseSchemaMetadata
-                .get(properties, properties.getSchemaName(), VERSION_NEW);
+        final DocumentDbDatabaseSchemaMetadata schema =  DocumentDbDatabaseSchemaMetadata.get(
+                properties,
+                properties.getSchemaName(),
+                VERSION_NEW,
+                getMongoClient(properties));
         if (schema != null) {
             output.append(String.format(NEW_SCHEMA_VERSION_GENERATED_MESSAGE,
                     schema.getSchemaName(),
@@ -957,26 +983,7 @@ public class DocumentDbMain {
     }
 
     private static String getArchiveVersion() {
-        final String archiveVersion;
-        final URLClassLoader cl = (URLClassLoader) DocumentDbMain.class.getClassLoader();
-        final InputStream resource = cl.getResourceAsStream(MANIFEST_MF_RESOURCE_NAME);
-        Manifest manifest = null;
-        try {
-            manifest = new Manifest(resource);
-        } catch (IOException e) {
-            LOGGER.error(e.getMessage());
-        }
-        if (manifest != null) {
-            final Attributes attributes = manifest.getMainAttributes();
-            if (attributes != null) {
-                archiveVersion = attributes.getValue(IMPLEMENTATION_VERSION_ATTR_NAME);
-            } else {
-                archiveVersion = ARCHIVE_VERSION_DEFAULT;
-            }
-        } else {
-            archiveVersion = ARCHIVE_VERSION_DEFAULT;
-        }
-        return archiveVersion;
+        return DocumentDbDriver.DRIVER_VERSION;
     }
 
     private static Option buildVersionOption() {
