@@ -16,17 +16,17 @@ description 'documentdb-jdbc-driver'
 
 tasks.register('patchJanino') {
     def janinoHash = "4b98b5b44ee329685503e264751067fab259f7b7";
-    if (!file("${buildDir}/${janinoHash}.zip").exists()) {
+    if (!file("${buildDir}/"<< janinoHash << ".zip").exists()) {
         download {
             println "Dowloading Janino Library"
-            src 'https://github.com/janino-compiler/janino/archive/${janinoHash}.zip'
+            src 'https://github.com/janino-compiler/janino/archive/'<< janinoHash <<'.zip'
             dest buildDir
         }
     }
 
-    if (!file("${buildDir}/dependencies/janino-${janinoHash}/commons-compiler/src/main/java/org/codehaus/commons/compiler/CompilerFactoryFactory.java").exists()) {
+    if (!file("${buildDir}/dependencies/janino-"<< janinoHash << "/commons-compiler/src/main/java/org/codehaus/commons/compiler/CompilerFactoryFactory.java").exists()) {
         copy {
-            def zipFile = file("${buildDir}/${janinoHash}.zip")
+            def zipFile = file("${buildDir}/"<< janinoHash <<".zip")
             def outputDir = file("${buildDir}/dependencies")
             from zipTree(zipFile)
             into outputDir
@@ -34,8 +34,8 @@ tasks.register('patchJanino') {
     }
 
     File destinationJavaFile = new File("src/main/dependency/org/codehaus/commons/compiler/CompilerFactoryFactory.java");
-    File sourceJavaFile = new File("${buildDir}/dependencies/janino-${janinoHash}/commons-compiler/src/main/java/org/codehaus/commons/compiler/CompilerFactoryFactory.java");
-    def janinoJarSourcePath = "${buildDir}/dependencies/janino-${janinoHash}/commons-compiler/target/commons-compiler-3.0.11.jar"
+    File sourceJavaFile = new File("${buildDir}/dependencies/janino-"+ janinoHash +"/commons-compiler/src/main/java/org/codehaus/commons/compiler/CompilerFactoryFactory.java");
+    def janinoJarSourcePath = "${buildDir}/dependencies/janino-"+ janinoHash +"/commons-compiler/target/commons-compiler-3.0.11.jar"
     def janinoJarDestinationPath = "src/main/resources/commons-compiler-3.0.11.jar"
     if (destinationJavaFile.readBytes() != sourceJavaFile.readBytes()) {
         //If the destinationJavaFile and sourceJavaFile are different the jars files will be deleted to force a compilation and a copy and paste to the resource folder.
@@ -43,13 +43,13 @@ tasks.register('patchJanino') {
         delete janinoJarDestinationPath
         copy {
             from "src/main/dependency/org/codehaus/commons/compiler/CompilerFactoryFactory.java"
-            into "${buildDir}/dependencies/janino-${janinoHash}/commons-compiler/src/main/java/org/codehaus/commons/compiler"
+            into "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler/src/main/java/org/codehaus/commons/compiler"
         }
     }
 
     if (!file(janinoJarSourcePath).exists()) {
         mavenexec {
-            workingDir "${buildDir}/dependencies/janino-${janinoHash}/commons-compiler"
+            workingDir "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler"
             goals 'package'
             threads '2C'
             quiet false
@@ -58,7 +58,7 @@ tasks.register('patchJanino') {
 
     if (!file(janinoJarDestinationPath).exists()) {
         copy {
-            from "${buildDir}/dependencies/janino-4b98b5b44ee329685503e264751067fab259f7b7/commons-compiler/target/commons-compiler-3.0.11.jar"
+            from "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler/target/commons-compiler-3.0.11.jar"
             into "src/main/resources"
         }
     }
