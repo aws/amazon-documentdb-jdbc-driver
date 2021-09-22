@@ -52,7 +52,10 @@ import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.parser.SqlParserPos;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.sql.type.SqlTypeUtil;
-import org.apache.calcite.sql2rel.*;
+import org.apache.calcite.sql2rel.SqlRexContext;
+import org.apache.calcite.sql2rel.SqlRexConvertlet;
+import org.apache.calcite.sql2rel.SqlRexConvertletTable;
+import org.apache.calcite.sql2rel.StandardConvertletTable;
 import org.apache.calcite.tools.RelRunner;
 import org.bson.BsonDocument;
 import org.slf4j.Logger;
@@ -67,7 +70,9 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbJdbcMetaDataConverter;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DocumentDbQueryMappingService implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
