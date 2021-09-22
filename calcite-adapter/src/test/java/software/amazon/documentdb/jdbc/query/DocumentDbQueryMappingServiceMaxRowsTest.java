@@ -156,7 +156,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                 BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse(String.format("{\"$limit\": {\"$numberLong\": \"%d\"}}", 10)), result.getAggregateOperations().get(4));
+                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(4));
     }
 
     @Test
