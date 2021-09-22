@@ -1919,7 +1919,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(4));
+                BsonDocument.parse(String.format("{\"$limit\": {\"$numberLong\": \"%d\"}}", 10)), result.getAggregateOperations().get(4));
     }
 
     @Test
@@ -1932,7 +1932,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(5, result.getColumnMetaData().size());
-        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(6, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$match\": {\"$or\": ["
@@ -1962,6 +1962,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$limit\": 5}"), result.getAggregateOperations().get(4));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(5));
     }
 
     @Test
@@ -1974,7 +1976,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(5, result.getColumnMetaData().size());
-        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(7, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$match\": {\"$or\": ["
@@ -2000,9 +2002,82 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
-                result.getAggregateOperations().get(3));
+                BsonDocument.parse("{\"$limit\": 20}"), result.getAggregateOperations().get(3));
+        /*
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 5}"), result.getAggregateOperations().get(4));
+                BsonDocument.parse(
+                        "{\"$project\": "
+                                + "{\"testCollection__id\": \"$_id\", "
+                                + "\"array_index_lvl_0\": \"$array_index_lvl_0\", "
+                                + "\"field\": \"$array.field\", "
+                                + "\"field1\": \"$array.field1\", "
+                                + "\"field2\": \"$array.field2\", "
+                                + "\"_id\": 0}}"),
+                result.getAggregateOperations().get(4));
+
+         */
+        Assertions.assertEquals(
+                BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
+                result.getAggregateOperations().get(5));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(6));
+    }
+    @Test
+    @DisplayName("Tests $limit is produced when max rows is passed.")
+    void testOrderByWithMaxRowsAndInnerLimitV() throws SQLException {
+        final String queryWithAscendingSort =
+                String.format(
+                        "SELECT * FROM  (SELECT * FROM \"%s\".\"%s\" LIMIT 20)  ORDER BY \"%s\" ASC LIMIT 30",
+                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+        final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(5, result.getColumnMetaData().size());
+        Assertions.assertEquals(8, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {\"$or\": ["
+                                + "{\"array.field\": {\"$exists\": true}}, "
+                                + "{\"array.field1\": {\"$exists\": true}}, "
+                                + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": "
+                                + "{\"testCollection__id\": \"$_id\", "
+                                + "\"array_index_lvl_0\": \"$array_index_lvl_0\", "
+                                + "\"field\": \"$array.field\", "
+                                + "\"field1\": \"$array.field1\", "
+                                + "\"field2\": \"$array.field2\", "
+                                + "\"_id\": 0}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 20}"), result.getAggregateOperations().get(3));
+        /*
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": "
+                                + "{\"testCollection__id\": \"$_id\", "
+                                + "\"array_index_lvl_0\": \"$array_index_lvl_0\", "
+                                + "\"field\": \"$array.field\", "
+                                + "\"field1\": \"$array.field1\", "
+                                + "\"field2\": \"$array.field2\", "
+                                + "\"_id\": 0}}"),
+                result.getAggregateOperations().get(4));
+
+         */
+        Assertions.assertEquals(
+                BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
+                result.getAggregateOperations().get(5));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 30}"), result.getAggregateOperations().get(6));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(7));
     }
 }

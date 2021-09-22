@@ -54,6 +54,7 @@ import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.sql.type.SqlTypeUtil;
 import org.apache.calcite.sql2rel.*;
 import org.apache.calcite.tools.RelRunner;
+import org.bson.BsonDocument;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -67,8 +68,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbJdbcMetaDataConverter;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.util.*;
-import java.util.stream.Collectors;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
 public class DocumentDbQueryMappingService implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
@@ -114,12 +113,7 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
      * @return the query context that has the target collection, aggregation stages, and result set metadata.
      */
     public DocumentDbMqlQueryContext get(final String sql, final long maxRowCount) throws SQLException {
-        // Add limit if using setMaxRows.
-
-        //final String limitedSQL =
-        //        !isNullOrWhitespace(modifiedSQL)  && maxRowCount > 0 ? String.format("%s  LIMIT %d", sql, maxRowCount) : modifiedSQL;
-        final String limitedSQL =  maxRowCount > 0 ? getMaxRowSql(sql, maxRowCount) : sql;
-        final Query<Object> query = Query.of(limitedSQL);
+        final Query<Object> query = Query.of(sql);
 
         // In prepareSql:
         // -    We validate the sql based on the schema and turn this into a tree. (SQL->AST)
@@ -127,11 +121,8 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
         // -    We visit each node and go into its implement method where the nodes become a physical
         // plan. (AST->MQL)
         try {
-            //SqlToRelConverter.Config config = SqlToRelConverter.config();
-            //boolean isRemoveSortInSubQueryBefore = config.isRemoveSortInSubQuery();
-            //config.withRemoveSortInSubQuery(false);
-            //boolean isRemoveSortInSubQueryAfter = config.isRemoveSortInSubQuery();
-            //final long maxRowCountOverride = maxRowCount > 0 ? maxRowCount : -1;
+            // maxRowCount needs to be -1, we ae handling max rows outside calcite
+            // translation
             final CalciteSignature<?> signature =
                     prepare.prepareSql(prepareContext, query, Object[].class, -1);
 
@@ -141,6 +132,13 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
             final Enumerable<?> enumerable = signature.enumerable(prepareContext.getDataContext());
             if (enumerable instanceof DocumentDbEnumerable) {
                 final DocumentDbEnumerable documentDbEnumerable = (DocumentDbEnumerable) enumerable;
+
+                // Add limit if using setMaxRows.
+                if (maxRowCount > 0) {
+                    documentDbEnumerable.getList().add(BsonDocument.parse(
+                            String.format("{\"$limit\": %d}", maxRowCount)));
+                }
+
                 return DocumentDbMqlQueryContext.builder()
                         .columnMetaData(DocumentDbJdbcMetaDataConverter.fromCalciteColumnMetaData(signature.columns))
                         .aggregateOperations(documentDbEnumerable.getList())
@@ -156,26 +154,6 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
         }
         // Query could be parsed but cannot be executed in pure MQL (likely involves nested queries).
         throw SqlError.createSQLFeatureNotSupportedException(LOGGER, SqlError.UNSUPPORTED_SQL, sql);
-    }
-
-    private String getMaxRowSql(String sql, long maxRowCount) {
-        String[] split = sql.split(" ");
-        //List<String> splitList = Arrays.asList(split);
-        for ( int i = split.length -1; i >= 0; i--) {
-            if (split[i].contains(")")) {
-                return null;
-            }
-            if ( split[i].toUpperCase().equals("LIMIT") ) {
-                int limitValue = Integer.valueOf( split[i+1]);
-                if ( maxRowCount < limitValue) {
-                    split[i+1] = String.valueOf(maxRowCount);
-                }
-                return Arrays.stream(split).collect(Collectors.joining(" "));
-            }
-        }
-        return String.format("%s  LIMIT %d", sql, maxRowCount);
-
-
     }
 
     /**
