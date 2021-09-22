@@ -126,8 +126,8 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
         // -    We visit each node and go into its implement method where the nodes become a physical
         // plan. (AST->MQL)
         try {
-            // maxRowCount needs to be -1, we ae handling max rows outside calcite
-            // translation
+            // The parameter maxRowCount from prepareSql needs to be -1, we are handling max rows
+            // outside calcite translation
             final CalciteSignature<?> signature =
                     prepare.prepareSql(prepareContext, query, Object[].class, -1);
 
