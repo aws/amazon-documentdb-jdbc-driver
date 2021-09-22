@@ -229,7 +229,6 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
         protected SqlRexConvertletTable createConvertletTable() {
             return DocumentDbConvertletTable.INSTANCE;
         }
-
     }
 
     /**
