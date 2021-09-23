@@ -403,7 +403,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(3));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}"), result.getAggregateOperations().get(3));
     }
 
     @Test
@@ -990,7 +990,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
                 result.getAggregateOperations().get(11));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}}"),
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}}"),
                 result.getAggregateOperations().get(12));
     }
 
@@ -1167,7 +1167,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
                 result.getAggregateOperations().get(12));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"),
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}"),
                 result.getAggregateOperations().get(13));
     }
 
@@ -1410,7 +1410,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
                 result.getAggregateOperations().get(11));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(12));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}"), result.getAggregateOperations().get(12));
 
 
     }
