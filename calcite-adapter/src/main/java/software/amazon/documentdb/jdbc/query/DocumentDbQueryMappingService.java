@@ -58,6 +58,9 @@ import org.apache.calcite.sql2rel.SqlRexConvertletTable;
 import org.apache.calcite.sql2rel.StandardConvertletTable;
 import org.apache.calcite.tools.RelRunner;
 import org.bson.BsonDocument;
+import org.bson.BsonInt32;
+import org.bson.BsonInt64;
+import org.bson.BsonValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -80,6 +83,7 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
     private final CalcitePrepare prepare;
     private final MongoClient client;
     private final boolean closeClient;
+    private BsonDocument maxRowsBSON;
 
     /**
      * Holds the DocumentDbDatabaseSchemaMetadata, CalcitePrepare.Context and the CalcitePrepare
@@ -109,6 +113,7 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
                         connectionProperties.getDatabase(),
                         connectionProperties);
         this.prepare = new DocumentDbPrepareImplementation();
+        this.maxRowsBSON = new BsonDocument();
     }
 
     /**
@@ -140,8 +145,8 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
 
                 // Add limit if using setMaxRows.
                 if (maxRowCount > 0) {
-                    documentDbEnumerable.getList().add(BsonDocument.parse(
-                            String.format("{\"$limit\": %d}", maxRowCount)));
+                    maxRowsBSON.put("$limit",new BsonInt64(maxRowCount));
+                    documentDbEnumerable.getList().add(maxRowsBSON);
                 }
 
                 return DocumentDbMqlQueryContext.builder()

@@ -102,7 +102,7 @@ public class DocumentDbSort extends Sort implements DocumentDbRel {
         }
         if (fetch != null) {
             implementor.add(null,
-                    "{$limit: " + ((RexLiteral) fetch).getValue() + "}");
+                    "{$limit: {$numberLong: \"" + ((RexLiteral) fetch).getValue() + "\"}}");
         }
         LOGGER.info("Created sort and row limit stages of pipeline.");
         LOGGER.debug("Pipeline stages added: {}",

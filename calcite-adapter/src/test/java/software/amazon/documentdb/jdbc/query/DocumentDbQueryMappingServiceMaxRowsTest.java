@@ -116,7 +116,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                 "{\"$project\": {\"testCollection__id\": '$_id', \"_id\": 0}}"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(1));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"10\"}}"), result.getAggregateOperations().get(1));
     }
 
     @Test
@@ -158,7 +158,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                 BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(4));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"10\"}}"), result.getAggregateOperations().get(4));
     }
 
     @Test
@@ -200,9 +200,9 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                 BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 5}"), result.getAggregateOperations().get(4));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"5\"}}"), result.getAggregateOperations().get(4));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(5));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"10\"}}"), result.getAggregateOperations().get(5));
     }
 
     @Test
@@ -241,7 +241,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                                 + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 20}"), result.getAggregateOperations().get(3));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"20\"}}}}"), result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$project\": "
@@ -256,7 +256,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                 BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(6));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"10\"}}"), result.getAggregateOperations().get(6));
     }
 
     @Test
@@ -295,7 +295,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                                 + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 20}"), result.getAggregateOperations().get(3));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"20\"}}}"), result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$project\": "
@@ -310,9 +310,9 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                 BsonDocument.parse("{ \"$sort\": {\"field\": 1 } }"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 30}"), result.getAggregateOperations().get(6));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"30\"}}}"), result.getAggregateOperations().get(6));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(7));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"10\"}}"), result.getAggregateOperations().get(7));
     }
 
     @Test
@@ -351,6 +351,6 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
                                 + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(3));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"10\"}}"), result.getAggregateOperations().get(3));
     }
 }
