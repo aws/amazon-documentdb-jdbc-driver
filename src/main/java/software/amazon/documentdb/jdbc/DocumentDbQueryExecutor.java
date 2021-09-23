@@ -183,7 +183,6 @@ public class DocumentDbQueryExecutor {
         final MongoCollection<Document> collection = database
                 .getCollection(queryContext.getCollectionName());
 
-        // Only add limit if maxRows is non-zero.
         final List<Bson> aggregateOperations = queryContext.getAggregateOperations();
 
         AggregateIterable<Document> iterable = collection.aggregate(aggregateOperations);

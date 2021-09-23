@@ -57,6 +57,8 @@ import org.apache.calcite.sql2rel.SqlRexConvertlet;
 import org.apache.calcite.sql2rel.SqlRexConvertletTable;
 import org.apache.calcite.sql2rel.StandardConvertletTable;
 import org.apache.calcite.tools.RelRunner;
+import org.bson.BsonDocument;
+import org.bson.BsonInt64;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -73,13 +75,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
 public class DocumentDbQueryMappingService implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
     private final DocumentDbPrepareContext prepareContext;
     private final CalcitePrepare prepare;
     private final MongoClient client;
     private final boolean closeClient;
+    private BsonDocument maxRowsBSON;
 
     /**
      * Holds the DocumentDbDatabaseSchemaMetadata, CalcitePrepare.Context and the CalcitePrepare
@@ -109,6 +111,7 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
                         connectionProperties.getDatabase(),
                         connectionProperties);
         this.prepare = new DocumentDbPrepareImplementation();
+        this.maxRowsBSON = new BsonDocument();
     }
 
     /**
@@ -118,10 +121,7 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
      * @return the query context that has the target collection, aggregation stages, and result set metadata.
      */
     public DocumentDbMqlQueryContext get(final String sql, final long maxRowCount) throws SQLException {
-        // Add limit if using setMaxRows.
-        final String limitedSQL =
-                maxRowCount > 0 ? String.format("SELECT * FROM ( %s ) LIMIT %d", sql, maxRowCount) : sql;
-        final Query<Object> query = Query.of(limitedSQL);
+        final Query<Object> query = Query.of(sql);
 
         // In prepareSql:
         // -    We validate the sql based on the schema and turn this into a tree. (SQL->AST)
@@ -129,6 +129,8 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
         // -    We visit each node and go into its implement method where the nodes become a physical
         // plan. (AST->MQL)
         try {
+            // The parameter maxRowCount from prepareSql needs to be -1, we are handling max rows
+            // outside calcite translation
             final CalciteSignature<?> signature =
                     prepare.prepareSql(prepareContext, query, Object[].class, -1);
 
@@ -138,6 +140,13 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
             final Enumerable<?> enumerable = signature.enumerable(prepareContext.getDataContext());
             if (enumerable instanceof DocumentDbEnumerable) {
                 final DocumentDbEnumerable documentDbEnumerable = (DocumentDbEnumerable) enumerable;
+
+                // Add limit if using setMaxRows.
+                if (maxRowCount > 0) {
+                    maxRowsBSON.put("$limit",new BsonInt64(maxRowCount));
+                    documentDbEnumerable.getList().add(maxRowsBSON);
+                }
+
                 return DocumentDbMqlQueryContext.builder()
                         .columnMetaData(DocumentDbJdbcMetaDataConverter.fromCalciteColumnMetaData(signature.columns))
                         .aggregateOperations(documentDbEnumerable.getList())
