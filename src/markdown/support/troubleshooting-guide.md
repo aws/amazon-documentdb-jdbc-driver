@@ -132,7 +132,7 @@ The online security resources may give a pointer how to fix this.
 ### Invalid username or password 
 
 #### What to look for: 
-- `Authorization failed for user '<username>' on database 'admin' with mechanism 'SCRAM-SHA-1'.`
+- `Invalid username or password or user is not authorized on database '<database>'. Please check your settings. Authorization failed for user '<username>' on database 'admin' with mechanism 'SCRAM-SHA-1'.`
 - `Exception authenticating MongoCredential{mechanism=SCRAM-SHA-1, userName='<username>', source='admin', password=<hidden>, mechanismProperties=<hidden>}'.`
 
 #### What to do: 

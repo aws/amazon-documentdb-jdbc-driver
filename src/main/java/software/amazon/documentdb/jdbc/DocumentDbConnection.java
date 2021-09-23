@@ -302,6 +302,7 @@ public class DocumentDbConnection extends Connection
                         SqlState.CONNECTION_EXCEPTION,
                         e,
                         SqlError.AUTHORIZATION_ERROR,
+                        mongoDatabase.getName(),
                         e.getCredential().getUserName(),
                         e.getCredential().getSource(),
                         e.getCredential().getMechanism());
