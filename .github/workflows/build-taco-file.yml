@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  build-taco:
     runs-on: ubuntu-latest
 
     steps:
@@ -26,9 +26,8 @@ jobs:
 
       - name: run build.sh
         working-directory: ./docker
-        run: | 
-          chmod +x build.sh,
-          ./build.sh
+        run: |
+          bash build.sh
 
       - name: Upload Build
         uses: actions/upload-artifact@v1
