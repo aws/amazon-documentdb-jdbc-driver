@@ -50,6 +50,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Arrays;
 import java.util.concurrent.Executor;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.SSH_PRIVATE_KEY_FILE_SEARCH_PATHS;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperty.REFRESH_SCHEMA;
@@ -114,15 +115,27 @@ public class DocumentDbConnection extends Connection
     public static SshPortForwardingSession createSshTunnel(
             final DocumentDbConnectionProperties connectionProperties) throws SQLException {
         if (!connectionProperties.enableSshTunnel()) {
+            LOGGER.info("Internal SSH tunnel not started.");
             return null;
+        } else if (!connectionProperties.isSshPrivateKeyFileExists()) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_EXCEPTION,
+                    SqlError.SSH_PRIVATE_KEY_FILE_NOT_FOUND,
+                    connectionProperties.getSshPrivateKeyFile());
         }
 
+        LOGGER.info("Internal SSH tunnel starting.");
         try {
             final JSch jSch = new JSch();
             addIdentity(connectionProperties, jSch);
             final Session session = createSession(connectionProperties, jSch);
             connectSession(connectionProperties, jSch, session);
-            return getPortForwardingSession(connectionProperties, session);
+            final SshPortForwardingSession portForwardingSession = getPortForwardingSession(
+                    connectionProperties, session);
+            LOGGER.info("Internal SSH tunnel started on local port '{}'.",
+                    portForwardingSession.localPort);
+            return portForwardingSession;
         } catch (SQLException e) {
             throw e;
         } catch (Exception e) {
@@ -360,12 +373,14 @@ public class DocumentDbConnection extends Connection
     private static void addIdentity(
             final DocumentDbConnectionProperties connectionProperties,
             final JSch jSch) throws JSchException {
-        final String privateKey = getPath(connectionProperties.getSshPrivateKeyFile()).toString();
+        final String privateKeyFileName = getPath(connectionProperties.getSshPrivateKeyFile(),
+                SSH_PRIVATE_KEY_FILE_SEARCH_PATHS).toString();
+        LOGGER.debug("SSH private key file resolved to '{}'.", privateKeyFileName);
         // If passPhrase protected, will need to provide this, too.
         final String passPhrase = !isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())
                 ? connectionProperties.getSshPrivateKeyPassphrase()
                 : null;
-        jSch.addIdentity(privateKey, passPhrase);
+        jSch.addIdentity(privateKeyFileName, passPhrase);
     }
 
     private static Session createSession(
