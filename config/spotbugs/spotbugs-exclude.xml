@@ -95,6 +95,7 @@
   <Match>
     <Or>
       <Source name="DocumentDbConnectionProperties.java"/>
+      <Source name="DocumentDbConnectionPropertiesTest.java"/>
       <Source name="DocumentDbMain.java"/>
     </Or>
     <Bug pattern="PATH_TRAVERSAL_IN"/>

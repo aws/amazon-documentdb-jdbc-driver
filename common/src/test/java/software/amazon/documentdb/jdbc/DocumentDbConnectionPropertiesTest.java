@@ -14,7 +14,7 @@
  *
  */
 
-package software.amazon.documentdb.jdbc.common;
+package software.amazon.documentdb.jdbc;
 
 import com.mongodb.MongoClientSettings;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -22,10 +22,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.ThrowingSupplier;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
-import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
-import software.amazon.documentdb.jdbc.DocumentDbReadPreference;
 
 import java.io.File;
 import java.io.IOException;

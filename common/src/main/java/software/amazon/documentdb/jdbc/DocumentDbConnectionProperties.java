@@ -59,11 +59,11 @@ public class DocumentDbConnectionProperties extends Properties {
     public static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
             USER_HOME_PATH_NAME, ".documentdb").toString();
     public static final String CLASS_PATH_LOCATION_NAME = getClassPathLocation();
-    public static final String[] SSH_PRIVATE_KEY_FILE_SEARCH_PATHS = {
-            USER_HOME_PATH_NAME,
-            DOCUMENTDB_HOME_PATH_NAME,
-            CLASS_PATH_LOCATION_NAME,
-    };
+    static final String[] SSH_PRIVATE_KEY_FILE_SEARCH_PATHS = {
+                USER_HOME_PATH_NAME,
+                DOCUMENTDB_HOME_PATH_NAME,
+                CLASS_PATH_LOCATION_NAME,
+        };
 
     private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Logger LOGGER =
@@ -93,11 +93,14 @@ public class DocumentDbConnectionProperties extends Properties {
     private static String getClassPathLocation() {
         String classPathLocation = null;
         try {
-            classPathLocation = Paths.get(DocumentDbConnectionProperties.class
+            final Path classParentPath = Paths.get(DocumentDbConnectionProperties.class
                     .getProtectionDomain()
                     .getCodeSource()
                     .getLocation()
-                    .toURI()).getParent().toString();
+                    .toURI()).getParent();
+            if (classParentPath != null) {
+                classPathLocation = classParentPath.toString();
+            }
         } catch (URISyntaxException e) {
             // Ignore error, return null.
         }
