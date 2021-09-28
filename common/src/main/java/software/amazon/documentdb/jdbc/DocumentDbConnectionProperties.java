@@ -738,21 +738,21 @@ public class DocumentDbConnectionProperties extends Properties {
                 || isNullOrWhitespace(getPassword())) {
             throw SqlError.createSQLException(
                     LOGGER,
-                    SqlState.CONNECTION_FAILURE,
+                    SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_USER_PASSWORD
             );
         }
         if (isNullOrWhitespace(getDatabase())) {
             throw SqlError.createSQLException(
                     LOGGER,
-                    SqlState.CONNECTION_FAILURE,
+                    SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_DATABASE
             );
         }
         if (isNullOrWhitespace(getHostname())) {
             throw SqlError.createSQLException(
                     LOGGER,
-                    SqlState.CONNECTION_FAILURE,
+                    SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_HOSTNAME
             );
         }
@@ -1042,7 +1042,7 @@ public class DocumentDbConnectionProperties extends Properties {
             } else {
                 throw SqlError.createSQLException(
                         LOGGER,
-                        SqlState.CONNECTION_EXCEPTION,
+                        SqlState.INVALID_PARAMETER_VALUE,
                         SqlError.TLS_CA_FILE_NOT_FOUND,
                         tlsCAFileNamePath);
             }
