@@ -15,14 +15,11 @@
           <attr>sslmode</attr>
           <attr>v-database</attr>
           <attr>v-allow-invalid-hostnames</attr>
-          <attr>v-tls-ca-file</attr>
           <attr>v-ssh-tunnel</attr>
           <attr>v-ssh-user</attr>
           <attr>v-ssh-host</attr>
           <attr>v-ssh-priv-key-filename</attr>
-          <attr>v-ssh-priv-key-passphrase</attr>
           <attr>v-ssh-strict-host-key-check</attr>
-          <attr>v-ssh-known-hosts-file</attr>
           <attr>v-read-preference</attr>
           <attr>v-application-name</attr>
           <attr>v-replica-set</attr> 
