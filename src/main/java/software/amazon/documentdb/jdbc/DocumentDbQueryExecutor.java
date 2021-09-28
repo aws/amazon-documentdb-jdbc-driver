@@ -147,7 +147,7 @@ public class DocumentDbQueryExecutor {
                 } else {
                     throw SqlError.createSQLException(
                             LOGGER,
-                            SqlState.CONNECTION_EXCEPTION,
+                            SqlState.OPERATION_CANCELED,
                             SqlError.QUERY_FAILED, e);
                 }
             }

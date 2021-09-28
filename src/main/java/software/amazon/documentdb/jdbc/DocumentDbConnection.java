@@ -147,7 +147,7 @@ public class DocumentDbConnection extends Connection
     public boolean isValid(final int timeout) throws SQLException {
         if (timeout < 0) {
             throw SqlError.createSQLException(LOGGER,
-                    SqlState.CONNECTION_EXCEPTION,
+                    SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.INVALID_TIMEOUT,
                     timeout);
         }
@@ -312,7 +312,7 @@ public class DocumentDbConnection extends Connection
                     && e.getCause() instanceof MongoCommandException
                     && ((MongoCommandException)e.getCause()).getCode() == 18) {
                 throw SqlError.createSQLException(LOGGER,
-                        SqlState.CONNECTION_EXCEPTION,
+                        SqlState.INVALID_AUTHORIZATION_SPECIFICATION,
                         e,
                         SqlError.AUTHORIZATION_ERROR,
                         mongoDatabase.getName(),
@@ -322,7 +322,7 @@ public class DocumentDbConnection extends Connection
             }
             // Everything else.
             throw SqlError.createSQLException(LOGGER,
-                    SqlState.CONNECTION_EXCEPTION,
+                    SqlState.SQL_CLIENT_UNABLE_TO_ESTABLISH_SQL_CONNECTION,
                     e,
                     SqlError.SECURITY_ERROR,
                     e.getMessage());
@@ -442,7 +442,7 @@ public class DocumentDbConnection extends Connection
             } else {
                 throw SqlError.createSQLException(
                         LOGGER,
-                        SqlState.CONNECTION_EXCEPTION,
+                        SqlState.INVALID_PARAMETER_VALUE,
                         SqlError.KNOWN_HOSTS_FILE_NOT_FOUND,
                         connectionProperties.getSshKnownHostsFile());
             }
