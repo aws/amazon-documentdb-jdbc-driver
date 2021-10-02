@@ -489,28 +489,26 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
 
         Collections.sort(leftKeyNames);
 
-        // Check that if joining with a virtual table, only its complete set of primary keys are used.
+        // Check that only the necessary primary key columns are used.
         validateMinimumPrimaryKeysUsage(leftKeyNames, leftSidePrimaryKeys, rightSidePrimaryKeys);
     }
 
     /**
-     * Validates if the keys used in the join matches with the smaller set of primary keys
+     * Validates if the keys used in the join matches with the set of primary key columns shared between the tables.
      *
      * @param keyNames keys used in the join condition
      * @param leftSidePrimaryKeys primary keys from the left side of the join.
      * @param rightSidePrimaryKeys primary keys from the right side of the join.
      */
     protected void validateMinimumPrimaryKeysUsage(final List<String> keyNames, final List<String> leftSidePrimaryKeys, final List<String> rightSidePrimaryKeys) {
-        List<String> smallerListOfKeys = leftSidePrimaryKeys;
+        // Find the common elements between these lists.
+        leftSidePrimaryKeys.retainAll(rightSidePrimaryKeys);
 
-        if (rightSidePrimaryKeys.size() < leftSidePrimaryKeys.size()) {
-            smallerListOfKeys = rightSidePrimaryKeys;
-        }
-
-        if (!smallerListOfKeys.equals(keyNames)) {
-            final List<String> keysMissing = new ArrayList<>(smallerListOfKeys);
+        // Check that join condition is not missing any keys.
+        if (!keyNames.containsAll(leftSidePrimaryKeys)) {
+            final List<String> keysMissing = new ArrayList<>(leftSidePrimaryKeys);
             keysMissing.removeAll(keyNames);
-            throw new IllegalArgumentException(SqlError.lookup(SqlError.JOIN_MISSING_PRIMARY_KEYS,keysMissing));
+            throw new IllegalArgumentException(SqlError.lookup(SqlError.JOIN_MISSING_PRIMARY_KEYS, keysMissing));
         }
     }
 

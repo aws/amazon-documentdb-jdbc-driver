@@ -1166,4 +1166,177 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
             Assertions.assertFalse(resultSet.next());
         }
     }
+
+    @DisplayName("Tests validation for different same collection joins.")
+    @ParameterizedTest(name = "testJoinConditions - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testJoinConditions(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testJoinConditions";
+        final BsonDocument document1 =
+                BsonDocument.parse(
+                        "{ \"_id\" : \"key1\",  "
+                                + "\"document\": {\"field\": 1},"
+                                + "\"array\" : ["
+                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
+                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ], "
+                                + "\"otherArray\" : ["
+                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
+                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ] }");
+        insertBsonDocuments(tableName, new BsonDocument[]{document1});
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+
+            // Test joins where only shared primary key is _id. These only require _id.
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_document",
+                                    tableName + "_array"));
+            Assertions.assertNotNull(resultSet1);
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_array",
+                                    tableName + "_otherArray"));
+            Assertions.assertNotNull(resultSet2);
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_array_document",
+                                    tableName + "_otherArray_document"));
+            Assertions.assertNotNull(resultSet3);
+            final ResultSet resultSet4 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_array_otherArray",
+                                    tableName + "_otherArray_array"));
+            Assertions.assertNotNull(resultSet4);
+            final ResultSet resultSet5 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_array_document",
+                                    tableName + "_otherArray_array"));
+            Assertions.assertNotNull(resultSet5);
+
+            // Test joins where tables share an array index. These require _id and the array index.
+            final ResultSet resultSet6 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" "
+                                            + "AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" ",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_array",
+                                    tableName + "_array_document"));
+            Assertions.assertNotNull(resultSet6);
+            final ResultSet resultSet7 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" "
+                                            + "AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" ",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_array",
+                                    tableName + "_array_array"));
+            Assertions.assertNotNull(resultSet7);
+            final ResultSet resultSet8 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" "
+                                            + "AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" ",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_array_array",
+                                    tableName + "_array_otherArray"));
+            Assertions.assertNotNull(resultSet8);
+            final ResultSet resultSet9 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT * "
+                                            + "FROM \"%2$s\".\"%3$s\" "
+                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" "
+                                            + "AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" ",
+                                    tableName,
+                                    getDatabaseName(),
+                                    tableName + "_array_document",
+                                    tableName + "_array_array"));
+            Assertions.assertNotNull(resultSet9);
+            //TODO: Check exact error messages regarding missing keys.
+            Assertions.assertThrows(SQLException.class, () -> statement.executeQuery(
+                    String.format(
+                            "SELECT * "
+                                    + "FROM \"%2$s\".\"%3$s\" "
+                                    + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                    + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" ",
+                            tableName,
+                            getDatabaseName(),
+                            tableName + "_array",
+                            tableName + "_array_array"))
+            );
+            Assertions.assertThrows(SQLException.class, () -> statement.executeQuery(
+                    String.format(
+                            "SELECT * "
+                                    + "FROM \"%2$s\".\"%3$s\" "
+                                    + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                    + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" ",
+                            tableName,
+                            getDatabaseName(),
+                            tableName + "_array_array",
+                            tableName + "_array_otherArray"))
+            );
+            Assertions.assertThrows(SQLException.class, () -> statement.executeQuery(
+                    String.format(
+                            "SELECT * "
+                                    + "FROM \"%2$s\".\"%3$s\" "
+                                    + "INNER JOIN \"%2$s\".\"%4$s\" "
+                                    + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" ",
+                            tableName,
+                            getDatabaseName(),
+                            tableName + "_array_document",
+                            tableName + "_array_array"))
+            );
+        }
+
+    }
 }
