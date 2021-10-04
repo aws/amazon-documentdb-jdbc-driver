@@ -54,8 +54,8 @@ Currently, cross collection joins are not supported.
 ### Same Collection Joins
 
 Currently, the driver only supports `JOINs` across tables from the same collection as long as
-the primary key and foreign key relation are present. This is equivalent to presenting the data in its denormalized
-form. For such `JOINs`, the minimal set of relation between primary and foreign keys for a table must be used.
+the foreign key and primary key relation are present. This is equivalent to presenting the data in its denormalized
+form. For such `JOINs`, the minimal set of foreign keys and their respective primary must be used.
 
 For example, if we had the collection `Customer` whose documents roughly followed the form below, we
 would end up with 4 tables.
@@ -115,10 +115,10 @@ would end up with 4 tables.
 
 For the tables `customer_address` and `customer_subscriptions` we only need `customer__id`. For `customer_subscriptions_variants`, we need
 `customer__id` and `subscriptions_index_lvl_0`. Between these tables, the following join conditions would be allowed while any others would be rejected.
-Examples of minimal primary keys required in a query:
+Examples of minimal foreign keys with primary keys required in a query:
 
-#### Table: Minimal Primary Keys required
-| Table | Joining Table | PK with FK required |
+#### Table: Minimal Foreign Keys with Primary Keys required
+| Table | Joining Table | FK with PK required |
 | --- | --- | --- |
 | customer | customer_address| customer__id |
 | customer | customer_subscriptions | customer__id |
@@ -134,7 +134,7 @@ Examples of minimal primary keys required in a query:
 - `SELECT * FROM "customer_subscriptions" LEFT JOIN "customer_subscriptions_variants" ON "customer_subscriptions"."customer__id" = "customer_subscriptions_variants".customer__id"
   AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants.subscriptions_index_lvl_0"`
 
-These can be combined as long as the minimal common primary keys with foreign keys between tables are present.
+These can be combined as long as the minimal common foreign keys with primary keys between tables are present.
 
 - ```
   SELECT * FROM "customer_address" LEFT JOIN "customer_subscriptions" ON "customer_address"."customer__id" = "customer_subscriptions".customer__id"
@@ -147,7 +147,7 @@ These can be combined as long as the minimal common primary keys with foreign ke
 
 This feature allows `INNER` and `LEFT (OUTER)` joins. 
 The `NATURAL` and `CROSS` keywords, as well as specifying multiple tables in the `FROM` clause, 
-are also accepted as long as the join is still semantically a same collection using the minimal set of primary keys with foreign keys. 
+are also accepted as long as the join is still semantically a same collection using the minimal set of foreign keys with their primary keys. 
 
 The following are all equivalent to the same inner join: 
 
