@@ -49,6 +49,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     private static final String OTHER_COLLECTION_NAME = "otherTestCollection";
     private static final String DATE_COLLECTION_NAME = "dateTestCollection";
     private static final String NESTED_ID_COLLECTION_NAME = "nestedIdCollection";
+    private static final String NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME = "nestedArrayDocumentInANestedArrayCollection";
     private static DocumentDbQueryMappingService queryMapper;
     private static DocumentDbConnectionProperties connectionProperties;
     private static MongoClient client;
@@ -79,6 +80,12 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"document\" : { \"_id\" : 1, \"field1\": \"value\" } }");
 
+        final BsonDocument nestedArrayDocumentInANestedArray =
+                BsonDocument.parse(
+                        "{ \"_id\" : \"key\", \"array\" : [ "
+                                + "{ \"array2\" : [ { \"_id\" : 1, \"field1\": \"value\" } ] } ] }");
+
+
         client = createMongoClient(ADMIN_DATABASE, USER, PASSWORD);
 
         insertBsonDocuments(
@@ -87,6 +94,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 OTHER_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{otherDocument}, client);
         insertBsonDocuments(DATE_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{doc1}, client);
         insertBsonDocuments(NESTED_ID_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{nestedIddocument}, client);
+        insertBsonDocuments(NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{nestedArrayDocumentInANestedArray}, client);
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
                 DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW, client);
         queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata, client);
@@ -392,7 +400,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(3));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}"), result.getAggregateOperations().get(3));
     }
 
     @Test
@@ -966,7 +974,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
                 result.getAggregateOperations().get(11));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}}"),
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}}"),
                 result.getAggregateOperations().get(12));
     }
 
@@ -1051,6 +1059,61 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                                 + "\"field2\": \"$array.field2\", "
                                 + "\"_id\": 0}}"),
                 leftJoinResult.getAggregateOperations().get(2));
+    }
+
+    @Test
+    @DisplayName("Tests that a statement with join works for three tables from the same collection.")
+    void testSameCollectionJoinWithTwoLevelNestedArray() {
+        final String twoInnerJoins =
+                String.format(
+                        "SELECT field1 FROM \"%s\".\"%s\""
+                                + "INNER JOIN \"%s\".\"%s\""
+                                + "ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                                + "INNER JOIN \"%s\".\"%s\" "
+                                + "ON \"%s\".\"%s\" = \"%s\".\"%s\""
+                                + "AND \"%s\".\"%s\" = \"%s\".\"%s\"",
+                        DATABASE_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME,
+                        DATABASE_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "__id",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "__id",
+                        DATABASE_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array_array2",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array_array2",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "__id",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "__id",
+
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array_array2",
+                        "array_index_lvl_0",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array",
+                        "array_index_lvl_0");
+
+        Assertions.assertDoesNotThrow(() -> queryMapper.get(twoInnerJoins));
+    }
+
+    @Test
+    @DisplayName("Tests that a statement with join works for two tables from the same collection using only _id.")
+    void testSameCollectionJoinWithTwoLevelNestedArrayUsingOnlyPrimaryKeys() {
+
+        final String innerJoinRootDocumentWithNestedNestedArray =
+                String.format(
+                        "SELECT field1 FROM \"%s\".\"%s\""
+                                + "INNER JOIN \"%s\".\"%s\""
+                                + "ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                        DATABASE_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME,
+                        DATABASE_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array_array2",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "__id",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array_array2",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "__id");
+
+        Assertions.assertDoesNotThrow(() -> queryMapper.get(innerJoinRootDocumentWithNestedNestedArray));
     }
 
     @Test
@@ -1143,7 +1206,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
                 result.getAggregateOperations().get(12));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"),
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}"),
                 result.getAggregateOperations().get(13));
     }
 
@@ -1378,7 +1441,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
                 result.getAggregateOperations().get(11));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 1}"), result.getAggregateOperations().get(12));
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}"), result.getAggregateOperations().get(12));
 
 
     }
@@ -1480,6 +1543,24 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
                 .getMessage();
         Assertions.assertTrue(message.contains("Unable to parse SQL"));
         Assertions.assertTrue(message.contains(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY)));
+
+        final String innerJoin =
+                String.format(
+                        "SELECT field1 FROM \"%s\".\"%s\""
+                                + "INNER JOIN \"%s\".\"%s\""
+                                + "ON \"%s\".\"%s\" = \"%s\".\"%s\"",
+                        DATABASE_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array",
+                        DATABASE_NAME,
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array_array2",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "__id",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "_array_array2",
+                        NESTED_DOCUMENT_IN_NESTED_ARRAY_COLLECTION_NAME + "__id");
+
+        message = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(innerJoin))
+                .getMessage();
+        Assertions.assertTrue(message.contains(SqlError.lookup(SqlError.JOIN_MISSING_PRIMARY_KEYS,"[array_index_lvl_0]")));
     }
 
     @Test
@@ -1839,21 +1920,5 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {\"nestedIdCollection__id\": \"$_id\", \"_id\": \"$document._id\", \"field1\": \"$document.field1\"}}"),
                 result.getAggregateOperations().get(1));
-    }
-
-    @Test
-    @DisplayName("Tests $limit is produced when max rows is passed.")
-    void testMaxRows() throws SQLException {
-        final String query =
-                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, COLLECTION_NAME);
-        final DocumentDbMqlQueryContext result = queryMapper.get(query, 10);
-        Assertions.assertNotNull(result);
-        Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(2, result.getAggregateOperations().size());
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"testCollection__id\": '$_id', \"_id\": 0}}"),
-                result.getAggregateOperations().get(0));
-        Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": 10}"), result.getAggregateOperations().get(1));
     }
 }

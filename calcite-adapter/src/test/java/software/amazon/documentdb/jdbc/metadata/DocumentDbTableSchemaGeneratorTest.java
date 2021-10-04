@@ -1731,6 +1731,28 @@ class DocumentDbTableSchemaGeneratorTest {
                 .forEach(Assertions::assertTrue);
     }
 
+    @DisplayName("Tests that sub-document of array is not present on first document, still should have index column.")
+    @Test
+    void testSubDocumentInArrayOnlyInSecondDocument() {
+        final List<BsonDocument> docs = new ArrayList<>();
+        String documentString;
+        documentString = "{\"_id\":{\"$oid\":\"6050ea8da110dd2c5f279bd0\"},\"data\":{\"_id\":{\"$oid\":\"6050ea8da110dd2c5f279bcf\"},\"locations\":[{\"_id\":\"06c782fe-b89e-43b1-8748-b671ad7d3ad9\"}]}}";
+        docs.add(BsonDocument.parse(documentString));
+        documentString = "{\"_id\":{\"$oid\":\"6050ea8ea110dd2c5f279bd4\"},\"data\":{\"_id\":{\"$oid\":\"6050ea8ea110dd2c5f279bd3\"},\"locations\":[{\"_id\":\"06c782fe-b89e-43b1-8748-b671ad7d3ad9\",\"nonRegisteredBranch\":{\"_id\":\"06c782fe-b89e-43b1-8748-b671ad7d3ad9\"}}]}}";
+        docs.add(BsonDocument.parse(documentString));
+
+        final Map<String, DocumentDbSchemaTable> tableMap = DocumentDbTableSchemaGenerator
+                .generate("employmentHistory", docs.iterator());
+        Assertions.assertEquals(4, tableMap.size());
+        final DocumentDbSchemaTable table1 = tableMap.get("employmentHistory_data_locations");
+        Assertions.assertNotNull(table1);
+        Assertions.assertNotNull(table1.getColumnMap().get("data_locations_index_lvl_0"));
+        final DocumentDbSchemaTable table2 = tableMap.get(
+                "employmentHistory_data_locations_nonRegisteredBranch");
+        Assertions.assertNotNull(table2);
+        Assertions.assertNotNull(table2.getColumnMap().get("data_locations_index_lvl_0"));
+    }
+
     private boolean producesVirtualTable(final BsonType bsonType, final BsonType nextBsonType) {
         return (bsonType == BsonType.ARRAY && nextBsonType == BsonType.ARRAY)
                 || (bsonType == BsonType.DOCUMENT && nextBsonType == BsonType.DOCUMENT)

@@ -43,7 +43,7 @@
 #### Connecting to Amazon DocumentDB Using Tableau - Internal SSH Tunnel
 1. On the **Advanced** tab, click the **Enable SSH Tunnel** option to review further properties.
 
-    ![Tableau login dialog SSH Tunnel](../images/tableau/tableau-connection-dialog-ssh-adv-with-check.jpg)
+    ![Tableau login dialog SSH Tunnel](../images/tableau/tableau-connection-dialog-ssh-adv-with-check.png)
 
 2. Enter the **SSH User**, **SSH Hostname**, and **SSH Private Key File**. Optionally, enter the
    **SSH Private Key File Passphrase** if your key file is passphrase protected.
@@ -53,13 +53,13 @@
    **Note:** _Disabling this option is less secure as it can lead to a
    ["man-in-the-middle" attack](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)._
 
-    ![Tableau login dialog SSH Tunnel](../images/tableau/tableau-connection-dialog-ssh-adv-no-check.jpg)
+    ![Tableau login dialog SSH Tunnel](../images/tableau/tableau-connection-dialog-ssh-adv-no-check.png)
 
 4. Enter the parameters. **Hostname**, **Port**, **Database**, **Username** and **Password**
    are required while the others are optional. Descriptions for each parameter can be found in
    the [JDBC connection string](connection-string.md) documentation. **Note:** _Ensure to use the 
    **DocumentDB cluster** hostname and not `localhost` when using the internal SSH tunnel option._
 
-    ![Tableau login dialog SSH Tunnel](../images/tableau/tableau-connection-dialog-ssh-general.jpg)
+    ![Tableau login dialog SSH Tunnel](../images/tableau/tableau-connection-dialog-ssh-general.png)
 
 5. Click the **Sign In** button.

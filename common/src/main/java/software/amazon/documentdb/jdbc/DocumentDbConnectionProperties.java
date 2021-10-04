@@ -55,6 +55,15 @@ public class DocumentDbConnectionProperties extends Properties {
 
     public static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
     public static final String USER_HOME_PROPERTY = "user.home";
+    public static final String USER_HOME_PATH_NAME = System.getProperty(USER_HOME_PROPERTY);
+    public static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
+            USER_HOME_PATH_NAME, ".documentdb").toString();
+    public static final String CLASS_PATH_LOCATION_NAME = getClassPathLocation();
+    static final String[] SSH_PRIVATE_KEY_FILE_SEARCH_PATHS = {
+                USER_HOME_PATH_NAME,
+                DOCUMENTDB_HOME_PATH_NAME,
+                CLASS_PATH_LOCATION_NAME,
+        };
 
     private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Logger LOGGER =
@@ -79,6 +88,23 @@ public class DocumentDbConnectionProperties extends Properties {
      */
     public DocumentDbConnectionProperties() {
         super();
+    }
+
+    private static String getClassPathLocation() {
+        String classPathLocation = null;
+        try {
+            final Path classParentPath = Paths.get(DocumentDbConnectionProperties.class
+                    .getProtectionDomain()
+                    .getCodeSource()
+                    .getLocation()
+                    .toURI()).getParent();
+            if (classParentPath != null) {
+                classPathLocation = classParentPath.toString();
+            }
+        } catch (URISyntaxException e) {
+            // Ignore error, return null.
+        }
+        return classPathLocation;
     }
 
     /**
@@ -738,21 +764,21 @@ public class DocumentDbConnectionProperties extends Properties {
                 || isNullOrWhitespace(getPassword())) {
             throw SqlError.createSQLException(
                     LOGGER,
-                    SqlState.CONNECTION_FAILURE,
+                    SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_USER_PASSWORD
             );
         }
         if (isNullOrWhitespace(getDatabase())) {
             throw SqlError.createSQLException(
                     LOGGER,
-                    SqlState.CONNECTION_FAILURE,
+                    SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_DATABASE
             );
         }
         if (isNullOrWhitespace(getHostname())) {
             throw SqlError.createSQLException(
                     LOGGER,
-                    SqlState.CONNECTION_FAILURE,
+                    SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_HOSTNAME
             );
         }
@@ -944,7 +970,7 @@ public class DocumentDbConnectionProperties extends Properties {
             final MongoClientSettings.Builder clientSettingsBuilder,
             final int sshLocalPort) {
         final String host;
-        if (enableSshTunnel() && sshLocalPort > 0) {
+        if (enableSshTunnel() && isSshPrivateKeyFileExists() && sshLocalPort > 0) {
             host = String.format("localhost:%d", sshLocalPort);
         } else {
             host = getHostname();
@@ -973,8 +999,16 @@ public class DocumentDbConnectionProperties extends Properties {
     public boolean enableSshTunnel() {
         return !isNullOrWhitespace(getSshUser())
                 && !isNullOrWhitespace(getSshHostname())
-                && !isNullOrWhitespace(getSshPrivateKeyFile())
-                && Files.exists(getPath(getSshPrivateKeyFile()));
+                && !isNullOrWhitespace(getSshPrivateKeyFile());
+    }
+
+    /**
+     * Get whether the SSH private key file exists.
+     *
+     * @return returns {@code true} if the file exists, {@code false}, otherwise.
+     */
+    public boolean isSshPrivateKeyFileExists() {
+        return Files.exists(getPath(getSshPrivateKeyFile(), SSH_PRIVATE_KEY_FILE_SEARCH_PATHS));
     }
 
     /**
@@ -1042,7 +1076,7 @@ public class DocumentDbConnectionProperties extends Properties {
             } else {
                 throw SqlError.createSQLException(
                         LOGGER,
-                        SqlState.CONNECTION_EXCEPTION,
+                        SqlState.INVALID_PARAMETER_VALUE,
                         SqlError.TLS_CA_FILE_NOT_FOUND,
                         tlsCAFileNamePath);
             }
@@ -1057,11 +1091,25 @@ public class DocumentDbConnectionProperties extends Properties {
      * @param filePath the given file path to process.
      * @return a {@link Path} for the absolution path for the given file path.
      */
-    public static Path getPath(final String filePath) {
+    public static Path getPath(final String filePath, final String... searchFolders) {
         if (filePath.matches(HOME_PATH_PREFIX_REG_EXPR)) {
-            final String userHomePath = Matcher.quoteReplacement(
-                    System.getProperty(USER_HOME_PROPERTY));
-            return Paths.get(filePath.replaceFirst("~", userHomePath)).toAbsolutePath();
+            final String fromHomePath = filePath.replaceFirst("~",
+                    Matcher.quoteReplacement(USER_HOME_PATH_NAME));
+            return Paths.get(fromHomePath).toAbsolutePath();
+        } else {
+            final Path origFilePath = Paths.get(filePath);
+            if (origFilePath.isAbsolute()) {
+                return origFilePath;
+            }
+            for (String searchFolder : searchFolders) {
+                if (searchFolder == null) {
+                    continue;
+                }
+                final Path testPath = Paths.get(searchFolder, filePath);
+                if (testPath.toAbsolutePath().toFile().exists()) {
+                    return testPath;
+                }
+            }
         }
         return Paths.get(filePath).toAbsolutePath();
     }

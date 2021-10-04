@@ -62,7 +62,7 @@ public final class SchemaStoreFactory {
             default:
                 throw SqlError.createSQLException(
                         LOGGER,
-                        SqlState.CONNECTION_EXCEPTION,
+                        SqlState.INVALID_PARAMETER_VALUE,
                         SqlError.UNSUPPORTED_PROPERTY,
                         SCHEMA_PERSISTENCE_STORE.getName() + "=" + storeType.getName());
         }
@@ -88,7 +88,7 @@ public final class SchemaStoreFactory {
             default:
                 throw SqlError.createSQLException(
                         LOGGER,
-                        SqlState.CONNECTION_EXCEPTION,
+                        SqlState.INVALID_PARAMETER_VALUE,
                         SqlError.UNSUPPORTED_PROPERTY,
                         SCHEMA_PERSISTENCE_STORE.getName() + "=" + storeType.getName());
         }

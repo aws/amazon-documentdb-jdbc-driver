@@ -1,4 +1,4 @@
-# Schema Discovery and Generation
+# Schema Discovery
 
 ## Automated Discovery Behavior
 

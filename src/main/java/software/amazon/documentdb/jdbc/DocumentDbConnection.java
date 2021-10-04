@@ -50,6 +50,7 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Arrays;
 import java.util.concurrent.Executor;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.SSH_PRIVATE_KEY_FILE_SEARCH_PATHS;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperty.REFRESH_SCHEMA;
@@ -114,15 +115,27 @@ public class DocumentDbConnection extends Connection
     public static SshPortForwardingSession createSshTunnel(
             final DocumentDbConnectionProperties connectionProperties) throws SQLException {
         if (!connectionProperties.enableSshTunnel()) {
+            LOGGER.info("Internal SSH tunnel not started.");
             return null;
+        } else if (!connectionProperties.isSshPrivateKeyFileExists()) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.CONNECTION_EXCEPTION,
+                    SqlError.SSH_PRIVATE_KEY_FILE_NOT_FOUND,
+                    connectionProperties.getSshPrivateKeyFile());
         }
 
+        LOGGER.info("Internal SSH tunnel starting.");
         try {
             final JSch jSch = new JSch();
             addIdentity(connectionProperties, jSch);
             final Session session = createSession(connectionProperties, jSch);
             connectSession(connectionProperties, jSch, session);
-            return getPortForwardingSession(connectionProperties, session);
+            final SshPortForwardingSession portForwardingSession = getPortForwardingSession(
+                    connectionProperties, session);
+            LOGGER.info("Internal SSH tunnel started on local port '{}'.",
+                    portForwardingSession.localPort);
+            return portForwardingSession;
         } catch (SQLException e) {
             throw e;
         } catch (Exception e) {
@@ -134,7 +147,7 @@ public class DocumentDbConnection extends Connection
     public boolean isValid(final int timeout) throws SQLException {
         if (timeout < 0) {
             throw SqlError.createSQLException(LOGGER,
-                    SqlState.CONNECTION_EXCEPTION,
+                    SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.INVALID_TIMEOUT,
                     timeout);
         }
@@ -299,16 +312,17 @@ public class DocumentDbConnection extends Connection
                     && e.getCause() instanceof MongoCommandException
                     && ((MongoCommandException)e.getCause()).getCode() == 18) {
                 throw SqlError.createSQLException(LOGGER,
-                        SqlState.CONNECTION_EXCEPTION,
+                        SqlState.INVALID_AUTHORIZATION_SPECIFICATION,
                         e,
                         SqlError.AUTHORIZATION_ERROR,
+                        mongoDatabase.getName(),
                         e.getCredential().getUserName(),
                         e.getCredential().getSource(),
                         e.getCredential().getMechanism());
             }
             // Everything else.
             throw SqlError.createSQLException(LOGGER,
-                    SqlState.CONNECTION_EXCEPTION,
+                    SqlState.SQL_CLIENT_UNABLE_TO_ESTABLISH_SQL_CONNECTION,
                     e,
                     SqlError.SECURITY_ERROR,
                     e.getMessage());
@@ -359,12 +373,14 @@ public class DocumentDbConnection extends Connection
     private static void addIdentity(
             final DocumentDbConnectionProperties connectionProperties,
             final JSch jSch) throws JSchException {
-        final String privateKey = getPath(connectionProperties.getSshPrivateKeyFile()).toString();
+        final String privateKeyFileName = getPath(connectionProperties.getSshPrivateKeyFile(),
+                SSH_PRIVATE_KEY_FILE_SEARCH_PATHS).toString();
+        LOGGER.debug("SSH private key file resolved to '{}'.", privateKeyFileName);
         // If passPhrase protected, will need to provide this, too.
         final String passPhrase = !isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())
                 ? connectionProperties.getSshPrivateKeyPassphrase()
                 : null;
-        jSch.addIdentity(privateKey, passPhrase);
+        jSch.addIdentity(privateKeyFileName, passPhrase);
     }
 
     private static Session createSession(
@@ -426,7 +442,7 @@ public class DocumentDbConnection extends Connection
             } else {
                 throw SqlError.createSQLException(
                         LOGGER,
-                        SqlState.CONNECTION_EXCEPTION,
+                        SqlState.INVALID_PARAMETER_VALUE,
                         SqlError.KNOWN_HOSTS_FILE_NOT_FOUND,
                         connectionProperties.getSshKnownHostsFile());
             }

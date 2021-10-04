@@ -14,7 +14,7 @@
  *
  */
 
-package software.amazon.documentdb.jdbc.common;
+package software.amazon.documentdb.jdbc;
 
 import com.mongodb.MongoClientSettings;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -22,17 +22,23 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.ThrowingSupplier;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
-import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
-import software.amazon.documentdb.jdbc.DocumentDbReadPreference;
 
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.Properties;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.CLASS_PATH_LOCATION_NAME;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENTDB_HOME_PATH_NAME;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.SSH_PRIVATE_KEY_FILE_SEARCH_PATHS;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.USER_HOME_PATH_NAME;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
 
 public class DocumentDbConnectionPropertiesTest {
 
@@ -263,5 +269,62 @@ public class DocumentDbConnectionPropertiesTest {
         properties2.setTlsCAFilePath("~/invalid-filename.pem");
         Assertions.assertDoesNotThrow(
                 (ThrowingSupplier<MongoClientSettings>) properties2::buildMongoClientSettings);
+    }
+
+    @Test()
+    @DisplayName("Tests the getPath method.")
+    void testGetPath() throws IOException {
+        final String tempFilename1 = UUID.randomUUID().toString();
+
+        // Test that it will return using the "current directory"
+        final Path path1 = getPath(tempFilename1);
+        Assertions.assertEquals(Paths.get(tempFilename1).toAbsolutePath(), path1);
+
+        // Test that it will use the user's home path
+        final Path path2 = getPath("~/" + tempFilename1);
+        Assertions.assertEquals(Paths.get(USER_HOME_PATH_NAME, tempFilename1), path2);
+
+        // Test that it will use the user's home path
+        Path homeTempFilePath = null;
+        try {
+            homeTempFilePath = Paths.get(USER_HOME_PATH_NAME, tempFilename1);
+            Assertions.assertTrue(homeTempFilePath.toFile().createNewFile());
+            final Path path3 = getPath(tempFilename1, SSH_PRIVATE_KEY_FILE_SEARCH_PATHS);
+            Assertions.assertEquals(Paths.get(USER_HOME_PATH_NAME, tempFilename1), path3);
+        } finally {
+            Assertions.assertTrue(homeTempFilePath != null && homeTempFilePath.toFile().delete());
+        }
+
+        // Test that it will use the .documentdb folder under the user's home path
+        Path documentDbTempFilePath = null;
+        try {
+            documentDbTempFilePath = Paths.get(DOCUMENTDB_HOME_PATH_NAME, tempFilename1);
+            Assertions.assertTrue(documentDbTempFilePath.toFile().createNewFile());
+            final Path path4 = getPath(tempFilename1, SSH_PRIVATE_KEY_FILE_SEARCH_PATHS);
+            Assertions.assertEquals(Paths.get(DOCUMENTDB_HOME_PATH_NAME, tempFilename1), path4);
+        } finally {
+            Assertions.assertTrue(documentDbTempFilePath != null && documentDbTempFilePath.toFile().delete());
+        }
+
+        // Test that it will use the .documentdb folder under the user's home path
+        Path classPathParentTempFilePath = null;
+        try {
+            classPathParentTempFilePath = Paths.get(CLASS_PATH_LOCATION_NAME, tempFilename1);
+            Assertions.assertTrue(classPathParentTempFilePath.toFile().createNewFile());
+            final Path path5 = getPath(tempFilename1, SSH_PRIVATE_KEY_FILE_SEARCH_PATHS);
+            Assertions.assertEquals(Paths.get(CLASS_PATH_LOCATION_NAME, tempFilename1), path5);
+        } finally {
+            Assertions.assertTrue(classPathParentTempFilePath != null && classPathParentTempFilePath.toFile().delete());
+        }
+
+        // Test that will recognize and use an absolute path
+        File tempFile = null;
+        try {
+            tempFile = File.createTempFile("documentdb", ".tmp");
+            final Path path5 = getPath(tempFile.getAbsolutePath());
+            Assertions.assertEquals(Paths.get(tempFile.getAbsolutePath()), path5);
+        } finally {
+            Assertions.assertTrue(tempFile != null && tempFile.delete());
+        }
     }
 }

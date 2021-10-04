@@ -28,13 +28,6 @@
         </boolean-options>
     </field>
 
-    <!-- Only display this field only when TLS enabled is true. Note: do not validate path. -->
-    <field name="v-tls-ca-file" label="TLS Certificate Authority File" value-type="file" category="authentication" optional="true" >
-        <conditions>
-            <condition field="sslmode" value="require" />
-        </conditions>
-    </field>
-
     <field name="v-allow-invalid-hostnames" label="Allow Invalid Hostnames (enabling option is less secure)" value-type="boolean" category="authentication" default-value="true">
         <conditions>
             <condition field="sslmode" value="require" />
@@ -65,13 +58,7 @@
         </conditions>
     </field>
 
-    <field name="v-ssh-priv-key-filename" label="SSH Private Key File" value-type="file" category="advanced" optional="true" default-value="">
-        <conditions>
-            <condition field="v-ssh-tunnel" value="true" />
-        </conditions>
-    </field>
-
-    <field name="v-ssh-priv-key-passphrase" label="SSH Private Key File Passphrase" value-type="string" category="advanced" optional="true" default-value="">
+    <field name="v-ssh-priv-key-filename" label="SSH Private Key File (~/.documentdb/)" value-type="string" category="advanced" optional="true" default-value="">
         <conditions>
             <condition field="v-ssh-tunnel" value="true" />
         </conditions>
@@ -85,12 +72,6 @@
             <false-value value="false" />
             <true-value value="true" />
         </boolean-options>
-    </field>
-
-    <field name="v-ssh-known-hosts-file" label="SSH Known Hosts File" value-type="file" category="advanced" optional="true" default-value="~/.ssh/known_hosts">
-        <conditions>
-            <condition field="v-ssh-strict-host-key-check" value="true" />
-        </conditions>
     </field>
 
     <field name="v-retry-reads" label="Enable Retry Reads" value-type="boolean" category="advanced" default-value="true">

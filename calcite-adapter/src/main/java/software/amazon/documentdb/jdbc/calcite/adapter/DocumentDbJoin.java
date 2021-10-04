@@ -467,18 +467,50 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             throw new IllegalArgumentException(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY));
         }
 
-        // Check that if joining with a virtual table, only its complete set of foreign keys are used.
-        final List<String> requiredKeys = Streams
-                .concat(left.getForeignKeys().stream(), right.getForeignKeys().stream())
+        final List<String> rightSidePrimaryKeys = Streams
+                .concat(right.getColumns().stream())
+                .filter( c -> c.isPrimaryKey())
                 .map(c -> c.isIndex()
                         ? c.getSqlName()
                         : c.getFieldPath())
                 .distinct()
                 .sorted()
                 .collect(Collectors.toList());
+
+        final List<String> leftSidePrimaryKeys = Streams
+                .concat(left.getColumns().stream())
+                .filter( c -> c.isPrimaryKey())
+                .map(c -> c.isIndex()
+                        ? c.getSqlName()
+                        : c.getFieldPath())
+                .distinct()
+                .sorted()
+                .collect(Collectors.toList());
+
         Collections.sort(leftKeyNames);
-        if (!(leftKeyNames).equals(requiredKeys)) {
-            throw new IllegalArgumentException(SqlError.lookup(SqlError.EQUIJOINS_ON_FK_ONLY));
+
+        // Check that if joining with a virtual table, only its complete set of primary keys are used.
+        validateMinimumPrimaryKeysUsage(leftKeyNames, leftSidePrimaryKeys, rightSidePrimaryKeys);
+    }
+
+    /**
+     * Validates if the keys used in the join matches with the smaller set of primary keys
+     *
+     * @param keyNames keys used in the join condition
+     * @param leftSidePrimaryKeys primary keys from the left side of the join.
+     * @param rightSidePrimaryKeys primary keys from the right side of the join.
+     */
+    protected void validateMinimumPrimaryKeysUsage(final List<String> keyNames, final List<String> leftSidePrimaryKeys, final List<String> rightSidePrimaryKeys) {
+        List<String> smallerListOfKeys = leftSidePrimaryKeys;
+
+        if (rightSidePrimaryKeys.size() < leftSidePrimaryKeys.size()) {
+            smallerListOfKeys = rightSidePrimaryKeys;
+        }
+
+        if (!smallerListOfKeys.equals(keyNames)) {
+            final List<String> keysMissing = new ArrayList<>(smallerListOfKeys);
+            keysMissing.removeAll(keyNames);
+            throw new IllegalArgumentException(SqlError.lookup(SqlError.JOIN_MISSING_PRIMARY_KEYS,keysMissing));
         }
     }
 

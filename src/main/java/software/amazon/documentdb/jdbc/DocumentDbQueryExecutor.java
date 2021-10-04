@@ -147,7 +147,7 @@ public class DocumentDbQueryExecutor {
                 } else {
                     throw SqlError.createSQLException(
                             LOGGER,
-                            SqlState.CONNECTION_EXCEPTION,
+                            SqlState.OPERATION_CANCELED,
                             SqlError.QUERY_FAILED, e);
                 }
             }
@@ -183,7 +183,6 @@ public class DocumentDbQueryExecutor {
         final MongoCollection<Document> collection = database
                 .getCollection(queryContext.getCollectionName());
 
-        // Only add limit if maxRows is non-zero.
         final List<Bson> aggregateOperations = queryContext.getAggregateOperations();
 
         AggregateIterable<Document> iterable = collection.aggregate(aggregateOperations);
