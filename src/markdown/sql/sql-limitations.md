@@ -53,9 +53,9 @@ Currently, cross collection joins are not supported.
 
 ### Same Collection Joins
 
-Currently, the driver only supports `JOINs` across tables from the same collection as long as we
-are only joining on foreign keys. This is equivalent to presenting the data in its denormalized
-form. For such `JOINs`, the complete set of foreign keys for a table must be used.
+Currently, the driver only supports `JOINs` across tables from the same collection as long as
+the primary key and foreign key relation are present. This is equivalent to presenting the data in its denormalized
+form. For such `JOINs`, the minimal set of relation between primary and foreign keys for a table must be used.
 
 For example, if we had the collection `Customer` whose documents roughly followed the form below, we
 would end up with 4 tables.
@@ -115,6 +115,18 @@ would end up with 4 tables.
 
 For the tables `customer_address` and `customer_subscriptions` we only need `customer__id`. For `customer_subscriptions_variants`, we need
 `customer__id` and `subscriptions_index_lvl_0`. Between these tables, the following join conditions would be allowed while any others would be rejected.
+Examples of minimal primary keys required in a query:
+
+#### Table: Minimal Primary Keys required
+| Table | Joining Table | PK with FK required |
+| --- | --- | --- |
+| customer | customer_address| customer__id |
+| customer | customer_subscriptions | customer__id |
+| customer | customer_subscriptions_variants | customer__id |
+| customer_address | customer_subscriptions | customer__id |
+| customer_address | customer_subscriptions_variants | customer__id |
+| customer_subscriptions | customer_subscriptions_variants | customer__id and subscriptions_index_lvl_0 | 
+
 
 - `SELECT * FROM "customer" LEFT JOIN "customer_subscriptions" ON "customer"."customer__id" = "customer_subscriptions.customer__id"`
 - `SELECT * FROM "customer" LEFT JOIN "customer_address" ON "customer"."customer__id" = "customer_address.customer__id"`
@@ -122,7 +134,7 @@ For the tables `customer_address` and `customer_subscriptions` we only need `cus
 - `SELECT * FROM "customer_subscriptions" LEFT JOIN "customer_subscriptions_variants" ON "customer_subscriptions"."customer__id" = "customer_subscriptions_variants".customer__id"
   AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants.subscriptions_index_lvl_0"`
 
-These can be combined as long as the complete set of foreign keys are still present.
+These can be combined as long as the minimal common primary keys with foreign keys between tables are present.
 
 - ```
   SELECT * FROM "customer_address" LEFT JOIN "customer_subscriptions" ON "customer_address"."customer__id" = "customer_subscriptions".customer__id"
@@ -135,7 +147,7 @@ These can be combined as long as the complete set of foreign keys are still pres
 
 This feature allows `INNER` and `LEFT (OUTER)` joins. 
 The `NATURAL` and `CROSS` keywords, as well as specifying multiple tables in the `FROM` clause, 
-are also accepted as long as the join is still semantically a same collection join on the complete set of foreign keys. 
+are also accepted as long as the join is still semantically a same collection using the minimal set of primary keys with foreign keys. 
 
 The following are all equivalent to the same inner join: 
 
