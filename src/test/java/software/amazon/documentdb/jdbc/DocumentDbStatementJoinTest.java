@@ -33,6 +33,15 @@ import java.util.List;
 
 public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
 
+    private static final String MULTI_NESTED_ARRAY_AND_DOCUMENT_JSON = "{ \"_id\" : \"key1\",  "
+            + "\"document\": {\"field\": 1},"
+            + "\"array\" : ["
+            + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
+            + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ], "
+            + "\"otherArray\" : ["
+            + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
+            + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ] }";
+
     /**
      * Test querying for a virtual table from a nested document.
      *
@@ -1169,195 +1178,14 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         }
     }
 
-    @DisplayName("Tests validation for different same collection joins.")
-    @ParameterizedTest(name = "testJoinConditions - [{index}] - {arguments}")
-    @MethodSource({"getTestEnvironments"})
-    void testJoinConditions(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
-        setTestEnvironment(testEnvironment);
-        final String tableName = "testJoinConditions";
-        final BsonDocument document1 =
-                BsonDocument.parse(
-                        "{ \"_id\" : \"key1\",  "
-                                + "\"document\": {\"field\": 1},"
-                                + "\"array\" : ["
-                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
-                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ], "
-                                + "\"otherArray\" : ["
-                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
-                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ] }");
-        insertBsonDocuments(tableName, new BsonDocument[]{document1});
-        try (Connection connection = getConnection()) {
-            final DocumentDbStatement statement = getDocumentDbStatement(connection);
-
-            // Test joins where only shared primary key is _id. These only require _id.
-            final ResultSet resultSet1 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_document",
-                                    tableName + "_array"));
-            Assertions.assertNotNull(resultSet1);
-            final ResultSet resultSet2 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_array",
-                                    tableName + "_otherArray"));
-            Assertions.assertNotNull(resultSet2);
-            final ResultSet resultSet3 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_array_document",
-                                    tableName + "_otherArray_document"));
-            Assertions.assertNotNull(resultSet3);
-            final ResultSet resultSet4 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_array_otherArray",
-                                    tableName + "_otherArray_array"));
-            Assertions.assertNotNull(resultSet4);
-            final ResultSet resultSet5 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_array_document",
-                                    tableName + "_otherArray_array"));
-            Assertions.assertNotNull(resultSet5);
-
-            // Test joins where tables share an array index. These require _id and the array index.
-            final ResultSet resultSet6 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" "
-                                            + "AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" ",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_array",
-                                    tableName + "_array_document"));
-            Assertions.assertNotNull(resultSet6);
-            final ResultSet resultSet7 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" "
-                                            + "AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" ",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_array",
-                                    tableName + "_array_array"));
-            Assertions.assertNotNull(resultSet7);
-            final ResultSet resultSet8 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" "
-                                            + "AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" ",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_array_array",
-                                    tableName + "_array_otherArray"));
-            Assertions.assertNotNull(resultSet8);
-            final ResultSet resultSet9 =
-                    statement.executeQuery(
-                            String.format(
-                                    "SELECT * "
-                                            + "FROM \"%2$s\".\"%3$s\" "
-                                            + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                            + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" "
-                                            + "AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" ",
-                                    tableName,
-                                    getDatabaseName(),
-                                    tableName + "_array_document",
-                                    tableName + "_array_array"));
-            Assertions.assertNotNull(resultSet9);
-            //TODO: Check exact error messages regarding missing keys.
-            Assertions.assertThrows(SQLException.class, () -> statement.executeQuery(
-                    String.format(
-                            "SELECT * "
-                                    + "FROM \"%2$s\".\"%3$s\" "
-                                    + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                    + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" ",
-                            tableName,
-                            getDatabaseName(),
-                            tableName + "_array",
-                            tableName + "_array_array"))
-            );
-            Assertions.assertThrows(SQLException.class, () -> statement.executeQuery(
-                    String.format(
-                            "SELECT * "
-                                    + "FROM \"%2$s\".\"%3$s\" "
-                                    + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                    + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" ",
-                            tableName,
-                            getDatabaseName(),
-                            tableName + "_array_array",
-                            tableName + "_array_otherArray"))
-            );
-            Assertions.assertThrows(SQLException.class, () -> statement.executeQuery(
-                    String.format(
-                            "SELECT * "
-                                    + "FROM \"%2$s\".\"%3$s\" "
-                                    + "INNER JOIN \"%2$s\".\"%4$s\" "
-                                    + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" ",
-                            tableName,
-                            getDatabaseName(),
-                            tableName + "_array_document",
-                            tableName + "_array_array"))
-            );
-        }
-    }
-
     @DisplayName("Tests validation for all combination of join between two tables.")
     @ParameterizedTest(name = "testJoinConditionsTwoTables - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testJoinConditionsTwoTables(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
         final String tableName = "testJoinConditionsTwoTables";
-        final BsonDocument document1 =
-                BsonDocument.parse(
-                        "{ \"_id\" : \"key1\",  "
-                                + "\"document\": {\"field\": 1},"
-                                + "\"array\" : ["
-                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
-                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ], "
-                                + "\"otherArray\" : ["
-                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
-                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ] }");
-        insertBsonDocuments(tableName, new BsonDocument[]{document1});
+        final BsonDocument document = BsonDocument.parse(MULTI_NESTED_ARRAY_AND_DOCUMENT_JSON);
+        insertBsonDocuments(tableName, new BsonDocument[]{document});
 
         // List of all tables
         final List<String> tables = Lists.newArrayList(
@@ -1474,17 +1302,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
     void testJoinConditionsThreeTables(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
         final String tableName = "testJoinConditionsThreeTables";
-        final BsonDocument document1 =
-                BsonDocument.parse(
-                        "{ \"_id\" : \"key1\",  "
-                                + "\"document\": {\"field\": 1},"
-                                + "\"array\" : ["
-                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
-                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ], "
-                                + "\"otherArray\" : ["
-                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
-                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ] }");
-        insertBsonDocuments(tableName, new BsonDocument[]{document1});
+        final BsonDocument document = BsonDocument.parse(MULTI_NESTED_ARRAY_AND_DOCUMENT_JSON);
+        insertBsonDocuments(tableName, new BsonDocument[]{document});
 
         // List of all tables
         final List<String> tables = Lists.newArrayList(
@@ -1511,7 +1330,6 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "testJoinConditionsThreeTables_otherArray_document",
                 "testJoinConditionsThreeTables_otherArray_otherArray");
 
-        int testCount = 0;
         try (Connection connection = getConnection()) {
             final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
@@ -1523,14 +1341,13 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                             // Does not allow duplicate table names in JOIN conditions
                             continue;
                         }
-                        testCount++;
                         final String query = String.format(
                                 "SELECT *%n"
                                         + " FROM \"%2$s\".\"%3$s\"%n"
                                         + " INNER JOIN \"%2$s\".\"%4$s\"%n"
-                                        + " ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"%n"
+                                        + "  ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"%n"
                                         + " INNER JOIN \"%2$s\".\"%5$s\"%n"
-                                        + " ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\"",
+                                        + "  ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\"",
                                 tableName,
                                 getDatabaseName(),
                                 firstTable,
@@ -1555,7 +1372,6 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                     }
                 }
             }
-            System.out.println("Number of tests = " + testCount);
 
             // Test combination of tables with "array" as parent
             for (String firstTable : arrayTables) {
@@ -1567,15 +1383,14 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                             // Disallow join with the same table.
                             continue;
                         }
-                        testCount++;
                         final String query = String.format(
                                 "SELECT * %n"
-                                        + "FROM \"%2$s\".\"%3$s\" %n"
-                                        + "INNER JOIN \"%2$s\".\"%4$s\" %n"
-                                        + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
-                                        + " AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" %n"
-                                        + "INNER JOIN \"%2$s\".\"%5$s\" %n"
-                                        + "ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" ",
+                                        + " FROM \"%2$s\".\"%3$s\" %n"
+                                        + " INNER JOIN \"%2$s\".\"%4$s\" %n"
+                                        + "  ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
+                                        + "   AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" %n"
+                                        + " INNER JOIN \"%2$s\".\"%5$s\" %n"
+                                        + "  ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" ",
                                 tableName,
                                 getDatabaseName(),
                                 firstTable,
@@ -1593,7 +1408,6 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                     }
                 }
             }
-            System.out.println("Number of tests = " + testCount);
 
             // Test combination of tables with "array" as parent
             for (String firstTable : arrayTables) {
@@ -1605,16 +1419,15 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                             // Disallow join with the same table.
                             continue;
                         }
-                        testCount++;
                         final String query = String.format(
                                 "SELECT * %n"
-                                        + "FROM \"%2$s\".\"%3$s\" %n"
-                                        + "INNER JOIN \"%2$s\".\"%4$s\" %n"
-                                        + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
-                                        + " AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" %n"
-                                        + "INNER JOIN \"%2$s\".\"%5$s\" %n"
-                                        + "ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" "
-                                        + " AND \"%3$s\".\"array_index_lvl_0\" = \"%5$s\".\"array_index_lvl_0\" %n",
+                                        + " FROM \"%2$s\".\"%3$s\" %n"
+                                        + " INNER JOIN \"%2$s\".\"%4$s\" %n"
+                                        + "  ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
+                                        + "   AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" %n"
+                                        + " INNER JOIN \"%2$s\".\"%5$s\" %n"
+                                        + "  ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" "
+                                        + "   AND \"%3$s\".\"array_index_lvl_0\" = \"%5$s\".\"array_index_lvl_0\" %n",
                                 tableName,
                                 getDatabaseName(),
                                 firstTable,
@@ -1626,7 +1439,6 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                     }
                 }
             }
-            System.out.println("Number of tests = " + testCount);
 
             // Test combination of tables with "array" as parent
             for (String firstTable : arrayTables) {
@@ -1638,15 +1450,14 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                             // Disallow join with the same table.
                             continue;
                         }
-                        testCount++;
                         final String query = String.format(
                                 "SELECT * %n"
-                                        + "FROM \"%2$s\".\"%3$s\" %n"
-                                        + "INNER JOIN \"%2$s\".\"%4$s\" %n"
-                                        + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
-                                        + "INNER JOIN \"%2$s\".\"%5$s\" %n"
-                                        + "ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" "
-                                        + " AND \"%3$s\".\"array_index_lvl_0\" = \"%5$s\".\"array_index_lvl_0\" %n",
+                                        + " FROM \"%2$s\".\"%3$s\" %n"
+                                        + " INNER JOIN \"%2$s\".\"%4$s\" %n"
+                                        + "  ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
+                                        + " INNER JOIN \"%2$s\".\"%5$s\" %n"
+                                        + "  ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" "
+                                        + "   AND \"%3$s\".\"array_index_lvl_0\" = \"%5$s\".\"array_index_lvl_0\" %n",
                                 tableName,
                                 getDatabaseName(),
                                 firstTable,
@@ -1664,7 +1475,6 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                     }
                 }
             }
-            System.out.println("Number of tests = " + testCount);
         }
     }
 }
