@@ -17,6 +17,8 @@
 package software.amazon.documentdb.jdbc;
 
 import com.google.common.collect.Lists;
+import org.apache.log4j.Level;
+import org.apache.log4j.LogManager;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Disabled;
@@ -1212,6 +1214,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "testJoinConditionsTwoTables_otherArray_document",
                 "testJoinConditionsTwoTables_otherArray_otherArray");
 
+        final Level level = LogManager.getRootLogger().getLevel();
+        LogManager.getRootLogger().setLevel(Level.FATAL);
         // Test all combination of tables - only using base table "_id" in join condition
         try (Connection connection = getConnection()) {
             final DocumentDbStatement statement = getDocumentDbStatement(connection);
@@ -1293,6 +1297,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                     }
                 }
             }
+        } finally {
+            LogManager.getRootLogger().setLevel(level);
         }
     }
 
@@ -1330,6 +1336,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "testJoinConditionsThreeTables_otherArray_document",
                 "testJoinConditionsThreeTables_otherArray_otherArray");
 
+        final Level level = LogManager.getRootLogger().getLevel();
+        LogManager.getRootLogger().setLevel(Level.FATAL);
         try (Connection connection = getConnection()) {
             final DocumentDbStatement statement = getDocumentDbStatement(connection);
 
@@ -1475,6 +1483,8 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                     }
                 }
             }
+        } finally {
+            LogManager.getRootLogger().setLevel(level);
         }
     }
 }
