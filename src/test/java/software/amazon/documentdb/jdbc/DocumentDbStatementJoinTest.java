@@ -1468,12 +1468,12 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
         }
     }
 
-    @DisplayName("Tests validation for all combination of join between two tables.")
-    @ParameterizedTest(name = "testJoinConditionsTwoTables - [{index}] - {arguments}")
+    @DisplayName("Tests validation for all combination of join between three tables.")
+    @ParameterizedTest(name = "testJoinConditionsThreeTables - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testJoinConditionsThreeTables(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final String tableName = "testJoinConditionsTwoTables";
+        final String tableName = "testJoinConditionsThreeTables";
         final BsonDocument document1 =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key1\",  "
@@ -1488,28 +1488,28 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
 
         // List of all tables
         final List<String> tables = Lists.newArrayList(
-                "testJoinConditionsTwoTables",
-                "testJoinConditionsTwoTables_array",
-                "testJoinConditionsTwoTables_array_array",
-                "testJoinConditionsTwoTables_array_document",
-                "testJoinConditionsTwoTables_array_otherArray",
-                "testJoinConditionsTwoTables_document",
-                "testJoinConditionsTwoTables_otherArray",
-                "testJoinConditionsTwoTables_otherArray_array",
-                "testJoinConditionsTwoTables_otherArray_document",
-                "testJoinConditionsTwoTables_otherArray_otherArray");
+                "testJoinConditionsThreeTables",
+                "testJoinConditionsThreeTables_array",
+                "testJoinConditionsThreeTables_array_array",
+                "testJoinConditionsThreeTables_array_document",
+                "testJoinConditionsThreeTables_array_otherArray",
+                "testJoinConditionsThreeTables_document",
+                "testJoinConditionsThreeTables_otherArray",
+                "testJoinConditionsThreeTables_otherArray_array",
+                "testJoinConditionsThreeTables_otherArray_document",
+                "testJoinConditionsThreeTables_otherArray_otherArray");
         // List of all tables with "array" as parent
         final List<String> arrayTables = Lists.newArrayList(
-                "testJoinConditionsTwoTables_array",
-                "testJoinConditionsTwoTables_array_array",
-                "testJoinConditionsTwoTables_array_document",
-                "testJoinConditionsTwoTables_array_otherArray");
+                "testJoinConditionsThreeTables_array",
+                "testJoinConditionsThreeTables_array_array",
+                "testJoinConditionsThreeTables_array_document",
+                "testJoinConditionsThreeTables_array_otherArray");
         // List of all tables with "otherArray" as parent
         final List<String> otherArrayTables = Lists.newArrayList(
-                "testJoinConditionsTwoTables_otherArray",
-                "testJoinConditionsTwoTables_otherArray_array",
-                "testJoinConditionsTwoTables_otherArray_document",
-                "testJoinConditionsTwoTables_otherArray_otherArray");
+                "testJoinConditionsThreeTables_otherArray",
+                "testJoinConditionsThreeTables_otherArray_array",
+                "testJoinConditionsThreeTables_otherArray_document",
+                "testJoinConditionsThreeTables_otherArray_otherArray");
 
         int testCount = 0;
         try (Connection connection = getConnection()) {
