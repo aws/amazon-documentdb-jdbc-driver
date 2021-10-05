@@ -101,7 +101,7 @@ public class DocumentDbConnectionProperties extends Properties {
             if (classParentPath != null) {
                 classPathLocation = classParentPath.toString();
             }
-        } catch (URISyntaxException e) {
+        } catch (Exception e) {
             // Ignore error, return null.
         }
         return classPathLocation;
