@@ -779,7 +779,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
     }
 
     /**
-     * "Tests that different join types produce the correct result for tables from different collections.
+     * Tests that different join types produce the correct result for tables from different collections.
      *
      * @throws SQLException occurs if executing the statement or retrieving a value fails.
      */
@@ -1377,7 +1377,7 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                 "testJoinConditionsTwoTables_array_array",
                 "testJoinConditionsTwoTables_array_document",
                 "testJoinConditionsTwoTables_array_otherArray");
-        // List of all tables with "otherArray" as parent parent
+        // List of all tables with "otherArray" as parent
         final List<String> otherArrayTables = Lists.newArrayList(
                 "testJoinConditionsTwoTables_otherArray",
                 "testJoinConditionsTwoTables_otherArray_array",
@@ -1465,6 +1465,206 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
                     }
                 }
             }
+        }
+    }
+
+    @DisplayName("Tests validation for all combination of join between two tables.")
+    @ParameterizedTest(name = "testJoinConditionsTwoTables - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testJoinConditionsThreeTables(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testJoinConditionsTwoTables";
+        final BsonDocument document1 =
+                BsonDocument.parse(
+                        "{ \"_id\" : \"key1\",  "
+                                + "\"document\": {\"field\": 1},"
+                                + "\"array\" : ["
+                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
+                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ], "
+                                + "\"otherArray\" : ["
+                                + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
+                                + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ] }");
+        insertBsonDocuments(tableName, new BsonDocument[]{document1});
+
+        // List of all tables
+        final List<String> tables = Lists.newArrayList(
+                "testJoinConditionsTwoTables",
+                "testJoinConditionsTwoTables_array",
+                "testJoinConditionsTwoTables_array_array",
+                "testJoinConditionsTwoTables_array_document",
+                "testJoinConditionsTwoTables_array_otherArray",
+                "testJoinConditionsTwoTables_document",
+                "testJoinConditionsTwoTables_otherArray",
+                "testJoinConditionsTwoTables_otherArray_array",
+                "testJoinConditionsTwoTables_otherArray_document",
+                "testJoinConditionsTwoTables_otherArray_otherArray");
+        // List of all tables with "array" as parent
+        final List<String> arrayTables = Lists.newArrayList(
+                "testJoinConditionsTwoTables_array",
+                "testJoinConditionsTwoTables_array_array",
+                "testJoinConditionsTwoTables_array_document",
+                "testJoinConditionsTwoTables_array_otherArray");
+        // List of all tables with "otherArray" as parent
+        final List<String> otherArrayTables = Lists.newArrayList(
+                "testJoinConditionsTwoTables_otherArray",
+                "testJoinConditionsTwoTables_otherArray_array",
+                "testJoinConditionsTwoTables_otherArray_document",
+                "testJoinConditionsTwoTables_otherArray_otherArray");
+
+        int testCount = 0;
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+
+            // Test all combination of tables - only using base table "_id" in join condition
+            for (String firstTable : tables) {
+                for (String secondTable : tables) {
+                    for (String thirdTable : tables) {
+                        if (firstTable.equals(secondTable) || firstTable.equals(thirdTable) || secondTable.equals(thirdTable)) {
+                            // Does not allow duplicate table names in JOIN conditions
+                            continue;
+                        }
+                        testCount++;
+                        final String query = String.format(
+                                "SELECT *%n"
+                                        + " FROM \"%2$s\".\"%3$s\"%n"
+                                        + " INNER JOIN \"%2$s\".\"%4$s\"%n"
+                                        + " ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\"%n"
+                                        + " INNER JOIN \"%2$s\".\"%5$s\"%n"
+                                        + " ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\"",
+                                tableName,
+                                getDatabaseName(),
+                                firstTable,
+                                secondTable,
+                                thirdTable);
+
+                        if (((arrayTables.contains(firstTable)  && arrayTables.contains(secondTable))
+                                || (arrayTables.contains(firstTable) && arrayTables.contains(thirdTable))
+                                || (arrayTables.contains(secondTable) && arrayTables.contains(thirdTable)))
+                                || ((otherArrayTables.contains(firstTable) && otherArrayTables.contains(secondTable)
+                                || (otherArrayTables.contains(firstTable) && otherArrayTables.contains(thirdTable))
+                                || (otherArrayTables.contains(secondTable) && otherArrayTables.contains(thirdTable))))
+                        ) {
+                            // Requires common array index in join condition
+                            Assertions.assertThrows(
+                                    SQLException.class,
+                                    () -> statement.executeQuery(query));
+                        } else {
+                            // Does not require common array index in join condition
+                            Assertions.assertDoesNotThrow(() -> statement.executeQuery(query));
+                        }
+                    }
+                }
+            }
+            System.out.println("Number of tests = " + testCount);
+
+            // Test combination of tables with "array" as parent
+            for (String firstTable : arrayTables) {
+                for (String secondTable : arrayTables) {
+                    for (String thirdTable : tables) {
+                        if (firstTable.equals(secondTable)
+                                || firstTable.equals(thirdTable)
+                                || secondTable.equals(thirdTable)) {
+                            // Disallow join with the same table.
+                            continue;
+                        }
+                        testCount++;
+                        final String query = String.format(
+                                "SELECT * %n"
+                                        + "FROM \"%2$s\".\"%3$s\" %n"
+                                        + "INNER JOIN \"%2$s\".\"%4$s\" %n"
+                                        + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
+                                        + " AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" %n"
+                                        + "INNER JOIN \"%2$s\".\"%5$s\" %n"
+                                        + "ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" ",
+                                tableName,
+                                getDatabaseName(),
+                                firstTable,
+                                secondTable,
+                                thirdTable);
+                        if (arrayTables.contains(thirdTable)) {
+                            // Requires common array index in join condition
+                            Assertions.assertThrows(
+                                    SQLException.class,
+                                    () -> statement.executeQuery(query));
+                        } else {
+                            // Required common array index in join condition provided
+                            Assertions.assertDoesNotThrow(() -> statement.executeQuery(query));
+                        }
+                    }
+                }
+            }
+            System.out.println("Number of tests = " + testCount);
+
+            // Test combination of tables with "array" as parent
+            for (String firstTable : arrayTables) {
+                for (String secondTable : arrayTables) {
+                    for (String thirdTable : arrayTables) {
+                        if (firstTable.equals(secondTable)
+                                || firstTable.equals(thirdTable)
+                                || secondTable.equals(thirdTable)) {
+                            // Disallow join with the same table.
+                            continue;
+                        }
+                        testCount++;
+                        final String query = String.format(
+                                "SELECT * %n"
+                                        + "FROM \"%2$s\".\"%3$s\" %n"
+                                        + "INNER JOIN \"%2$s\".\"%4$s\" %n"
+                                        + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
+                                        + " AND \"%3$s\".\"array_index_lvl_0\" = \"%4$s\".\"array_index_lvl_0\" %n"
+                                        + "INNER JOIN \"%2$s\".\"%5$s\" %n"
+                                        + "ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" "
+                                        + " AND \"%3$s\".\"array_index_lvl_0\" = \"%5$s\".\"array_index_lvl_0\" %n",
+                                tableName,
+                                getDatabaseName(),
+                                firstTable,
+                                secondTable,
+                                thirdTable);
+
+                        // Required common array index in join condition provided
+                        Assertions.assertDoesNotThrow(() -> statement.executeQuery(query));
+                    }
+                }
+            }
+            System.out.println("Number of tests = " + testCount);
+
+            // Test combination of tables with "array" as parent
+            for (String firstTable : arrayTables) {
+                for (String secondTable : tables) {
+                    for (String thirdTable : arrayTables) {
+                        if (firstTable.equals(secondTable)
+                                || firstTable.equals(thirdTable)
+                                || secondTable.equals(thirdTable)) {
+                            // Disallow join with the same table.
+                            continue;
+                        }
+                        testCount++;
+                        final String query = String.format(
+                                "SELECT * %n"
+                                        + "FROM \"%2$s\".\"%3$s\" %n"
+                                        + "INNER JOIN \"%2$s\".\"%4$s\" %n"
+                                        + "ON \"%3$s\".\"%1$s__id\" = \"%4$s\".\"%1$s__id\" %n"
+                                        + "INNER JOIN \"%2$s\".\"%5$s\" %n"
+                                        + "ON \"%3$s\".\"%1$s__id\" = \"%5$s\".\"%1$s__id\" "
+                                        + " AND \"%3$s\".\"array_index_lvl_0\" = \"%5$s\".\"array_index_lvl_0\" %n",
+                                tableName,
+                                getDatabaseName(),
+                                firstTable,
+                                secondTable,
+                                thirdTable);
+                        if (arrayTables.contains(secondTable)) {
+                            // Requires common array index in join condition
+                            Assertions.assertThrows(
+                                    SQLException.class,
+                                    () -> statement.executeQuery(query));
+                        } else {
+                            // Required common array index in join condition provided
+                            Assertions.assertDoesNotThrow(() -> statement.executeQuery(query));
+                        }
+                    }
+                }
+            }
+            System.out.println("Number of tests = " + testCount);
         }
     }
 }
