@@ -92,17 +92,17 @@ public class DocumentDbConnectionProperties extends Properties {
 
     private static String getClassPathLocation() {
         String classPathLocation = null;
-        try {
-            final Path classParentPath = Paths.get(DocumentDbConnectionProperties.class
-                    .getProtectionDomain()
-                    .getCodeSource()
-                    .getLocation()
-                    .toURI()).getParent();
-            if (classParentPath != null) {
-                classPathLocation = classParentPath.toString();
-            }
-        } catch (URISyntaxException e) {
-            // Ignore error, return null.
+        // Note: don't get the URI for this location URL. It will fail to be
+        // recognized by Path.get().
+        final String codeSourcePath = DocumentDbConnectionProperties.class
+                .getProtectionDomain()
+                .getCodeSource()
+                .getLocation()
+                .getPath();
+        final Path classPath = Paths.get(codeSourcePath);
+        final Path classParentPath = classPath.getParent();
+        if (classParentPath != null) {
+            classPathLocation = classParentPath.toString();
         }
         return classPathLocation;
     }
@@ -288,7 +288,7 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Get the timeout for opening a connection.
      *
-     * @return The connect timeout in seconds.
+     * @return The connection timeout in seconds.
      */
     public Integer getLoginTimeout() {
         return getPropertyAsInteger(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName());
@@ -297,7 +297,7 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Sets the timeout for opening a connection.
      *
-     * @param timeout The connect timeout in seconds.
+     * @param timeout The connection timeout in seconds.
      */
     public void setLoginTimeout(final String timeout) {
         setProperty(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName(), timeout);
