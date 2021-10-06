@@ -39,7 +39,9 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.CertificateFactory;
@@ -55,23 +57,30 @@ public class DocumentDbConnectionProperties extends Properties {
 
     public static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
     public static final String USER_HOME_PROPERTY = "user.home";
-    public static final String USER_HOME_PATH_NAME = System.getProperty(USER_HOME_PROPERTY);
-    public static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
-            USER_HOME_PATH_NAME, ".documentdb").toString();
-    public static final String CLASS_PATH_LOCATION_NAME = getClassPathLocation();
-    static final String[] SSH_PRIVATE_KEY_FILE_SEARCH_PATHS = {
-                USER_HOME_PATH_NAME,
-                DOCUMENTDB_HOME_PATH_NAME,
-                CLASS_PATH_LOCATION_NAME,
-        };
+    public static final String USER_HOME_PATH_NAME;
+    public static final String DOCUMENTDB_HOME_PATH_NAME;
+    public static final String CLASS_PATH_LOCATION_NAME;
+    static final String[] SSH_PRIVATE_KEY_FILE_SEARCH_PATHS;
 
+    private static final Logger LOGGER;
     private static final String AUTHENTICATION_DATABASE = "admin";
-    private static final Logger LOGGER =
-            LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
     public static final int FETCH_SIZE_DEFAULT = 2000;
+
+    static {
+        LOGGER = LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
+        USER_HOME_PATH_NAME = System.getProperty(USER_HOME_PROPERTY);
+        DOCUMENTDB_HOME_PATH_NAME = Paths.get(
+                USER_HOME_PATH_NAME, ".documentdb").toString();
+        CLASS_PATH_LOCATION_NAME = getClassPathLocation();
+        SSH_PRIVATE_KEY_FILE_SEARCH_PATHS = new String[] {
+                USER_HOME_PATH_NAME,
+                DOCUMENTDB_HOME_PATH_NAME,
+                CLASS_PATH_LOCATION_NAME,
+        };
+    }
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -92,17 +101,28 @@ public class DocumentDbConnectionProperties extends Properties {
 
     private static String getClassPathLocation() {
         String classPathLocation = null;
-        // Note: don't get the URI for this location URL. It will fail to be
-        // recognized by Path.get().
-        final String codeSourcePath = DocumentDbConnectionProperties.class
+        final URL classPathLocationUrl = DocumentDbConnectionProperties.class
                 .getProtectionDomain()
                 .getCodeSource()
-                .getLocation()
-                .getPath();
-        final Path classPath = Paths.get(codeSourcePath);
-        final Path classParentPath = classPath.getParent();
-        if (classParentPath != null) {
-            classPathLocation = classParentPath.toString();
+                .getLocation();
+        Path classPath = null;
+        try {
+            // Attempt to get file path from URL path.
+            classPath = Paths.get(classPathLocationUrl.getPath());
+        } catch (InvalidPathException e) {
+            try {
+                // If we fail to get path from URL, try the URI.
+                classPath = Paths.get(classPathLocationUrl.toURI());
+            } catch (IllegalArgumentException | URISyntaxException ex) {
+                LOGGER.error(ex.getMessage(), ex);
+                // Ignore error, return null.
+            }
+        }
+        if (classPath != null) {
+            final Path classParentPath = classPath.getParent();
+            if (classParentPath != null) {
+                classPathLocation = classParentPath.toString();
+            }
         }
         return classPathLocation;
     }
