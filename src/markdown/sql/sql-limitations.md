@@ -56,6 +56,10 @@ Currently, cross collection joins are not supported.
 Currently, the driver only supports `JOINs` across tables from the same collection as long as
 the foreign key and primary key relation are present. This is equivalent to presenting the data in its denormalized
 form. For such `JOINs`, the minimal set of foreign keys and their respective primary must be used.
+This means the join condition must have an equality match for each primary key column shared between 
+the tables and no other match conditions.
+In a case that TableA has PK1 and TableB PK1/FK1 and PK2, where TableB.FK1 is the foreign key from TableA.PK1. 
+The match condition in the join will only need TableA.PK1 = TableB.PK1 and no other match conditions.
 
 For example, if we had the collection `Customer` whose documents roughly followed the form below, we
 would end up with 4 tables.
@@ -114,10 +118,11 @@ would end up with 4 tables.
 | value | VARCHAR | |
 
 For the tables `customer_address` and `customer_subscriptions` we only need `customer__id`. For `customer_subscriptions_variants`, we need
-`customer__id` and `subscriptions_index_lvl_0`. Between these tables, the following join conditions would be allowed while any others would be rejected.
+`customer__id` and possibly `subscriptions_index_lvl_0` depending on the other joined table. 
+
 Examples of minimal foreign keys with primary keys required in a query:
 
-#### Table: Minimal Foreign Keys with Primary Keys required
+#### Table: Minimal Foreign Keys with Primary Keys required in 2 Join Table
 | Table | Joining Table | FK with PK required |
 | --- | --- | --- |
 | customer | customer_address| customer__id |
@@ -127,7 +132,13 @@ Examples of minimal foreign keys with primary keys required in a query:
 | customer_address | customer_subscriptions_variants | customer__id |
 | customer_subscriptions | customer_subscriptions_variants | customer__id and subscriptions_index_lvl_0 | 
 
+#### Table: Minimal Foreign Keys with Primary Keys required in 3 Join Table
+| Table | First Joining Table | FK with PK required for First Join | Second Joining Table | FK with PK required for Second Join |
+| --- | --- | --- | --- | --- |
+| customer | customer_address| customer__id | customer_subscriptions |  customer__id |
+| customer | customer_subscriptions | customer__id | customer_subscriptions_variants | customer__id and subscriptions_index_lvl_0 |
 
+#### Example Queries
 - `SELECT * FROM "customer" LEFT JOIN "customer_subscriptions" ON "customer"."customer__id" = "customer_subscriptions.customer__id"`
 - `SELECT * FROM "customer" LEFT JOIN "customer_address" ON "customer"."customer__id" = "customer_address.customer__id"`
 - `SELECT * FROM "customer_address" LEFT JOIN "customer_subscriptions" ON "customer_address"."customer__id" = "customer_subscriptions".customer__id"`
