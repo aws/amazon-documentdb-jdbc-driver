@@ -52,7 +52,7 @@ class DocumentDbJoinTest {
 
         final List<String> rightPrimaryKeys = new ArrayList<>();
         rightPrimaryKeys.add("_id");
-        rightPrimaryKeys.add("other__id");
+        rightPrimaryKeys.add("_other__id");
         rightPrimaryKeys.add("another__id");
 
         final List<String> keysUsed = new ArrayList<>();
