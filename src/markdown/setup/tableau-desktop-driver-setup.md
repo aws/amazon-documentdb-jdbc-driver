@@ -45,9 +45,7 @@
 
     ![Tableau login dialog SSH Tunnel](../images/tableau/tableau-connection-dialog-ssh-adv-with-check.png)
 
-2. Enter the **SSH User**, **SSH Hostname**, and **SSH Private Key File**. Optionally, enter the
-   **SSH Private Key File Passphrase** if your key file is passphrase protected.
-   
+2. Enter the **SSH User**, **SSH Hostname**, and **SSH Private Key File**. 
 3. Optionally, you can disable the **SSH Strict Host Key Check** option which bypasses the host key 
    check against a **known hosts** file.
    **Note:** _Disabling this option is less secure as it can lead to a
