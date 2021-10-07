@@ -33,12 +33,12 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.CLASS_PATH_LOCATION_NAME;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENTDB_HOME_PATH_NAME;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.SSH_PRIVATE_KEY_FILE_SEARCH_PATHS;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.USER_HOME_PATH_NAME;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getClassPathLocationName;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getDocumentdbHomePathName;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getSshPrivateKeyFileSearchPaths;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getUserHomePathName;
 
 public class DocumentDbConnectionPropertiesTest {
 
@@ -282,15 +282,15 @@ public class DocumentDbConnectionPropertiesTest {
 
         // Test that it will use the user's home path
         final Path path2 = getPath("~/" + tempFilename1);
-        Assertions.assertEquals(Paths.get(USER_HOME_PATH_NAME, tempFilename1), path2);
+        Assertions.assertEquals(Paths.get(getUserHomePathName(), tempFilename1), path2);
 
         // Test that it will use the user's home path
         Path homeTempFilePath = null;
         try {
-            homeTempFilePath = Paths.get(USER_HOME_PATH_NAME, tempFilename1);
+            homeTempFilePath = Paths.get(getUserHomePathName(), tempFilename1);
             Assertions.assertTrue(homeTempFilePath.toFile().createNewFile());
-            final Path path3 = getPath(tempFilename1, SSH_PRIVATE_KEY_FILE_SEARCH_PATHS);
-            Assertions.assertEquals(Paths.get(USER_HOME_PATH_NAME, tempFilename1), path3);
+            final Path path3 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            Assertions.assertEquals(Paths.get(getUserHomePathName(), tempFilename1), path3);
         } finally {
             Assertions.assertTrue(homeTempFilePath != null && homeTempFilePath.toFile().delete());
         }
@@ -298,10 +298,10 @@ public class DocumentDbConnectionPropertiesTest {
         // Test that it will use the .documentdb folder under the user's home path
         Path documentDbTempFilePath = null;
         try {
-            documentDbTempFilePath = Paths.get(DOCUMENTDB_HOME_PATH_NAME, tempFilename1);
+            documentDbTempFilePath = Paths.get(getDocumentdbHomePathName(), tempFilename1);
             Assertions.assertTrue(documentDbTempFilePath.toFile().createNewFile());
-            final Path path4 = getPath(tempFilename1, SSH_PRIVATE_KEY_FILE_SEARCH_PATHS);
-            Assertions.assertEquals(Paths.get(DOCUMENTDB_HOME_PATH_NAME, tempFilename1), path4);
+            final Path path4 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            Assertions.assertEquals(Paths.get(getDocumentdbHomePathName(), tempFilename1), path4);
         } finally {
             Assertions.assertTrue(documentDbTempFilePath != null && documentDbTempFilePath.toFile().delete());
         }
@@ -309,10 +309,10 @@ public class DocumentDbConnectionPropertiesTest {
         // Test that it will use the .documentdb folder under the user's home path
         Path classPathParentTempFilePath = null;
         try {
-            classPathParentTempFilePath = Paths.get(CLASS_PATH_LOCATION_NAME, tempFilename1);
+            classPathParentTempFilePath = Paths.get(getClassPathLocationName(), tempFilename1);
             Assertions.assertTrue(classPathParentTempFilePath.toFile().createNewFile());
-            final Path path5 = getPath(tempFilename1, SSH_PRIVATE_KEY_FILE_SEARCH_PATHS);
-            Assertions.assertEquals(Paths.get(CLASS_PATH_LOCATION_NAME, tempFilename1), path5);
+            final Path path5 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            Assertions.assertEquals(Paths.get(getClassPathLocationName(), tempFilename1), path5);
         } finally {
             Assertions.assertTrue(classPathParentTempFilePath != null && classPathParentTempFilePath.toFile().delete());
         }

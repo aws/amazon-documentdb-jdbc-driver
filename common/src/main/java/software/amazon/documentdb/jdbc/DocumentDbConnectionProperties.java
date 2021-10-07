@@ -39,7 +39,9 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.cert.CertificateFactory;
@@ -55,23 +57,18 @@ public class DocumentDbConnectionProperties extends Properties {
 
     public static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
     public static final String USER_HOME_PROPERTY = "user.home";
-    public static final String USER_HOME_PATH_NAME = System.getProperty(USER_HOME_PROPERTY);
-    public static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
-            USER_HOME_PATH_NAME, ".documentdb").toString();
-    public static final String CLASS_PATH_LOCATION_NAME = getClassPathLocation();
-    static final String[] SSH_PRIVATE_KEY_FILE_SEARCH_PATHS = {
-                USER_HOME_PATH_NAME,
-                DOCUMENTDB_HOME_PATH_NAME,
-                CLASS_PATH_LOCATION_NAME,
-        };
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
+    private static final String USER_HOME_PATH_NAME  = System.getProperty(USER_HOME_PROPERTY);
+    private static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
+            USER_HOME_PATH_NAME, ".documentdb").toString();
     private static final String AUTHENTICATION_DATABASE = "admin";
-    private static final Logger LOGGER =
-            LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
     public static final int FETCH_SIZE_DEFAULT = 2000;
+    private static String classPathLocationName = null;
+    private static String[] sshPrivateKeyFileSearchPaths = null;
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -90,19 +87,76 @@ public class DocumentDbConnectionProperties extends Properties {
         super();
     }
 
+    /**
+     * Gets the search paths when trying to locate the SSH private key file.
+     *
+     * @return an array of search paths.
+     */
+    static String[] getSshPrivateKeyFileSearchPaths() {
+        if (sshPrivateKeyFileSearchPaths == null) {
+            sshPrivateKeyFileSearchPaths = new String[]{
+                    USER_HOME_PATH_NAME,
+                    DOCUMENTDB_HOME_PATH_NAME,
+                    getClassPathLocation(),
+            };
+        }
+        return sshPrivateKeyFileSearchPaths;
+    }
+
+    /**
+     * Gets the user's home path name.
+     *
+     * @return the user's home path name.
+     */
+    static String getUserHomePathName() {
+        return USER_HOME_PATH_NAME;
+    }
+
+    /**
+     * Gets the ~/.documentdb path name.
+     *
+     * @return the ~/.documentdb path name.
+     */
+    static String getDocumentdbHomePathName() {
+        return DOCUMENTDB_HOME_PATH_NAME;
+    }
+
+    /**
+     * Gets the class path's location name.
+     *
+     * @return the class path's location name.
+     */
+    static String getClassPathLocationName() {
+        if (classPathLocationName == null) {
+            classPathLocationName = getClassPathLocation();
+        }
+        return classPathLocationName;
+    }
+
     private static String getClassPathLocation() {
         String classPathLocation = null;
+        final URL classPathLocationUrl = DocumentDbConnectionProperties.class
+                .getProtectionDomain()
+                .getCodeSource()
+                .getLocation();
+        Path classPath = null;
         try {
-            final Path classParentPath = Paths.get(DocumentDbConnectionProperties.class
-                    .getProtectionDomain()
-                    .getCodeSource()
-                    .getLocation()
-                    .toURI()).getParent();
+            // Attempt to get file path from URL path.
+            classPath = Paths.get(classPathLocationUrl.getPath());
+        } catch (InvalidPathException e) {
+            try {
+                // If we fail to get path from URL, try the URI.
+                classPath = Paths.get(classPathLocationUrl.toURI());
+            } catch (IllegalArgumentException | URISyntaxException ex) {
+                LOGGER.error(ex.getMessage(), ex);
+                // Ignore error, return null.
+            }
+        }
+        if (classPath != null) {
+            final Path classParentPath = classPath.getParent();
             if (classParentPath != null) {
                 classPathLocation = classParentPath.toString();
             }
-        } catch (URISyntaxException e) {
-            // Ignore error, return null.
         }
         return classPathLocation;
     }
@@ -288,7 +342,7 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Get the timeout for opening a connection.
      *
-     * @return The connect timeout in seconds.
+     * @return The connection timeout in seconds.
      */
     public Integer getLoginTimeout() {
         return getPropertyAsInteger(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName());
@@ -297,7 +351,7 @@ public class DocumentDbConnectionProperties extends Properties {
     /**
      * Sets the timeout for opening a connection.
      *
-     * @param timeout The connect timeout in seconds.
+     * @param timeout The connection timeout in seconds.
      */
     public void setLoginTimeout(final String timeout) {
         setProperty(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getName(), timeout);
@@ -1008,7 +1062,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return returns {@code true} if the file exists, {@code false}, otherwise.
      */
     public boolean isSshPrivateKeyFileExists() {
-        return Files.exists(getPath(getSshPrivateKeyFile(), SSH_PRIVATE_KEY_FILE_SEARCH_PATHS));
+        return Files.exists(getPath(getSshPrivateKeyFile(), getSshPrivateKeyFileSearchPaths()));
     }
 
     /**
