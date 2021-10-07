@@ -57,30 +57,18 @@ public class DocumentDbConnectionProperties extends Properties {
 
     public static final String DOCUMENT_DB_SCHEME = "jdbc:documentdb:";
     public static final String USER_HOME_PROPERTY = "user.home";
-    public static final String USER_HOME_PATH_NAME;
-    public static final String DOCUMENTDB_HOME_PATH_NAME;
-    public static final String CLASS_PATH_LOCATION_NAME;
-    static final String[] SSH_PRIVATE_KEY_FILE_SEARCH_PATHS;
 
-    private static final Logger LOGGER;
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
+    private static final String USER_HOME_PATH_NAME  = System.getProperty(USER_HOME_PROPERTY);
+    private static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
+            USER_HOME_PATH_NAME, ".documentdb").toString();
     private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
     public static final int FETCH_SIZE_DEFAULT = 2000;
-
-    static {
-        LOGGER = LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
-        USER_HOME_PATH_NAME = System.getProperty(USER_HOME_PROPERTY);
-        DOCUMENTDB_HOME_PATH_NAME = Paths.get(
-                USER_HOME_PATH_NAME, ".documentdb").toString();
-        CLASS_PATH_LOCATION_NAME = getClassPathLocation();
-        SSH_PRIVATE_KEY_FILE_SEARCH_PATHS = new String[] {
-                USER_HOME_PATH_NAME,
-                DOCUMENTDB_HOME_PATH_NAME,
-                CLASS_PATH_LOCATION_NAME,
-        };
-    }
+    private static String classPathLocationName = null;
+    private static String[] sshPrivateKeyFileSearchPaths = null;
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -97,6 +85,52 @@ public class DocumentDbConnectionProperties extends Properties {
      */
     public DocumentDbConnectionProperties() {
         super();
+    }
+
+    /**
+     * Gets the search paths when trying to locate the SSH private key file.
+     *
+     * @return an array of search paths.
+     */
+    static String[] getSshPrivateKeyFileSearchPaths() {
+        if (sshPrivateKeyFileSearchPaths == null) {
+            sshPrivateKeyFileSearchPaths = new String[]{
+                    USER_HOME_PATH_NAME,
+                    DOCUMENTDB_HOME_PATH_NAME,
+                    getClassPathLocation(),
+            };
+        }
+        return sshPrivateKeyFileSearchPaths;
+    }
+
+    /**
+     * Gets the user's home path name.
+     *
+     * @return the user's home path name.
+     */
+    static String getUserHomePathName() {
+        return USER_HOME_PATH_NAME;
+    }
+
+    /**
+     * Gets the ~/.documentdb path name.
+     *
+     * @return the ~/.documentdb path name.
+     */
+    static String getDocumentdbHomePathName() {
+        return DOCUMENTDB_HOME_PATH_NAME;
+    }
+
+    /**
+     * Gets the class path's location name.
+     *
+     * @return the class path's location name.
+     */
+    static String getClassPathLocationName() {
+        if (classPathLocationName == null) {
+            classPathLocationName = getClassPathLocation();
+        }
+        return classPathLocationName;
     }
 
     private static String getClassPathLocation() {
@@ -1028,7 +1062,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return returns {@code true} if the file exists, {@code false}, otherwise.
      */
     public boolean isSshPrivateKeyFileExists() {
-        return Files.exists(getPath(getSshPrivateKeyFile(), SSH_PRIVATE_KEY_FILE_SEARCH_PATHS));
+        return Files.exists(getPath(getSshPrivateKeyFile(), getSshPrivateKeyFileSearchPaths()));
     }
 
     /**
