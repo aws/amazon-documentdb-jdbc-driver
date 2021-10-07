@@ -112,7 +112,7 @@ would end up with 4 tables.
 
 | Column Name | Data Type | Key |
 | --- | --- | --- |
-| _**customer2__id**_ | VARCHAR | PK/FK|
+| _**customer__id**_ | VARCHAR | PK/FK|
 | subscriptions_index_lvl_0 | BIGINT | PK/FK |
 | subscriptions_variants_index_lvl_0 | BIGINT | PK |
 | value | VARCHAR | |
@@ -138,13 +138,13 @@ Examples of minimal foreign keys with primary keys required in a query:
 | customer | customer_address| customer__id | customer_subscriptions |  customer__id |
 | customer | customer_subscriptions | customer__id | customer_subscriptions_variants | customer__id and subscriptions_index_lvl_0 |
 
-#### Example Queries
+#### Example of Supported Queries
 - `SELECT * FROM "customer" LEFT JOIN "customer_subscriptions" ON "customer"."customer__id" = "customer_subscriptions.customer__id"`
 - `SELECT * FROM "customer" LEFT JOIN "customer_address" ON "customer"."customer__id" = "customer_address.customer__id"`
 - `SELECT * FROM "customer_address" LEFT JOIN "customer_subscriptions" ON "customer_address"."customer__id" = "customer_subscriptions".customer__id"`
 - `SELECT * FROM "customer_subscriptions" LEFT JOIN "customer_subscriptions_variants" ON "customer_subscriptions"."customer__id" = "customer_subscriptions_variants".customer__id"
   AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants.subscriptions_index_lvl_0"`
-
+  
 These can be combined as long as the minimal common foreign keys with primary keys between tables are present.
 
 - ```
@@ -155,6 +155,9 @@ These can be combined as long as the minimal common foreign keys with primary ke
   SELECT * FROM "customer" LEFT JOIN "customer_subscriptions" ON "customers"."customer__id" = "customer_subscriptions".customer__id"
     LEFT JOIN "customer_subscriptions_variants" ON "customer_subscriptions"."customer__id" = "customer_subscriptions_variants".customer__id"
     AND "customer_subscriptions"."subscriptions_index_lvl_0" = "customer_subscriptions_variants"."subscriptions_index_lvl_0"```
+
+#### Example of Unsupported Query
+- `SELECT * FROM "customer_subscriptions" LEFT JOIN "customer_subscriptions_variants" ON "customer_subscriptions"."customer__id" = "customer_subscriptions_variants".customer__id"`
 
 This feature allows `INNER` and `LEFT (OUTER)` joins. 
 The `NATURAL` and `CROSS` keywords, as well as specifying multiple tables in the `FROM` clause, 
