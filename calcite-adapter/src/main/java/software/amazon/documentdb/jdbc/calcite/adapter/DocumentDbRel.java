@@ -23,6 +23,7 @@ import org.apache.calcite.rex.RexBuilder;
 import org.apache.calcite.util.Pair;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,12 +51,13 @@ public interface DocumentDbRel extends RelNode {
         private RelOptTable table;
         private DocumentDbSchemaTable metadataTable;
         private DocumentDbTable documentDbTable;
-        private List<String> unwinds = new ArrayList<>();
-        private List<String> collisionResolutions = new ArrayList<>();
+        private final List<String> unwinds = new ArrayList<>();
+        private final List<String> collisionResolutions = new ArrayList<>();
         private String virtualTableFilter;
         private boolean nullFiltered = false;
         private boolean join = false;
         private boolean resolutionNeedsUnwind = false;
+        private final Instant currentTime = Instant.now();
 
         // DocumentDB: modified - end
 
@@ -163,6 +165,10 @@ public interface DocumentDbRel extends RelNode {
             final boolean isJoin = isJoin();
             ((DocumentDbRel) input).implement(this);
             setJoin(isJoin);
+        }
+
+        public Instant getCurrentTime() {
+            return currentTime;
         }
     }
 }
