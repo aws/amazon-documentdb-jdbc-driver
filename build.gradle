@@ -11,7 +11,7 @@ plugins {
 }
 
 group 'software.amazon.documentdb.jdbc'
-version "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}-beta.${project.BETA_VERSION}"
+version "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}"
 description 'documentdb-jdbc-driver'
 
 tasks.register('patchJanino') {
