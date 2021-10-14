@@ -823,6 +823,35 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
     }
 
     /**
+     * Tests a query with nested CASE with sub-query.
+     */
+    @DisplayName("Tests a query with nested CASE with sub-query.")
+    @ParameterizedTest(name = "testNestedCaseWithSubQuery - [{index}] - {arguments}")
+    @MethodSource("getTestEnvironments")
+    void testNestedCaseWithSubQuery(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testNestedCaseWithSubQuery";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n"
+                + "\"field\": 1, \"field2\": \"A\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n"
+                + "\"field\": 2, \"field2\": \"B\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n"
+                + "\"field\": 3, \"field2\": \"C\"}");
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            Assertions.assertEquals("unknown aggregate SINGLE_VALUE",
+                    Assertions.assertThrows(AssertionError.class, () -> statement.executeQuery(
+                            String.format("SELECT CASE %n"
+                                    + "WHEN \"field\" < 3  THEN %n"
+                                    + "( CASE WHEN \"field\" < 2 THEN (SELECT \"field2\" FROM \"%1$s\".\"%2$s\") %n"
+                                    + "ELSE 'B' END )%n"
+                                    + "ELSE 'C' END FROM \"%1$s\".\"%2$s\"",
+                            getDatabaseName(), tableName))).getMessage());
+        }
+    }
+
+    /**
      * Tests queries with CASE where a string literal contains '$'.
      */
     @DisplayName("Tests queries with CASE where a string literal contains '$'.")
