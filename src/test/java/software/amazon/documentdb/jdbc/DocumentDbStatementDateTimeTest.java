@@ -1110,7 +1110,7 @@ public class DocumentDbStatementDateTimeTest extends DocumentDbStatementTest {
 
     /**
      * Tests CURRENT_TIMESTAMP, CURRENT_TIME and CURRENT_DATE for multiple instances are the same value.
-     * 
+     *
      * @throws SQLException occurs if query fails.
      */
     @DisplayName("Tests CURRENT_TIMESTAMP, CURRENT_TIME and CURRENT_DATE for multiple instances are the same value.")
