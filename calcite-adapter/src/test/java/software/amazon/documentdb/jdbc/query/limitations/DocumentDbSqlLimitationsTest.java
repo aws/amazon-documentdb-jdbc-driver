@@ -31,9 +31,9 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
-import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
@@ -121,6 +121,18 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
     }
 
     @Test
+    @DisplayName("Tests the ROUND() function.")
+    void testRound() {
+        // Need to implement in RexToMongoTranslator.
+        // $round was only added in 4.2. May be able to emulate combining some other arithmetic operators.
+        final String query =
+                String.format(
+                        "SELECT ROUND(\"field\") FROM \"%s\".\"%s\"",
+                        DATABASE_NAME, COLLECTION_NAME + "_array");
+        Assertions.assertThrows(SQLException.class, () -> queryMapper.get(query));
+    }
+
+    @Test
     @DisplayName("Test subqueries in WHERE clause.")
     void testWhereWithSubqueries()  {
         // WHERE NOT EXISTS, IN, NOT IN are treated as semi-join or anti-join. They go through the DocumentDbJoin
@@ -190,7 +202,7 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
 
     @Test
     @DisplayName("Tests subqueries in SELECT clause.")
-    void testScalarSubquery() {
+    void testSelectWithSubqueries() {
         // The various subquery aggregates are determined first and then added as a left outer join to the table.
         // This would also be supported by $lookup. Other uses of subqueries in the SELECT clause should be similar.
         // Translation:
@@ -215,10 +227,9 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
                         DATABASE_NAME, COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(singleValueSubquery));
 
-        // A scalar subquery used like this should only return a single value. BUT Calcite is forgiving of this
-        // and wraps non-single value sub-queries in a SINGLE_VALUE aggregate function.
-        // The SINGLE_VALUE function should return the value if there is only one.
-        // Otherwise, it should error out at runtime.
+        // A scalar subquery used like this should only return a single value. Calcite wraps potentially
+        // non-single value subqueries in a SINGLE_VALUE aggregate function.
+        // The SINGLE_VALUE function should return the value if there is only one. Otherwise, it should error out at runtime.
         // This behaviour may be hard to push-down.
         // Translation:
         // DocumentDbToEnumerableConverter:
@@ -234,7 +245,8 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
                                 + "THEN 'yes' ELSE 'no' END "
                                 + "FROM \"%1$s\".\"%2$s\"",
                         DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(multipleValueSubQuery));
+        Assertions.assertEquals("unknown aggregate SINGLE_VALUE",
+                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(multipleValueSubQuery)).getMessage());
     }
 
     @Test
@@ -247,26 +259,31 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
                 String.format(
                         "SELECT STDDEV(\"field\") FROM \"%s\".\"%s\"",
                         DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddev));
+        Assertions.assertEquals("unknown aggregate STDDEV",
+                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddev)).getMessage());
         final String stddevPop =
                 String.format(
                         "SELECT STDDEV_POP(\"field\") FROM \"%s\".\"%s\"",
                         DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddevPop));
+        Assertions.assertEquals("unknown aggregate STDDEV_POP",
+                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddevPop)).getMessage());
         final String stddevSamp =
                 String.format(
                         "SELECT STDDEV_SAMP(\"field\") FROM \"%s\".\"%s\"",
                         DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddevSamp));
+        Assertions.assertEquals("unknown aggregate STDDEV_SAMP",
+                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddevSamp)).getMessage());
         final String varPop =
                 String.format(
                         "SELECT VAR_POP(\"field\") FROM \"%s\".\"%s\"",
                         DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(varPop));
+        Assertions.assertEquals("unknown aggregate VAR_POP",
+                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(varPop)).getMessage());
         final String varSamp =
                 String.format(
                         "SELECT VAR_SAMP(\"field\") FROM \"%s\".\"%s\"",
                         DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(varSamp));
+        Assertions.assertEquals("unknown aggregate VAR_SAMP",
+                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(varSamp)).getMessage());
     }
 }
