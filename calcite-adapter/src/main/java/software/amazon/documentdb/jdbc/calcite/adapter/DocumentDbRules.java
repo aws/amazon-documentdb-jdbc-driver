@@ -208,11 +208,11 @@ public final class DocumentDbRules {
         private final List<String> inFields;
         private final List<String> keys;
         private final DocumentDbSchemaTable schemaTable;
+        private final Map<SqlOperator,
+                BiFunction<RexCall, List<Operand>, Operand>> rexCallToMongoMap = new HashMap<>();
 
         private static final Map<SqlOperator, String> MONGO_OPERATORS =
                 new HashMap<>();
-        private static final Map<SqlOperator,
-                BiFunction<RexCall, List<Operand>, Operand>> REX_CALL_TO_MONGO_MAP = new HashMap<>();
 
         static {
             // Arithmetic
@@ -237,78 +237,84 @@ public final class DocumentDbRules {
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NULL, "$lte");
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NOT_NULL, "$gt");
 
+        }
+
+        private void initializeRexCallToMongoMap(final Instant currentTime) {
             // Arithmetic
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE,
+            rexCallToMongoMap.put(SqlStdOperatorTable.DIVIDE,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MULTIPLY,
+            rexCallToMongoMap.put(SqlStdOperatorTable.MULTIPLY,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MOD,
+            rexCallToMongoMap.put(SqlStdOperatorTable.MOD,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.PLUS,
+            rexCallToMongoMap.put(SqlStdOperatorTable.PLUS,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MINUS,
+            rexCallToMongoMap.put(SqlStdOperatorTable.MINUS,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE_INTEGER,
+            rexCallToMongoMap.put(SqlStdOperatorTable.DIVIDE_INTEGER,
                     RexToMongoTranslator::getMongoAggregateForIntegerDivide);
             // Boolean
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.AND,
+            rexCallToMongoMap.put(SqlStdOperatorTable.AND,
                     (call, strings) -> getMongoAggregateForAndOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.OR,
+            rexCallToMongoMap.put(SqlStdOperatorTable.OR,
                     (call, strings) -> getMongoAggregateForOrOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.NOT,
+            rexCallToMongoMap.put(SqlStdOperatorTable.NOT,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             // Comparison
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.EQUALS,
+            rexCallToMongoMap.put(SqlStdOperatorTable.EQUALS,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             // Need to handle null value
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.NOT_EQUALS,
+            rexCallToMongoMap.put(SqlStdOperatorTable.NOT_EQUALS,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.GREATER_THAN,
+            rexCallToMongoMap.put(SqlStdOperatorTable.GREATER_THAN,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL,
+            rexCallToMongoMap.put(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.LESS_THAN,
+            rexCallToMongoMap.put(SqlStdOperatorTable.LESS_THAN,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL,
+            rexCallToMongoMap.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
 
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NULL,
+            rexCallToMongoMap.put(SqlStdOperatorTable.IS_NULL,
                     (call, strings) -> getMongoAggregateForNullOperator(
                             strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NOT_NULL,
+            rexCallToMongoMap.put(SqlStdOperatorTable.IS_NOT_NULL,
                     (call, strings) -> getMongoAggregateForNullOperator(
                             strings, MONGO_OPERATORS.get(call.getOperator())));
 
             // Date operations
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_DATE, DateFunctionTranslator::translateCurrentTimestamp);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_TIME, DateFunctionTranslator::translateCurrentTimestamp);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_TIMESTAMP, DateFunctionTranslator::translateCurrentTimestamp);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DATETIME_PLUS, DateFunctionTranslator::translateDateAdd);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.EXTRACT, DateFunctionTranslator::translateExtract);
-            REX_CALL_TO_MONGO_MAP.put(SqlLibraryOperators.DAYNAME, DateFunctionTranslator::translateDayName);
-            REX_CALL_TO_MONGO_MAP.put(SqlLibraryOperators.MONTHNAME, DateFunctionTranslator::translateMonthName);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.FLOOR, DateFunctionTranslator::translateFloor);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MINUS_DATE, DateFunctionTranslator::translateDateDiff);
+            rexCallToMongoMap.put(SqlStdOperatorTable.CURRENT_DATE,
+                    (call, operands) -> DateFunctionTranslator.translateCurrentTimestamp(currentTime));
+            rexCallToMongoMap.put(SqlStdOperatorTable.CURRENT_TIME,
+                    (call, operands) -> DateFunctionTranslator.translateCurrentTimestamp(currentTime));
+            rexCallToMongoMap.put(SqlStdOperatorTable.CURRENT_TIMESTAMP,
+                    (call, operands) -> DateFunctionTranslator.translateCurrentTimestamp(currentTime));
+            rexCallToMongoMap.put(SqlStdOperatorTable.DATETIME_PLUS, DateFunctionTranslator::translateDateAdd);
+            rexCallToMongoMap.put(SqlStdOperatorTable.EXTRACT, DateFunctionTranslator::translateExtract);
+            rexCallToMongoMap.put(SqlLibraryOperators.DAYNAME, DateFunctionTranslator::translateDayName);
+            rexCallToMongoMap.put(SqlLibraryOperators.MONTHNAME, DateFunctionTranslator::translateMonthName);
+            rexCallToMongoMap.put(SqlStdOperatorTable.FLOOR, DateFunctionTranslator::translateFloor);
+            rexCallToMongoMap.put(SqlStdOperatorTable.MINUS_DATE, DateFunctionTranslator::translateDateDiff);
 
             // CASE, ITEM
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CASE, RexToMongoTranslator::getMongoAggregateForCase);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.ITEM, RexToMongoTranslator::getMongoAggregateForItem);
+            rexCallToMongoMap.put(SqlStdOperatorTable.CASE, RexToMongoTranslator::getMongoAggregateForCase);
+            rexCallToMongoMap.put(SqlStdOperatorTable.ITEM, RexToMongoTranslator::getMongoAggregateForItem);
 
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.SUBSTRING,
+            rexCallToMongoMap.put(SqlStdOperatorTable.SUBSTRING,
                     RexToMongoTranslator::getMongoAggregateForSubstringOperator);
         }
 
@@ -349,8 +355,10 @@ public final class DocumentDbRules {
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
                 final List<String> inFields,
-                final List<String> keys, final DocumentDbSchemaTable schemaTable) {
+                final List<String> keys, final DocumentDbSchemaTable schemaTable,
+                final Instant currentTime) {
             super(true);
+            initializeRexCallToMongoMap(currentTime);
             this.typeFactory = typeFactory;
             this.inFields = inFields;
             this.keys = keys;
@@ -417,8 +425,8 @@ public final class DocumentDbRules {
                 return strings.get(0);
             }
 
-            if (REX_CALL_TO_MONGO_MAP.containsKey(call.getOperator())) {
-                final Operand result = REX_CALL_TO_MONGO_MAP.get(call.getOperator()).apply(call, strings);
+            if (rexCallToMongoMap.containsKey(call.getOperator())) {
+                final Operand result = rexCallToMongoMap.get(call.getOperator()).apply(call, strings);
                 if (result != null) {
                     return result;
                 }
@@ -679,8 +687,9 @@ public final class DocumentDbRules {
             DATE_PART_OPERATORS.put(TimeUnitRange.ISOYEAR, "$isoWeekYear");
         }
 
-        private static Operand translateCurrentTimestamp(final RexCall rexCall, final List<Operand> strings) {
-            return new Operand("new Date()");
+        private static Operand translateCurrentTimestamp(final Instant currentTime) {
+            return new Operand("{\"$date\": {\"$numberLong\": "
+                    + "\"" + currentTime.toEpochMilli() + "\"}}");
         }
 
         private static Operand translateDateAdd(final RexCall call, final List<Operand> strings) {
