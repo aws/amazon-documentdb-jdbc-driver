@@ -1573,7 +1573,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(2, result.getAggregateOperations().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$project\": {\"_f0\": {\"$literal\": 1}, \"_id\": 0}}"),
                 result.getAggregateOperations().get(0));

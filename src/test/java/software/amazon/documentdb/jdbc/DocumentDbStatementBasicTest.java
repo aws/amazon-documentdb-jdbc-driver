@@ -1322,4 +1322,32 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertFalse(resultSet.next());
         }
     }
+
+    /**
+     * Tests that SUM(1) works, equivalent to COUNT(*).
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @DisplayName("Tests query with SUM(1).")
+    @ParameterizedTest(name = "testQuerySumOne - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQuerySumNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQuerySumOne";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field1\": 1, \"field2\": 2}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \"field1\": null, \"field2\": 3}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \"field2\": 3}");
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT COUNT(DISTINCT\"field1\") FROM \"%s\".\"%s\" WHERE \"field2\" <> 2",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(null, resultSet.getObject(1));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
 }

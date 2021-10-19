@@ -166,7 +166,9 @@ public class DocumentDbAggregate
                 "{$group: " + Util.toString(list, "{", ", ", "}") + "}");
         final List<String> fixups = getFixups(aggCalls, groupSet, inNames, outNames);
 
-        if (!groupSet.isEmpty() || aggCalls.stream().anyMatch(AggregateCall::isDistinct)) {
+        if (!groupSet.isEmpty()
+                || aggCalls.stream().anyMatch(AggregateCall::isDistinct)
+                || aggCalls.stream().anyMatch(aggregateCall -> aggregateCall.getAggregation() instanceof SqlSumAggFunction)) {
             implementor.add(null,
                     "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
         }
@@ -201,7 +203,7 @@ public class DocumentDbAggregate
         if (isDistinct) {
             assert args.size() == 1;
             final String inName = inNames.get(args.get(0));
-            return "{$addToSet: " + DocumentDbRules.quote("$" + inName) + "}";
+            return "{$addToSet: " + maybeQuote("$" + inName) + "}";
         }
 
         if (aggregation == SqlStdOperatorTable.COUNT) {
@@ -209,13 +211,12 @@ public class DocumentDbAggregate
                 return "{$sum: 1}";
             } else {
                 final String inName = inNames.get(args.get(0));
-                return "{$sum: {$cond: [ {$ifNull: " +
-                        "[" + DocumentDbRules.quote("$" + inName) + ", false]}, 1, 0]}}";
+                return "{$sum: {$cond: [ {$gt: " +
+                        "[" + maybeQuote("$" + inName) + ", null]}, 1, 0]}}";
             }
-        } else if (aggregation instanceof SqlSumAggFunction
-                || aggregation instanceof SqlSumEmptyIsZeroAggFunction) {
+        } else if (aggregation == SqlStdOperatorTable.SUM) {
             final String inName = inNames.get(args.get(0));
-            return "{$sum: " + maybeQuote("$" + inName) + "}";
+            return "{$push: " + maybeQuote("$" + maybeQuote("$" + inName)) + "}";
         } else if (aggregation == SqlStdOperatorTable.MIN) {
             final String inName = inNames.get(args.get(0));
             return "{$min: " + maybeQuote("$" + inName) + "}";
@@ -236,11 +237,20 @@ public class DocumentDbAggregate
 
     private static String setToAggregate(final SqlAggFunction aggFunction, final String outName) {
         if (aggFunction == SqlStdOperatorTable.COUNT) {
-            return "{$size: " + maybeQuote("$" + outName) + " }";
+            // Return size of set with null values removed.
+            return "{$size: {$filter: {"
+                    + "input:" + maybeQuote("$" + outName) + ", "
+                    + "cond: { $gt: [" + maybeQuote("$$" + outName) + ", null]}}}}";
         } else if (aggFunction == SqlStdOperatorTable.AVG) {
             return "{$avg: " + maybeQuote("$" + outName) + " }";
-        } else if (aggFunction instanceof SqlSumAggFunction || aggFunction instanceof SqlSumEmptyIsZeroAggFunction) {
-            return "{$sum: " + maybeQuote("$" + outName) + " }";
+        } else if (aggFunction == SqlStdOperatorTable.SUM) {
+            // If there are any non-null values, return the sum. Otherwise, return null.
+            return "{$cond: [ {$gt: [ "
+                    + "{$size: {$filter: {"
+                    + "input:" + maybeQuote("$" + outName) + ", "
+                    + "cond: { $gt: [" + maybeQuote("$$" + outName) + ", null]}}}}"
+                    + ", 0]}, "
+                    + "{$sum: " + maybeQuote("$" + outName) + " }, null]}}}";
         } else {
             throw new AssertionError("unknown distinct aggregate" + aggFunction);
         }
@@ -293,6 +303,14 @@ public class DocumentDbAggregate
                 if (aggCall.isDistinct()) {
                     fixups.add(maybeQuote(outName) + ": " + setToAggregate(
                             aggCall.getAggregation(), outName));
+                } else if (aggCall.getAggregation() == SqlStdOperatorTable.SUM) {
+                    // If there are any non-nulls, return the sum. Otherwise, return null.
+                    fixups.add("{$cond: [ {$gt: [ "
+                            + "{$size: {$filter: {"
+                            + "input:" + maybeQuote("$" + outName) + ", "
+                            + "cond: { $gt: [" + maybeQuote("$$" + outName) + ", null]}}}}"
+                            + ", 0]}, "
+                            + "{$sum: " + maybeQuote("$" + outName) + " }, null]}}}");
                 } else {
                     fixups.add(
                             maybeQuote(outName) + ": " + maybeQuote(
