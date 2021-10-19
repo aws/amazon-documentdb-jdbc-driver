@@ -1108,6 +1108,50 @@ public class DocumentDbStatementDateTimeTest extends DocumentDbStatementTest {
         }
     }
 
+    /**
+     * Tests CURRENT_TIMESTAMP, CURRENT_TIME and CURRENT_DATE for multiple instances are the same value.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @DisplayName("Tests CURRENT_TIMESTAMP, CURRENT_TIME and CURRENT_DATE for multiple instances are the same value.")
+    @ParameterizedTest(name = "testCurrentTimestampMultipleInstances - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testCurrentTimestampMultipleInstances(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testCurrentTimestampMultipleInstances";
+        final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            // Get current date.
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT CURRENT_TIMESTAMP AS ts, CURRENT_TIME AS t, CURRENT_DATE AS d"
+                                    + " FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
+
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(Types.TIMESTAMP,
+                    resultSet1.getMetaData().getColumnType(1));
+            Assertions.assertEquals(Types.TIME,
+                    resultSet1.getMetaData().getColumnType(2));
+            Assertions.assertEquals(Types.DATE,
+                    resultSet1.getMetaData().getColumnType(3));
+            final Timestamp timestamp = resultSet1.getTimestamp(1);
+            final Timestamp time = resultSet1.getTimestamp(2);
+            final Timestamp date = resultSet1.getTimestamp(3);
+            Assertions.assertNotNull(timestamp);
+            Assertions.assertNotNull(time);
+            Assertions.assertNotNull(date);
+            Assertions.assertEquals(timestamp, time);
+            Assertions.assertEquals(timestamp, date);
+            Assertions.assertFalse(resultSet1.next());
+        }
+    }
+
     private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
         return OffsetDateTime.of(
                 offsetDateTime.getYear(), monthValue, 1,
