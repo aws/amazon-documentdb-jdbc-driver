@@ -1,22 +1,20 @@
 package software.amazon.documentdb.jdbc.query;
 
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
-
 import com.mongodb.client.MongoClient;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import java.sql.SQLException;
 import org.bson.BsonDocument;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
-@ExtendWith(DocumentDbFlapDoodleExtension.class)
+import java.sql.SQLException;
+
+import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
+
 public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
     private static final String USER = "user";
