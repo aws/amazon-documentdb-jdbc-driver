@@ -16,49 +16,26 @@
 
 package software.amazon.documentdb.jdbc.query.limitations;
 
-import com.mongodb.client.MongoClient;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.bson.BsonDocument;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.SQLException;
-
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
+import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingServiceTest;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
-public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
-    private static final String DATABASE_NAME = "database";
-    private static final String USER = "user";
-    private static final String PASSWORD = "password";
+public class DocumentDbSqlLimitationsTest extends DocumentDbQueryMappingServiceTest {
     private static final String COLLECTION_NAME = "testCollection";
     private static final String OTHER_COLLECTION_NAME = "otherTestCollection";
     private static DocumentDbQueryMappingService queryMapper;
-    private static DocumentDbConnectionProperties connectionProperties;
-    private static MongoClient client;
 
     @BeforeAll
-    @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
-    static void initialize() throws SQLException {
-        // Add a valid users to the local MongoDB instance.
-        connectionProperties = new DocumentDbConnectionProperties();
-        createUser(DATABASE_NAME, USER, PASSWORD);
-        connectionProperties.setUser(USER);
-        connectionProperties.setPassword(PASSWORD);
-        connectionProperties.setDatabase(DATABASE_NAME);
-        connectionProperties.setTlsEnabled("false");
-        connectionProperties.setHostname("localhost:" + getMongoPort());
+    void initialize() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ "
@@ -67,45 +44,26 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
         final BsonDocument otherDocument =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key1\", \"otherArray\" : [ { \"field\" : 1, \"field3\": \"value\" }, { \"field\" : 2, \"field3\" : \"value\" } ]}");
-
-        client = createMongoClient(ADMIN_DATABASE, USER, PASSWORD);
-
-        insertBsonDocuments(
-                COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{document}, client);
-        insertBsonDocuments(
-                OTHER_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{otherDocument}, client);
-        final DocumentDbDatabaseSchemaMetadata databaseMetadata =
-                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW, client);
-        queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata, client);
-    }
-
-    @AfterAll
-    static void afterAll() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(connectionProperties, client)) {
-            schemaWriter.remove("id");
-        }
-        client.close();
+        insertBsonDocuments(COLLECTION_NAME, new BsonDocument[]{document});
+        insertBsonDocuments(OTHER_COLLECTION_NAME, new BsonDocument[]{otherDocument});
+        queryMapper = getQueryMappingService();
     }
 
     @Test
-    @DisplayName("Tests group by with rollup.")
+    @DisplayName("Tests that GROUP BY with ROLLUP() fails as this is not supported.")
     void testRollup() {
         // DocumentDBAggregate throws exception when group type is CUBE or ROLLUP because we do not
         // have any logic to handle grouping by multiple group sets. Not sure if we can get the right behaviour with only $group.
         // $facet may be useful here but it is not yet supported in DocumentDB.
         final String query =
                 String.format(
-                        "SELECT \"%1$s\", \"%2$s\", \"%3$s\" FROM \"%4s\".\"%5s\" GROUP BY ROLLUP( \"%1$s\", \"%2$s\", \"%3%s\")",
-                        COLLECTION_NAME + "__id",
-                        "field",
-                        "field1",
-                        DATABASE_NAME,
-                        COLLECTION_NAME + "_array");
+                        "SELECT \"%1$s\", \"%2$s\", \"%3$s\" FROM \"%4$s\".\"%5$s\" GROUP BY ROLLUP( \"%1$s\", \"%2$s\", \"%3$s\")",
+                        COLLECTION_NAME + "__id", "field", "field1", getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(query));
     }
 
     @Test
-    @DisplayName("Tests the RANK() function.")
+    @DisplayName("Tests that RANK() function should fail as it is not supported.")
     void testRank() {
         // Need to implement in RexToMongoTranslator.
         // $setWindowFields and $rank were added in 5.0 to support this. May be difficult to implement
@@ -116,24 +74,24 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
         final String query =
                 String.format(
                         "SELECT RANK() OVER (PARTITION BY \"field1\" ORDER BY \"field\" ASC) FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(query));
     }
 
     @Test
-    @DisplayName("Tests the ROUND() function.")
+    @DisplayName("Tests that ROUND() function should fail as it is not supported.")
     void testRound() {
         // Need to implement in RexToMongoTranslator.
         // $round was only added in 4.2. May be able to emulate combining some other arithmetic operators.
         final String query =
                 String.format(
                         "SELECT ROUND(\"field\") FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(query));
     }
 
     @Test
-    @DisplayName("Test subqueries in WHERE clause.")
+    @DisplayName("Tests that subqueries in WHERE clause using IN or EXISTS should fail as these are not supported.")
     void testWhereWithSubqueries()  {
         // WHERE NOT EXISTS, IN, NOT IN are treated as semi-join or anti-join. They go through the DocumentDbJoin
         // implementation but fail join condition validations.
@@ -146,7 +104,7 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
         final String subqueryWithIn =
                 String.format(
                         "SELECT * FROM \"%1$s\".\"%2$s\" WHERE \"field1\" "
-                                + "IN (SELECT \"field2\" FROM \"%1$s\".\"%2$s\")" , DATABASE_NAME, COLLECTION_NAME + "_array");
+                                + "IN (SELECT \"field2\" FROM \"%1$s\".\"%2$s\")" , getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(subqueryWithIn));
         // Translation:
         // DocumentDbToEnumerableConverter: ...
@@ -158,7 +116,7 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
                 String.format(
                         "SELECT * FROM \"%1$s\".\"%2$s\" WHERE EXISTS "
                                 + "(SELECT * FROM \"%1$s\".\"%3$s\" WHERE \"%2$s\".\"field\" = \"%3$s\".field)",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         COLLECTION_NAME + "_array",
                         OTHER_COLLECTION_NAME + "_otherArray");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(subqueryWithExists));
@@ -172,36 +130,37 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
         final String subqueryWithSingleValue =
                 String.format(
                         "SELECT * FROM \"%1$s\".\"%2$s\" WHERE \"field\" "
-                                + "< (SELECT MAX(\"field\") FROM \"%1$s\".\"%2$s\")" , DATABASE_NAME, COLLECTION_NAME + "_array");
+                                + "< (SELECT MAX(\"field\") FROM \"%1$s\".\"%2$s\")" , getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(subqueryWithSingleValue));
     }
 
     @Test
-    @DisplayName("Tests set operations.")
+    @DisplayName("Tests that set operations UNION, INTERSECT and EXCEPT should fail as these are not supported.")
     void testSetOperations() {
         // No rule to transform the LogicalUnion.
         // Same collection only - may be able to combine $facet(unsupported) + $setUnion
         // Generic - $unionWith (4.4)
         final String unionQuery =
                 String.format("SELECT * FROM \"%s\".\"%s\" UNION SELECT \"%s\" FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME, COLLECTION_NAME + "__id", DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME, COLLECTION_NAME + "__id", getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(unionQuery));
         // No rule to transform the LogicalIntersect.
         // Same collection only - may be able to combine $facet(unsupported) + $setIntersection
         final String intersectQuery =
                 String.format("SELECT * FROM \"%s\".\"%s\" INTERSECT SELECT \"%s\" FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME, COLLECTION_NAME + "__id", DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME, COLLECTION_NAME + "__id", getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(intersectQuery));
         // No rule to transform the LogicalMinus.
         // Same collection only - may be able to combine $facet(unsupported) + $setDifference
         final String exceptQuery =
                 String.format("SELECT * FROM \"%s\".\"%s\" EXCEPT SELECT \"%s\" FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME, COLLECTION_NAME + "__id", DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME, COLLECTION_NAME + "__id", getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(exceptQuery));
     }
 
     @Test
-    @DisplayName("Tests subqueries in SELECT clause.")
+    @DisplayName("Tests that subqueries in the SELECT clause using IN or EXISTS should fail "
+            + "as these are not supported.")
     void testSelectWithSubqueries() {
         // The various subquery aggregates are determined first and then added as a left outer join to the table.
         // This would also be supported by $lookup. Other uses of subqueries in the SELECT clause should be similar.
@@ -224,13 +183,13 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
                                 + "THEN (SELECT AVG(\"field\") FROM \"%1$s\".\"%2$s\") "
                                 + "ELSE (SELECT MIN(\"field\") FROM \"%1$s\".\"%2$s\") END "
                                 + "FROM \"%1$s\".\"%2$s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertThrows(SQLException.class, () -> queryMapper.get(singleValueSubquery));
 
         // A scalar subquery used like this should only return a single value. Calcite wraps potentially
         // non-single value subqueries in a SINGLE_VALUE aggregate function.
         // The SINGLE_VALUE function should return the value if there is only one. Otherwise, it should error out at runtime.
-        // This behaviour may be hard to push-down.
+        // This behaviour may be hard to push-down. Additionally, it has same challenges as above.
         // Translation:
         // DocumentDbToEnumerableConverter:
         //  DocumentDbProject(EXPR$0=[CASE(=($0, $1), 'yes':VARCHAR(3), 'no':VARCHAR(3))]):
@@ -244,13 +203,16 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
                         "SELECT CASE WHEN \"field1\" = (SELECT \"field2\" FROM \"%1$s\".\"%2$s\")"
                                 + "THEN 'yes' ELSE 'no' END "
                                 + "FROM \"%1$s\".\"%2$s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertEquals("unknown aggregate SINGLE_VALUE",
-                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(multipleValueSubQuery)).getMessage());
+                        getDatabaseName(), COLLECTION_NAME + "_array");
+        Assertions.assertEquals(
+                "unknown aggregate SINGLE_VALUE",
+                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(multipleValueSubQuery)).getMessage(),
+                "SINGLE_VALUE function not supported in DocumentDbAggregate.");
     }
 
     @Test
-    @DisplayName("Tests standard deviation and variance functions.")
+    @DisplayName("Tests that STDDEV(), STDEDEV_POP(), STD_DEV_SAMP(), VAR_POP and VAR_SAMP() should fail "
+            + "as these are not supported aggregate functions.")
     void testStdDev() {
         // $stdDevPop and $stdDevSamp are in 3.6 onwards but are not supported in DocumentDB.
         // Variance can be derived from $stdDevPop and $stdDevSamp (variance = stdDev ^2).
@@ -258,31 +220,34 @@ public class DocumentDbSqlLimitationsTest extends DocumentDbFlapDoodleTest {
         final String stddev =
                 String.format(
                         "SELECT STDDEV(\"field\") FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
-        Assertions.assertEquals("unknown aggregate STDDEV",
-                Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddev)).getMessage());
+                        getDatabaseName(), COLLECTION_NAME + "_array");
+        Assertions.assertEquals(
+                "unknown aggregate STDDEV",
+                Assertions.assertThrows(
+                        AssertionError.class,
+                        () -> queryMapper.get(stddev)).getMessage());
         final String stddevPop =
                 String.format(
                         "SELECT STDDEV_POP(\"field\") FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertEquals("unknown aggregate STDDEV_POP",
                 Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddevPop)).getMessage());
         final String stddevSamp =
                 String.format(
                         "SELECT STDDEV_SAMP(\"field\") FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertEquals("unknown aggregate STDDEV_SAMP",
                 Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(stddevSamp)).getMessage());
         final String varPop =
                 String.format(
                         "SELECT VAR_POP(\"field\") FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertEquals("unknown aggregate VAR_POP",
                 Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(varPop)).getMessage());
         final String varSamp =
                 String.format(
                         "SELECT VAR_SAMP(\"field\") FROM \"%s\".\"%s\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertEquals("unknown aggregate VAR_SAMP",
                 Assertions.assertThrows(AssertionError.class, () -> queryMapper.get(varSamp)).getMessage());
     }
