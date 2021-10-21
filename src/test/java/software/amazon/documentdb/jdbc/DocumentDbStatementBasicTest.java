@@ -1323,17 +1323,12 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
     }
 
-    /**
-     * Tests that SUM(1) works, equivalent to COUNT(*).
-     *
-     * @throws SQLException occurs if query fails.
-     */
-    @DisplayName("Tests query with SUM(1).")
+    @DisplayName("Tests that query with SUM() where all values are null returns null.")
     @ParameterizedTest(name = "testQuerySumOne - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testQuerySumNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final String tableName = "testQuerySumOne";
+        final String tableName = "testQuerySumNulls";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
                 "\"field1\": 1, \"field2\": 2}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \"field1\": null, \"field2\": 3}");
@@ -1341,13 +1336,21 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);
-            final ResultSet resultSet = statement.executeQuery(
-                    String.format("SELECT COUNT(DISTINCT\"field1\") FROM \"%s\".\"%s\" WHERE \"field2\" <> 2",
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format("SELECT SUM(DISTINCT\"field1\") FROM \"%s\".\"%s\" WHERE \"field2\" <> 2",
                             getDatabaseName(), tableName));
-            Assertions.assertNotNull(resultSet);
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals(null, resultSet.getObject(1));
-            Assertions.assertFalse(resultSet.next());
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(null, resultSet1.getObject(1));
+            Assertions.assertFalse(resultSet1.next());
+
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format("SELECT SUM(\"field1\") FROM \"%s\".\"%s\" WHERE \"field2\" <> 2",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals(null, resultSet2.getObject(1));
+            Assertions.assertFalse(resultSet2.next());
         }
     }
 }

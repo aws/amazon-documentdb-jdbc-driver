@@ -168,7 +168,7 @@ public class DocumentDbAggregate
 
         if (!groupSet.isEmpty()
                 || aggCalls.stream().anyMatch(AggregateCall::isDistinct)
-                || aggCalls.stream().anyMatch(aggregateCall -> aggregateCall.getAggregation() instanceof SqlSumAggFunction)) {
+                || aggCalls.stream().anyMatch(aggregateCall -> aggregateCall.getAggregation() == SqlStdOperatorTable.SUM)) {
             implementor.add(null,
                     "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
         }
@@ -216,8 +216,11 @@ public class DocumentDbAggregate
             }
         } else if (aggregation == SqlStdOperatorTable.SUM) {
             final String inName = inNames.get(args.get(0));
-            return "{$push: " + maybeQuote("$" + maybeQuote("$" + inName)) + "}";
-        } else if (aggregation == SqlStdOperatorTable.MIN) {
+            return "{$push: " + maybeQuote("$" + inName) + "}";
+        } else if (aggregation == SqlStdOperatorTable.SUM0) {
+            final String inName = inNames.get(args.get(0));
+            return "{$sum: " + maybeQuote("$" + inName) + "}";
+        } if (aggregation == SqlStdOperatorTable.MIN) {
             final String inName = inNames.get(args.get(0));
             return "{$min: " + maybeQuote("$" + inName) + "}";
         } else if (aggregation == SqlStdOperatorTable.MAX) {
@@ -240,20 +243,26 @@ public class DocumentDbAggregate
             // Return size of set with null values removed.
             return "{$size: {$filter: {"
                     + "input:" + maybeQuote("$" + outName) + ", "
-                    + "cond: { $gt: [" + maybeQuote("$$" + outName) + ", null]}}}}";
+                    + "cond: { $gt: [ '$$this', null]}}}}";
         } else if (aggFunction == SqlStdOperatorTable.AVG) {
             return "{$avg: " + maybeQuote("$" + outName) + " }";
         } else if (aggFunction == SqlStdOperatorTable.SUM) {
-            // If there are any non-null values, return the sum. Otherwise, return null.
-            return "{$cond: [ {$gt: [ "
-                    + "{$size: {$filter: {"
-                    + "input:" + maybeQuote("$" + outName) + ", "
-                    + "cond: { $gt: [" + maybeQuote("$$" + outName) + ", null]}}}}"
-                    + ", 0]}, "
-                    + "{$sum: " + maybeQuote("$" + outName) + " }, null]}}}";
-        } else {
+            return arrayToSum(outName);
+        } else if (aggFunction == SqlStdOperatorTable.SUM0) {
+            return "{$sum: " + maybeQuote("$" + outName) + " }";
+        } {
             throw new AssertionError("unknown distinct aggregate" + aggFunction);
         }
+    }
+
+    private static String arrayToSum(final String outName) {
+        // If there are any non-null values, return the sum. Otherwise, return null.
+        return String.format(
+                "{$cond: [ {$gt: [ {$size: {$filter: {"
+                + "input: %1$s, "
+                + "cond: { $gt: [ '$$this', null]}}}}, 0]}, "
+                + "{$sum:  %1$s }, null]}}}",
+                maybeQuote("$" + outName));
     }
 
     /**
@@ -305,12 +314,7 @@ public class DocumentDbAggregate
                             aggCall.getAggregation(), outName));
                 } else if (aggCall.getAggregation() == SqlStdOperatorTable.SUM) {
                     // If there are any non-nulls, return the sum. Otherwise, return null.
-                    fixups.add("{$cond: [ {$gt: [ "
-                            + "{$size: {$filter: {"
-                            + "input:" + maybeQuote("$" + outName) + ", "
-                            + "cond: { $gt: [" + maybeQuote("$$" + outName) + ", null]}}}}"
-                            + ", 0]}, "
-                            + "{$sum: " + maybeQuote("$" + outName) + " }, null]}}}");
+                    fixups.add(maybeQuote(outName) + ": " + arrayToSum(outName));
                 } else {
                     fixups.add(
                             maybeQuote(outName) + ": " + maybeQuote(
