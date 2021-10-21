@@ -16,15 +16,11 @@
 
 package software.amazon.documentdb.jdbc.query;
 
-import org.bson.BsonArray;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
-import org.bson.BsonInt64;
-import org.bson.BsonString;
 import org.bson.conversions.Bson;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -644,7 +640,6 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
     }
 
     @Test
-    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
     @DisplayName("Tests CURRENT_DATE in WHERE clause.")
     void testWhereCurrentDate() throws SQLException {
         final String dayNameQuery =
@@ -654,26 +649,28 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
         final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
         Assertions.assertNotNull(context);
         final List<Bson> operations = context.getAggregateOperations();
-        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(4, operations.size());
         final BsonDocument rootDoc = context.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        final BsonDocument addFieldsDoc = rootDoc.getDocument("$project");
         Assertions.assertNotNull(addFieldsDoc);
         final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
-                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+                .getArray("$cond").get(1).asDocument()
+                .getArray("$ne").get(1).asDateTime();
         Assertions.assertNotNull(cstDateTime);
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, {\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+                "{\"$project\": {\"_id\": 1, \"field\": 1, " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}, null]}]}, {\"$ne\": [\"$field\", {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}, null]}}}"),
+                operations.get(0));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(3));
     }
 
     @Test
-    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
     @DisplayName("Tests CURRENT_TIME in WHERE clause.")
     void testWhereCurrentTime() throws SQLException {
         final String dayNameQuery =
@@ -683,27 +680,28 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
         final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
         Assertions.assertNotNull(context);
         final List<Bson> operations = context.getAggregateOperations();
-        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(4, operations.size());
         final BsonDocument rootDoc = context.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
+        final BsonDocument addFieldsDoc = rootDoc.getDocument("$project");
         Assertions.assertNotNull(addFieldsDoc);
         final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
-                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+                .getArray("$cond").get(1).asDocument()
+                .getArray("$ne").get(1).asDateTime();
         Assertions.assertNotNull(cstDateTime);
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, " +
-                        "{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+                "{\"$project\": {\"_id\": 1, \"field\": 1, " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}, null]}]}, {\"$ne\": [\"$field\", {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}, null]}}}"),
+                operations.get(0));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(3));
     }
 
     @Test
-    @Disabled("AD-282: Slight disparity in current time due to repeated determination of time.")
     @DisplayName("Tests CURRENT_TIMESTAMP in WHERE clause.")
     void testWhereCurrentTimestamp() throws SQLException {
         final String dayNameQuery =
@@ -713,23 +711,28 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
         final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
         Assertions.assertNotNull(context);
         final List<Bson> operations = context.getAggregateOperations();
-        Assertions.assertEquals(3, operations.size());
+        Assertions.assertEquals(4, operations.size());
         final BsonDocument rootDoc = context.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        final BsonDocument addFieldsDoc = rootDoc.getDocument("$addFields");
-        Assertions.assertNotNull(addFieldsDoc);
-        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
-                .getArray("$and").get(0).asDocument().getArray("$ne").get(1).asDateTime();
+        final BsonDocument project = rootDoc.getDocument("$project");
+        Assertions.assertNotNull(project);
+        final BsonDateTime cstDateTime = project.getDocument(
+                DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1,
+                        DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
+                .getArray("$cond").get(0).asDocument()
+                .getArray("$and").get(1).asDocument()
+                .getArray("$gt").get(0).asDateTime();
         Assertions.assertNotNull(cstDateTime);
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$addFields\": { " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": " +
-                        "{\"$and\": [{\"$ne\": [\"$field\", {\"$date\": " + cstDateTime.getValue() + "}]}, " +
-                        "{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": " + cstDateTime.getValue() + "}, null]}]}}}"), operations.get(0));
+                "{\"$project\": {\"_id\": 1, \"field\": 1, " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}, null]}]}, {\"$ne\": [\"$field\", {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}, null]}}}"),
+                operations.get(0));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(3));
     }
 
     @Test
@@ -744,9 +747,6 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
         Assertions.assertNotNull(context);
         final List<Bson> operations = context.getAggregateOperations();
         Assertions.assertEquals(4, operations.size());
-        final BsonArray array = new BsonArray();
-        array.add(new BsonDocument("$year", new BsonString("$field")));
-        array.add(new BsonInt64(2021));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {"
                         + "\"_id\": 1, "
