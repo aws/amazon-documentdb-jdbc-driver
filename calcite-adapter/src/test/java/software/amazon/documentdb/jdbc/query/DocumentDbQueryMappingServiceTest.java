@@ -35,8 +35,8 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     private static final String DATABASE_NAME = "database";
     private static final String USER = "user";
     private static final String PASSWORD = "password";
-    private static DocumentDbConnectionProperties connectionProperties;
-    private static MongoClient client;
+    private DocumentDbConnectionProperties connectionProperties;
+    private MongoClient client;
 
     @BeforeAll
     @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
@@ -52,7 +52,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     }
 
     @AfterAll
-    static void teardown() throws Exception {
+    void teardown() throws Exception {
         try (SchemaWriter schemaWriter = SchemaStoreFactory
                 .createWriter(connectionProperties, client)) {
             schemaWriter.remove("id");
