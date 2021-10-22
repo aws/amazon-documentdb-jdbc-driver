@@ -16,81 +16,39 @@
 
 package software.amazon.documentdb.jdbc.query;
 
-import com.mongodb.client.MongoClient;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.types.ObjectId;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbFilter;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.SQLException;
 import java.time.Instant;
 
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
-
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
-public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDoodleTest {
-    private static final String DATABASE_NAME = "database";
-    private static final String USER = "user";
-    private static final String PASSWORD = "password";
+public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMappingServiceTest {
     private static final String OBJECT_ID_COLLECTION_NAME = "objectIdCollection";
     private static final BsonObjectId BSON_OBJECT_ID = new BsonObjectId(
             new ObjectId("123456789012345678901234"));
     private static DocumentDbQueryMappingService queryMapper;
-    private static DocumentDbConnectionProperties connectionProperties;
-    private static MongoClient client;
 
     @BeforeAll
-    @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
-    static void initialize() throws SQLException {
-        // Add a valid users to the local MongoDB instance.
-        connectionProperties = new DocumentDbConnectionProperties();
-        createUser(DATABASE_NAME, USER, PASSWORD);
-        connectionProperties.setUser(USER);
-        connectionProperties.setPassword(PASSWORD);
-        connectionProperties.setDatabase(DATABASE_NAME);
-        connectionProperties.setTlsEnabled("false");
-        connectionProperties.setHostname("localhost:" + getMongoPort());
+    void initialize() throws SQLException {
         final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
-
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
         doc1.append("field", new BsonDateTime(dateTime));
-
         final BsonDocument objectIdDocument = new BsonDocument("_id", BSON_OBJECT_ID)
                 .append("field", new BsonString("value"))
                 .append("dateField", new BsonDateTime(dateTime));
-
-        client = createMongoClient(ADMIN_DATABASE, USER, PASSWORD);
-
-        insertBsonDocuments(OBJECT_ID_COLLECTION_NAME, DATABASE_NAME,
-                new BsonDocument[]{objectIdDocument}, client);
-        final DocumentDbDatabaseSchemaMetadata databaseMetadata =
-                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW,
-                        client);
-        queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata,
-                client);
-    }
-
-    @AfterAll
-    static void afterAll() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(connectionProperties, client)) {
-            schemaWriter.remove("id");
-        }
-        client.close();
+        insertBsonDocuments(OBJECT_ID_COLLECTION_NAME, new BsonDocument[]{objectIdDocument});
+        queryMapper = getQueryMappingService();
     }
 
     @Test
@@ -98,7 +56,7 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
     void testQueryForObjectId() throws SQLException {
         final String query1 =
                 String.format("SELECT %2$s__id FROM %1$s.%2$s WHERE %2$s__id = '%3$s'",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         OBJECT_ID_COLLECTION_NAME,
                         BSON_OBJECT_ID.getValue().toHexString());
         final DocumentDbMqlQueryContext result1 = queryMapper.get(query1);
@@ -128,7 +86,7 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         final String query2 =
                 String.format("SELECT %2$s__id FROM %1$s.%2$s WHERE %2$s__id ="
                                 + " CONCAT(SUBSTRING('%3$s', 1, 10), SUBSTRING('%3$s', 11))",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         OBJECT_ID_COLLECTION_NAME,
                         BSON_OBJECT_ID.getValue().toHexString());
         final DocumentDbMqlQueryContext result2 = queryMapper.get(query2);
@@ -158,7 +116,7 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         final String query3 =
                 String.format("SELECT %2$s__id FROM %1$s.%2$s WHERE %2$s__id ="
                                 + " x'%3$s'",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         OBJECT_ID_COLLECTION_NAME,
                         BSON_OBJECT_ID.getValue().toHexString());
         final DocumentDbMqlQueryContext result3 = queryMapper.get(query3);
@@ -188,7 +146,7 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         final String query4 =
                 String.format("SELECT %2$s__id FROM %1$s.%2$s WHERE %2$s__id ="
                                 + " 'arbitrary string'",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         OBJECT_ID_COLLECTION_NAME);
         final DocumentDbMqlQueryContext result4 = queryMapper.get(query4);
         Assertions.assertNotNull(result4);
@@ -214,7 +172,7 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         final String query5 =
                 String.format("SELECT %2$s__id FROM %1$s.%2$s WHERE %2$s__id ="
                                 + " 4223372036854775807",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         OBJECT_ID_COLLECTION_NAME);
         final DocumentDbMqlQueryContext result5 = queryMapper.get(query5);
         Assertions.assertNotNull(result5);
@@ -242,7 +200,7 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbFlapDood
         final String query6 =
                 String.format("SELECT %2$s__id FROM %1$s.%2$s WHERE %2$s__id ="
                                 + " x'0123456789abcdef'",
-                        DATABASE_NAME,
+                        getDatabaseName(),
                         OBJECT_ID_COLLECTION_NAME);
         final DocumentDbMqlQueryContext result6 = queryMapper.get(query6);
         Assertions.assertNotNull(result6);
