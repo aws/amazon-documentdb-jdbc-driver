@@ -546,9 +546,8 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         + "{\"array.field2\": {\"$exists\": true}}]}}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": {\"$cond\": [{\"$ifNull\": [\"$array.field1\", false]}, 1, 0]}}}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": {\"$cond\": [{\"$gt\": [\"$array.field1\", null]}, 1, 0]}}}}"),
+        result.getAggregateOperations().get(2));
 
         final String queryWithDistinctCount =
                 String.format(
@@ -577,8 +576,12 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$addToSet\": \"$array.field1\"}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"_id\": 0, \"EXPR$0\": {\"$size\": \"$EXPR$0\"}}}"),
-                result.getAggregateOperations().get(3));
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"_id\": 0, "
+                                + "\"EXPR$0\": {\"$size\": {\"$filter\": {\"input\": \"$EXPR$0\", "
+                                + "\"cond\": {\"$gt\": [\"$$this\", null]}}}}}}"),
+                 result.getAggregateOperations().get(3));
 
         final String queryWithAverage =
                 String.format(
@@ -644,7 +647,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(3, result.getAggregateOperations().size());
+        Assertions.assertEquals(4, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {"
@@ -659,8 +662,16 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         + "{\"array.field2\": {\"$exists\": true}}]}}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": \"$array.field\"}}}"),
+                BsonDocument.parse(
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$push\": \"$array.field\"}}}"),
                 result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"_id\": 0, "
+                                + "\"EXPR$0\": {\"$cond\": [{\"$gt\": [{\"$size\": {\"$filter\": {\"input\": \"$EXPR$0\", "
+                                + "\"cond\": {\"$gt\": [\"$$this\", null]}}}}, 0]}, {\"$sum\": \"$EXPR$0\"}, null]}}}"),
+        result.getAggregateOperations().get(3));
 
         final String queryWithSumDistinct =
                 String.format(
@@ -689,9 +700,12 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$addToSet\": \"$array.field\"}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"_id\": 0, \"EXPR$0\": {\"$sum\": \"$EXPR$0\"}}}"),
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"_id\": 0, "
+                                + "\"EXPR$0\": {\"$cond\": [{\"$gt\": [{\"$size\": {\"$filter\": {\"input\": \"$EXPR$0\", "
+                                + "\"cond\": {\"$gt\": [\"$$this\", null]}}}}, 0]}, {\"$sum\": \"$EXPR$0\"}, null]}}}"),
                 result.getAggregateOperations().get(3));
-
 
         final String queryWithMin =
                 String.format(
@@ -773,7 +787,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {}, \"_f0\": {\"$sum\": \"$array.field\"}, \"_f1\": {\"$sum\": {\"$cond\": [{\"$ifNull\": [\"$array.field\", false]}, 1, 0]}}}}"),
+                        "{\"$group\": {\"_id\": {}, \"_f0\": {\"$sum\": \"$array.field\"}, \"_f1\": {\"$sum\": {\"$cond\": [{\"$gt\": [\"$array.field\", null]}, 1, 0]}}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1535,14 +1549,20 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(2, result.getAggregateOperations().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$project\": {\"_f0\": {\"$literal\": 1}, \"_id\": 0}}"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": \"$_f0\"}}}"),
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$push\": \"$_f0\"}}}"),
                 result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"_id\": 0, "
+                                + "\"EXPR$0\": {\"$cond\": [{\"$gt\": [{\"$size\": {\"$filter\": {\"input\": \"$EXPR$0\", "
+                                + "\"cond\": {\"$gt\": [\"$$this\", null]}}}}, 0]}, {\"$sum\": \"$EXPR$0\"}, null]}}}"),
+                result.getAggregateOperations().get(2));
     }
 
     @Test
