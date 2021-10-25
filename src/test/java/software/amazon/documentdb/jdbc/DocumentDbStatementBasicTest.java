@@ -1325,7 +1325,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
     @DisplayName("Tests that query with SUM() where all values are null returns null"
             + "and where some values are null returns the sum.")
-    @ParameterizedTest(name = "testQuerySumOne - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testQuerySumNulls - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testQuerySumNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
