@@ -16,65 +16,28 @@
 
 package software.amazon.documentdb.jdbc.query;
 
-import com.mongodb.client.MongoClient;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.bson.BsonDocument;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbFilter;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 import java.sql.SQLException;
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
-public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodleTest {
-    private static final String DATABASE_NAME = "database";
-    private static final String USER = "user";
-    private static final String PASSWORD = "password";
+public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbQueryMappingServiceTest {
     private static final String COLLECTION_NAME = "testCollection";
     private static DocumentDbQueryMappingService queryMapper;
-    private static DocumentDbConnectionProperties connectionProperties;
-    private static MongoClient client;
 
     @BeforeAll
-    @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
-    static void initialize() throws SQLException {
-        // Add a valid users to the local MongoDB instance.
-        connectionProperties = new DocumentDbConnectionProperties();
-        createUser(DATABASE_NAME, USER, PASSWORD);
-        connectionProperties.setUser(USER);
-        connectionProperties.setPassword(PASSWORD);
-        connectionProperties.setDatabase(DATABASE_NAME);
-        connectionProperties.setTlsEnabled("false");
-        connectionProperties.setHostname("localhost:" + getMongoPort());
+    void initialize() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
-        client = createMongoClient(ADMIN_DATABASE, USER, PASSWORD);
-
-        insertBsonDocuments(
-                COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{document}, client);
-        final DocumentDbDatabaseSchemaMetadata databaseMetadata =
-                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW, client);
-        queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata, client);
-    }
-
-    @AfterAll
-    static void afterAll() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory
-                .createWriter(connectionProperties, client)) {
-            schemaWriter.remove("id");
-        }
-        client.close();
+        insertBsonDocuments(COLLECTION_NAME, new BsonDocument[]{document});
+        queryMapper = getQueryMappingService();
     }
 
     @Test
@@ -82,7 +45,7 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodl
     void testQueryWithIn() throws SQLException {
         final String query =
                 String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IN (2, 3)" , DATABASE_NAME, COLLECTION_NAME + "_array");
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IN (2, 3)" , getDatabaseName(), COLLECTION_NAME + "_array");
         final DocumentDbMqlQueryContext result = queryMapper.get(query);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
@@ -135,7 +98,7 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodl
     void testQueryWithNotIn() throws SQLException {
         final String query =
                 String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" NOT IN (2, 3)" , DATABASE_NAME, COLLECTION_NAME + "_array");
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" NOT IN (2, 3)" , getDatabaseName(), COLLECTION_NAME + "_array");
         final DocumentDbMqlQueryContext result = queryMapper.get(query);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
@@ -189,7 +152,7 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodl
     void testQueryIsNull() throws SQLException {
         final String query =
                 String.format(
-                        "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NULL OR \"field1\" IS NOT NULL" , DATABASE_NAME, COLLECTION_NAME + "_array");
+                        "SELECT * FROM \"%s\".\"%s\" WHERE \"field\" IS NULL OR \"field1\" IS NOT NULL" , getDatabaseName(), COLLECTION_NAME + "_array");
         final DocumentDbMqlQueryContext result = queryMapper.get(query);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
@@ -245,7 +208,7 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodl
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE \"field\" * \"field1\" / \"field2\" + \"field1\" - \"field2\" = 7",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         final DocumentDbMqlQueryContext result = queryMapper.get(query);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
@@ -301,7 +264,7 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodl
                                 "WHERE MOD(\"field\", 3) = 2" +
                                 "OR MOD(8, \"field\") = 2" +
                                 "OR MOD(3, 2) = \"field\"",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         final DocumentDbMqlQueryContext result = queryMapper.get(query);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
@@ -360,7 +323,7 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodl
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE \"field\" > 0 OR (\"field1\" > 0OR \"field2\" > 6)",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         final DocumentDbMqlQueryContext result = queryMapper.get(query);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
@@ -426,7 +389,7 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodl
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE \"field\" > 0 AND (\"field1\" > 0 AND \"field2\" > 6)",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         final DocumentDbMqlQueryContext result = queryMapper.get(query);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
@@ -493,7 +456,7 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbFlapDoodl
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" " +
                                 "WHERE ((NOT \"field\" > 0 AND \"field2\" < 10) AND (NOT \"field1\" > 0 OR \"field2\" > 6)) OR \"field2\" > 0",
-                        DATABASE_NAME, COLLECTION_NAME + "_array");
+                        getDatabaseName(), COLLECTION_NAME + "_array");
         final DocumentDbMqlQueryContext result = queryMapper.get(query);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());

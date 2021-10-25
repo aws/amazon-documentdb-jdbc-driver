@@ -1487,4 +1487,46 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
             LogManager.getRootLogger().setLevel(level);
         }
     }
+
+    /**
+     * Tests WITH tableName AS (subQuery).
+     *
+     * @throws SQLException occurs if executing the statement or retrieving a value fails.
+     */
+    @DisplayName("Tests WITH tableName AS (<subQuery>).")
+    @ParameterizedTest(name = "testWithSubQuery - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testWithSubQuery( final DocumentDbTestEnvironment testEnvironment)
+            throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String collectionName = "testWithSubQuery";
+        final int recordCount = 10;
+        prepareSimpleConsistentData(collectionName, recordCount);
+        try (Connection connection = getConnection()) {
+            final DocumentDbStatement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet1 = statement.executeQuery(String.format(
+                    "WITH mySubQuery1 AS (SELECT * FROM \"%1$s\".\"%2$s\"), %n"
+                            + "mySubQuery2 AS (SELECT * FROM \"%1$s\".\"%2$s\") %n"
+                            + "SELECT * FROM mySubQuery1, mySubQuery2 %n"
+                            + " WHERE mySubQuery1.%2$s__id = mySubQuery2.%2$s__id", getDatabaseName(), collectionName));
+            Assertions.assertNotNull(resultSet1);
+            int count = 0;
+            while (resultSet1.next()) {
+                count++;
+            }
+            Assertions.assertEquals(recordCount, count);
+
+            final ResultSet resultSet2 = statement.executeQuery(String.format(
+                    "SELECT * FROM %n"
+                            + " (SELECT * FROM \"%1$s\".\"%2$s\") as mySubQuery1, %n"
+                            + " (SELECT * FROM \"%1$s\".\"%2$s\") as mySubQuery2 %n"
+                            + " WHERE mySubQuery1.%2$s__id = mySubQuery2.%2$s__id", getDatabaseName(), collectionName));
+            Assertions.assertNotNull(resultSet2);
+            count = 0;
+            while (resultSet2.next()) {
+                count++;
+            }
+            Assertions.assertEquals(recordCount, count);
+        }
+    }
 }
