@@ -1323,34 +1323,55 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
     }
 
-    @DisplayName("Tests that query with SUM() where all values are null returns null.")
+    @DisplayName("Tests that query with SUM() where all values are null returns null"
+            + "and where some values are null returns the sum.")
     @ParameterizedTest(name = "testQuerySumOne - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testQuerySumNulls(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
         final String tableName = "testQuerySumNulls";
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
-                "\"field1\": 1, \"field2\": 2}");
+        final BsonDocument doc1 =
+                BsonDocument.parse("{\"_id\": 101,\n" + "\"field1\": 1, \"field2\": 2}");
         final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \"field1\": null, \"field2\": 3}");
         final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103, \"field2\": 3}");
-        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1, doc2, doc3});
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);
-            final ResultSet resultSet1 = statement.executeQuery(
-                    String.format("SELECT SUM(DISTINCT\"field1\") FROM \"%s\".\"%s\" WHERE \"field2\" <> 2",
-                            getDatabaseName(), tableName));
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT SUM(DISTINCT\"field1\") FROM \"%s\".\"%s\" WHERE \"field2\" <> 2",
+                                    getDatabaseName(), tableName));
             Assertions.assertNotNull(resultSet1);
             Assertions.assertTrue(resultSet1.next());
-            Assertions.assertEquals(null, resultSet1.getObject(1));
+            Assertions.assertNull(
+                    resultSet1.getObject(1),
+                    "SUM(DISTINCT value) where all fields are null/undefined should be null.");
             Assertions.assertFalse(resultSet1.next());
 
-            final ResultSet resultSet2 = statement.executeQuery(
-                    String.format("SELECT SUM(\"field1\") FROM \"%s\".\"%s\" WHERE \"field2\" <> 2",
-                            getDatabaseName(), tableName));
+            final ResultSet resultSet2 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT SUM(\"field1\") FROM \"%s\".\"%s\" WHERE \"field2\" <> 2",
+                                    getDatabaseName(), tableName));
             Assertions.assertNotNull(resultSet2);
             Assertions.assertTrue(resultSet2.next());
-            Assertions.assertEquals(null, resultSet2.getObject(1));
+            Assertions.assertNull(
+                    resultSet2.getObject(1),
+                    "SUM(value) where all fields are null/undefined should be null.");
             Assertions.assertFalse(resultSet2.next());
+
+            final ResultSet resultSet3 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT SUM(\"field1\") FROM \"%s\".\"%s\"", getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertTrue(resultSet3.next());
+            Assertions.assertEquals(
+                    1,
+                    resultSet3.getObject(1),
+                    "SUM(value) where only some fields are null/undefined should return the sum.");
+            Assertions.assertFalse(resultSet3.next());
         }
     }
 }
