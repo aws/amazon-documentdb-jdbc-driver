@@ -278,9 +278,9 @@ public class DocumentDbAggregate
             final List<String> outNames) {
         // DocumentDB: modified - start
         final List<String> fixups = new ArrayList<>();
-        int i = 0;
+        int columnIndex = 0;
         if (groupSet.cardinality() == 1) {
-            fixups.add(maybeQuote(outNames.get(i++)) + ": " + maybeQuote("$" + "_id"));
+            fixups.add(maybeQuote(outNames.get(columnIndex++)) + ": " + maybeQuote("$" + "_id"));
         } else {
             fixups.add("_id: 0");
             // We project the original field names (inNames) rather than any renames so the path matches the metadata.
@@ -289,12 +289,12 @@ public class DocumentDbAggregate
                         maybeQuote(inNames.get(group))
                                 + ": "
                                 + maybeQuote("$_id." + acceptedMongoFieldName(inNames.get(group))));
-                ++i;
+                ++columnIndex;
             }
 
         }
         for (AggregateCall aggCall : aggCalls) {
-            final String outName = outNames.get(i++);
+            final String outName = outNames.get(columnIndex++);
             // Get the aggregate for any sets made in $group stage.
             if (aggCall.isDistinct()) {
                 fixups.add(maybeQuote(outName) + ": " + setToAggregate(
