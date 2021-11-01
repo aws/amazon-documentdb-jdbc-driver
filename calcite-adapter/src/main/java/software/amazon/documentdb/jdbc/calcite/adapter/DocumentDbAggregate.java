@@ -38,6 +38,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
+import static software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.getNormalizedIdentifier;
 import static software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.maybeQuote;
 
 /**
@@ -126,34 +127,40 @@ public class DocumentDbAggregate
         final List<String> inNames =
                 DocumentDbRules.mongoFieldNames(getInput().getRowType(),
                         mongoImplementor.getMetadataTable());
-        final List<String> outNames =
-                DocumentDbRules.mongoFieldNames(getRowType(),
-                        mongoImplementor.getMetadataTable());
+        final List<String> outNames = getRowType().getFieldNames();
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
-        int i = 0;
+        int columnIndex = 0;
         if (groupSet.cardinality() == 1) {
             final String inName = inNames.get(groupSet.nth(0));
             list.add("_id: " + maybeQuote("$" + inName));
-            ++i;
+            ++columnIndex;
         } else {
             final List<String> keys = new ArrayList<>();
             for (int group : groupSet) {
+                final String outName = outNames.get(columnIndex);
                 final String inName = inNames.get(group);
                 // Replace any '.'s with _ as the temporary field names in the group by output document.
-                keys.add(maybeQuote(acceptedMongoFieldName(inName)) + ": " + DocumentDbRules.quote("$" + inName));
-                ++i;
+                keys.add(maybeQuote(acceptedMongoFieldName(outName)) + ": " + DocumentDbRules.quote("$" + inName));
+                columnMap.remove(inName);
+                columnMap.put(outName,
+                        DocumentDbMetadataColumn.builder()
+                                .fieldPath(acceptedMongoFieldName(outName))
+                                .isGenerated(false)
+                                .sqlName(outName)
+                                .build());
+                ++columnIndex;
             }
             list.add("_id: " + Util.toString(keys, "{", ", ", "}"));
         }
 
         for (AggregateCall aggCall : aggCalls) {
-            final String outName = outNames.get(i++);
+            final String outName = outNames.get(columnIndex++);
             list.add(
-                    maybeQuote(outName) + ": "
+                    maybeQuote(acceptedMongoFieldName(outName)) + ": "
                             + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), aggCall.isDistinct()));
             columnMap.put(outName,
                     DocumentDbMetadataColumn.builder()
-                            .fieldPath(outName)
+                            .fieldPath(acceptedMongoFieldName(outName))
                             .isGenerated(true)
                             .sqlName(outName)
                             .build());
@@ -231,7 +238,7 @@ public class DocumentDbAggregate
     }
 
     private static String acceptedMongoFieldName(final String path) {
-        return path.replace('.', '_');
+        return getNormalizedIdentifier(path).replace('.', '_');
     }
 
     private static String setToAggregate(final SqlAggFunction aggFunction, final String outName) {
@@ -286,15 +293,15 @@ public class DocumentDbAggregate
             // We project the original field names (inNames) rather than any renames so the path matches the metadata.
             for (int group : groupSet) {
                 fixups.add(
-                        maybeQuote(inNames.get(group))
+                        maybeQuote(outNames.get(columnIndex))
                                 + ": "
-                                + maybeQuote("$_id." + acceptedMongoFieldName(inNames.get(group))));
+                                + maybeQuote("$_id." + acceptedMongoFieldName(outNames.get(columnIndex))));
                 ++columnIndex;
             }
 
         }
         for (AggregateCall aggCall : aggCalls) {
-            final String outName = outNames.get(columnIndex++);
+            final String outName = acceptedMongoFieldName(outNames.get(columnIndex++));
             // Get the aggregate for any sets made in $group stage.
             if (aggCall.isDistinct()) {
                 fixups.add(maybeQuote(outName) + ": " + setToAggregate(
