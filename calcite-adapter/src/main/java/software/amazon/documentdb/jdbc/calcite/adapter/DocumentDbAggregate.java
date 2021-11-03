@@ -128,7 +128,7 @@ public class DocumentDbAggregate
                 DocumentDbRules.mongoFieldNames(getInput().getRowType(),
                         mongoImplementor.getMetadataTable());
         final List<String> outNames = getRowType().getFieldNames();
-        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
+
         int columnIndex = 0;
         if (groupSet.cardinality() == 1) {
             final String inName = inNames.get(groupSet.nth(0));
@@ -141,13 +141,6 @@ public class DocumentDbAggregate
                 final String inName = inNames.get(group);
                 // Replace any '.'s with _ as the temporary field names in the group by output document.
                 keys.add(maybeQuote(acceptedMongoFieldName(outName)) + ": " + DocumentDbRules.quote("$" + inName));
-                columnMap.remove(inName);
-                columnMap.put(outName,
-                        DocumentDbMetadataColumn.builder()
-                                .fieldPath(acceptedMongoFieldName(outName))
-                                .isGenerated(false)
-                                .sqlName(outName)
-                                .build());
                 ++columnIndex;
             }
             list.add("_id: " + Util.toString(keys, "{", ", ", "}"));
@@ -158,23 +151,28 @@ public class DocumentDbAggregate
             list.add(
                     maybeQuote(acceptedMongoFieldName(outName)) + ": "
                             + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), aggCall.isDistinct()));
-            columnMap.put(outName,
-                    DocumentDbMetadataColumn.builder()
-                            .fieldPath(acceptedMongoFieldName(outName))
-                            .isGenerated(true)
-                            .sqlName(outName)
-                            .build());
 
         }
         implementor.add(null,
                 "{$group: " + Util.toString(list, "{", ", ", "}") + "}");
-        final List<String> fixups = getFixups(aggCalls, groupSet, inNames, outNames);
+        final List<String> fixups = getFixups(aggCalls, groupSet, outNames);
 
         if (!groupSet.isEmpty()
                 || aggCalls.stream().anyMatch(AggregateCall::isDistinct)
                 || aggCalls.stream().anyMatch(aggregateCall -> aggregateCall.getAggregation() == SqlStdOperatorTable.SUM)) {
             implementor.add(null,
                     "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
+        }
+
+        // Determine new column metadata based on output row.
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>();
+        for (String outName : outNames) {
+            columnMap.put(outName,
+                    DocumentDbMetadataColumn.builder()
+                            .fieldPath(acceptedMongoFieldName(outName))
+                            .isGenerated(false)
+                            .sqlName(outName)
+                            .build());
         }
 
         // Set the metadata table with the updated column map.
@@ -274,14 +272,12 @@ public class DocumentDbAggregate
      * Logic was pulled out of original implementation of implement method.
      * @param aggCalls the aggregate calls.
      * @param groupSet the group set.
-     * @param inNames the names of the input row type.
      * @param outNames the names of the output row type.
      * @return list of fields that should be projected.
      */
     private static List<String> getFixups(
             final List<AggregateCall> aggCalls,
             final ImmutableBitSet groupSet,
-            final List<String> inNames,
             final List<String> outNames) {
         // DocumentDB: modified - start
         final List<String> fixups = new ArrayList<>();
@@ -290,13 +286,12 @@ public class DocumentDbAggregate
             fixups.add(maybeQuote(outNames.get(columnIndex++)) + ": " + maybeQuote("$" + "_id"));
         } else {
             fixups.add("_id: 0");
-            // We project the original field names (inNames) rather than any renames so the path matches the metadata.
             for (int group : groupSet) {
+                final String outName = acceptedMongoFieldName(outNames.get(columnIndex++));
                 fixups.add(
-                        maybeQuote(outNames.get(columnIndex))
+                        maybeQuote(outName)
                                 + ": "
-                                + maybeQuote("$_id." + acceptedMongoFieldName(outNames.get(columnIndex))));
-                ++columnIndex;
+                                + maybeQuote("$_id." + acceptedMongoFieldName(outName)));
             }
 
         }
