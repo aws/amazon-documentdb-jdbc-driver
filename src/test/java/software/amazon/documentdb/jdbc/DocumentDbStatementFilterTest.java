@@ -1793,7 +1793,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
             final Statement statement = getDocumentDbStatement(connection);
 
             // Verify that result set has correct values.
-            statement.execute(String.format(
+            /*statement.execute(String.format(
                     "SELECT * FROM \"%1$s\".\"%2$s\" ORDER BY \"%2$s__id\" DESC LIMIT 1",
                     getDatabaseName(), collection));
             final ResultSet resultSet1 = statement.getResultSet();
@@ -1858,8 +1858,10 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                     collection + "__id"));
             final ResultSet resultSet6 = statement.getResultSet();
             Assertions.assertNotNull(resultSet6);
-            Assertions.assertFalse(resultSet6.next());
+            Assertions.assertFalse(resultSet6.next()); */
 
+            // Query syntax compare operators will return false if type isnt matched.
+            // No matches returned for this case.
             statement.execute(String.format(
                     "SELECT * FROM \"%s\".\"%s\""
                             + " WHERE \"%s\" < x'111111111111111111111111'",
@@ -1874,6 +1876,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
             Assertions.assertEquals("333333333333333333333333", resultSet7.getString(collection + "__id"));
             Assertions.assertFalse(resultSet7.next());
 
+            // Only string 3333333 will be returned. Others dont match type.
             statement.execute(String.format(
                     "SELECT * FROM \"%1$s\".\"%2$s\""
                             + " WHERE \"%3$s\" > '3' ORDER BY %3$s",

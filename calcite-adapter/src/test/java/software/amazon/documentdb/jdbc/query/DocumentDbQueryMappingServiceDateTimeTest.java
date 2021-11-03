@@ -649,25 +649,19 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
         final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
         Assertions.assertNotNull(context);
         final List<Bson> operations = context.getAggregateOperations();
-        Assertions.assertEquals(4, operations.size());
+        Assertions.assertEquals(2, operations.size());
         final BsonDocument rootDoc = context.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        final BsonDocument addFieldsDoc = rootDoc.getDocument("$project");
-        Assertions.assertNotNull(addFieldsDoc);
-        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
-                .getArray("$cond").get(1).asDocument()
-                .getArray("$ne").get(1).asDateTime();
+        final BsonDocument matchDoc = rootDoc.getDocument("$match");
+        Assertions.assertNotNull(matchDoc);
+        final BsonDateTime cstDateTime = matchDoc.getDocument("field").getArray("$nin").get(1).asDateTime();
         Assertions.assertNotNull(cstDateTime);
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"_id\": 1, \"field\": 1, " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}, null]}]}, {\"$ne\": [\"$field\", {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}, null]}}}"),
+                "{\"$match\": {\"field\": { \"$nin\": [null, {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}}}"),
                 operations.get(0));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(3));
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(1));
     }
 
     @Test
@@ -680,25 +674,19 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
         final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
         Assertions.assertNotNull(context);
         final List<Bson> operations = context.getAggregateOperations();
-        Assertions.assertEquals(4, operations.size());
+        Assertions.assertEquals(2, operations.size());
         final BsonDocument rootDoc = context.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        final BsonDocument addFieldsDoc = rootDoc.getDocument("$project");
-        Assertions.assertNotNull(addFieldsDoc);
-        final BsonDateTime cstDateTime = addFieldsDoc.getDocument(DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1, DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
-                .getArray("$cond").get(1).asDocument()
-                .getArray("$ne").get(1).asDateTime();
+        final BsonDocument matchDoc = rootDoc.getDocument("$match");
+        Assertions.assertNotNull(matchDoc);
+        final BsonDateTime cstDateTime = matchDoc.getDocument("field").getArray("$nin").get(1).asDateTime();
         Assertions.assertNotNull(cstDateTime);
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"_id\": 1, \"field\": 1, " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}, null]}]}, {\"$ne\": [\"$field\", {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}, null]}}}"),
+                "{\"$match\": {\"field\": { \"$nin\": [null, {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}}}"),
                 operations.get(0));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(3));
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(1));
     }
 
     @Test
@@ -711,28 +699,19 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
         final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
         Assertions.assertNotNull(context);
         final List<Bson> operations = context.getAggregateOperations();
-        Assertions.assertEquals(4, operations.size());
+        Assertions.assertEquals(2, operations.size());
         final BsonDocument rootDoc = context.getAggregateOperations()
                 .get(0).toBsonDocument(BsonDocument.class, null);
         Assertions.assertNotNull(rootDoc);
-        final BsonDocument project = rootDoc.getDocument("$project");
-        Assertions.assertNotNull(project);
-        final BsonDateTime cstDateTime = project.getDocument(
-                DocumentDbFilter.BOOLEAN_FLAG_FIELD.substring(1,
-                        DocumentDbFilter.BOOLEAN_FLAG_FIELD.length() - 1))
-                .getArray("$cond").get(0).asDocument()
-                .getArray("$and").get(1).asDocument()
-                .getArray("$gt").get(0).asDateTime();
+        final BsonDocument matchDoc = rootDoc.getDocument("$match");
+        Assertions.assertNotNull(matchDoc);
+        final BsonDateTime cstDateTime = matchDoc.getDocument("field").getArray("$nin").get(1).asDateTime();
         Assertions.assertNotNull(cstDateTime);
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"_id\": 1, \"field\": 1, " + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}, null]}]}, {\"$ne\": [\"$field\", {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}, null]}}}"),
+                "{\"$match\": {\"field\": { \"$nin\": [null, {\"$date\": {\"$numberLong\": \"" + cstDateTime.getValue() + "\"}}]}}}"),
                 operations.get(0));
         Assertions.assertEquals(BsonDocument.parse(
-                "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"), operations.get(2));
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(3));
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(1));
     }
 
     @Test

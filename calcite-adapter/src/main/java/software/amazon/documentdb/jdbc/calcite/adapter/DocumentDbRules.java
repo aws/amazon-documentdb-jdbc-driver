@@ -19,7 +19,7 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 import com.google.common.io.BaseEncoding;
 import lombok.Getter;
 import lombok.SneakyThrows;
-import org.apache.calcite.adapter.enumerable.RexImpTable;
+import org.apache.calcite.adapter.enumerable.RexImpTable.NullAs;
 import org.apache.calcite.adapter.enumerable.RexToLixTranslator;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.avatica.util.TimeUnitRange;
@@ -270,7 +270,7 @@ public final class DocumentDbRules {
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             // Comparison
             rexCallToMongoMap.put(SqlStdOperatorTable.EQUALS,
-                    (call, strings) -> getMongoAggregateForOperator(
+                    (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             // Need to handle null value
             rexCallToMongoMap.put(SqlStdOperatorTable.NOT_EQUALS,
@@ -291,10 +291,10 @@ public final class DocumentDbRules {
 
             rexCallToMongoMap.put(SqlStdOperatorTable.IS_NULL,
                     (call, strings) -> getMongoAggregateForNullOperator(
-                            strings, MONGO_OPERATORS.get(call.getOperator())));
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
             rexCallToMongoMap.put(SqlStdOperatorTable.IS_NOT_NULL,
                     (call, strings) -> getMongoAggregateForNullOperator(
-                            strings, MONGO_OPERATORS.get(call.getOperator())));
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
 
             // Date operations
             rexCallToMongoMap.put(SqlStdOperatorTable.CURRENT_DATE,
@@ -333,24 +333,30 @@ public final class DocumentDbRules {
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, false, null]}]}");
 
-            return new Operand(sb.toString());
+            return new Operand(
+                    sb.toString(),
+                    SimpleMatchTranslator.getAndOrOperator(operands, s),
+                    false);
         }
 
         private static Operand getMongoAggregateForOrOperator(final RexCall call, final List<Operand> operands, final String s) {
             final StringBuilder sb = new StringBuilder();
             sb.append("{$cond: [{$or: [");
             for (Operand value: operands) {
-                sb.append("{$eq: [true, ").append(value.getValue()).append("]},");
+                sb.append("{$eq: [true, ").append(value.getAggregationValue()).append("]},");
             }
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, true,");
             sb.append("{$cond: [{$and: [");
             for (Operand value: operands) {
-                sb.append("{$eq: [false, ").append(value.getValue()).append("]},");
+                sb.append("{$eq: [false, ").append(value.getAggregationValue()).append("]},");
             }
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, false, null]}]}");
-            return new Operand(sb.toString());
+            return new Operand(
+                    sb.toString(),
+                    SimpleMatchTranslator.getAndOrOperator(operands, s),
+                    false);
         }
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
@@ -373,22 +379,25 @@ public final class DocumentDbRules {
             switch (literal.getType().getSqlTypeName()) {
                 case DOUBLE:
                 case DECIMAL:
-                    return new Operand("{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}");
+                    final String doubleFormat = "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
+                    return new Operand(doubleFormat, doubleFormat, true);
                 case BIGINT:
                 case INTERVAL_DAY:
                 case INTERVAL_HOUR:
                 case INTERVAL_MINUTE:
                 case INTERVAL_SECOND:
                     // Convert supported intervals to milliseconds.
-                    return new Operand("{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}");
+                    final String longFormat = "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
+                    return new Operand(longFormat, longFormat, true);
                 case DATE:
                     // NOTE: Need to get the number of milliseconds from Epoch (not # of days).
-                    final DateString dateString = literal.getValueAs(DateString.class);
-                    return new Operand("{\"$date\": {\"$numberLong\": \"" + dateString.getMillisSinceEpoch() + "\" } }");
+                    final String dateFormat = "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(DateString.class).getMillisSinceEpoch() + "\" } }";
+                    return new Operand(dateFormat, dateFormat, true);
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                     // Convert from date in milliseconds to MongoDb date.
-                    return new Operand("{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }");
+                    final String datetimeFormat = "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }";
+                    return new Operand(datetimeFormat, datetimeFormat, true);
                 case BINARY:
                 case VARBINARY:
                     final String base64Literal = BaseEncoding.base64()
@@ -396,12 +405,12 @@ public final class DocumentDbRules {
                     final String binaryFormat = "{\"$binary\": {\"base64\": \""
                             + base64Literal
                             + "\", \"subType\": \"00\"}}";
-                    return new Operand(binaryFormat);
+                    return new Operand(binaryFormat, binaryFormat, true);
                 default:
-                    return new Operand("{\"$literal\": "
-                            + RexToLixTranslator.translateLiteral(literal, literal.getType(),
-                            typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
-                            + "}");
+                    final String simpleLiteral = RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                            typeFactory, NullAs.NOT_POSSIBLE).toString();
+                    // TODO: Test how literals with $ are handled in $match without $literal
+                    return new Operand("{\"$literal\": " + simpleLiteral + "}", simpleLiteral, true);
             }
         }
 
@@ -409,6 +418,8 @@ public final class DocumentDbRules {
             // NOTE: Pass the column metadata with the operand.
             return new Operand(
                     maybeQuote("$" + inFields.get(inputRef.getIndex())),
+                    maybeQuote(inFields.get(inputRef.getIndex())),
+                    false,
                     schemaTable.getColumnMap().get(keys.get(inputRef.getIndex())));
         }
 
@@ -476,7 +487,7 @@ public final class DocumentDbRules {
             if (op1 instanceof RexLiteral
                     && op1.getType().getSqlTypeName() == SqlTypeName.INTEGER) {
                 if (!Bug.CALCITE_194_FIXED) {
-                    return new Operand("'" + stripQuotes(strings.get(0).getValue()) + "["
+                    return new Operand("'" + stripQuotes(strings.get(0).getAggregationValue()) + "["
                             + ((RexLiteral) op1).getValue2() + "]'");
                 }
                 return new Operand(strings.get(0) + "[" + strings.get(1) + "]");
@@ -489,12 +500,24 @@ public final class DocumentDbRules {
                 final RexCall call,
                 final List<Operand> strings,
                 final String stdOperator) {
+            // If call is EQUALS, we do not need null checking.
+            // Else, use:
             // {$cond: [<null check expression>, <comparison expression>, null]}
-            final String condExpr = "{\"$cond\": [" + getNullCheckExpr(strings) +
-                    ", " +
-                    getMongoAggregateForOperator(call, strings, stdOperator) +
-                    ", null]}";
-            return new Operand(condExpr);
+            final String aggregateExpr =
+                    call.isA(SqlKind.EQUALS)
+                            ? getMongoAggregateForOperator(call, strings, stdOperator).getAggregationValue()
+                            : "{\"$cond\": ["
+                                    + getNullCheckExpr(strings)
+                                    + ", "
+                                    + getMongoAggregateForOperator(call, strings, stdOperator)
+                                    + ", null]}";
+
+            return new Operand(
+                    aggregateExpr,
+                    hasObjectIdAndLiteral(call, strings)
+                            ? SimpleMatchTranslator.getObjectIdComparisonOperator(call, strings, stdOperator)
+                            : SimpleMatchTranslator.getComparisonOperator(call, strings, stdOperator),
+                    false);
         }
 
         private static String getNullCheckExpr(final List<Operand> strings) {
@@ -510,9 +533,12 @@ public final class DocumentDbRules {
         }
 
         private static Operand getMongoAggregateForNullOperator(
+                final RexCall call,
                 final List<Operand> strings,
                 final String stdOperator) {
-            return new Operand("{" + stdOperator + ": [" + strings.get(0) + ", null]}");
+            return new Operand(
+                    "{" + stdOperator + ": [" + strings.get(0) + ", null]}",
+                    SimpleMatchTranslator.getNullCheckOperator(call, strings), false);
         }
 
         private static Operand getMongoAggregateForSubstringOperator(
@@ -569,7 +595,7 @@ public final class DocumentDbRules {
     }
 
     private static Operand getIntegerDivisionOperation(final Operand value, final Operand divisor) {
-        return getIntegerDivisionOperation(value.getValue(), divisor.getValue());
+        return getIntegerDivisionOperation(value.getAggregationValue(), divisor.getAggregationValue());
     }
 
     private static String getObjectIdAggregateForOperator(
@@ -647,7 +673,7 @@ public final class DocumentDbRules {
                     final String value = "{\"$oid\": \""
                             + BaseEncoding.base16().encode(valueAsByteArray)
                             + "\"}";
-                    return new Operand(value);
+                    return new Operand(value, value, true);
                 } else {
                     return operand;
                 }
@@ -656,7 +682,7 @@ public final class DocumentDbRules {
                 final String valueAsString = literal.getValueAs(String.class);
                 if (OBJECT_ID_PATTERN.matcher(valueAsString).matches()) {
                     final String value = "{\"$oid\": \"" + valueAsString + "\"}";
-                    return new Operand(value);
+                    return new Operand(value, value, true);
                 } else {
                     return operand;
                 }
@@ -688,8 +714,9 @@ public final class DocumentDbRules {
         }
 
         private static Operand translateCurrentTimestamp(final Instant currentTime) {
-            return new Operand("{\"$date\": {\"$numberLong\": "
-                    + "\"" + currentTime.toEpochMilli() + "\"}}");
+            final String currentTimestamp = "{\"$date\": {\"$numberLong\": "
+                    + "\"" + currentTime.toEpochMilli() + "\"}}";
+            return new Operand(currentTimestamp, currentTimestamp, true);
         }
 
         private static Operand translateDateAdd(final RexCall call, final List<Operand> strings) {
@@ -723,11 +750,11 @@ public final class DocumentDbRules {
             final String yearPartMultiplier = timeUnitRange == TimeUnitRange.QUARTER ? "4" : "12";
             final String monthPart1 =
                     timeUnitRange == TimeUnitRange.QUARTER
-                            ? translateExtractQuarter(strings.get(0)).getValue()
+                            ? translateExtractQuarter(strings.get(0)).getAggregationValue()
                             : String.format("{'$month': %s}", strings.get(0));
             final String monthPart2 =
                     timeUnitRange == TimeUnitRange.QUARTER
-                            ? translateExtractQuarter(strings.get(1)).getValue()
+                            ? translateExtractQuarter(strings.get(1)).getAggregationValue()
                             : String.format("{'$month': %s}", strings.get(1));
             final String dateDiffMonthFormat =
                     "{'$subtract': [ "
@@ -940,6 +967,111 @@ public final class DocumentDbRules {
                             SqlError.UNSUPPORTED_PROPERTY, timeUnitRange.toString());
             }
             return divisorLong;
+        }
+    }
+
+    /**
+     * Translates expressions using only query operators.
+     */
+    private static class SimpleMatchTranslator {
+        private static final Map<SqlOperator, String> REVERSE_OPERATORS =
+                new HashMap<>();
+        static {
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.EQUALS, "$eq");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.NOT_EQUALS, "$ne");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.GREATER_THAN, "$lte");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL, "$lt");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.LESS_THAN, "$gte");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL, "$gt");
+        }
+
+        private static String getObjectIdComparisonOperator(
+                final RexCall call,
+                final List<Operand> strings,
+                final String stdOperator
+        ) {
+            // $or together the $oid and native operations.
+            final String nativeOperation = getComparisonOperator(call, strings, stdOperator);
+            final String oidOperation = getComparisonOperator(call, reformatObjectIdOperands(call, strings), stdOperator);
+            if (nativeOperation != null && oidOperation != null) {
+                return "{\"$or\": [" + oidOperation + ", " + nativeOperation + "]}";
+            }
+            return null;
+        }
+
+        private static String getComparisonOperator(
+                final RexCall call,
+                final List<Operand> strings,
+                final String stdOperator) {
+            // Handle NOT if the argument is a field reference.
+            if (call.isA(SqlKind.NOT) && strings.get(0).isInputRef()) {
+                return "{" + strings.get(0).getQueryValue() + ": false}";
+            }
+            // If given 2 arguments, attempt to do a binary comparison. Only 1 side can be a field reference.
+            // The other side must be a literal or an expression that can be supported without aggregate operators.
+            if (strings.size() == 2) {
+                final Operand left = strings.get(0);
+                final Operand right = strings.get(1);
+                final String op = stdOperator;
+                final String reverseOp = REVERSE_OPERATORS.get(call.getOperator());
+                final String simpleComparison = formatSimpleBinaryComparison(op, left, right);
+                if (simpleComparison != null) {
+                    return simpleComparison;
+                }
+                // Try to return a simple comparison by swapping the operands or return null.
+                return formatSimpleBinaryComparison(reverseOp, right, left);
+            }
+            // For any other scenario, return null.
+            return null;
+        }
+
+        private static String getAndOrOperator(final List<Operand> operands, final String op) {
+            final StringBuilder simple = new StringBuilder();
+            simple.append("{").append(op).append(": [");
+            for (Operand value: operands) {
+                // If any operand is null, return null.
+                if (value.getQueryValue() == null) {
+                    return null;
+                }
+                simple.append(value.isInputRef() ? "{" + value.getQueryValue() + ": true}" : value.getQueryValue());
+                simple.append(",");
+
+            }
+            simple.deleteCharAt(simple.length() - 1);
+            simple.append("]}");
+            return simple.toString();
+        }
+
+        private static String formatSimpleBinaryComparison(
+                final String op,
+                final Operand leftOperand,
+                final Operand rightOperand
+        ) {
+            // If left side is field reference and the right side is not and neither query values are null,
+            // return the simple comparison.
+            if (leftOperand.isInputRef()
+                    && rightOperand.isQuerySyntax()
+                    && leftOperand.getQueryValue() != null
+                    && rightOperand.getQueryValue() != null) {
+                String comparison = "{" +  leftOperand.getQueryValue() + ": {" + op + ": " + rightOperand.getQueryValue() + "}}";
+
+                // For not equals, need to also handle that value is not null or undefined.
+                if (op == RexToMongoTranslator.MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS)) {
+                    comparison = "{" + leftOperand.getQueryValue() + ": {$nin: [null, " + rightOperand.getQueryValue() + "]}}";
+                }
+                return comparison;
+            }
+            return null;
+        }
+
+        private static String getNullCheckOperator(
+                final RexCall call,
+                final List<Operand> operands
+        ) {
+            final String op = call.getOperator() == SqlStdOperatorTable.IS_NULL ? "$eq" : "$ne";
+            return operands.get(0).isInputRef()
+                    ? "{" + operands.get(0).getQueryValue() + ": {" + op + ": null }}"
+                    : null;
         }
     }
 
@@ -1260,28 +1392,51 @@ public final class DocumentDbRules {
      */
     @Getter
     static class Operand {
-        private final String value;
+        private final String aggregationValue;
+        private final String queryValue;
+        private final boolean isQuerySyntax;
         private final DocumentDbSchemaColumn column;
 
         /**
-         * Constructs an Operand from a String value.
+         * Constructs an Operand from a String value. Only aggregation value is set. All other values
+         * will be null.
          *
-         * @param value the String value.
+         * @param aggregationValue the String value.
          */
-        public Operand(final String value) {
-            this(value, null);
+        public Operand(final String aggregationValue) {
+            this(aggregationValue, null, false, null);
         }
 
         /**
-         * Constructs an Operand from a String value and column metadata.
+         * Constructs an Operand from the given values.The column value is left as null.
          *
-         * @param value the String value.
-         * @param column the column metadata.
+         * @param aggregationValue the String value. This is an expression using aggregation operators.
+         * @param queryValue This is an expression using query operators.
+         * @param isQuerySyntax Whether or not the operand can be used on the right of query operators. This
+         *     includes literals, literals wrapped in CAST, and simple scalar function calls such as
+         *     CURRENT TIME.
          */
         public Operand(
-                final String value,
+                final String aggregationValue, final String queryValue, final boolean isQuerySyntax) {
+            this(aggregationValue, queryValue, isQuerySyntax, null);
+        }
+
+        /**
+         * Constructs an Operand from the given values.
+         * @param aggregationValue the String value. This is an expression using aggregation operators.
+         * @param queryValue This is an expression using query operators.
+         * @param isQuerySyntax Whether or not the operand can be used on the right of query operators. This includes literals, literals wrapped in CAST,
+         *                      and simple scalar function calls such as CURRENT TIME.
+         * @param column Column metadata if the operand represents a field reference.
+         */
+        public Operand(
+                final String aggregationValue,
+                final String queryValue,
+                final boolean isQuerySyntax,
                 final DocumentDbSchemaColumn column) {
-            this.value = value;
+            this.aggregationValue = aggregationValue;
+            this.queryValue = queryValue;
+            this.isQuerySyntax = isQuerySyntax;
             this.column = column;
         }
 
@@ -1296,9 +1451,17 @@ public final class DocumentDbRules {
             return new Operand(String.format(format, args));
         }
 
+        /**
+         * Checks if operand represents a field reference. This includes RexInputRef as well as
+         * field references wrapped in calls to CAST or REINTERPRET.
+         */
+        public boolean isInputRef() {
+            return this.column != null;
+        }
+
         @Override
         public String toString() {
-            return value;
+            return aggregationValue;
         }
 
         @Override
@@ -1308,18 +1471,18 @@ public final class DocumentDbRules {
             }
             if (o instanceof String) {
                 final String stringValue = (String) o;
-                return stringValue.equals(this.getValue());
+                return stringValue.equals(this.getAggregationValue());
             }
             if (!(o instanceof Operand)) {
                 return false;
             }
             final Operand that = (Operand) o;
-            return Objects.equals(getValue(), that.getValue());
+            return Objects.equals(getAggregationValue(), that.getAggregationValue());
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(getValue());
+            return Objects.hash(getAggregationValue());
         }
     }
 
