@@ -164,8 +164,7 @@ public class DocumentDbAggregate
         final List<String> fixups = getFixups(aggCalls, groupSet, inNames, outNames);
 
         if (!groupSet.isEmpty()
-                || aggCalls.stream().anyMatch(AggregateCall::isDistinct)
-                || aggCalls.stream().anyMatch(aggregateCall -> aggregateCall.getAggregation() == SqlStdOperatorTable.SUM)) {
+                || aggCalls.stream().anyMatch(aggCall -> aggCall.isDistinct() || aggCall.getAggregation() == SqlStdOperatorTable.SUM)) {
             implementor.add(null,
                     "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
         }
