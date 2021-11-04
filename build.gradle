@@ -3,7 +3,7 @@ plugins {
     id 'com.github.spotbugs' version '4.5.1'
     id 'checkstyle'
     id 'jacoco'
-    id 'com.github.hierynomus.license' version '0.15.0'
+    id 'com.github.hierynomus.license' version '0.16.1'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
     id 'org.kordamp.gradle.markdown' version '2.2.0'
     id "de.undercouch.download" version "4.1.2"
