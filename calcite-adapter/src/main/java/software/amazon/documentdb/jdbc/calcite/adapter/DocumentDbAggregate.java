@@ -25,8 +25,6 @@ import org.apache.calcite.rel.core.Aggregate;
 import org.apache.calcite.rel.core.AggregateCall;
 import org.apache.calcite.sql.SqlAggFunction;
 import org.apache.calcite.sql.fun.SqlStdOperatorTable;
-import org.apache.calcite.sql.fun.SqlSumAggFunction;
-import org.apache.calcite.sql.fun.SqlSumEmptyIsZeroAggFunction;
 import org.apache.calcite.util.ImmutableBitSet;
 import org.apache.calcite.util.Util;
 import org.slf4j.Logger;
@@ -36,7 +34,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataTable;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
-import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -166,7 +163,8 @@ public class DocumentDbAggregate
                 "{$group: " + Util.toString(list, "{", ", ", "}") + "}");
         final List<String> fixups = getFixups(aggCalls, groupSet, inNames, outNames);
 
-        if (!groupSet.isEmpty() || aggCalls.stream().anyMatch(AggregateCall::isDistinct)) {
+        if (!groupSet.isEmpty()
+                || aggCalls.stream().anyMatch(aggCall -> aggCall.isDistinct() || aggCall.getAggregation() == SqlStdOperatorTable.SUM)) {
             implementor.add(null,
                     "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
         }
@@ -201,7 +199,7 @@ public class DocumentDbAggregate
         if (isDistinct) {
             assert args.size() == 1;
             final String inName = inNames.get(args.get(0));
-            return "{$addToSet: " + DocumentDbRules.quote("$" + inName) + "}";
+            return "{$addToSet: " + maybeQuote("$" + inName) + "}";
         }
 
         if (aggregation == SqlStdOperatorTable.COUNT) {
@@ -209,11 +207,12 @@ public class DocumentDbAggregate
                 return "{$sum: 1}";
             } else {
                 final String inName = inNames.get(args.get(0));
-                return "{$sum: {$cond: [ {$ifNull: " +
-                        "[" + DocumentDbRules.quote("$" + inName) + ", false]}, 1, 0]}}";
+                return "{$sum: {$cond: [ {$gt: " + "[" + maybeQuote("$" + inName) + ", null]}, 1, 0]}}";
             }
-        } else if (aggregation instanceof SqlSumAggFunction
-                || aggregation instanceof SqlSumEmptyIsZeroAggFunction) {
+        } else if (aggregation == SqlStdOperatorTable.SUM) {
+            final String inName = inNames.get(args.get(0));
+            return "{$push: " + maybeQuote("$" + inName) + "}";
+        } else if (aggregation == SqlStdOperatorTable.SUM0) {
             final String inName = inNames.get(args.get(0));
             return "{$sum: " + maybeQuote("$" + inName) + "}";
         } else if (aggregation == SqlStdOperatorTable.MIN) {
@@ -236,14 +235,29 @@ public class DocumentDbAggregate
 
     private static String setToAggregate(final SqlAggFunction aggFunction, final String outName) {
         if (aggFunction == SqlStdOperatorTable.COUNT) {
-            return "{$size: " + maybeQuote("$" + outName) + " }";
+            // Return size of set with null values removed.
+            return "{$size: {$filter: {"
+                    + "input:" + maybeQuote("$" + outName) + ", "
+                    + "cond: { $gt: [ '$$this', null]}}}}";
         } else if (aggFunction == SqlStdOperatorTable.AVG) {
             return "{$avg: " + maybeQuote("$" + outName) + " }";
-        } else if (aggFunction instanceof SqlSumAggFunction || aggFunction instanceof SqlSumEmptyIsZeroAggFunction) {
+        } else if (aggFunction == SqlStdOperatorTable.SUM) {
+            return arrayToSum(outName);
+        } else if (aggFunction == SqlStdOperatorTable.SUM0) {
             return "{$sum: " + maybeQuote("$" + outName) + " }";
         } else {
             throw new AssertionError("unknown distinct aggregate" + aggFunction);
         }
+    }
+
+    private static String arrayToSum(final String outName) {
+        // If there are any non-null values, return the sum. Otherwise, return null.
+        return String.format(
+                "{$cond: [ {$gt: [ {$size: {$filter: {"
+                + "input: %1$s, "
+                + "cond: { $gt: [ '$$this', null]}}}}, 0]}, "
+                + "{$sum:  %1$s }, null]}",
+                maybeQuote("$" + outName));
     }
 
     /**
@@ -261,46 +275,39 @@ public class DocumentDbAggregate
             final ImmutableBitSet groupSet,
             final List<String> inNames,
             final List<String> outNames) {
-        final List<String> fixups;
+        // DocumentDB: modified - start
+        final List<String> fixups = new ArrayList<>();
+        int columnIndex = 0;
         if (groupSet.cardinality() == 1) {
-            fixups = new AbstractList<String>() {
-                @Override public String get(final int index) {
-                    final String outName = outNames.get(index);
-                    return maybeQuote(outName) + ": "
-                            + maybeQuote("$" + (index == 0 ? "_id" : outName));
-                }
-
-                @Override public int size() {
-                    return outNames.size();
-                }
-            };
+            fixups.add(maybeQuote(outNames.get(columnIndex++)) + ": " + maybeQuote("$" + "_id"));
         } else {
-            fixups = new ArrayList<>();
             fixups.add("_id: 0");
-            int i = 0;
-            // DocumentDB: modified - start
             // We project the original field names (inNames) rather than any renames so the path matches the metadata.
             for (int group : groupSet) {
                 fixups.add(
                         maybeQuote(inNames.get(group))
                                 + ": "
                                 + maybeQuote("$_id." + acceptedMongoFieldName(inNames.get(group))));
-                ++i;
+                ++columnIndex;
             }
-            for (AggregateCall aggCall : aggCalls) {
-                final String outName = outNames.get(i++);
-                // Get the aggregate for any sets made in $group stage.
-                if (aggCall.isDistinct()) {
-                    fixups.add(maybeQuote(outName) + ": " + setToAggregate(
-                            aggCall.getAggregation(), outName));
-                } else {
-                    fixups.add(
-                            maybeQuote(outName) + ": " + maybeQuote(
-                                    "$" + outName));
-                }
+
+        }
+        for (AggregateCall aggCall : aggCalls) {
+            final String outName = outNames.get(columnIndex++);
+            // Get the aggregate for any sets made in $group stage.
+            if (aggCall.isDistinct()) {
+                fixups.add(maybeQuote(outName) + ": " + setToAggregate(
+                        aggCall.getAggregation(), outName));
+            } else if (aggCall.getAggregation() == SqlStdOperatorTable.SUM) {
+                // If there are any non-nulls, return the sum. Otherwise, return null.
+                fixups.add(maybeQuote(outName) + ": " + arrayToSum(outName));
+            } else {
+                fixups.add(
+                        maybeQuote(outName) + ": " + maybeQuote(
+                                "$" + outName));
             }
-            // DocumentDB: modified - end
         }
         return fixups;
+        // DocumentDB: modified - end
     }
 }
