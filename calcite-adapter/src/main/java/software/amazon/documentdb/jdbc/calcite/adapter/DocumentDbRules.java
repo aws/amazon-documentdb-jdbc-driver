@@ -500,13 +500,8 @@ public final class DocumentDbRules {
                 final RexCall call,
                 final List<Operand> strings,
                 final String stdOperator) {
-            // If call is EQUALS, we do not need null checking.
-            // Else, use:
             // {$cond: [<null check expression>, <comparison expression>, null]}
-            final String aggregateExpr =
-                    call.isA(SqlKind.EQUALS)
-                            ? getMongoAggregateForOperator(call, strings, stdOperator).getAggregationValue()
-                            : "{\"$cond\": ["
+            final String aggregateExpr = "{\"$cond\": ["
                                     + getNullCheckExpr(strings)
                                     + ", "
                                     + getMongoAggregateForOperator(call, strings, stdOperator)

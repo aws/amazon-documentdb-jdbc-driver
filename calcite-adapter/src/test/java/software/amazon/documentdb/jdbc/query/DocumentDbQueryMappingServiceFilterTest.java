@@ -178,9 +178,9 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbQueryMapp
                                 + "\"array.field1\": 1, "
                                 + "\"array.field2\": 1, "
                                 + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$eq\": [{\"$subtract\": ["
-                                + "{\"$add\": [{\"$divide\": [{\"$multiply\": [\"$array.field\", \"$array.field1\"]}, "
-                                + "\"$array.field2\"]}, \"$array.field1\"]}, \"$array.field2\"]}, {\"$literal\": 7}]}}}"),
+                                + ": {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$subtract\": [{\"$add\": [{\"$divide\": [{\"$multiply\": [\"$array.field\", \"$array.field1\"]}, \"$array.field2\"]}, \"$array.field1\"]}, \"$array.field2\"]}, null]}, "
+                                + "{\"$gt\": [{\"$literal\": 7}, null]}]}, {\"$eq\": [{\"$subtract\": [{\"$add\": [{\"$divide\": [{\"$multiply\": [\"$array.field\", \"$array.field1\"]}, \"$array.field2\"]}, \"$array.field1\"]}, \"$array.field2\"]}, "
+                                + "{\"$literal\": 7}]}, null]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -234,13 +234,19 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbQueryMapp
                                 + "\"array.field1\": 1, "
                                 + "\"array.field2\": 1, "
                                 + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$cond\": [{\"$or\": [{\"$eq\": [true, "
-                                + "{\"$eq\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, {\"$literal\": 2}]}]}, "
-                                + "{\"$eq\": [true, {\"$eq\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, {\"$literal\": 2}]}]}, "
-                                + "{\"$eq\": [true, {\"$eq\": [{\"$literal\": 1}, \"$array.field\"]}]}]}, true, "
-                                + "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$eq\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, {\"$literal\": 2}]}]}, "
-                                + "{\"$eq\": [false, {\"$eq\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, {\"$literal\": 2}]}]}, "
-                                + "{\"$eq\": [false, {\"$eq\": [{\"$literal\": 1}, \"$array.field\"]}]}]}, false, null]}]}}}"),
+                                + ": {\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, null]}, "
+                                + "{\"$gt\": [{\"$literal\": 2}, null]}]}, {\"$eq\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, {\"$literal\": 2}]}, null]}]}, "
+                                + "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, null]}, {\"$gt\": [{\"$literal\": 2}, null]}]}, "
+                                + "{\"$eq\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, {\"$literal\": 2}]}, null]}]}, {\"$eq\": [true, {\"$cond\": [{\"$and\": ["
+                                + "{\"$gt\": [{\"$literal\": 1}, null]}, {\"$gt\": [\"$array.field\", null]}]}, "
+                                + "{\"$eq\": [{\"$literal\": 1}, \"$array.field\"]}, null]}]}]}, true, {\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": ["
+                                + "{\"$gt\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, null]}, "
+                                + "{\"$gt\": [{\"$literal\": 2}, null]}]}, {\"$eq\": [{\"$mod\": [\"$array.field\", {\"$literal\": 3}]}, {\"$literal\": 2}]}, null]}]}, "
+                                + "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, null]}, "
+                                + "{\"$gt\": [{\"$literal\": 2}, null]}]}, "
+                                + "{\"$eq\": [{\"$mod\": [{\"$literal\": 8}, \"$array.field\"]}, {\"$literal\": 2}]}, null]}]}, {\"$eq\": [false, {\"$cond\": [{\"$and\": ["
+                                + "{\"$gt\": [{\"$literal\": 1}, null]}, {\"$gt\": [\"$array.field\", null]}]}, "
+                                + "{\"$eq\": [{\"$literal\": 1}, \"$array.field\"]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -408,7 +414,9 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbQueryMapp
                                 + "\"array.field1\": 1, "
                                 + "\"array.field2\": 1, "
                                 + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$eq\": [\"$array.field\", \"$array.field2\"]}}}"),
+                                + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, "
+                                + "{\"$gt\": [\"$array.field2\", null]}]}, "
+                                + "{\"$eq\": [\"$array.field\", \"$array.field2\"]}, null]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -459,10 +467,10 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbQueryMapp
                                 + "\"array.field\": 1, "
                                 + "\"array.field1\": 1, "
                                 + "\"array.field2\": 1, "
-                                + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$eq\": ["
-                                + "{\"$lte\": [\"$array.field\", null]}, "
-                                + "{\"$lte\": [\"$array.field2\", null]}]}}}"),
+                                + "\"placeholderField1F84EB1G3K47\""
+                                + ": {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$lte\": [\"$array.field\", null]}, null]}, "
+                                + "{\"$gt\": [{\"$lte\": [\"$array.field2\", null]}, null]}]}, "
+                                + "{\"$eq\": [{\"$lte\": [\"$array.field\", null]}, {\"$lte\": [\"$array.field2\", null]}]}, null]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -545,13 +553,13 @@ public class DocumentDbQueryMappingServiceFilterTest extends DocumentDbQueryMapp
                                 + "\"array.field1\": 1, "
                                 + "\"array.field2\": 1, "
                                 + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$cond\": [{\"$or\": ["
-                                + "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 2}, null]}]}, "
+                                + ": {\"$cond\": [{\"$or\": [{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 2}, null]}]}, "
                                 + "{\"$lt\": [\"$array.field\", {\"$literal\": 2}]}, null]}]}, "
-                                + "{\"$eq\": [true, {\"$eq\": [\"$array.field\", \"$array.field2\"]}]}]}, true, "
-                                + "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, "
-                                + "{\"$gt\": [{\"$literal\": 2}, null]}]}, {\"$lt\": [\"$array.field\", {\"$literal\": 2}]}, null]}]}, "
-                                + "{\"$eq\": [false, {\"$eq\": [\"$array.field\", \"$array.field2\"]}]}]}, false, null]}]}}}"),
+                                + "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [\"$array.field2\", null]}]}, "
+                                + "{\"$eq\": [\"$array.field\", \"$array.field2\"]}, null]}]}]}, true, "
+                                + "{\"$cond\": [{\"$and\": [{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [{\"$literal\": 2}, null]}]}, "
+                                + "{\"$lt\": [\"$array.field\", {\"$literal\": 2}]}, null]}]}, {\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, {\"$gt\": [\"$array.field2\", null]}]}, "
+                                + "{\"$eq\": [\"$array.field\", \"$array.field2\"]}, null]}]}]}, false, null]}]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(

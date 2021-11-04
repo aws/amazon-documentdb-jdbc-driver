@@ -26,7 +26,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbFilter;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 
 import java.sql.SQLException;
@@ -190,9 +189,14 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
         Assertions.assertEquals(1, result1.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$or\": ["
+                        "{\"$project\": {"
+                                + "\"EXPR$0\": {\"$cond\": [{"
+                                + "\"$and\": ["
+                                + "{\"$gt\": [\"$_id\", null]}, "
+                                + "{\"$gt\": [{\"$literal\": \"123456789012345678901234\"}, null]}]}, "
+                                + "{\"$or\": ["
                                 + "{\"$eq\": [\"$_id\", {\"$oid\": \"123456789012345678901234\"}]}, "
-                                + "{\"$eq\": [\"$_id\", {\"$literal\": \"123456789012345678901234\"}]}]}, "
+                                + "{\"$eq\": [\"$_id\", {\"$literal\": \"123456789012345678901234\"}]}]}, null]}, "
                                 + "\"_id\": 0}}"),
                 result1.getAggregateOperations().get(0));
 
@@ -210,9 +214,13 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$project\": {"
-                                + "\"EXPR$0\": {\"$or\": ["
+                                + "\"EXPR$0\": {\"$cond\": ["
+                                + "{\"$and\": ["
+                                + "{\"$gt\": [\"$_id\", null]}, "
+                                + "{\"$gt\": [{\"$binary\": {\"base64\": \"EjRWeJASNFZ4kBI0\", \"subType\": \"00\"}}, null]}]}, "
+                                + "{\"$or\": ["
                                 + "{\"$eq\": [\"$_id\", {\"$oid\": \"123456789012345678901234\"}]}, "
-                                + "{\"$eq\": [\"$_id\", {\"$binary\": {\"base64\": \"EjRWeJASNFZ4kBI0\", \"subType\": \"00\"}}]}]}, "
+                                + "{\"$eq\": [\"$_id\", {\"$binary\": {\"base64\": \"EjRWeJASNFZ4kBI0\", \"subType\": \"00\"}}]}]}, null]}, "
                                 + "\"_id\": 0}}"),
                 result2.getAggregateOperations().get(0));
 
@@ -229,7 +237,10 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$project\": {"
-                                + "\"EXPR$0\": {\"$eq\": [\"$_id\", {\"$literal\": \"arbitrary string\"}]}, "
+                                + "\"EXPR$0\": {\"$cond\": [{\"$and\": ["
+                                + "{\"$gt\": [\"$_id\", null]}, "
+                                + "{\"$gt\": [{\"$literal\": \"arbitrary string\"}, null]}]}, "
+                                + "{\"$eq\": [\"$_id\", {\"$literal\": \"arbitrary string\"}]}, null]}, "
                                 + "\"_id\": 0}}"),
                 result3.getAggregateOperations().get(0));
 
@@ -245,7 +256,12 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
         Assertions.assertEquals(1, result4.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$eq\": [\"$_id\", 4223372036854775807]}, \"_id\": 0}}"),
+                        "{\"$project\": {"
+                                + "\"EXPR$0\": {\"$cond\": ["
+                                + "{\"$and\": ["
+                                + "{\"$gt\": [\"$_id\", null]}, "
+                                + "{\"$gt\": [{\"$numberLong\": \"4223372036854775807\"}, null]}]}, "
+                                + "{\"$eq\": [\"$_id\", {\"$numberLong\": \"4223372036854775807\"}]}, null]}, \"_id\": 0}}"),
                 result4.getAggregateOperations().get(0));
 
         // Byte array
@@ -260,7 +276,13 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
         Assertions.assertEquals(1, result5.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$eq\": [\"$_id\", {\"$binary\": {\"base64\": \"ASNFZ4mrze8=\", \"subType\": \"00\"}}]}, \"_id\": 0}}"),
+                        "{\"$project\": {"
+                                + "\"EXPR$0\": {\"$cond\": ["
+                                + "{\"$and\": ["
+                                + "{\"$gt\": [\"$_id\", null]}, "
+                                + "{\"$gt\": [{\"$binary\": {\"base64\": \"ASNFZ4mrze8=\", \"subType\": \"00\"}}, null]}]}, "
+                                + "{\"$eq\": [\"$_id\", {\"$binary\": {\"base64\": \"ASNFZ4mrze8=\", \"subType\": \"00\"}}]}, null]}, "
+                                + "\"_id\": 0}}"),
                 result5.getAggregateOperations().get(0));
     }
 }

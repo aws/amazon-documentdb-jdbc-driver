@@ -740,7 +740,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$divide\": [{\"$cond\": [{\"$eq\": [\"$_f1\", {\"$literal\": 0}]}, null, \"$_f0\"]}, \"$_f1\"]}, \"_id\": 0}}"),
+                        "{\"$project\": {\"EXPR$0\": {\"$divide\": [{\"$cond\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$_f1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$eq\": [\"$_f1\", {\"$literal\": 0}]}, null]}, null, \"$_f0\"]}, \"$_f1\"]}, \"_id\": 0}}"),
                 result.getAggregateOperations().get(3));
     }
 
@@ -1518,7 +1518,16 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"_id\": 1, \"array_index_lvl_0\": 1, \"array.field\": 1, \"array.field1\": 1, \"array.field2\": 1, \"placeholderField1F84EB1G3K47\": {\"$eq\": [{\"$substrCP\": [\"$array.field\", {\"$subtract\": [{\"$literal\": 2}, 1]}, {\"$literal\": 3}]}, {\"$literal\": \"abc\"}]}}}"),
+                        "{\"$project\": {"
+                                + "\"_id\": 1, "
+                                + "\"array_index_lvl_0\": 1, "
+                                + "\"array.field\": 1, "
+                                + "\"array.field1\": 1, "
+                                + "\"array.field2\": 1, "
+                                + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                                + ": {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$substrCP\": [\"$array.field\", {\"$subtract\": [{\"$literal\": 2}, 1]}, {\"$literal\": 3}]}, null]}, "
+                                + "{\"$gt\": [{\"$literal\": \"abc\"}, null]}]}, {\"$eq\": [{\"$substrCP\": [\"$array.field\", {\"$subtract\": [{\"$literal\": 2}, 1]}, {\"$literal\": 3}]}, "
+                                + "{\"$literal\": \"abc\"}]}, null]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1559,15 +1568,15 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 BsonDocument.parse(
                         "{\"$project\": {"
                                 + "\"_id\": 1, "
-                                + "\"array_index_lvl_0\": 1, "
-                                + "\"array.field\": 1, "
+                                + "\"array_index_lvl_0\": 1, \""
+                                + "array.field\": 1, "
                                 + "\"array.field1\": 1, "
                                 + "\"array.field2\": 1, "
                                 + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$eq\": [{\"$substrCP\": [\"$array.field\", "
-                                + "{\"$subtract\": [\"$array.field2\", 1]},"
-                                + " {\"$add\": [\"$array.field1\", \"$array.field2\"]}]}, "
-                                + "{\"$literal\": \"abcd\"}]}}}"),
+                                + ": {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$substrCP\": [\"$array.field\", {\"$subtract\": [\"$array.field2\", 1]}, "
+                                + "{\"$add\": [\"$array.field1\", \"$array.field2\"]}]}, null]}, "
+                                + "{\"$gt\": [{\"$literal\": \"abcd\"}, null]}]}, {\"$eq\": [{\"$substrCP\": [\"$array.field\", {\"$subtract\": [\"$array.field2\", 1]}, "
+                                + "{\"$add\": [\"$array.field1\", \"$array.field2\"]}]}, {\"$literal\": \"abcd\"}]}, null]}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
