@@ -509,9 +509,8 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         + "{\"array.field2\": {\"$exists\": true}}]}}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": {\"$cond\": [{\"$ifNull\": [\"$array.field1\", false]}, 1, 0]}}}}"),
-                result.getAggregateOperations().get(2));
+                BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": {\"$cond\": [{\"$gt\": [\"$array.field1\", null]}, 1, 0]}}}}"),
+        result.getAggregateOperations().get(2));
 
         final String queryWithDistinctCount =
                 String.format(
@@ -540,8 +539,12 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$addToSet\": \"$array.field1\"}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"_id\": 0, \"EXPR$0\": {\"$size\": \"$EXPR$0\"}}}"),
-                result.getAggregateOperations().get(3));
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"_id\": 0, "
+                                + "\"EXPR$0\": {\"$size\": {\"$filter\": {\"input\": \"$EXPR$0\", "
+                                + "\"cond\": {\"$gt\": [\"$$this\", null]}}}}}}"),
+                 result.getAggregateOperations().get(3));
 
         final String queryWithAverage =
                 String.format(
@@ -607,7 +610,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(3, result.getAggregateOperations().size());
+        Assertions.assertEquals(4, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {"
@@ -622,8 +625,16 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         + "{\"array.field2\": {\"$exists\": true}}]}}"),
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": \"$array.field\"}}}"),
+                BsonDocument.parse(
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$push\": \"$array.field\"}}}"),
                 result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"_id\": 0, "
+                                + "\"EXPR$0\": {\"$cond\": [{\"$gt\": [{\"$size\": {\"$filter\": {\"input\": \"$EXPR$0\", "
+                                + "\"cond\": {\"$gt\": [\"$$this\", null]}}}}, 0]}, {\"$sum\": \"$EXPR$0\"}, null]}}}"),
+        result.getAggregateOperations().get(3));
 
         final String queryWithSumDistinct =
                 String.format(
@@ -652,9 +663,12 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$addToSet\": \"$array.field\"}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"_id\": 0, \"EXPR$0\": {\"$sum\": \"$EXPR$0\"}}}"),
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"_id\": 0, "
+                                + "\"EXPR$0\": {\"$cond\": [{\"$gt\": [{\"$size\": {\"$filter\": {\"input\": \"$EXPR$0\", "
+                                + "\"cond\": {\"$gt\": [\"$$this\", null]}}}}, 0]}, {\"$sum\": \"$EXPR$0\"}, null]}}}"),
                 result.getAggregateOperations().get(3));
-
 
         final String queryWithMin =
                 String.format(
@@ -736,7 +750,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {}, \"_f0\": {\"$sum\": \"$array.field\"}, \"_f1\": {\"$sum\": {\"$cond\": [{\"$ifNull\": [\"$array.field\", false]}, 1, 0]}}}}"),
+                        "{\"$group\": {\"_id\": {}, \"_f0\": {\"$sum\": \"$array.field\"}, \"_f1\": {\"$sum\": {\"$cond\": [{\"$gt\": [\"$array.field\", null]}, 1, 0]}}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
@@ -1428,14 +1442,20 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(1, result.getColumnMetaData().size());
-        Assertions.assertEquals(2, result.getAggregateOperations().size());
+        Assertions.assertEquals(3, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$project\": {\"_f0\": {\"$literal\": 1}, \"_id\": 0}}"),
                 result.getAggregateOperations().get(0));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$sum\": \"$_f0\"}}}"),
+                        "{\"$group\": {\"_id\": {}, \"EXPR$0\": {\"$push\": \"$_f0\"}}}"),
                 result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"_id\": 0, "
+                                + "\"EXPR$0\": {\"$cond\": [{\"$gt\": [{\"$size\": {\"$filter\": {\"input\": \"$EXPR$0\", "
+                                + "\"cond\": {\"$gt\": [\"$$this\", null]}}}}, 0]}, {\"$sum\": \"$EXPR$0\"}, null]}}}"),
+                result.getAggregateOperations().get(2));
     }
 
     @Test
@@ -1784,5 +1804,47 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {\"nestedIdCollection__id\": \"$_id\", \"_id\": \"$document._id\", \"field1\": \"$document.field1\"}}"),
                 result.getAggregateOperations().get(1));
+    }
+
+    @Test
+    @DisplayName("Tests that calls to SUM where empty should return 0 will only use $sum")
+    void testAggregateWithSumZero() throws SQLException {
+        final String queryWithSum =
+                String.format(
+                        "SELECT SUM(DISTINCT \"%s\") / COUNT(DISTINCT \"%s\") FROM \"%s\".\"%s\"",
+                        "field", "field", getDatabaseName(), COLLECTION_NAME + "_array");
+        final DocumentDbMqlQueryContext result = queryMapper.get(queryWithSum);
+        Assertions.assertNotNull(result);
+        Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
+        Assertions.assertEquals(1, result.getColumnMetaData().size());
+        Assertions.assertEquals(5, result.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{ \"$unwind\": {"
+                                + "\"path\": \"$array\", "
+                                + "\"includeArrayIndex\" : \"array_index_lvl_0\", "
+                                + "\"preserveNullAndEmptyArrays\": true }}"),
+                result.getAggregateOperations().get(0));
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"$or\": ["
+                        + "{\"array.field\": {\"$exists\": true}}, "
+                        + "{\"array.field1\": {\"$exists\": true}}, "
+                        + "{\"array.field2\": {\"$exists\": true}}]}}"),
+                result.getAggregateOperations().get(1));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$group\": {"
+                                + "\"_id\": {}, "
+                                + "\"_f0\": {\"$addToSet\": \"$array.field\"}, "
+                                + "\"_f1\": {\"$addToSet\": \"$array.field\"}}}"),
+                result.getAggregateOperations().get(2));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"_id\": 0, \"_f0\": {\"$sum\": \"$_f0\"}, \"_f1\": {\"$size\": {\"$filter\": {\"input\": \"$_f1\", \"cond\": {\"$gt\": [\"$$this\", null]}}}}}}"),
+                result.getAggregateOperations().get(3));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"EXPR$0\": {\"$divide\": [{\"$cond\": [{\"$eq\": [\"$_f1\", {\"$literal\": 0}]}, null, \"$_f0\"]}, \"$_f1\"]}, \"_id\": 0}}"),
+                result.getAggregateOperations().get(4));
     }
 }
