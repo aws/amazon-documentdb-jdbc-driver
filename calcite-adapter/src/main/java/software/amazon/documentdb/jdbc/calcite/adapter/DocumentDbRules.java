@@ -1056,7 +1056,7 @@ public final class DocumentDbRules {
                 String comparison = "{" +  leftOperand.getQueryValue() + ": {" + op + ": " + rightOperand.getQueryValue() + "}}";
 
                 // For not equals, need to also handle that value is not null or undefined.
-                if (op == RexToMongoTranslator.MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS)) {
+                if (op.equals(RexToMongoTranslator.MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS))) {
                     comparison = "{" + leftOperand.getQueryValue() + ": {$nin: [null, " + rightOperand.getQueryValue() + "]}}";
                 }
                 return comparison;

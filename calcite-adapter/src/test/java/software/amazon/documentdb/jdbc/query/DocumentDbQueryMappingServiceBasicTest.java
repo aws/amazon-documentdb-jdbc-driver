@@ -763,7 +763,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(3, result.getColumnMetaData().size());
-        Assertions.assertEquals(6, result.getAggregateOperations().size());
+        Assertions.assertEquals(8, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {"
@@ -786,8 +786,26 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                         "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"_f3\": \"$_f3\"}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$match\": {\"_f3\": {\"$gt\": 1}}}"),
+                BsonDocument.parse(
+                        "{\"$project\": "
+                                + "{\"_id\": 1, "
+                                + "\"array.field\": 1, "
+                                + "\"array.field1\": 1, \""
+                                + "_f3\": 1, "
+                                + DocumentDbFilter.BOOLEAN_FLAG_FIELD
+                                + ": {\"$cond\": [{\"$and\": ["
+                                + "{\"$gt\": [\"$_f3\", null]}, "
+                                + "{\"$gt\": [{\"$literal\": 1}, null]}]}, "
+                                + "{\"$gt\": [\"$_f3\", {\"$literal\": 1}]}, null]}}}"),
                 result.getAggregateOperations().get(4));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                result.getAggregateOperations().get(5));
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
+                result.getAggregateOperations().get(6));
     }
 
     @Test

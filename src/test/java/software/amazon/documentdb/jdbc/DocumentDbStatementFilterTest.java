@@ -1793,7 +1793,7 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
             final Statement statement = getDocumentDbStatement(connection);
 
             // Verify that result set has correct values.
-            /*statement.execute(String.format(
+            statement.execute(String.format(
                     "SELECT * FROM \"%1$s\".\"%2$s\" ORDER BY \"%2$s__id\" DESC LIMIT 1",
                     getDatabaseName(), collection));
             final ResultSet resultSet1 = statement.getResultSet();
@@ -1858,9 +1858,9 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                     collection + "__id"));
             final ResultSet resultSet6 = statement.getResultSet();
             Assertions.assertNotNull(resultSet6);
-            Assertions.assertFalse(resultSet6.next()); */
+            Assertions.assertFalse(resultSet6.next());
 
-            // Query syntax compare operators will return false if type isnt matched.
+            // Query syntax compare operators will return false if type is not matched.
             // No matches returned for this case.
             statement.execute(String.format(
                     "SELECT * FROM \"%s\".\"%s\""
@@ -1869,14 +1869,9 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                     collection + "__id"));
             final ResultSet resultSet7 = statement.getResultSet();
             Assertions.assertNotNull(resultSet7);
-            Assertions.assertTrue(resultSet7.next());
-            // String data type ...
-            Assertions.assertEquals("3", resultSet7.getString(collection + "__id"));
-            Assertions.assertTrue(resultSet7.next());
-            Assertions.assertEquals("333333333333333333333333", resultSet7.getString(collection + "__id"));
             Assertions.assertFalse(resultSet7.next());
 
-            // Only string 3333333 will be returned. Others dont match type.
+            // Only string entries will be returned. Others don't match type.
             statement.execute(String.format(
                     "SELECT * FROM \"%1$s\".\"%2$s\""
                             + " WHERE \"%3$s\" > '3' ORDER BY %3$s",
@@ -1887,13 +1882,6 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet8.next());
             // String data type
             Assertions.assertEquals("333333333333333333333333", resultSet8.getString(collection + "__id"));
-            Assertions.assertTrue(resultSet8.next());
-            // ObjectId data type ...
-            Assertions.assertEquals("111111111111111111111111", resultSet8.getString(collection + "__id"));
-            Assertions.assertTrue(resultSet8.next());
-            Assertions.assertEquals("222222222222222222222222", resultSet8.getString(collection + "__id"));
-            Assertions.assertTrue(resultSet8.next());
-            Assertions.assertEquals("444444444444444444444444", resultSet8.getString(collection + "__id"));
             Assertions.assertFalse(resultSet8.next());
 
             // String data type.

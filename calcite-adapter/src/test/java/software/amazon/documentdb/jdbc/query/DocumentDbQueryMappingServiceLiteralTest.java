@@ -53,7 +53,7 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
 
     @Test
     @DisplayName("Tests that querying for ObjectId type.")
-    void testQueryForObjectId() throws SQLException {
+    void testWhereQueryForObjectId() throws SQLException {
         final String query1 =
                 String.format("SELECT %2$s__id FROM %1$s.%2$s WHERE %2$s__id = '%3$s'",
                         getDatabaseName(),
@@ -173,5 +173,94 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
                 BsonDocument.parse(
                         "{\"$match\": {\"objectIdCollection__id\": {\"$eq\": {\"$binary\": {\"base64\": \"ASNFZ4mrze8=\", \"subType\": \"00\"}}}}}"),
                 result6.getAggregateOperations().get(1));
+    }
+
+    @Test
+    @DisplayName("Tests querying for ObjectId type in SELECT clause.")
+    void testSelectQueryForObjectId() throws SQLException {
+        final String query1 =
+                String.format("SELECT %2$s__id = '%3$s' FROM %1$s.%2$s",
+                        getDatabaseName(),
+                        OBJECT_ID_COLLECTION_NAME,
+                        BSON_OBJECT_ID.getValue().toHexString());
+        final DocumentDbMqlQueryContext result1 = queryMapper.get(query1);
+        Assertions.assertNotNull(result1);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result1.getCollectionName());
+        Assertions.assertEquals(1, result1.getColumnMetaData().size());
+        Assertions.assertEquals(1, result1.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"EXPR$0\": {\"$or\": ["
+                                + "{\"$eq\": [\"$_id\", {\"$oid\": \"123456789012345678901234\"}]}, "
+                                + "{\"$eq\": [\"$_id\", {\"$literal\": \"123456789012345678901234\"}]}]}, "
+                                + "\"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+
+        // Hex string
+        final String query2 =
+                String.format("SELECT %2$s__id =x'%3$s' FROM %1$s.%2$s",
+                        getDatabaseName(),
+                        OBJECT_ID_COLLECTION_NAME,
+                        BSON_OBJECT_ID.getValue().toHexString());
+        final DocumentDbMqlQueryContext result2 = queryMapper.get(query2);
+        Assertions.assertNotNull(result2);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result2.getCollectionName());
+        Assertions.assertEquals(1, result2.getColumnMetaData().size());
+        Assertions.assertEquals(1, result2.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"EXPR$0\": {\"$or\": ["
+                                + "{\"$eq\": [\"$_id\", {\"$oid\": \"123456789012345678901234\"}]}, "
+                                + "{\"$eq\": [\"$_id\", {\"$binary\": {\"base64\": \"EjRWeJASNFZ4kBI0\", \"subType\": \"00\"}}]}]}, "
+                                + "\"_id\": 0}}"),
+                result2.getAggregateOperations().get(0));
+
+        // String
+        final String query3 =
+                String.format("SELECT %2$s__id = 'arbitrary string' FROM %1$s.%2$s",
+                        getDatabaseName(),
+                        OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result3 = queryMapper.get(query3);
+        Assertions.assertNotNull(result3);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result3.getCollectionName());
+        Assertions.assertEquals(1, result3.getColumnMetaData().size());
+        Assertions.assertEquals(1, result3.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"EXPR$0\": {\"$eq\": [\"$_id\", {\"$literal\": \"arbitrary string\"}]}, "
+                                + "\"_id\": 0}}"),
+                result3.getAggregateOperations().get(0));
+
+        // Long integer
+        final String query4 =
+                String.format("SELECT %2$s__id = 4223372036854775807 FROM %1$s.%2$s",
+                        getDatabaseName(),
+                        OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result4 = queryMapper.get(query4);
+        Assertions.assertNotNull(result4);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result4.getCollectionName());
+        Assertions.assertEquals(1, result4.getColumnMetaData().size());
+        Assertions.assertEquals(1, result4.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"EXPR$0\": {\"$eq\": [\"$_id\", 4223372036854775807]}, \"_id\": 0}}"),
+                result4.getAggregateOperations().get(0));
+
+        // Byte array
+        final String query5 =
+                String.format("SELECT %2$s__id = x'0123456789abcdef' FROM %1$s.%2$s",
+                        getDatabaseName(),
+                        OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result5 = queryMapper.get(query5);
+        Assertions.assertNotNull(result5);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result5.getCollectionName());
+        Assertions.assertEquals(1, result5.getColumnMetaData().size());
+        Assertions.assertEquals(1, result5.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"EXPR$0\": {\"$eq\": [\"$_id\", {\"$binary\": {\"base64\": \"ASNFZ4mrze8=\", \"subType\": \"00\"}}]}, \"_id\": 0}}"),
+                result5.getAggregateOperations().get(0));
     }
 }
