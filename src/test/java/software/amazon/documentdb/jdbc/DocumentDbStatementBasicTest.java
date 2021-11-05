@@ -1500,11 +1500,11 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
 
     @DisplayName("Tests that query where aggregate is renamed to existing field returns correct result. "
             + "Addresses [AD-454].")
-    @ParameterizedTest(name = "testQuerySumNulls - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testAggregateWithNameConflict - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testAggregateWithNameConflict(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
-        final String tableName = "testQuerySumNulls";
+        final String tableName = "testAggregateWithNameConflict";
         final BsonDocument doc1 =
                 BsonDocument.parse("{\"_id\": 101,\n" + "\"document\": {\"rating\": 1}}");
         final BsonDocument doc2 =
