@@ -124,23 +124,31 @@ public class DocumentDbAggregate
                 new DocumentDbRel.Implementor(implementor.getRexBuilder());
         mongoImplementor.visitChild(0, getInput());
         // DocumentDB: modified - start
-        final List<String> inNames =
+        final List<String> mongoFieldNames =
                 DocumentDbRules.mongoFieldNames(getInput().getRowType(),
                         mongoImplementor.getMetadataTable());
+        final List<String> inNames = getInput().getRowType().getFieldNames();
         final List<String> outNames = getRowType().getFieldNames();
+        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
 
         int columnIndex = 0;
         if (groupSet.cardinality() == 1) {
+            final String outName = outNames.get(columnIndex);
             final String inName = inNames.get(groupSet.nth(0));
-            list.add("_id: " + maybeQuote("$" + inName));
+            final String fieldName = mongoFieldNames.get(groupSet.nth(0));
+            final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
+            list.add("_id: " + maybeQuote("$" + fieldName));
+            columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
             ++columnIndex;
         } else {
             final List<String> keys = new ArrayList<>();
             for (int group : groupSet) {
                 final String outName = outNames.get(columnIndex);
                 final String inName = inNames.get(group);
-                // Replace any '.'s with _ as the temporary field names in the group by output document.
-                keys.add(maybeQuote(acceptedMongoFieldName(outName)) + ": " + DocumentDbRules.quote("$" + inName));
+                final String fieldName =  mongoFieldNames.get(group);
+                final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
+                keys.add(maybeQuote(acceptedMongoFieldName(outName)) + ": " + DocumentDbRules.quote("$" + fieldName));
+                columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
                 ++columnIndex;
             }
             list.add("_id: " + Util.toString(keys, "{", ", ", "}"));
@@ -150,7 +158,13 @@ public class DocumentDbAggregate
             final String outName = outNames.get(columnIndex++);
             list.add(
                     maybeQuote(acceptedMongoFieldName(outName)) + ": "
-                            + toMongo(aggCall.getAggregation(), inNames, aggCall.getArgList(), aggCall.isDistinct()));
+                            + toMongo(aggCall.getAggregation(), mongoFieldNames, aggCall.getArgList(), aggCall.isDistinct()));
+            columnMap.put(outName,
+                    DocumentDbMetadataColumn.builder()
+                            .isGenerated(true)
+                            .fieldPath(acceptedMongoFieldName(outName))
+                            .sqlName(outName)
+                            .build());
 
         }
         implementor.add(null,
@@ -161,17 +175,6 @@ public class DocumentDbAggregate
                 || aggCalls.stream().anyMatch(aggCall -> aggCall.isDistinct() || aggCall.getAggregation() == SqlStdOperatorTable.SUM)) {
             implementor.add(null,
                     "{$project: " + Util.toString(fixups, "{", ", ", "}") + "}");
-        }
-
-        // Determine new column metadata based on output row.
-        final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>();
-        for (String outName : outNames) {
-            columnMap.put(outName,
-                    DocumentDbMetadataColumn.builder()
-                            .fieldPath(acceptedMongoFieldName(outName))
-                            .isGenerated(false)
-                            .sqlName(outName)
-                            .build());
         }
 
         // Set the metadata table with the updated column map.
@@ -190,6 +193,20 @@ public class DocumentDbAggregate
                         .map(c -> c.right)
                         .toArray());
         // DocumentDB: modified - end
+    }
+
+    private static DocumentDbSchemaColumn getUpdatedColumn(final DocumentDbSchemaColumn oldColumn, final String outName) {
+        return DocumentDbMetadataColumn.builder()
+                .fieldPath(oldColumn.getFieldPath())
+                .sqlName(oldColumn.getSqlName())
+                .sqlType(oldColumn.getSqlType())
+                .dbType(oldColumn.getDbType())
+                .isIndex(oldColumn.isIndex())
+                .isPrimaryKey(oldColumn.isPrimaryKey())
+                .foreignKeyTableName(oldColumn.getForeignKeyTableName())
+                .foreignKeyColumnName(oldColumn.getForeignKeyColumnName())
+                .resolvedPath(acceptedMongoFieldName(outName))
+                .build();
     }
 
     private static String toMongo(final SqlAggFunction aggregation, final List<String> inNames,
