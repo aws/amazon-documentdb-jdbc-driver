@@ -409,7 +409,6 @@ public final class DocumentDbRules {
                 default:
                     final String simpleLiteral = RexToLixTranslator.translateLiteral(literal, literal.getType(),
                             typeFactory, NullAs.NOT_POSSIBLE).toString();
-                    // TODO: Test how literals with $ are handled in $match without $literal
                     return new Operand("{\"$literal\": " + simpleLiteral + "}", simpleLiteral, true);
             }
         }

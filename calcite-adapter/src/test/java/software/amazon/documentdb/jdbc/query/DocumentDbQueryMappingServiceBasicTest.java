@@ -1844,7 +1844,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$divide\": [{\"$cond\": [{\"$eq\": [\"$_f1\", {\"$literal\": 0}]}, null, \"$_f0\"]}, \"$_f1\"]}, \"_id\": 0}}"),
+                        "{\"$project\": {\"EXPR$0\": {\"$divide\": [{\"$cond\": [{\"$cond\": [{\"$and\": [{\"$gt\": [\"$_f1\", null]}, {\"$gt\": [{\"$literal\": 0}, null]}]}, {\"$eq\": [\"$_f1\", {\"$literal\": 0}]}, null]}, null, \"$_f0\"]}, \"$_f1\"]}, \"_id\": 0}}"),
                 result.getAggregateOperations().get(4));
     }
 }
