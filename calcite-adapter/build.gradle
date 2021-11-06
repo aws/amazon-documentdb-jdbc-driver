@@ -203,7 +203,7 @@ dependencies {
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.26.0'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.3.4'
 
-    compileOnly         'org.projectlombok:lombok:1.18.16'
+    compileOnly         'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     testCompileOnly group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
