@@ -198,7 +198,7 @@ dependencies {
 
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.3.4'
 
-    compileOnly         'org.projectlombok:lombok:1.18.16'
+    compileOnly         'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
