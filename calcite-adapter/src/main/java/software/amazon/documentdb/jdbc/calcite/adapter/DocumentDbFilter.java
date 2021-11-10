@@ -99,35 +99,46 @@ public class DocumentDbFilter extends Filter implements DocumentDbRel {
         final Operand match = expandedCondition.accept(rexToMongoTranslator);
 
         // Use a single match stage if no aggregation operators are needed.
-        // Else, use $addFields or $project with placeholder boolean field.
+        // Else, use $addFields or $project to match on placeholder boolean field. This adds 3 stages.
         if (match.getQueryValue() != null) {
             final String condition = match.isInputRef() ? "{" + match.getQueryValue() + ": true}" : match.getQueryValue();
             implementor.add(null, "{\"$match\": " + condition + "}");
         } else {
-            if (implementor.isJoin() || getRowType().getFieldList().size() >= DocumentDbRules.MAX_PROJECT_FIELDS) {
-                // If joining or the project list is too large (already at max),
-                // only add the placeholder field to the documents.
-                implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
-            } else {
-                // Else, project all current project items + the placeholder boolean field.
-                final List<String> projectItems = new ArrayList<>();
-                for (String projectItem : DocumentDbRules.mongoFieldNames(getRowType(), implementor.getMetadataTable())) {
-                    projectItems.add(DocumentDbRules.maybeQuote(projectItem) + ": 1");
-                }
-
-                projectItems.add(BOOLEAN_FLAG_FIELD + ": " + match);
-                implementor.add(null, "{\"$project\": " + Util.toString(projectItems, "{", ", ", "}") + "}");
-            }
-
-            // After matching, remove the placeholder field.
-            implementor.add(null, "{\"$match\": {" + BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}");
-            implementor.add(null, "{\"$project\": {" + BOOLEAN_FLAG_FIELD + ":0}}");
+            addAggregateOperatorStages(implementor, match);
         }
         LOGGER.info("Created filter stages of pipeline.");
         LOGGER.debug("Pipeline stages added: {}",
                 implementor.getList().stream()
                         .map(c -> c.right)
                         .toArray());
+    }
+
+    /**
+     * Adds 3 stages to the pipeline: $addFields/$project to add a boolean
+     * field representing the filter condition using aggregate operator syntax,
+     * $match to match on the added field, and $project to remove the added field.
+     * @param implementor the DocumentDbRel implementor
+     * @param match the Operand for the filter condition
+     */
+    private void addAggregateOperatorStages(final Implementor implementor, final Operand match) {
+        if (implementor.isJoin() || getRowType().getFieldList().size() >= DocumentDbRules.MAX_PROJECT_FIELDS) {
+            // If joining or the project list is too large (already at max),
+            // only add the placeholder field to the documents.
+            implementor.add(null, "{\"$addFields\": {" + BOOLEAN_FLAG_FIELD + ": " + match + "}}");
+        } else {
+            // Else, project all current project items + the placeholder boolean field.
+            final List<String> projectItems = new ArrayList<>();
+            for (String projectItem : DocumentDbRules.mongoFieldNames(getRowType(), implementor.getMetadataTable())) {
+                projectItems.add(DocumentDbRules.maybeQuote(projectItem) + ": 1");
+            }
+
+            projectItems.add(BOOLEAN_FLAG_FIELD + ": " + match);
+            implementor.add(null, "{\"$project\": " + Util.toString(projectItems, "{", ", ", "}") + "}");
+        }
+
+        // After matching, remove the placeholder field.
+        implementor.add(null, "{\"$match\": {" + BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}");
+        implementor.add(null, "{\"$project\": {" + BOOLEAN_FLAG_FIELD + ":0}}");
     }
 
     /*
