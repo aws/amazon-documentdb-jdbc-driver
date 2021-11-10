@@ -1497,4 +1497,32 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertFalse(resultSet3.next());
         }
     }
+
+    @DisplayName("Tests that query where aggregate is renamed to existing field returns correct result. "
+            + "Addresses [AD-454].")
+    @ParameterizedTest(name = "testAggregateWithNameConflict - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testAggregateWithNameConflict(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testAggregateWithNameConflict";
+        final BsonDocument doc1 =
+                BsonDocument.parse("{\"_id\": 101,\n" + "\"document\": {\"rating\": 1}}");
+        final BsonDocument doc2 =
+                BsonDocument.parse("{\"_id\": 102,\n" + "\"document\": {\"rating\": 2}}");
+        final BsonDocument doc3 =
+                BsonDocument.parse("{\"_id\": 103,\n" + "\"document\": {\"rating\": 3}}");
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1, doc2, doc3});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet1 =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT MIN(\"rating\") AS \"rating\" FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), tableName + "_document"));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(1, resultSet1.getInt(1));
+            Assertions.assertFalse(resultSet1.next());
+        }
+    }
 }

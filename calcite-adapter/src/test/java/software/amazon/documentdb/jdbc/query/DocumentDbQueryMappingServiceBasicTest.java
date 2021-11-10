@@ -178,7 +178,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 BsonDocument.parse("{\"$group\": {\"_id\": \"$array.field\"}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"array.field\": \"$_id\"}}"),
+                BsonDocument.parse("{\"$project\": {\"field\": \"$_id\"}}"),
                 result.getAggregateOperations().get(3));
     }
 
@@ -475,11 +475,11 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}}}"),
+                        "{\"$group\": {\"_id\": {\"testCollection__id\": \"$_id\", \"field\": \"$array.field\", \"field1\": \"$array.field1\"}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\"}}"),
+                        "{\"$project\": {\"_id\": 0, \"testCollection__id\": \"$_id.testCollection__id\", \"field\": \"$_id.field\", \"field1\": \"$_id.field1\"}}"),
                 result.getAggregateOperations().get(3));
     }
 
@@ -777,7 +777,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         Assertions.assertNotNull(result);
         Assertions.assertEquals(COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(3, result.getColumnMetaData().size());
-        Assertions.assertEquals(8, result.getAggregateOperations().size());
+        Assertions.assertEquals(6, result.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{ \"$unwind\": {"
@@ -793,33 +793,19 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(1));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, \"_f3\": {\"$sum\": 1}}}"),
+                        "{\"$group\": {\"_id\": {\"testCollection__id\": \"$_id\", \"field\": \"$array.field\", \"field1\": \"$array.field1\"}, \"_f3\": {\"$sum\": 1}}}"),
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"_f3\": \"$_f3\"}}"),
+                        "{\"$project\": {\"_id\": 0, \"testCollection__id\": \"$_id.testCollection__id\", \"field\": \"$_id.field\", \"field1\": \"$_id.field1\", \"_f3\": \"$_f3\"}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{\"$project\": "
-                                + "{\"_id\": 1, "
-                                + "\"array.field\": 1, "
-                                + "\"array.field1\": 1, \""
-                                + "_f3\": 1, "
-                                + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$cond\": [{\"$and\": ["
-                                + "{\"$gt\": [\"$_f3\", null]}, "
-                                + "{\"$gt\": [{\"$literal\": 1}, null]}]}, "
-                                + "{\"$gt\": [\"$_f3\", {\"$literal\": 1}]}, null]}}}"),
+                BsonDocument.parse("{\"$match\": {\"_f3\": {\"$gt\": 1}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"),
+                        "{\"$project\": {\"testCollection__id\": \"$testCollection__id\", \"field\": \"$field\", \"field1\": \"$field1\", \"_id\": 0}}"),
                 result.getAggregateOperations().get(5));
-        Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{\"$project\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": 0}}"),
-                result.getAggregateOperations().get(6));
     }
 
     @Test
@@ -861,21 +847,20 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": " +
-                                "{\"_id\": {\"_id\": \"$_id\", " +
-                                "\"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, " +
-                                "\"Total\": {\"$sum\": 1}}}"),
+                        "{\"$group\": {"
+                                + "\"_id\": {\"testCollection__id\": \"$_id\", \"field\": \"$array.field\", \"field1\": \"$array.field1\"}, "
+                                + "\"Total\": {\"$sum\": 1}}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$project\": {\"_id\": \"$_id._id\", " +
-                        "\"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
+                BsonDocument.parse(
+                        "{\"$project\": {\"_id\": 0, \"testCollection__id\": \"$_id.testCollection__id\", \"field\": \"$_id.field\", \"field1\": \"$_id.field1\", \"Total\": \"$Total\"}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                    "{\"$project\": {\"testCollection__id\": \"$_id\", \"renamed\": \"$array.field\", \"Total\": \"$Total\", \"_id\": 0}}"),
+                        "{\"$project\": {\"testCollection__id\": \"$testCollection__id\", \"renamed\": \"$field\", \"Total\": \"$Total\", \"_id\": 0}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
@@ -1074,18 +1059,18 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"array_field\": \"$array.field\", \"array_field1\": \"$array.field1\"}, \"Total\": {\"$sum\": 1}}}"),
+                        "{\"$group\": {\"_id\": {\"testCollection__id\": \"$_id\", \"field\": \"$array.field\", \"field1\": \"$array.field1\"}, \"Total\": {\"$sum\": 1}}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"_id\": \"$_id._id\", \"array.field\": \"$_id.array_field\", \"array.field1\": \"$_id.array_field1\", \"Total\": \"$Total\"}}"),
+                        "{\"$project\": {\"_id\": 0, \"testCollection__id\": \"$_id.testCollection__id\", \"field\": \"$_id.field\", \"field1\": \"$_id.field1\", \"Total\": \"$Total\"}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"renamed\": \"$array.field\", \"Total\": \"$Total\", \"_id\": 0}}"),
+                        "{\"$project\": {\"renamed\": \"$field\", \"Total\": \"$Total\", \"_id\": 0}}"),
                 result.getAggregateOperations().get(7));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
@@ -1295,18 +1280,18 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 result.getAggregateOperations().get(2));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$group\": {\"_id\": {\"_id\": \"$_id\", \"testCollection_array_array_field\": \"$testCollection_array.array.field\", \"testCollection_array_array_field1\": \"$testCollection_array.array.field1\"}, \"Total\": {\"$sum\": 1}}}"),
+                        "{\"$group\": {\"_id\": {\"otherTestCollection__id\": \"$_id\", \"field\": \"$testCollection_array.array.field\", \"field1\": \"$testCollection_array.array.field1\"}, \"Total\": {\"$sum\": 1}}}"),
                 result.getAggregateOperations().get(3));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"_id\": \"$_id._id\", \"testCollection_array.array.field\": \"$_id.testCollection_array_array_field\", \"testCollection_array.array.field1\": \"$_id.testCollection_array_array_field1\", \"Total\": \"$Total\"}}"),
+                        "{\"$project\": {\"_id\": 0, \"otherTestCollection__id\": \"$_id.otherTestCollection__id\", \"field\": \"$_id.field\", \"field1\": \"$_id.field1\", \"Total\": \"$Total\"}}"),
                 result.getAggregateOperations().get(4));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"renamed\": \"$testCollection_array.array.field\", \"Total\": \"$Total\", \"_id\": 0}}"),
+                        "{\"$project\": {\"renamed\": \"$field\", \"Total\": \"$Total\", \"_id\": 0}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
                 BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
