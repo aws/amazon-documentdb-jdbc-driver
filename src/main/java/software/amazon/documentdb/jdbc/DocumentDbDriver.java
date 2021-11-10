@@ -73,7 +73,7 @@ public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Dri
     public @Nullable Connection connect(final @Nullable String url, final Properties info)
             throws SQLException {
 
-        if (url == null || !acceptsURL(url)) {
+        if (!acceptsURL(url)) {
             return null;
         }
 
