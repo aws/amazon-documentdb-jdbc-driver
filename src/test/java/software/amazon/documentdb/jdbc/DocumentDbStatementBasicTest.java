@@ -1323,6 +1323,100 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         }
     }
 
+    @DisplayName("Tests querying with inconsistent data types using aggregate operator syntax.")
+    @ParameterizedTest(name = "testTypeComparisonsWithAggregateOperators - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testTypeComparisonsWithAggregateOperators(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String collection = "testTypeComparisonsWithAggregateOperators";
+        final BsonDocument document1 =
+                BsonDocument.parse("{ \"_id\" : \"key0\", \"array\": [1, 2, \"3\", \"4\", true] }");
+        insertBsonDocuments(collection, new BsonDocument[]{document1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            // Aggregate comparison operator is used.
+            // All string and boolean values will return true since these are greater than numeric.
+            statement.execute(String.format(
+                    "SELECT \"%3$s\" > 3 FROM \"%1$s\".\"%2$s\"",
+                    getDatabaseName(), collection + "_array",
+                    "value"));
+            final ResultSet resultSet1 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(false, resultSet1.getBoolean(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(false, resultSet1.getBoolean(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(true, resultSet1.getBoolean(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(true, resultSet1.getBoolean(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(true, resultSet1.getBoolean(1));
+            Assertions.assertFalse(resultSet1.next());
+
+            // Aggregate comparison operator is used.
+            // All numeric values returned since these are less than any string.
+            // Boolean is greater than string.
+            statement.execute(String.format(
+                    "SELECT \"%3$s\" FROM \"%1$s\".\"%2$s\" WHERE \"%3$s\" < \"%4$s\"",
+                    getDatabaseName(), collection + "_array",
+                    "value", collection + "__id"));
+            final ResultSet resultSet2 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("1", resultSet2.getString("value"));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("2", resultSet2.getString("value"));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("3", resultSet2.getString("value"));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("4", resultSet2.getString("value"));
+            Assertions.assertFalse(resultSet2.next());
+        }
+    }
+
+    @DisplayName("Tests querying for inconsistent data types using query operator syntax.")
+    @ParameterizedTest(name = "testTypeComparisonsWithAggregateOperators - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testTypeComparisonsWithQueryOperators(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String collection = "testTypeComparisonsWithQueryOperators";
+        final BsonDocument document1 =
+                BsonDocument.parse("{ \"_id\" : \"key0\", \"array\": [1, 2, \"3\", \"4\", true] }");
+        insertBsonDocuments(collection, new BsonDocument[]{document1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            // Query comparison operator is used.
+            // No values returned since comparisons must match type.
+            statement.execute(String.format(
+                    "SELECT \"%3$s\" FROM \"%1$s\".\"%2$s\""
+                            + "WHERE \"%3$s\" < '3'",
+                    getDatabaseName(), collection + "_array",
+                    "value"));
+            final ResultSet resultSet1 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertFalse(resultSet1.next());
+
+            // Query comparison operator is used to check BOTH string and numeric.
+            // Numeric and string values are compared. Boolean value is rejected.
+            statement.execute(
+                    String.format(
+                            "SELECT \"%3$s\" FROM \"%1$s\".\"%2$s\" WHERE \"%3$s\" < 4 OR \"%3$s\" < '4'",
+                            getDatabaseName(), collection + "_array", "value"));
+            final ResultSet resultSet2 = statement.getResultSet();
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("1", resultSet2.getString("value"));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("2", resultSet2.getString("value"));
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertEquals("3", resultSet2.getString("value"));
+            Assertions.assertFalse(resultSet2.next());
+        }
+    }
+
     @DisplayName("Tests that calculating a distinct aggregate after "
             + "grouping by a single column returns correct result. ")
     @ParameterizedTest(name = "testSingleColumnGroupByWithDistinctAggregate - [{index}] - {arguments}")
