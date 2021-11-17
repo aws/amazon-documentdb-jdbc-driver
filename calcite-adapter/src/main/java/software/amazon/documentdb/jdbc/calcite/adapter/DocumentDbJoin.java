@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -593,8 +594,9 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // 3. Add any stages from the right implementor. Convert the json strings
         // into objects so they can be added as a list to the lookup pipeline.
         final List<Map<String, Object>> stages = new ArrayList<>();
-        final ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
+        final ObjectMapper mapper = JsonMapper.builder()
+                .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)
+                .build();
         for (Pair<String, String> operations : rightImplementor.getList()) {
             final String stage = operations.right;
             final Map<String, Object> map = mapper.readValue(stage, new TypeReference<LinkedHashMap<String, Object>>() {
