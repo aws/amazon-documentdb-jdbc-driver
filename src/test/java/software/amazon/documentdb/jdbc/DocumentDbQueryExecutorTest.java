@@ -205,6 +205,14 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 exception.getMessage());
     }
 
+    /** Tests getting and setting the query timeout. **/
+    @Test
+    @DisplayName("Tests getting and setting the query timeout.")
+    public void testGetSetQueryTimeout() throws SQLException {
+        Assertions.assertDoesNotThrow(() -> statement.setQueryTimeout(30));
+        Assertions.assertEquals(30, statement.getQueryTimeout());
+    }
+
     private ExecutorService getCancelThread() {
         return Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("cancelThread").setDaemon(true).build());
