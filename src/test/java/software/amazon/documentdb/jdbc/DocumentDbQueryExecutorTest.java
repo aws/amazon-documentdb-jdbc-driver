@@ -52,6 +52,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.FETCH_SIZE_DEFAULT;
+
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
     private static final String DATABASE_NAME = "database";
@@ -212,6 +214,35 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         Assertions.assertDoesNotThrow(() -> statement.setQueryTimeout(30));
         Assertions.assertEquals(30, statement.getQueryTimeout());
     }
+
+    /** Tests setting default fetch size with valid size. **/
+    @Test
+    @DisplayName("Tests setting the default fetch size with valid size.")
+    public void testSetValidDefaultFetchSize() throws SQLException {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        properties.setDefaultFetchSize("123");
+        final DocumentDbConnection connection = new DocumentDbConnection(properties);
+        final DocumentDbStatement validFetchSizeStatement = new DocumentDbStatement(connection);
+        Assertions.assertEquals(
+                123,
+                validFetchSizeStatement.getFetchSize(),
+                "Custom fetch size should be used if valid.");
+    }
+
+    /** Tests setting default fetch size with invalid size. **/
+    @Test
+    @DisplayName("Tests setting the default fetch size with invalid size.")
+    public void testSetInvalidDefaultFetchSize() throws SQLException {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        properties.setDefaultFetchSize("123a");
+        final DocumentDbConnection connection = new DocumentDbConnection(properties);
+        final DocumentDbStatement invalidFetchSizeStatement = new DocumentDbStatement(connection);
+        Assertions.assertEquals(
+                FETCH_SIZE_DEFAULT,
+                invalidFetchSizeStatement.getFetchSize(),
+                "Default fetch size should be used if invalid.");
+    }
+
 
     private ExecutorService getCancelThread() {
         return Executors.newSingleThreadExecutor(
