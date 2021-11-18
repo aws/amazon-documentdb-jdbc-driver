@@ -613,7 +613,7 @@ public final class DocumentDbRules {
     private static String getObjectIdAggregateForOperator(
             final RexCall call,
             final List<Operand> strings,
-            final String stdOperator) {
+            final String stdOperator) throws SQLException {
         // $or together the $oid and native operations.
         final String oidOperation = "{" + maybeQuote(stdOperator)
                 + ": [" + Util.commaList(reformatObjectIdOperands(call, strings)) + "]}";
@@ -661,7 +661,7 @@ public final class DocumentDbRules {
 
     private static List<Operand> reformatObjectIdOperands(
             final RexCall call,
-            final List<Operand> strings) {
+            final List<Operand> strings) throws SQLException {
         final List<Operand> copyOfStrings = new ArrayList<>();
         for (int index = 0; index < strings.size(); index++) {
             final Operand operand = strings.get(index);
@@ -677,12 +677,12 @@ public final class DocumentDbRules {
 
     private static Operand reformatObjectIdLiteral(
             final RexLiteral literal,
-            final Operand operand) {
+            final Operand operand) throws SQLException {
         switch (literal.getTypeName()) {
             case BINARY:
             case VARBINARY:
-                final byte[] valueAsByteArray = literal.getValueAs(byte[].class);
-                if (valueAsByteArray != null && valueAsByteArray.length == 12) {
+                final byte[] valueAsByteArray = getValueAs(literal, byte[].class);
+                if (valueAsByteArray.length == 12) {
                     final String value = "{\"$oid\": \""
                             + BaseEncoding.base16().encode(valueAsByteArray)
                             + "\"}";
@@ -692,8 +692,8 @@ public final class DocumentDbRules {
                 }
             case CHAR:
             case VARCHAR:
-                final String valueAsString = literal.getValueAs(String.class);
-                if (valueAsString != null && OBJECT_ID_PATTERN.matcher(valueAsString).matches()) {
+                final String valueAsString = getValueAs(literal, String.class);
+                if (OBJECT_ID_PATTERN.matcher(valueAsString).matches()) {
                     final String value = "{\"$oid\": \"" + valueAsString + "\"}";
                     return new Operand(value, value, true);
                 } else {
@@ -739,26 +739,34 @@ public final class DocumentDbRules {
 
         @SneakyThrows
         private static Operand translateDateDiff(final RexCall call, final List<Operand> strings) {
-            final SqlIntervalQualifier intervalQualifier = call.getType().getIntervalQualifier();
-            if (intervalQualifier != null) {
-                final TimeUnitRange interval = intervalQualifier.timeUnitRange;
-                switch (interval) {
-                    case YEAR:
-                        return formatDateDiffYear(strings);
-                    case QUARTER:
-                    case MONTH:
-                        return formatDateDiffMonth(strings, interval);
-                    default:
-                        return getMongoAggregateForOperator(
-                                call,
-                                strings,
-                                RexToMongoTranslator.MONGO_OPERATORS.get(
-                                        SqlStdOperatorTable.MINUS_DATE));
-                }
-            } else {
-                throw SqlError.createSQLException(LOGGER, SqlState.INVALID_QUERY_EXPRESSION,
-                        SqlError.UNSUPPORTED_SQL, "<interval>");
+            final SqlIntervalQualifier intervalQualifier = getIntervalQualifier(call);
+            final TimeUnitRange interval = intervalQualifier.timeUnitRange;
+            switch (interval) {
+                case YEAR:
+                    return formatDateDiffYear(strings);
+                case QUARTER:
+                case MONTH:
+                    return formatDateDiffMonth(strings, interval);
+                default:
+                    return getMongoAggregateForOperator(
+                            call,
+                            strings,
+                            RexToMongoTranslator.MONGO_OPERATORS.get(
+                                    SqlStdOperatorTable.MINUS_DATE));
             }
+        }
+
+        @NonNull
+        private static SqlIntervalQualifier getIntervalQualifier(final RexCall call)
+                throws SQLException {
+            final SqlIntervalQualifier result = call.getType().getIntervalQualifier();
+            if (result == null) {
+                throw SqlError.createSQLException(LOGGER,
+                        SqlState.INVALID_QUERY_EXPRESSION,
+                        SqlError.MISSING_LITERAL_VALUE,
+                        call.getType().getSqlTypeName().getName());
+            }
+            return result;
         }
 
         private static Operand formatDateDiffYear(final List<Operand> strings) {
@@ -883,28 +891,23 @@ public final class DocumentDbRules {
                 return null;
             }
             final RexLiteral literal = (RexLiteral) operand2;
-            final TimeUnitRange timeUnitRange = literal.getValueAs(TimeUnitRange.class);
-            if (timeUnitRange != null) {
-                switch (timeUnitRange) {
-                    case YEAR:
-                    case MONTH:
-                        return new Operand(formatYearMonthFloorOperation(strings, timeUnitRange));
-                    case QUARTER:
-                        return new Operand(formatQuarterFloorOperation(strings));
-                    case WEEK:
-                    case DAY:
-                    case HOUR:
-                    case MINUTE:
-                    case SECOND:
-                    case MILLISECOND:
-                        return formatMillisecondFloorOperation(strings, timeUnitRange);
-                    default:
-                        throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
-                                SqlError.UNSUPPORTED_PROPERTY, timeUnitRange.toString());
-                }
-            } else {
-                throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
-                        SqlError.UNSUPPORTED_PROPERTY, "<null>");
+            final TimeUnitRange timeUnitRange = getValueAs(literal, TimeUnitRange.class);
+            switch (timeUnitRange) {
+                case YEAR:
+                case MONTH:
+                    return new Operand(formatYearMonthFloorOperation(strings, timeUnitRange));
+                case QUARTER:
+                    return new Operand(formatQuarterFloorOperation(strings));
+                case WEEK:
+                case DAY:
+                case HOUR:
+                case MINUTE:
+                case SECOND:
+                case MILLISECOND:
+                    return formatMillisecondFloorOperation(strings, timeUnitRange);
+                default:
+                    throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
+                            SqlError.UNSUPPORTED_PROPERTY, timeUnitRange.toString());
             }
         }
 
@@ -1015,7 +1018,7 @@ public final class DocumentDbRules {
                 final RexCall call,
                 final List<Operand> strings,
                 final String stdOperator
-        ) {
+        ) throws SQLException {
             // $or together the $oid and native operations.
             final String nativeOperation = getComparisonOperator(call, strings, stdOperator);
             final String oidOperation = getComparisonOperator(call, reformatObjectIdOperands(call, strings), stdOperator);
