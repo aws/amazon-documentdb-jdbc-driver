@@ -1152,6 +1152,41 @@ public class DocumentDbStatementDateTimeTest extends DocumentDbStatementTest {
         }
     }
 
+    /**
+     * Tests select dates with AND condition.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @DisplayName("Tests select dates with AND condition.")
+    @ParameterizedTest(name = "testSelectDateWithAnd - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testSelectDateWithAnd(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testSelectDateWithAnd";
+        final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            // Get current date.
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\" > '2021-01-01' AND \"field\" < '2020-02-01' FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals(Types.BOOLEAN,
+                    resultSet1.getMetaData().getColumnType(1));
+            final Boolean timestamp = resultSet1.getBoolean(1);
+            Assertions.assertNotNull(timestamp);
+            Assertions.assertEquals(timestamp, false);
+            Assertions.assertFalse(resultSet1.next());
+        }
+    }
+
     private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
         return OffsetDateTime.of(
                 offsetDateTime.getYear(), monthValue, 1,
