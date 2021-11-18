@@ -739,8 +739,7 @@ public final class DocumentDbRules {
 
         @SneakyThrows
         private static Operand translateDateDiff(final RexCall call, final List<Operand> strings) {
-            final SqlIntervalQualifier intervalQualifier = getIntervalQualifier(call);
-            final TimeUnitRange interval = intervalQualifier.timeUnitRange;
+            final TimeUnitRange interval = getIntervalQualifier(call).timeUnitRange;
             switch (interval) {
                 case YEAR:
                     return formatDateDiffYear(strings);
@@ -751,8 +750,7 @@ public final class DocumentDbRules {
                     return getMongoAggregateForOperator(
                             call,
                             strings,
-                            RexToMongoTranslator.MONGO_OPERATORS.get(
-                                    SqlStdOperatorTable.MINUS_DATE));
+                            RexToMongoTranslator.MONGO_OPERATORS.get(SqlStdOperatorTable.MINUS_DATE));
             }
         }
 
