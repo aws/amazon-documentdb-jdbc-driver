@@ -36,8 +36,10 @@ import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.stream.Stream;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
@@ -263,50 +265,39 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests that a statement can be created given valid type and concurrency")
     void testStatement() throws SQLException {
-        Assertions.assertNotNull(
-                basicConnection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY));
-        Assertions.assertEquals(
-                SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE),
-                Assertions.assertThrows(
-                        SQLException.class,
-                        () -> basicConnection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE))
-                        .getMessage());
-        Assertions.assertEquals(
-                SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE),
-                Assertions.assertThrows(
-                        SQLException.class,
-                        () -> basicConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY))
-                        .getMessage());
+        try (Statement statement = basicConnection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+            Assertions.assertNotNull(statement);
+        }
+        try (Statement ignored = basicConnection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)) {
+            Assertions.fail("Exception should be thrown.");
+        } catch (Exception e) {
+            Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE),e.getMessage());
+        }
+        try (Statement ignored = basicConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+           Assertions.fail("Exception should be thrown.");
+        } catch (Exception e) {
+            Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE),e.getMessage());
+        }
+
     }
 
     @Test
     @DisplayName("Tests that a prepared statement can be created given valid type and concurrency")
     void testPreparedStatement() throws SQLException {
-        Assertions.assertNotNull(
-                basicConnection.prepareStatement(
-                        "SELECT * FROM " + COLLECTION_NAME,
-                        ResultSet.TYPE_FORWARD_ONLY,
-                        ResultSet.CONCUR_READ_ONLY));
-        Assertions.assertEquals(
-                SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE),
-                Assertions.assertThrows(
-                        SQLException.class,
-                        () ->
-                                basicConnection.prepareStatement(
-                                        "SELECT * FROM " + COLLECTION_NAME,
-                                        ResultSet.TYPE_FORWARD_ONLY,
-                                        ResultSet.CONCUR_UPDATABLE))
-                        .getMessage());
-        Assertions.assertEquals(
-                SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE),
-                Assertions.assertThrows(
-                        SQLException.class,
-                        () ->
-                                basicConnection.prepareStatement(
-                                        "SELECT * FROM " + COLLECTION_NAME,
-                                        ResultSet.TYPE_SCROLL_INSENSITIVE,
-                                        ResultSet.CONCUR_READ_ONLY))
-                        .getMessage());
+        final String sql = "SELECT * FROM " + COLLECTION_NAME;
+        try (PreparedStatement statement = basicConnection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+            Assertions.assertNotNull(statement);
+        }
+        try (PreparedStatement ignored = basicConnection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)) {
+            Assertions.fail("Exception should be thrown.");
+        } catch (Exception e) {
+            Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE), e.getMessage());
+        }
+        try (PreparedStatement ignored = basicConnection.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+            Assertions.fail("Exception should be thrown.");
+        } catch (Exception e) {
+            Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE), e.getMessage());
+        }
     }
 
     /**
