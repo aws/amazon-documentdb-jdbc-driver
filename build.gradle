@@ -11,9 +11,8 @@ plugins {
 }
 
 group 'software.amazon.documentdb.jdbc'
-version "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}"
+version project.hasProperty("BETA_VERSION") ? "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}-beta.${project.BETA_VERSION}" : "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}"
 description 'documentdb-jdbc-driver'
-
 tasks.register('patchJanino') {
     def janinoHash = "4b98b5b44ee329685503e264751067fab259f7b7";
     if (!file("${buildDir}/"<< janinoHash << ".zip").exists()) {
@@ -337,19 +336,19 @@ repositories {
 dependencies {
     implementation project(":calcite-adapter")
     implementation project(":common")
-    implementation group: 'commons-cli', name: 'commons-cli', version: '1.4'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.3'
-    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.12.3'
+    implementation group: 'commons-cli', name: 'commons-cli', version: '1.5.0'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.13.0'
+    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.13.0'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.14.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.14.1'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.3.4'
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
-    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
-    compileOnly         'org.projectlombok:lombok:1.18.16'
+    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '9.1'
+    compileOnly         'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     testImplementation(testFixtures(project(':common')))
@@ -358,10 +357,10 @@ dependencies {
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
     testImplementation      group: 'junit', name: 'junit', version: '4.13.2'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.7.2'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.7.2'
-    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '3.11.2'
-    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.7.2'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.8.1'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.1'
+    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.0.0'
+    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.8.1'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
 }
