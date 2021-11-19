@@ -43,6 +43,7 @@ import org.apache.calcite.sql.type.SqlTypeName;
 import org.bson.BsonDocument;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
@@ -232,11 +233,20 @@ public class DocumentDbTable extends AbstractQueryableTable
         }
 
         private MongoClient getClient() {
-            return schema.unwrap(DocumentDbSchema.class).getClient();
+            return getUnwrappedDocumentDbSchema().getClient();
         }
 
         private String getDatabaseName() {
-            return schema.unwrap(DocumentDbSchema.class).getDatabaseName();
+            return getUnwrappedDocumentDbSchema().getDatabaseName();
+        }
+
+        @NonNull
+        private DocumentDbSchema getUnwrappedDocumentDbSchema() {
+            final DocumentDbSchema result = this.schema.unwrap(DocumentDbSchema.class);
+            if (result != null) {
+                return result;
+            }
+            throw new NullPointerException();
         }
 
         private DocumentDbTable getTable() {
