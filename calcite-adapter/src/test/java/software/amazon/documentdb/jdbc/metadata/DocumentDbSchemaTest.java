@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.databind.util.StdDateFormat;
@@ -60,24 +61,19 @@ import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.DEFAULT_
 
 class DocumentDbSchemaTest {
     private static final String COLLECTION_NAME = DocumentDbTableSchemaGeneratorTest.class.getSimpleName();
-    private static final ObjectMapper OBJECT_MAPPER;
-
-    static {
-        OBJECT_MAPPER = new ObjectMapper()
-                .setSerializationInclusion(Include.NON_NULL)
-                .setSerializationInclusion(Include.NON_EMPTY)
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .setDateFormat(new StdDateFormat().withColonInTimeZone(true))
-                // Enable fail on unknown properties to ensure exact interface match
-                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .enable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT);
-        // Make the enums lower case.
-        final SimpleModule module = buildEnumLowerCaseSerializerModule();
-        OBJECT_MAPPER
-                .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
-                .registerModule(module)
-                .registerModule(new GuavaModule());
-    }
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .serializationInclusion(Include.NON_NULL)
+            .serializationInclusion(Include.NON_EMPTY)
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .defaultDateFormat(new StdDateFormat().withColonInTimeZone(true))
+            // Enable fail on unknown properties to ensure exact interface match
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT)
+            // Make the enums lower case.
+            .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+            .addModule(buildEnumLowerCaseSerializerModule())
+            .addModule(new GuavaModule())
+            .build();
 
     private static SimpleModule buildEnumLowerCaseSerializerModule() {
         final SimpleModule module = new SimpleModule();

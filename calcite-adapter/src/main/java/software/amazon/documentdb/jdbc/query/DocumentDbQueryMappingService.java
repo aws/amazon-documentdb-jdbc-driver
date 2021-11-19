@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.query;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
+import lombok.SneakyThrows;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.avatica.util.DateTimeUtils;
@@ -59,6 +60,7 @@ import org.apache.calcite.sql2rel.StandardConvertletTable;
 import org.apache.calcite.tools.RelRunner;
 import org.bson.BsonDocument;
 import org.bson.BsonInt64;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -81,7 +83,7 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
     private final CalcitePrepare prepare;
     private final MongoClient client;
     private final boolean closeClient;
-    private BsonDocument maxRowsBSON;
+    private final BsonDocument maxRowsBSON;
 
     /**
      * Holds the DocumentDbDatabaseSchemaMetadata, CalcitePrepare.Context and the CalcitePrepare
@@ -270,11 +272,12 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
          * Implementation copied from original but adds lines 259-261.
          */
         private static class DocumentDbTimestampDiffConvertlet implements SqlRexConvertlet {
+            @SneakyThrows
             public RexNode convertCall(final SqlRexContext cx, final SqlCall call) {
                 // TIMESTAMPDIFF(unit, t1, t2) => (t2 - t1) UNIT
                 final RexBuilder rexBuilder = cx.getRexBuilder();
                 final SqlLiteral unitLiteral = call.operand(0);
-                TimeUnit unit = unitLiteral.symbolValue(TimeUnit.class);
+                TimeUnit unit = getSymbolValue(unitLiteral, TimeUnit.class);
                 final SqlTypeName sqlTypeName = unit == TimeUnit.NANOSECOND
                         ? SqlTypeName.BIGINT
                         : SqlTypeName.INTEGER;
@@ -319,6 +322,20 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
                 return rexBuilder.multiplyDivide(e, multiplier, divider);
             }
         }
+    }
+
+    @NonNull
+    private static <E extends Enum<E>> E getSymbolValue(
+            final SqlLiteral literal,
+            final Class<E> clazz) throws SQLException {
+        final E result = literal.symbolValue(clazz);
+        if (result == null) {
+            throw SqlError.createSQLException(LOGGER,
+                    SqlState.INVALID_QUERY_EXPRESSION,
+                    SqlError.MISSING_LITERAL_VALUE,
+                    literal.getTypeName().getName());
+        }
+        return result;
     }
 
     /**

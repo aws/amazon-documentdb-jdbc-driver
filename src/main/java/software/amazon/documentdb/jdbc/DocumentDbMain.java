@@ -27,6 +27,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.databind.util.StdDateFormat;
@@ -100,18 +101,19 @@ public class DocumentDbMain {
     @VisibleForTesting
     static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd'T'HH:mm:ssXXX";
 
-    static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper()
-            .setDateFormat(new StdDateFormat().withColonInTimeZone(true))
-            .setSerializationInclusion(Include.NON_NULL)
-            .setSerializationInclusion(Include.NON_EMPTY)
-            .setSerializationInclusion(Include.NON_DEFAULT)
+    static final ObjectMapper JSON_OBJECT_MAPPER = JsonMapper.builder()
+            .defaultDateFormat(new StdDateFormat().withColonInTimeZone(true))
+            .serializationInclusion(Include.NON_NULL)
+            .serializationInclusion(Include.NON_EMPTY)
+            .serializationInclusion(Include.NON_DEFAULT)
             .enable(SerializationFeature.INDENT_OUTPUT)
             .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
             .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
             .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
             // Make the enums serialize to lower case.
-            .registerModule(buildEnumLowerCaseSerializerModule())
-            .registerModule(new GuavaModule()); // Immutable*
+            .addModule(buildEnumLowerCaseSerializerModule())
+            .addModule(new GuavaModule()) // Immutable*
+            .build();
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbMain.class);
     private static final Options HELP_VERSION_OPTIONS;
     private static final Option HELP_OPTION;
