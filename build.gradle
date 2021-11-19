@@ -13,55 +13,6 @@ plugins {
 group 'software.amazon.documentdb.jdbc'
 version project.hasProperty("BETA_VERSION") ? "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}-beta.${project.BETA_VERSION}" : "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}"
 description 'documentdb-jdbc-driver'
-tasks.register('patchJanino') {
-    def janinoHash = "4b98b5b44ee329685503e264751067fab259f7b7";
-    if (!file("${buildDir}/"<< janinoHash << ".zip").exists()) {
-        download {
-            println "Dowloading Janino Library"
-            src 'https://github.com/janino-compiler/janino/archive/'<< janinoHash <<'.zip'
-            dest buildDir
-        }
-    }
-
-    if (!file("${buildDir}/dependencies/janino-"<< janinoHash << "/commons-compiler/src/main/java/org/codehaus/commons/compiler/CompilerFactoryFactory.java").exists()) {
-        copy {
-            def zipFile = file("${buildDir}/"<< janinoHash <<".zip")
-            def outputDir = file("${buildDir}/dependencies")
-            from zipTree(zipFile)
-            into outputDir
-        }
-    }
-
-    File destinationJavaFile = new File("src/main/dependency/org/codehaus/commons/compiler/CompilerFactoryFactory.java");
-    File sourceJavaFile = new File("${buildDir}/dependencies/janino-"+ janinoHash +"/commons-compiler/src/main/java/org/codehaus/commons/compiler/CompilerFactoryFactory.java");
-    def janinoJarSourcePath = "${buildDir}/dependencies/janino-"+ janinoHash +"/commons-compiler/target/commons-compiler-3.0.11.jar"
-    def janinoJarDestinationPath = "src/main/resources/commons-compiler-3.0.11.jar"
-    if (destinationJavaFile.readBytes() != sourceJavaFile.readBytes()) {
-        //If the destinationJavaFile and sourceJavaFile are different the jars files will be deleted to force a compilation and a copy and paste to the resource folder.
-        delete janinoJarSourcePath
-        delete janinoJarDestinationPath
-        copy {
-            from "src/main/dependency/org/codehaus/commons/compiler/CompilerFactoryFactory.java"
-            into "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler/src/main/java/org/codehaus/commons/compiler"
-        }
-    }
-
-    if (!file(janinoJarSourcePath).exists()) {
-        mavenexec {
-            workingDir "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler"
-            goals 'package'
-            threads '2C'
-            quiet false
-        }
-    }
-
-    if (!file(janinoJarDestinationPath).exists()) {
-        copy {
-            from "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler/target/commons-compiler-3.0.11.jar"
-            into "src/main/resources"
-        }
-    }
-}
 
 tasks.register('licenseAndNotice') {
     copy {
@@ -101,7 +52,6 @@ jar {
 }
 
 shadowJar {
-    dependsOn('patchJanino')
     dependsOn('licenseAndNotice')
 
     //  Exclude driver unnecessary classes.
