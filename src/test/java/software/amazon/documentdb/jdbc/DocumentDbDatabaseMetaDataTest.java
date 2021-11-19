@@ -159,18 +159,29 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the correct columns of getTables.")
     void testGetTables() throws SQLException {
-        final ResultSet tables = metadata.getTables(null, null, null, null);
-        final ResultSetMetaData tablesMetadata = tables.getMetaData();
-        Assertions.assertEquals("TABLE_CAT", tablesMetadata.getColumnName(1));
-        Assertions.assertEquals("TABLE_SCHEM", tablesMetadata.getColumnName(2));
-        Assertions.assertEquals("TABLE_NAME", tablesMetadata.getColumnName(3));
-        Assertions.assertEquals("TABLE_TYPE", tablesMetadata.getColumnName(4));
-        Assertions.assertEquals("REMARKS", tablesMetadata.getColumnName(5));
-        Assertions.assertEquals("TYPE_CAT", tablesMetadata.getColumnName(6));
-        Assertions.assertEquals("TYPE_SCHEM", tablesMetadata.getColumnName(7));
-        Assertions.assertEquals("TYPE_NAME", tablesMetadata.getColumnName(8));
-        Assertions.assertEquals("SELF_REFERENCING_COL_NAME", tablesMetadata.getColumnName(9));
-        Assertions.assertEquals("REF_GENERATION", tablesMetadata.getColumnName(10));
+        // Catalog pattern, schema pattern, table name pattern, table types
+        final String[][] tests = new String [][]{
+                {null, null, null, null},
+                {" ", " ", " ", " "},
+                {null, null, null, "TABLE"},
+                {null, null, COLLECTION_BASIC, "TABLE"},
+                {null, DATABASE, COLLECTION_BASIC, "TABLE"}
+        };
+
+        for (String[] test : tests) {
+            final ResultSet tables = metadata.getTables(test[0], null, null, new String[]{test[3]});
+            final ResultSetMetaData tablesMetadata = tables.getMetaData();
+            Assertions.assertEquals("TABLE_CAT", tablesMetadata.getColumnName(1));
+            Assertions.assertEquals("TABLE_SCHEM", tablesMetadata.getColumnName(2));
+            Assertions.assertEquals("TABLE_NAME", tablesMetadata.getColumnName(3));
+            Assertions.assertEquals("TABLE_TYPE", tablesMetadata.getColumnName(4));
+            Assertions.assertEquals("REMARKS", tablesMetadata.getColumnName(5));
+            Assertions.assertEquals("TYPE_CAT", tablesMetadata.getColumnName(6));
+            Assertions.assertEquals("TYPE_SCHEM", tablesMetadata.getColumnName(7));
+            Assertions.assertEquals("TYPE_NAME", tablesMetadata.getColumnName(8));
+            Assertions.assertEquals("SELF_REFERENCING_COL_NAME", tablesMetadata.getColumnName(9));
+            Assertions.assertEquals("REF_GENERATION", tablesMetadata.getColumnName(10));
+        }
     }
 
     /**
@@ -202,10 +213,12 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the correct columns of getColumns.")
     void testGetColumns() throws SQLException {
+        // Catalog pattern, schema pattern, table pattern, column pattern
         final String[][] tests = new String [][]{
                 {null, null, null, null},
                 {" ", " ", " ", " "},
                 {null, null, null, "%__id"},
+                {null, "%", null, "%__id"},
                 {null, null, COLLECTION_BASIC, "%__id"},
                 {null, DATABASE, COLLECTION_BASIC, "%__id"}
         };
@@ -246,9 +259,11 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the correct columns of getColumnPrivileges.")
     void testGetColumnPrivileges() throws SQLException {
+        // Catalog pattern, schema pattern, table pattern, column pattern
         final String[][] tests = new String [][]{
                 {null, null, null, null},
                 {" ", " ", " ", " "},
+                {null, "%", null, null},
                 {null, null, null, "%__id"},
                 {null, null, COLLECTION_BASIC, "%__id"},
                 {null, DATABASE, COLLECTION_BASIC, "%__id"}
