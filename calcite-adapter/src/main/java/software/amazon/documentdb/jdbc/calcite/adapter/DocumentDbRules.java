@@ -48,6 +48,7 @@ import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Bug;
 import org.apache.calcite.util.DateString;
+import org.apache.calcite.util.TimeString;
 import org.apache.calcite.util.Util;
 import org.apache.calcite.util.trace.CalciteTrace;
 import org.bson.BsonType;
@@ -377,10 +378,18 @@ public final class DocumentDbRules {
             }
 
             switch (literal.getType().getSqlTypeName()) {
-                case DOUBLE:
                 case DECIMAL:
+                case DOUBLE:
+                case FLOAT:
+                case REAL:
                     final String doubleFormat = "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
                     return new Operand(doubleFormat, doubleFormat, true);
+                case TINYINT:
+                case SMALLINT:
+                case INTEGER:
+                    // Convert supported intervals to milliseconds.
+                    final String intFormat = "{\"$numberInt\": \"" + literal.getValueAs(Long.class) + "\"}";
+                    return new Operand("{\"$literal\": " + intFormat + "}", intFormat, true);
                 case BIGINT:
                 case INTERVAL_DAY:
                 case INTERVAL_HOUR:
@@ -388,11 +397,15 @@ public final class DocumentDbRules {
                 case INTERVAL_SECOND:
                     // Convert supported intervals to milliseconds.
                     final String longFormat = "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
-                    return new Operand(longFormat, longFormat, true);
+                    return new Operand("{\"$literal\": " + longFormat + "}", longFormat, true);
                 case DATE:
                     // NOTE: Need to get the number of milliseconds from Epoch (not # of days).
                     final String dateFormat = "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(DateString.class).getMillisSinceEpoch() + "\" } }";
                     return new Operand(dateFormat, dateFormat, true);
+                case TIME:
+                    // NOTE: Need to get the number of milliseconds from day. Date portion is left as zero epoch.
+                    final String timeFormat = "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(TimeString.class).getMillisOfDay() + "\" } }";
+                    return new Operand(timeFormat, timeFormat, true);
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                     // Convert from date in milliseconds to MongoDb date.
