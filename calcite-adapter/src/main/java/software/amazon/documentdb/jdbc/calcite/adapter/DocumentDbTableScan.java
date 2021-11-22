@@ -84,7 +84,10 @@ public class DocumentDbTableScan extends TableScan implements DocumentDbRel {
         // scans with a small project list are cheaper
         final float f = projectRowType == null ? 1f
                 : (float) projectRowType.getFieldCount() / 100f;
-        return super.computeSelfCost(planner, mq).multiplyBy(.1 * f);
+        final RelOptCost relOptCost = super.computeSelfCost(planner, mq);
+        return relOptCost != null
+                ? relOptCost.multiplyBy(.1 * f)
+                : null;
     }
 
     @Override public void register(final RelOptPlanner planner) {

@@ -1152,6 +1152,49 @@ public class DocumentDbStatementDateTimeTest extends DocumentDbStatementTest {
         }
     }
 
+    /**
+     * Tests select dates with AND condition.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @DisplayName("Tests select dates with AND condition.")
+    @ParameterizedTest(name = "testSelectDateWithAnd - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testSelectDateWithAnd(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testSelectDateWithAnd";
+        final long dateTime = Instant.parse("2020-02-03T04:05:06.00Z").toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTime));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("field", new BsonNull());
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            // Find condition that doesn't exist.
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\" > '2021-01-01' AND \"field\" < '2020-02-01' FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            // Non-NULL result
+            Assertions.assertEquals(Types.BOOLEAN, resultSet1.getMetaData().getColumnType(1));
+            final Boolean aBoolean = resultSet1.getBoolean(1);
+            Assertions.assertFalse(resultSet1.wasNull());
+            Assertions.assertNotNull(aBoolean);
+            Assertions.assertFalse(aBoolean);
+            // NULL result
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getObject(1));
+            resultSet1.getBoolean(1);
+            Assertions.assertTrue(resultSet1.wasNull());
+            Assertions.assertFalse(resultSet1.next());
+        }
+    }
+
     private long getTruncatedTimestamp(final OffsetDateTime offsetDateTime, final int monthValue) {
         return OffsetDateTime.of(
                 offsetDateTime.getYear(), monthValue, 1,

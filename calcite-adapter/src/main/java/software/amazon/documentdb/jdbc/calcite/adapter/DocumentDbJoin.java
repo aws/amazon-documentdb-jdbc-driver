@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -103,7 +104,10 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
     public @Nullable RelOptCost computeSelfCost(
             final RelOptPlanner planner,
             final RelMetadataQuery mq) {
-        return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.JOIN_COST_FACTOR);
+        final RelOptCost relOptCost = super.computeSelfCost(planner, mq);
+        return relOptCost != null
+                ? relOptCost.multiplyBy(DocumentDbRules.JOIN_COST_FACTOR)
+                : null;
     }
 
     @Override
@@ -575,7 +579,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
 
         // Add the lookup stage. This is the stage that "joins" the 2 collections.
         final JsonBuilder jsonBuilder = new JsonBuilder();
-        final Map<String, Object> lookupMap = jsonBuilder.map();
+        final Map<String, Object> lookupMap = new LinkedHashMap<>();
         final Map<String, Object> lookupFields = new LinkedHashMap<>();
 
         // 1. Add collection to join.
@@ -593,8 +597,9 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         // 3. Add any stages from the right implementor. Convert the json strings
         // into objects so they can be added as a list to the lookup pipeline.
         final List<Map<String, Object>> stages = new ArrayList<>();
-        final ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true);
+        final ObjectMapper mapper = JsonMapper.builder()
+                .configure(JsonParser.Feature.ALLOW_SINGLE_QUOTES, true)
+                .build();
         for (Pair<String, String> operations : rightImplementor.getList()) {
             final String stage = operations.right;
             final Map<String, Object> map = mapper.readValue(stage, new TypeReference<LinkedHashMap<String, Object>>() {
@@ -673,7 +678,6 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
      * We also specify the conditions as $gte: [ $field, $$field2 ] rather than field : { $gte: $field2 }
      */
     private static class JoinTranslator {
-        private final JsonBuilder builder = new JsonBuilder();
         private final RexBuilder rexBuilder;
         private final List<String> fieldNames;
 
@@ -706,8 +710,8 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
         }
 
         private Map<String, Object> translateMatch(final RexNode condition) {
-            final Map<String, Object> matchMap = builder.map();
-            final Map<String, Object> exprMap = builder.map();
+            final Map<String, Object> matchMap = new LinkedHashMap<>();
+            final Map<String, Object> exprMap = new LinkedHashMap<>();
             exprMap.put("$expr", translateOr(condition));
             matchMap.put("$match", exprMap);
             return matchMap;
@@ -728,7 +732,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             if (list.size() == 1) {
                 return list.get(0);
             }
-            final Map<String, Object> map = builder.map();
+            final Map<String, Object> map = new LinkedHashMap<>();
             map.put("$or", list);
             return map;
         }
@@ -747,7 +751,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
             if (list.size() == 1) {
                 return list.get(0);
             }
-            final Map<String, Object> map = builder.map();
+            final Map<String, Object> map = new LinkedHashMap<>();
             map.put("$and", list);
             return map;
         }
@@ -788,7 +792,7 @@ public class DocumentDbJoin extends Join implements DocumentDbRel {
          * Translates a call to a binary operator.
          */
         private Map<String, Object> translateBinary(final String op, final RexCall call) {
-            final Map<String, Object> map = builder.map();
+            final Map<String, Object> map = new LinkedHashMap<>();
             final Object left = getValue(call.operands.get(0));
             final Object right = getValue(call.operands.get(1));
             final List<Object> items = new ArrayList<>();
