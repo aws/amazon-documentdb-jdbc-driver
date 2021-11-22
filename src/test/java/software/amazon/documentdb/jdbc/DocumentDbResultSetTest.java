@@ -358,7 +358,8 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
     void testGetString() throws SQLException, IOException {
         final String collection = "resultSetTestString";
         final Document document = Document.parse("{\"_id\": \"key1\"}");
-        document.append("field", new BsonString("30"));
+        document.append("field1", new BsonString("30"));
+        document.append("field2", new BsonString("语言处理"));
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
         connection = DriverManager.getConnection(getJdbcConnectionString());
         statement = connection.createStatement();
@@ -373,6 +374,14 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals("30", CharStreams.toString(resultSetFlapdoodle.getCharacterStream(2)));
         Assertions.assertEquals("30", CharStreams.toString(resultSetFlapdoodle.getNCharacterStream(2)));
         Assertions.assertEquals("30", resultSetFlapdoodle.getClob(2).getSubString(1, 2));
+        // Retrieve non-ascii string.
+        Assertions.assertEquals("语言处理", resultSetFlapdoodle.getString(3));
+        Assertions.assertEquals("语言处理", resultSetFlapdoodle.getObject(3));
+        Assertions.assertEquals("语言处理", resultSetFlapdoodle.getObject(3, String.class));
+        Assertions.assertEquals("语言处理", resultSetFlapdoodle.getNString(3));
+        Assertions.assertEquals("语言处理", CharStreams.toString(resultSetFlapdoodle.getCharacterStream(3)));
+        Assertions.assertEquals("语言处理", CharStreams.toString(resultSetFlapdoodle.getNCharacterStream(3)));
+        Assertions.assertEquals("语言处理", resultSetFlapdoodle.getClob(3).getSubString(1, 4));
     }
 
     @Test
