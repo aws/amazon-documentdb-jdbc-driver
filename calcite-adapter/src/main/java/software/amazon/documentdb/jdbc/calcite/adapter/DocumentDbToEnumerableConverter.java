@@ -43,6 +43,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRel.Implementor;
+
 import java.util.AbstractList;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,7 +71,10 @@ public class DocumentDbToEnumerableConverter
 
     @Override public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
             final RelMetadataQuery mq) {
-        return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.ENUMERABLE_COST_FACTOR);
+        final RelOptCost relOptCost = super.computeSelfCost(planner, mq);
+        return relOptCost != null
+                ? relOptCost.multiplyBy(DocumentDbRules.ENUMERABLE_COST_FACTOR)
+                : null;
     }
 
     @Override public Result implement(final EnumerableRelImplementor implementor, final Prefer pref) {

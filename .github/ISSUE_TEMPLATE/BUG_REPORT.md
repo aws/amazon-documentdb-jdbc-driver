@@ -7,7 +7,7 @@ assignees: ''
 
 ---
 
-##Environment
+## Environment
 - DocumentDB JDBC driver version:
 - DocumentDB server version:
 - OS: [e.g. MacOS Big Sur 11.5.1, Windows 10 64-bit]
@@ -17,7 +17,7 @@ assignees: ''
 
 ---
 
-##Problem Description
+## Problem Description
 1. Steps to reproduce:
 2. Expected behaviour:
 3. Actual behaviour:
@@ -26,10 +26,10 @@ assignees: ''
 
 ---
 
-##Screenshots
+## Screenshots
 - If applicable, add screenshots to help explain your problem.
 
 ---
 
-##JDBC log
+## JDBC log
 - Add related JDBC log entries here.

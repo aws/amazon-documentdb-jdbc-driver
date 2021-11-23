@@ -859,14 +859,14 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 BsonDocument.parse("{\"$match\": {\"Total\": {\"$gt\": 1}}}"),
                 result.getAggregateOperations().get(5));
         Assertions.assertEquals(
-                BsonDocument.parse(
-                        "{\"$project\": {\"testCollection__id\": \"$testCollection__id\", \"renamed\": \"$field\", \"Total\": \"$Total\", \"_id\": 0}}"),
+                BsonDocument.parse("{\"$sort\": {\"field\": 1}}"),
                 result.getAggregateOperations().get(6));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$sort\": {\"renamed\": 1}}"),
+                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}}"),
                 result.getAggregateOperations().get(7));
         Assertions.assertEquals(
-                BsonDocument.parse("{\"$limit\": {\"$numberLong\": \"1\"}}}"),
+                BsonDocument.parse(
+                        "{\"$project\": {\"testCollection__id\": \"$testCollection__id\", \"renamed\": \"$field\", \"Total\": \"$Total\", \"_id\": 0}}"),
                 result.getAggregateOperations().get(8));
     }
 
@@ -1633,20 +1633,14 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$project\": {"
-                                + "\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$eq\": [true, {\"$cond\": ["
-                                + "{\"$and\": [{\"$gt\": [\"$field\", null]}, "
-                                + "{\"$gt\": [{\"$date\": \"2021-01-01T00:00:00Z\"}, null]}]}, "
-                                + "{\"$gt\": [\"$field\", {\"$date\": \"2021-01-01T00:00:00Z\"}]}, null]}]}, "
-                                + "{\"$eq\": [true, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, "
-                                + "{\"$gt\": [{\"$date\": \"2020-02-01T00:00:00Z\"}, null]}]}, "
-                                + "{\"$lt\": [\"$field\", {\"$date\": \"2020-02-01T00:00:00Z\"}]}, null]}]}]}, true, "
-                                + "{\"$cond\": [{\"$or\": [{\"$eq\": [false, "
-                                + "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, "
-                                + "{\"$gt\": [{\"$date\": \"2021-01-01T00:00:00Z\"}, null]}]}, "
-                                + "{\"$gt\": [\"$field\", {\"$date\": \"2021-01-01T00:00:00Z\"}]}, null]}]}, "
-                                + "{\"$eq\": [false, {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, "
-                                + "{\"$gt\": [{\"$date\": \"2020-02-01T00:00:00Z\"}, null]}]}, "
-                                + "{\"$lt\": [\"$field\", {\"$date\": \"2020-02-01T00:00:00Z\"}]}, null]}]}]}, false, null]}]}"
+                                + "\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$eq\": [true, null]}, "
+                                + "{\"$eq\": [true, {\"$lte\": [\"$field\", null]}]}]}, "
+                                + "true, "
+                                + "{\"$cond\": ["
+                                + "{\"$or\": ["
+                                + "{\"$eq\": [false, null]}, "
+                                + "{\"$eq\": [false, {\"$lte\": [\"$field\", null]}]}]}, "
+                                + "false, null]}]}, "
                                 + "\"_id\": 0}}"),
                 result.getAggregateOperations().get(0));
     }
