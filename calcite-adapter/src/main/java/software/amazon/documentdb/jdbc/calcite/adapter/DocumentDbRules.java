@@ -387,13 +387,13 @@ public final class DocumentDbRules {
                 case DOUBLE:
                 case FLOAT:
                 case REAL:
-                    final String doubleFormat = "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
+                    final String doubleFormat = "{\"$numberDouble\": \"" + getValueAs(literal, Double.class) + "\"}";
                     return new Operand("{\"$literal\": " + doubleFormat + "}", doubleFormat, true);
                 case TINYINT:
                 case SMALLINT:
                 case INTEGER:
                     // Convert supported intervals to milliseconds.
-                    final String intFormat = "{\"$numberInt\": \"" + literal.getValueAs(Long.class) + "\"}";
+                    final String intFormat = "{\"$numberInt\": \"" +  getValueAs(literal, Long.class) + "\"}";
                     return new Operand("{\"$literal\": " + intFormat + "}", intFormat, true);
                 case BIGINT:
                 case INTERVAL_MONTH:
@@ -410,7 +410,7 @@ public final class DocumentDbRules {
                 case INTERVAL_MINUTE_SECOND:
                 case INTERVAL_SECOND:
                     // Convert supported intervals to milliseconds (DAY TO SECOND types) OR months (YEAR TO MONTH types).
-                    final String longFormat = "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
+                    final String longFormat = "{\"$numberLong\": \"" + getValueAs(literal, Long.class) + "\"}";
                     return new Operand("{\"$literal\": " + longFormat + "}", longFormat, true);
                 case DATE:
                     // NOTE: Need to get the number of milliseconds from Epoch (not # of days).
@@ -418,7 +418,7 @@ public final class DocumentDbRules {
                     return new Operand(dateFormat, dateFormat, true);
                 case TIME:
                     // NOTE: Need to get the number of milliseconds from day. Date portion is left as zero epoch.
-                    final String timeFormat = "{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(TimeString.class).getMillisOfDay() + "\" } }";
+                    final String timeFormat = "{\"$date\": {\"$numberLong\": \"" + getValueAs(literal, TimeString.class).getMillisOfDay() + "\" } }";
                     return new Operand(timeFormat, timeFormat, true);
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:

@@ -439,9 +439,9 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
         Assertions.assertEquals(
                 BsonDocument.parse(
                         "{\"$project\": {"
-                                + "\"literalYearToMonth\": {\"$literal\": 1478}, "
-                                + "\"literalYear\": {\"$literal\": 1476}, "
-                                + "\"literalMonth\": {'$multiply': [{\"$literal\": {\"$numberInt\": \"300\"}}, {\"$literal\": 1}]}, "
+                                + "\"literalYearToMonth\": {\"$literal\": {\"$numberLong\": \"1478\"}}, "
+                                + "\"literalYear\": {\"$literal\": {\"$numberLong\": \"1476\"}}, "
+                                + "\"literalMonth\": {'$multiply': [{\"$literal\": {\"$numberInt\": \"300\"}}, {\"$literal\": {\"$numberLong\": \"1\" }}]}, "
                                 + "\"literalDay\": {\"$literal\": {\"$numberLong\": \"34560000000\"}}, "
                                 + "\"literalDayToHour\": {\"$literal\": {\"$numberLong\": \"34578000000\"}}, "
                                 + "\"literalDayToMinute\": {\"$literal\": {\"$numberLong\": \"364320000\"}}, "

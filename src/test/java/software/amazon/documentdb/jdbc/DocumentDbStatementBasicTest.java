@@ -16,10 +16,6 @@
 
 package software.amazon.documentdb.jdbc;
 
-import java.sql.Date;
-import java.sql.Time;
-import java.sql.Timestamp;
-import java.sql.Types;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonTimestamp;
@@ -33,9 +29,13 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import java.io.IOException;
 import java.sql.Blob;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
