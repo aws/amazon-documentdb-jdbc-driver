@@ -1531,7 +1531,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     @DisplayName("Tests that all supported literal types can be retrieved.")
-    @ParameterizedTest(name = "testLiteralTypes - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testBooleanLiteralTypes - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testBooleanLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -1562,7 +1562,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     @DisplayName("Tests that all supported numeric literal types can be retrieved.")
-    @ParameterizedTest(name = "testLiteralTypes - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testNumericLiteralTypes - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testNumericLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -1612,7 +1612,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     @DisplayName("Tests that all supported string literal types can be retrieved.")
-    @ParameterizedTest(name = "testLiteralTypes - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testStringLiteralTypes - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testStringLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -1647,7 +1647,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     @DisplayName("Tests that all supported binary literal types can be retrieved.")
-    @ParameterizedTest(name = "testLiteralTypes - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testBinaryLiteralTypes - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testBinaryLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -1683,7 +1683,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     @DisplayName("Tests that all supported date time literal types can be retrieved.")
-    @ParameterizedTest(name = "testLiteralTypes - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testDateTimeLiteralTypes - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testDateTimeLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -1714,7 +1714,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     @DisplayName("Tests that all supported interval literal types can be retrieved.")
-    @ParameterizedTest(name = "testLiteralTypes - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testIntervalLiteralTypes - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testIntervalLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
         setTestEnvironment(testEnvironment);
@@ -1769,7 +1769,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
     }
 
     @DisplayName("Tests that supported interval literals can be used to calculate a new interval literal.")
-    @ParameterizedTest(name = "testLiteralTypes - [{index}] - {arguments}")
+    @ParameterizedTest(name = "testIntervalLiteralOperations - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})
     void testIntervalLiteralOperations(final DocumentDbTestEnvironment testEnvironment)
             throws SQLException {
