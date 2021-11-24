@@ -383,7 +383,7 @@ public final class DocumentDbRules {
                 case FLOAT:
                 case REAL:
                     final String doubleFormat = "{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}";
-                    return new Operand(doubleFormat, doubleFormat, true);
+                    return new Operand("{\"$literal\": " + doubleFormat + "}", doubleFormat, true);
                 case TINYINT:
                 case SMALLINT:
                 case INTEGER:
@@ -391,11 +391,20 @@ public final class DocumentDbRules {
                     final String intFormat = "{\"$numberInt\": \"" + literal.getValueAs(Long.class) + "\"}";
                     return new Operand("{\"$literal\": " + intFormat + "}", intFormat, true);
                 case BIGINT:
+                case INTERVAL_MONTH:
+                case INTERVAL_YEAR:
+                case INTERVAL_YEAR_MONTH:
                 case INTERVAL_DAY:
+                case INTERVAL_DAY_HOUR:
+                case INTERVAL_DAY_MINUTE:
+                case INTERVAL_DAY_SECOND:
                 case INTERVAL_HOUR:
+                case INTERVAL_HOUR_MINUTE:
+                case INTERVAL_HOUR_SECOND:
                 case INTERVAL_MINUTE:
+                case INTERVAL_MINUTE_SECOND:
                 case INTERVAL_SECOND:
-                    // Convert supported intervals to milliseconds.
+                    // Convert supported intervals to milliseconds (DAY TO SECOND types) OR months (YEAR TO MONTH types).
                     final String longFormat = "{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}";
                     return new Operand("{\"$literal\": " + longFormat + "}", longFormat, true);
                 case DATE:
@@ -572,22 +581,10 @@ public final class DocumentDbRules {
             final RexCall call,
             final List<Operand> strings,
             final String stdOperator) {
-        verifySupportedType(call);
         if (hasObjectIdAndLiteral(call, strings)) {
             return new Operand(getObjectIdAggregateForOperator(call, strings, stdOperator));
         }
         return new Operand("{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}");
-    }
-
-    private static void verifySupportedType(final RexCall call)
-            throws SQLFeatureNotSupportedException {
-        if (call.type.getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
-                || call.type.getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
-            throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
-                    SqlError.UNSUPPORTED_CONVERSION,
-                    call.type.getSqlTypeName().getName(),
-                    SqlTypeName.TIMESTAMP.getName());
-        }
     }
 
     private static Operand getIntegerDivisionOperation(final String value, final String divisor) {
@@ -726,9 +723,21 @@ public final class DocumentDbRules {
             return new Operand(currentTimestamp, currentTimestamp, true);
         }
 
+        @SneakyThrows
         private static Operand translateDateAdd(final RexCall call, final List<Operand> strings) {
-            // TODO: Check for unsupported intervals and throw error/emulate in some other way.
+            verifySupportedDateAddType(call.getOperands().get(1));
             return new Operand("{ \"$add\":" + "[" + Util.commaList(strings) + "]}");
+        }
+
+        private static void verifySupportedDateAddType(final RexNode node)
+                throws SQLFeatureNotSupportedException {
+            if (node.getType().getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
+                    || node.getType().getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
+                throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
+                        SqlError.UNSUPPORTED_CONVERSION,
+                        node.getType().getSqlTypeName().getName(),
+                        SqlTypeName.TIMESTAMP.getName());
+            }
         }
 
         private static Operand translateDateDiff(final RexCall call, final List<Operand> strings) {
