@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.common.utilities.JdbcType;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
@@ -38,6 +39,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.Properties;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
@@ -157,18 +159,29 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the correct columns of getTables.")
     void testGetTables() throws SQLException {
-        final ResultSet tables = metadata.getTables(null, null, null, null);
-        final ResultSetMetaData tablesMetadata = tables.getMetaData();
-        Assertions.assertEquals("TABLE_CAT", tablesMetadata.getColumnName(1));
-        Assertions.assertEquals("TABLE_SCHEM", tablesMetadata.getColumnName(2));
-        Assertions.assertEquals("TABLE_NAME", tablesMetadata.getColumnName(3));
-        Assertions.assertEquals("TABLE_TYPE", tablesMetadata.getColumnName(4));
-        Assertions.assertEquals("REMARKS", tablesMetadata.getColumnName(5));
-        Assertions.assertEquals("TYPE_CAT", tablesMetadata.getColumnName(6));
-        Assertions.assertEquals("TYPE_SCHEM", tablesMetadata.getColumnName(7));
-        Assertions.assertEquals("TYPE_NAME", tablesMetadata.getColumnName(8));
-        Assertions.assertEquals("SELF_REFERENCING_COL_NAME", tablesMetadata.getColumnName(9));
-        Assertions.assertEquals("REF_GENERATION", tablesMetadata.getColumnName(10));
+        // Catalog pattern, schema pattern, table name pattern, table types
+        final String[][] tests = new String [][]{
+                {null, null, null, null},
+                {" ", " ", " ", " "},
+                {null, null, null, "TABLE"},
+                {null, null, COLLECTION_BASIC, "TABLE"},
+                {null, DATABASE, COLLECTION_BASIC, "TABLE"}
+        };
+
+        for (String[] test : tests) {
+            final ResultSet tables = metadata.getTables(test[0], null, null, new String[]{test[3]});
+            final ResultSetMetaData tablesMetadata = tables.getMetaData();
+            Assertions.assertEquals("TABLE_CAT", tablesMetadata.getColumnName(1));
+            Assertions.assertEquals("TABLE_SCHEM", tablesMetadata.getColumnName(2));
+            Assertions.assertEquals("TABLE_NAME", tablesMetadata.getColumnName(3));
+            Assertions.assertEquals("TABLE_TYPE", tablesMetadata.getColumnName(4));
+            Assertions.assertEquals("REMARKS", tablesMetadata.getColumnName(5));
+            Assertions.assertEquals("TYPE_CAT", tablesMetadata.getColumnName(6));
+            Assertions.assertEquals("TYPE_SCHEM", tablesMetadata.getColumnName(7));
+            Assertions.assertEquals("TYPE_NAME", tablesMetadata.getColumnName(8));
+            Assertions.assertEquals("SELF_REFERENCING_COL_NAME", tablesMetadata.getColumnName(9));
+            Assertions.assertEquals("REF_GENERATION", tablesMetadata.getColumnName(10));
+        }
     }
 
     /**
@@ -200,33 +213,44 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the correct columns of getColumns.")
     void testGetColumns() throws SQLException {
-        final ResultSet columns = metadata.getColumns(null, null, null, null);
-        final ResultSetMetaData columnsMetadata = columns.getMetaData();
+        // Catalog pattern, schema pattern, table pattern, column pattern
+        final String[][] tests = new String [][]{
+                {null, null, null, null},
+                {" ", " ", " ", " "},
+                {null, null, null, "%__id"},
+                {null, "%", null, "%__id"},
+                {null, null, COLLECTION_BASIC, "%__id"},
+                {null, DATABASE, COLLECTION_BASIC, "%__id"}
+        };
+        for (String[] test : tests) {
+            final ResultSet columns = metadata.getColumns(test[0], test[1], test[2], test[3]);
+            final ResultSetMetaData columnsMetadata = columns.getMetaData();
 
-        Assertions.assertEquals("TABLE_CAT", columnsMetadata.getColumnName(1));
-        Assertions.assertEquals("TABLE_SCHEM", columnsMetadata.getColumnName(2));
-        Assertions.assertEquals("TABLE_NAME", columnsMetadata.getColumnName(3));
-        Assertions.assertEquals("COLUMN_NAME", columnsMetadata.getColumnName(4));
-        Assertions.assertEquals("DATA_TYPE", columnsMetadata.getColumnName(5));
-        Assertions.assertEquals("TYPE_NAME", columnsMetadata.getColumnName(6));
-        Assertions.assertEquals("COLUMN_SIZE", columnsMetadata.getColumnName(7));
-        Assertions.assertEquals("BUFFER_LENGTH", columnsMetadata.getColumnName(8));
-        Assertions.assertEquals("DECIMAL_DIGITS", columnsMetadata.getColumnName(9));
-        Assertions.assertEquals("NUM_PREC_RADIX", columnsMetadata.getColumnName(10));
-        Assertions.assertEquals("NULLABLE", columnsMetadata.getColumnName(11));
-        Assertions.assertEquals("REMARKS", columnsMetadata.getColumnName(12));
-        Assertions.assertEquals("COLUMN_DEF", columnsMetadata.getColumnName(13));
-        Assertions.assertEquals("SQL_DATA_TYPE", columnsMetadata.getColumnName(14));
-        Assertions.assertEquals("SQL_DATETIME_SUB", columnsMetadata.getColumnName(15));
-        Assertions.assertEquals("CHAR_OCTET_LENGTH", columnsMetadata.getColumnName(16));
-        Assertions.assertEquals("ORDINAL_POSITION", columnsMetadata.getColumnName(17));
-        Assertions.assertEquals("IS_NULLABLE", columnsMetadata.getColumnName(18));
-        Assertions.assertEquals("SCOPE_CATALOG", columnsMetadata.getColumnName(19));
-        Assertions.assertEquals("SCOPE_SCHEMA", columnsMetadata.getColumnName(20));
-        Assertions.assertEquals("SCOPE_TABLE", columnsMetadata.getColumnName(21));
-        Assertions.assertEquals("SOURCE_DATA_TYPE", columnsMetadata.getColumnName(22));
-        Assertions.assertEquals("IS_AUTOINCREMENT", columnsMetadata.getColumnName(23));
-        Assertions.assertEquals("IS_GENERATEDCOLUMN", columnsMetadata.getColumnName(24));
+            Assertions.assertEquals("TABLE_CAT", columnsMetadata.getColumnName(1));
+            Assertions.assertEquals("TABLE_SCHEM", columnsMetadata.getColumnName(2));
+            Assertions.assertEquals("TABLE_NAME", columnsMetadata.getColumnName(3));
+            Assertions.assertEquals("COLUMN_NAME", columnsMetadata.getColumnName(4));
+            Assertions.assertEquals("DATA_TYPE", columnsMetadata.getColumnName(5));
+            Assertions.assertEquals("TYPE_NAME", columnsMetadata.getColumnName(6));
+            Assertions.assertEquals("COLUMN_SIZE", columnsMetadata.getColumnName(7));
+            Assertions.assertEquals("BUFFER_LENGTH", columnsMetadata.getColumnName(8));
+            Assertions.assertEquals("DECIMAL_DIGITS", columnsMetadata.getColumnName(9));
+            Assertions.assertEquals("NUM_PREC_RADIX", columnsMetadata.getColumnName(10));
+            Assertions.assertEquals("NULLABLE", columnsMetadata.getColumnName(11));
+            Assertions.assertEquals("REMARKS", columnsMetadata.getColumnName(12));
+            Assertions.assertEquals("COLUMN_DEF", columnsMetadata.getColumnName(13));
+            Assertions.assertEquals("SQL_DATA_TYPE", columnsMetadata.getColumnName(14));
+            Assertions.assertEquals("SQL_DATETIME_SUB", columnsMetadata.getColumnName(15));
+            Assertions.assertEquals("CHAR_OCTET_LENGTH", columnsMetadata.getColumnName(16));
+            Assertions.assertEquals("ORDINAL_POSITION", columnsMetadata.getColumnName(17));
+            Assertions.assertEquals("IS_NULLABLE", columnsMetadata.getColumnName(18));
+            Assertions.assertEquals("SCOPE_CATALOG", columnsMetadata.getColumnName(19));
+            Assertions.assertEquals("SCOPE_SCHEMA", columnsMetadata.getColumnName(20));
+            Assertions.assertEquals("SCOPE_TABLE", columnsMetadata.getColumnName(21));
+            Assertions.assertEquals("SOURCE_DATA_TYPE", columnsMetadata.getColumnName(22));
+            Assertions.assertEquals("IS_AUTOINCREMENT", columnsMetadata.getColumnName(23));
+            Assertions.assertEquals("IS_GENERATEDCOLUMN", columnsMetadata.getColumnName(24));
+        }
     }
 
     /**
@@ -235,17 +259,49 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the correct columns of getColumnPrivileges.")
     void testGetColumnPrivileges() throws SQLException {
-        final ResultSet columnPrivileges = metadata.getColumnPrivileges(null, null, null, null);
-        final ResultSetMetaData columnPrivilegesMetadata = columnPrivileges.getMetaData();
+        // Catalog pattern, schema pattern, table pattern, column pattern
+        final String[][] tests = new String [][]{
+                {null, null, null, null},
+                {" ", " ", " ", " "},
+                {null, "%", null, null},
+                {null, null, null, "%__id"},
+                {null, null, COLLECTION_BASIC, "%__id"},
+                {null, DATABASE, COLLECTION_BASIC, "%__id"}
+        };
 
-        Assertions.assertEquals("TABLE_CAT", columnPrivilegesMetadata.getColumnName(1));
-        Assertions.assertEquals("TABLE_SCHEM", columnPrivilegesMetadata.getColumnName(2));
-        Assertions.assertEquals("TABLE_NAME", columnPrivilegesMetadata.getColumnName(3));
-        Assertions.assertEquals("COLUMN_NAME", columnPrivilegesMetadata.getColumnName(4));
-        Assertions.assertEquals("GRANTOR", columnPrivilegesMetadata.getColumnName(5));
-        Assertions.assertEquals("GRANTEE", columnPrivilegesMetadata.getColumnName(6));
-        Assertions.assertEquals("PRIVILEGE", columnPrivilegesMetadata.getColumnName(7));
-        Assertions.assertEquals("IS_GRANTABLE", columnPrivilegesMetadata.getColumnName(8));
+        for (String[] test : tests) {
+            final ResultSet columnPrivileges = metadata.getColumnPrivileges(test[0], test[1], test[2], test[3]);
+            final ResultSetMetaData columnPrivilegesMetadata = columnPrivileges.getMetaData();
+
+            Assertions.assertEquals("TABLE_CAT", columnPrivilegesMetadata.getColumnName(1));
+            Assertions.assertEquals("TABLE_SCHEM", columnPrivilegesMetadata.getColumnName(2));
+            Assertions.assertEquals("TABLE_NAME", columnPrivilegesMetadata.getColumnName(3));
+            Assertions.assertEquals("COLUMN_NAME", columnPrivilegesMetadata.getColumnName(4));
+            Assertions.assertEquals("GRANTOR", columnPrivilegesMetadata.getColumnName(5));
+            Assertions.assertEquals("GRANTEE", columnPrivilegesMetadata.getColumnName(6));
+            Assertions.assertEquals("PRIVILEGE", columnPrivilegesMetadata.getColumnName(7));
+            Assertions.assertEquals("IS_GRANTABLE", columnPrivilegesMetadata.getColumnName(8));
+        }
+    }
+
+    @Test
+    @DisplayName("Tests single table type TABLE is returned from getTableTypes.")
+    void testGetTableTypes() throws SQLException {
+        final ResultSet tableTypes = metadata.getTableTypes();
+        final ResultSetMetaData tableTypesMetadata = tableTypes.getMetaData();
+        Assertions.assertEquals(1, tableTypesMetadata.getColumnCount());
+        Assertions.assertEquals("TABLE_TYPE", tableTypesMetadata.getColumnName(1));
+        Assertions.assertEquals("TABLE_TYPE", tableTypesMetadata.getColumnLabel(1));
+        Assertions.assertEquals(DATABASE, tableTypesMetadata.getSchemaName(1));
+        Assertions.assertEquals(0,tableTypesMetadata.isNullable(1));
+        Assertions.assertEquals(0,tableTypesMetadata.getPrecision(1));
+        Assertions.assertEquals(0,tableTypesMetadata.getScale(1));
+        Assertions.assertEquals(64,tableTypesMetadata.getColumnDisplaySize(1));
+        Assertions.assertEquals(Types.VARCHAR, tableTypesMetadata.getColumnType(1));
+        Assertions.assertEquals(JdbcType.VARCHAR.name(), tableTypesMetadata.getColumnTypeName(1));
+        Assertions.assertTrue(tableTypes.next());
+        Assertions.assertEquals("TABLE", tableTypes.getString(1));
+        Assertions.assertFalse(tableTypes.next());
     }
 
     /**

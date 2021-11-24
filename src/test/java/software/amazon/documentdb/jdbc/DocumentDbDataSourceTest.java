@@ -17,17 +17,30 @@
 package software.amazon.documentdb.jdbc;
 
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
+import org.junit.jupiter.api.extension.ExtendWith;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import java.sql.SQLException;
 
 /**
  * Tests for the DocumentDbDataSource
  */
-public class DocumentDbDataSourceTest {
-
+@ExtendWith(DocumentDbFlapDoodleExtension.class)
+public class DocumentDbDataSourceTest extends DocumentDbFlapDoodleTest {
+    private static final String HOSTNAME = "localhost";
+    private static final String USERNAME = "user";
+    private static final String PASSWORD = "password";
+    private static final String DATABASE = "testDb";
     private DocumentDbDataSource dataSource;
+
+    @BeforeAll
+    void setup() {
+        // Add 1 valid user so we can successfully authenticate.
+        createUser(DATABASE, USERNAME, PASSWORD);
+    }
 
     /**
      * Instantiates data source object for testing.
@@ -73,7 +86,9 @@ public class DocumentDbDataSourceTest {
      * Tests invalid property settings.
      */
     @Test
-    public void testInvalidPropertySettings() throws SQLException {
+    public void testInvalidPropertySettings()  {
+        Assertions.assertDoesNotThrow(
+                () -> dataSource.setReplicaSet("rs2"));
         Assertions.assertThrows(SQLException.class,
                 () -> dataSource.setLoginTimeout(-1));
     }
@@ -105,4 +120,40 @@ public class DocumentDbDataSourceTest {
                 () -> dataSource.validateRequiredProperties());
     }
 
+    @Test
+    void getConnection() throws SQLException {
+        dataSource.setUser(USERNAME);
+        dataSource.setPassword(PASSWORD);
+        dataSource.setDatabase(DATABASE);
+        dataSource.setHostname(HOSTNAME + ":" + getMongoPort());
+        dataSource.setTlsEnabled(false);
+        Assertions.assertNotNull(dataSource.getConnection());
+    }
+
+    @Test
+    void getConnectionWithUsernamePassword() throws SQLException {
+        dataSource.setDatabase(DATABASE);
+        dataSource.setHostname(HOSTNAME + ":" + getMongoPort());
+        dataSource.setTlsEnabled(false);
+        Assertions.assertNotNull(dataSource.getConnection(USERNAME, PASSWORD));
+    }
+
+    @Test
+    void getPooledConnection() throws SQLException {
+        dataSource.setUser(USERNAME);
+        dataSource.setPassword(PASSWORD);
+        dataSource.setDatabase(DATABASE);
+        dataSource.setHostname(HOSTNAME + ":" + getMongoPort());
+        dataSource.setTlsEnabled(false);
+        Assertions.assertNotNull(dataSource.getPooledConnection());
+    }
+
+
+    @Test
+    void getPooledConnectionWithUsernamePassword() throws SQLException {
+        dataSource.setDatabase(DATABASE);
+        dataSource.setHostname(HOSTNAME + ":" + getMongoPort());
+        dataSource.setTlsEnabled(false);
+        Assertions.assertNotNull(dataSource.getPooledConnection(USERNAME, PASSWORD));
+    }
 }

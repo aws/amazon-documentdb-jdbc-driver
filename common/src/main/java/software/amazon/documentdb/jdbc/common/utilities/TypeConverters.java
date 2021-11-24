@@ -76,8 +76,8 @@ public class TypeConverters {
                 .put(short.class, new ShortConverter(0))
                 .put(String.class, new StringConverter())
                 .put(Timestamp.class, new SqlTimestampConverter())
-                .put(Byte[].class, new ArrayConverter(Byte[].class, new ByteConverter()))
-                .put(byte[].class, new ArrayConverter(byte[].class, new ByteConverter()))
+                .put(Byte[].class, new ArrayConverter(Byte[].class, new ByteConverter(), -1))
+                .put(byte[].class, new ArrayConverter(byte[].class, new ByteConverter(), -1))
                 .build();
     }
 
