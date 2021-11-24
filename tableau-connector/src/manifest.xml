@@ -1,8 +1,7 @@
 <?xml version='1.0' encoding='utf-8' ?>
 <connector-plugin class='documentdbjdbc' superclass='jdbc' plugin-version='1.13.0.0' name='Amazon DocumentDB' version='18.1' min-version-tableau='2020.3'>
     <vendor-information>
-        <company name="AWS"/>
-        <!-- TODO: May need to replace links for GA release. -->
+        <company name="Amazon Web Services"/>
         <support-link url="https://github.com/aws/amazon-documentdb-jdbc-driver/issues"/>
         <driver-download-link url="https://github.com/aws/amazon-documentdb-jdbc-driver/releases"/>
     </vendor-information>
