@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
 import software.amazon.documentdb.jdbc.persist.SchemaWriter;
@@ -58,9 +59,11 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
 
     /** Initializes the test class. */
     @BeforeAll
-    void initialize() throws SQLException {
+    void initialize() {
         // Add 1 valid user so we can successfully authenticate.
         createUser(DATABASE, USERNAME, PASSWORD);
+        prepareSimpleConsistentData(DATABASE, COLLECTION_SIMPLE, 5, USERNAME, PASSWORD);
+        addComplexData();
     }
 
     @AfterEach
@@ -81,8 +84,6 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests metadata of a database with simple data.")
     void testGetResultSetMetadataSimple() throws SQLException {
-        prepareSimpleConsistentData(DATABASE, COLLECTION_SIMPLE, 5, USERNAME, PASSWORD);
-
         final String connectionString = getJdbcConnectionString();
 
         try (final Connection connection = DriverManager.getConnection(connectionString);
@@ -107,9 +108,11 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
             Assertions.assertTrue(metadata.isReadOnly(1));
             Assertions.assertTrue(metadata.isSigned(1));
             Assertions.assertTrue(metadata.isCaseSensitive(1));
+            Assertions.assertFalse(metadata.isSearchable(1));
             Assertions.assertFalse(metadata.isWritable(1));
             Assertions.assertFalse(metadata.isAutoIncrement(1));
             Assertions.assertFalse(metadata.isCurrency(1));
+            Assertions.assertFalse(metadata.isDefinitelyWritable(1));
 
             Assertions.assertEquals("fieldDouble", metadata.getColumnName(2));
             Assertions.assertEquals("DOUBLE", metadata.getColumnTypeName(2));
@@ -157,8 +160,6 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests metadata of a database with nested documents and an array.")
     void testResultSetGetMetadataComplex() throws SQLException {
-        addComplexData();
-
         final String connectionString = getJdbcConnectionString();
         try (final Connection connection = DriverManager.getConnection(connectionString);
                 final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();
@@ -221,6 +222,32 @@ public class DocumentDbResultSetMetaDataTest extends DocumentDbFlapDoodleTest {
             Assertions.assertEquals("VARCHAR", arrayMetadata.getColumnTypeName(1));
             Assertions.assertEquals("BIGINT", arrayMetadata.getColumnTypeName(2));
             Assertions.assertEquals("INTEGER", arrayMetadata.getColumnTypeName(3));
+        }
+    }
+
+    /**
+     * Test for complex databases
+     */
+    @Test
+    @DisplayName("Tests attempting to retrieve metadata with invalid indices.")
+    void testResultSetGetMetadataInvalidIndices() throws SQLException {
+        final String connectionString = getJdbcConnectionString();
+        try (final Connection connection = DriverManager.getConnection(connectionString);
+                final DocumentDbStatement statement = (DocumentDbStatement) connection.createStatement();
+                final ResultSet resultSet =
+                        statement.executeQuery(String.format("SELECT * FROM \"%s\"", COLLECTION_SIMPLE))) {
+            final ResultSetMetaData metadata = resultSet.getMetaData();
+            Assertions.assertEquals(13, metadata.getColumnCount());
+            // Attempt to get 0th column.
+            Assertions.assertEquals(
+                    SqlError.lookup(SqlError.INVALID_INDEX, 0, 13),
+                    Assertions.assertThrows(SQLException.class, () -> metadata.getColumnName(0))
+                            .getMessage());
+            // Attempt to get 14th column.
+            Assertions.assertEquals(
+                    SqlError.lookup(SqlError.INVALID_INDEX, 14, 13),
+                    Assertions.assertThrows(SQLException.class, () -> metadata.getColumnName(14))
+                            .getMessage());
         }
     }
 

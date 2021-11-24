@@ -18,12 +18,14 @@ package software.amazon.documentdb.jdbc;
 
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -40,6 +42,9 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
 
     private static final String DATABASE_NAME = "database";
     private static final String COLLECTION_NAME = "testDocumentDbDriverTest";
+    private static final String DRIVER_MAJOR_VERSION_KEY = "driver.major.version";
+    private static final String DRIVER_MINOR_VERSION_KEY = "driver.minor.version";
+    private static final String PROPERTIES_FILE_PATH = "/project.properties";
 
     /**
      * Initializes the test class.
@@ -185,5 +190,22 @@ public class DocumentDbDriverTest extends DocumentDbFlapDoodleTest {
                     Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(test.getKey()))
                             .getMessage());
         }
+    }
+
+    @Test
+    @DisplayName("Tests that correct driver major and minor version are returned.")
+    void testDriverVersion() throws IOException {
+        final DocumentDbDriver driver = new DocumentDbDriver();
+        // Retrieve the version metadata from properties file.
+        final int majorVersion;
+        final int minorVersion;
+        try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
+            final Properties p = new Properties();
+            p.load(is);
+            majorVersion = Integer.parseInt(p.getProperty(DRIVER_MAJOR_VERSION_KEY));
+            minorVersion = Integer.parseInt(p.getProperty(DRIVER_MINOR_VERSION_KEY));
+        }
+        Assertions.assertEquals(majorVersion, driver.getMajorVersion());
+        Assertions.assertEquals(minorVersion, driver.getMinorVersion());
     }
 }
