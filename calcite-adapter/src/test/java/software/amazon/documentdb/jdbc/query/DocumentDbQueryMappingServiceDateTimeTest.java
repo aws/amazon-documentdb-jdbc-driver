@@ -68,15 +68,16 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
         Assertions.assertEquals(DATE_COLLECTION_NAME, result.getCollectionName());
         Assertions.assertEquals(6, result.getColumnMetaData().size());
         Assertions.assertEquals(1, result.getAggregateOperations().size());
-        Assertions.assertEquals(BsonDocument.parse(
-                "{\"$project\": {"
-                        + "\"EXPR$0\": {\"$add\": [\"$field\", {\"$multiply\": [604800000, {\"$literal\": 1}]}]}, "
-                        + "\"EXPR$1\": {\"$add\": [\"$field\", {\"$multiply\": [86400000, {\"$literal\": 2}]}]}, "
-                        + "\"EXPR$2\": {\"$add\": [\"$field\", {\"$multiply\": [3600000, {\"$literal\": 3}]}]}, "
-                        + "\"EXPR$3\": {\"$add\": [\"$field\", {\"$multiply\": [60000, {\"$literal\": 4}]}]}, "
-                        + "\"EXPR$4\": {\"$add\": [\"$field\", {\"$multiply\": [1000, {\"$literal\": 5}]}]}, "
-                        + "\"EXPR$5\": {\"$add\": [\"$field\", {\"$divide\": [{\"$subtract\": [{\"$multiply\": [1, {\"$literal\": 6}]}, {\"$mod\": [{\"$multiply\": [1, {\"$literal\": 6}]}, {\"$literal\": 1000}]}]}, {\"$literal\": 1000}]}]}, "
-                        + "\"_id\": 0}}").toJson(),
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"EXPR$0\": {\"$add\": [\"$field\", {\"$multiply\": [{\"$literal\": 604800000}, {\"$literal\": 1}]}]}, "
+                                + "\"EXPR$1\": {\"$add\": [\"$field\", {\"$multiply\": [{\"$literal\": 86400000}, {\"$literal\": 2}]}]}, "
+                                + "\"EXPR$2\": {\"$add\": [\"$field\", {\"$multiply\": [{\"$literal\": 3600000}, {\"$literal\": 3}]}]}, "
+                                + "\"EXPR$3\": {\"$add\": [\"$field\", {\"$multiply\": [{\"$literal\": 60000}, {\"$literal\": 4}]}]}, "
+                                + "\"EXPR$4\": {\"$add\": [\"$field\", {\"$multiply\": [{\"$literal\": 1000}, {\"$literal\": 5}]}]}, "
+                                + "\"EXPR$5\": {\"$add\": [\"$field\", {\"$divide\": [{\"$subtract\": [{\"$multiply\": [{\"$literal\": 1}, {\"$literal\": 6}]}, {\"$mod\": [{\"$multiply\": [{\"$literal\": 1}, {\"$literal\": 6}]}, {\"$literal\": 1000}]}]}, {\"$literal\": 1000}]}]}, "
+                                + "\"_id\": 0}}").toJson(),
                 ((BsonDocument) result.getAggregateOperations().get(0)).toJson());
 
         final String extractQuery =
@@ -492,7 +493,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
                         + "   {\"$add\": ["
                         + "     {\"$date\": \"1970-01-05T00:00:00Z\"}, "
                         + "     {\"$multiply\": ["
-                        + "       604800000, "
+                        + "      {\"$literal\": {\"$numberLong\": \"604800000\"}}, "
                         + "       {\"$divide\": ["
                         + "         {\"$subtract\": ["
                         + "           {\"$divide\": ["
@@ -755,7 +756,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
                                 + "\"field\": 1, "
                                 + DocumentDbFilter.BOOLEAN_FLAG_FIELD
                                 + ": {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$year\": \"$field\"}, null]}, "
-                                + "{\"$gt\": [ {\"$numberLong\": \"2021\"}, null]}]}, {\"$eq\": [{\"$year\": \"$field\"}, {\"$numberLong\": \"2021\"}]}, null]}}}"),
+                                + "{\"$gt\": [ {\"$literal\": {\"$numberLong\": \"2021\"}}, null]}]}, {\"$eq\": [{\"$year\": \"$field\"}, {\"$literal\": {\"$numberLong\": \"2021\"}}]}, null]}}}"),
                 operations.get(0));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));
@@ -784,9 +785,9 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
                                 + "\"_id\": 1, "
                                 + "\"field\": 1,"
                                 + DocumentDbFilter.BOOLEAN_FLAG_FIELD
-                                + ": {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$add\": [\"$field\", {\"$numberLong\": \"259200000\"}]}, null]}, "
+                                + ": {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$add\": [\"$field\", {\"$literal\": {\"$numberLong\": \"259200000\"}}]}, null]}, "
                                 + "{\"$gt\": [{\"$date\": \"2020-01-04T00:00:00Z\"}, null]}]}, "
-                                + "{\"$eq\": [{\"$add\": [\"$field\", {\"$numberLong\": \"259200000\"}]}, {\"$date\": \"2020-01-04T00:00:00Z\"}]}, null]}}}"),
+                                + "{\"$eq\": [{\"$add\": [\"$field\", {\"$literal\": {\"$numberLong\": \"259200000\"}}]}, {\"$date\": \"2020-01-04T00:00:00Z\"}]}, null]}}}"),
                 operations.get(0));
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$match\": {" + DocumentDbFilter.BOOLEAN_FLAG_FIELD + ": {\"$eq\": true}}}"), operations.get(1));

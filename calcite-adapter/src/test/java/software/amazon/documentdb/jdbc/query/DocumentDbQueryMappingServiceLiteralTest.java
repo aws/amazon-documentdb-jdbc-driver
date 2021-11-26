@@ -260,8 +260,8 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
                                 + "\"EXPR$0\": {\"$cond\": ["
                                 + "{\"$and\": ["
                                 + "{\"$gt\": [\"$_id\", null]}, "
-                                + "{\"$gt\": [{\"$numberLong\": \"4223372036854775807\"}, null]}]}, "
-                                + "{\"$eq\": [\"$_id\", {\"$numberLong\": \"4223372036854775807\"}]}, null]}, \"_id\": 0}}"),
+                                + "{\"$gt\": [{\"$literal\": {\"$numberLong\": \"4223372036854775807\"}}, null]}]}, "
+                                + "{\"$eq\": [\"$_id\", {\"$literal\": {\"$numberLong\": \"4223372036854775807\"}}]}, null]}, \"_id\": 0}}"),
                 result4.getAggregateOperations().get(0));
 
         // Byte array
@@ -284,5 +284,175 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
                                 + "{\"$eq\": [\"$_id\", {\"$binary\": {\"base64\": \"ASNFZ4mrze8=\", \"subType\": \"00\"}}]}, null]}, "
                                 + "\"_id\": 0}}"),
                 result5.getAggregateOperations().get(0));
+    }
+
+    @Test
+    @DisplayName("Tests that all supported literal types are returned correctly.")
+    void testLiteralTypes() throws SQLException {
+        // Boolean literals
+        final String query1 =
+                String.format(
+                        "SELECT TRUE AS \"literalTrue\", "
+                                + "FALSE AS \"literalFalse\", "
+                                + "UNKNOWN AS \"literalUnknown\" "
+                                + "FROM \"%s\".\"%s\"",
+                        getDatabaseName(), OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result1 = queryMapper.get(query1);
+        Assertions.assertNotNull(result1);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result1.getCollectionName());
+        Assertions.assertEquals(3, result1.getColumnMetaData().size());
+        Assertions.assertEquals(1, result1.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"literalTrue\": {\"$literal\": true}, "
+                                + "\"literalFalse\": {\"$literal\": false}, "
+                                + "\"literalUnknown\": null, \"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+
+        // Numeric literals
+        final String query2 = String.format(
+                "SELECT CAST(-128 AS TINYINT) AS \"literalTinyInt\", "
+                        + "CAST(-32768 AS SMALLINT) AS \"literalSmallInt\", "
+                        + "CAST(-2147483648 AS INT) AS \"literalInt\", "
+                        + "CAST(-9223372036854775808 AS BIGINT) AS \"literalBigInt\", "
+                        + "CAST(123.45 AS DECIMAL(5, 2)) AS \"literalDecimal\", "
+                        + "CAST(123.45 AS NUMERIC(5, 2)) AS \"literalNumeric\", "
+                        + "CAST(1234.56 AS FLOAT) AS \"literalFloat\", "
+                        + "CAST(12345.678 AS REAL) AS \"literalReal\", "
+                        + "CAST(12345.6789999999999 AS DOUBLE) AS \"literalDouble\""
+                        + "FROM \"%s\".\"%s\"",
+                getDatabaseName(), OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result2 = queryMapper.get(query2);
+        Assertions.assertNotNull(result2);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result2.getCollectionName());
+        Assertions.assertEquals(9, result2.getColumnMetaData().size());
+        Assertions.assertEquals(1, result2.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"literalTinyInt\": {\"$literal\": {\"$numberInt\": \"-128\"}}, "
+                                + "\"literalSmallInt\": {\"$literal\": {\"$numberInt\": \"-32768\"}}, "
+                                + "\"literalInt\": {\"$literal\": {\"$numberInt\": \"-2147483648\"}}, "
+                                + "\"literalBigInt\": {\"$literal\": {\"$numberLong\": \"-9223372036854775808\"}}, "
+                                + "\"literalDecimal\": {\"$literal\": {\"$numberDouble\": \"123.45\"}}, "
+                                + "\"literalNumeric\": {\"$literal\": {\"$numberDouble\": \"123.45\"}}, "
+                                + "\"literalFloat\": {\"$literal\": {\"$numberDouble\": \"1234.56\"}}, "
+                                + "\"literalReal\": {\"$literal\": {\"$numberDouble\": \"12345.678\"}}, "
+                                + "\"literalDouble\": {\"$literal\": {\"$numberDouble\": \"12345.679\"}}, "
+                                + "\"_id\": 0}}"),
+                 result2.getAggregateOperations().get(0));
+
+        // String literals
+        final String query3 =
+                String.format(
+                        "SELECT CAST('Hello' AS CHAR(5)) AS \"literalChar\", "
+                                + "CAST('' AS CHAR(5)) AS \"literalCharEmpty\", "
+                                + "CAST('Hello' AS VARCHAR) AS \"literalVarchar\", "
+                                + "CAST('' AS VARCHAR) AS \"literalVarcharEmpty\" "
+                                + "FROM \"%s\".\"%s\"",
+                        getDatabaseName(), OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result3 = queryMapper.get(query3);
+        Assertions.assertNotNull(result3);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result3.getCollectionName());
+        Assertions.assertEquals(4, result3.getColumnMetaData().size());
+        Assertions.assertEquals(1, result3.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"literalChar\": {\"$literal\": \"Hello\"}, "
+                                + "\"literalCharEmpty\": {\"$literal\": \"     \"}, "
+                                + "\"literalVarchar\": {\"$literal\": \"Hello\"}, "
+                                + "\"literalVarcharEmpty\": {\"$literal\": \"\"}, "
+                                + "\"_id\": 0}}"),
+                result3.getAggregateOperations().get(0));
+
+        // Binary literals
+        final String query4 =
+                String.format(
+                        "SELECT CAST(x'45F0AB' AS BINARY(3)) AS \"literalBinary\", "
+                                + "CAST(x'' AS BINARY(3)) AS \"literalBinaryEmpty\", "
+                                + "CAST(x'45F0AB' AS VARBINARY) AS \"literalVarbinary\", "
+                                + "CAST(x'' AS VARBINARY) AS \"literalVarbinaryEmpty\" "
+                                + "FROM \"%s\".\"%s\"",
+                        getDatabaseName(), OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result4 = queryMapper.get(query4);
+        Assertions.assertNotNull(result4);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result4.getCollectionName());
+        Assertions.assertEquals(4, result4.getColumnMetaData().size());
+        Assertions.assertEquals(1, result4.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"literalBinary\": {\"$binary\": {\"base64\": \"RfCr\", \"subType\": \"00\"}}, "
+                                + "\"literalBinaryEmpty\": {\"$binary\": {\"base64\": \"AAAA\", \"subType\": \"00\"}}, "
+                                + "\"literalVarbinary\": {\"$binary\": {\"base64\": \"RfCr\", \"subType\": \"00\"}}, "
+                                + "\"literalVarbinaryEmpty\": {\"$binary\": {\"base64\": \"\", \"subType\": \"00\"}}, "
+                                + "\"_id\": 0}}"),
+                result4.getAggregateOperations().get(0));
+
+        // Date/time literals
+        final String query5 =
+                String.format(
+                        "SELECT TIME '20:17:40' AS \"literalTime\", "
+                                + "DATE '2017-09-20' AS \"literalDate\", "
+                                + "TIMESTAMP '2017-09-20 20:17:40' AS \"literalTimestamp\""
+                                + "FROM \"%s\".\"%s\"",
+                        getDatabaseName(), OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result5 = queryMapper.get(query5);
+        Assertions.assertNotNull(result5);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result5.getCollectionName());
+        Assertions.assertEquals(3, result5.getColumnMetaData().size());
+        Assertions.assertEquals(1, result5.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"literalTime\": {\"$date\": {\"$numberLong\": \"73060000\" }}, "
+                                + "\"literalDate\": {\"$date\": {\"$numberLong\": \"1505865600000\" }}, "
+                                + "\"literalTimestamp\": {\"$date\": {\"$numberLong\": \"1505938660000\" }}, "
+                                + "\"_id\": 0}}"),
+                result5.getAggregateOperations().get(0));
+
+        // Interval literals
+        final String query6 =
+                String.format(
+                        "SELECT INTERVAL '123-2' YEAR(3) TO MONTH AS \"literalYearToMonth\", "
+                                + "INTERVAL '123' YEAR(3) AS \"literalYear\", "
+                                + "INTERVAL 300 MONTH(3) AS \"literalMonth\", "
+                                + "INTERVAL '400' DAY(3) AS \"literalDay\", "
+                                + "INTERVAL '400 5' DAY(3) TO HOUR AS \"literalDayToHour\", "
+                                + "INTERVAL '4 5:12' DAY TO MINUTE AS \"literalDayToMinute\", "
+                                + "INTERVAL '4 5:12:10.789' DAY TO SECOND AS \"literalDayToSecond\", "
+                                + "INTERVAL '10' HOUR AS \"literalHour\", "
+                                + "INTERVAL '11:20' HOUR TO MINUTE AS \"literalHourToMinute\", "
+                                + "INTERVAL '11:20:10' HOUR TO SECOND AS \"literalHourToSecond\", "
+                                + "INTERVAL '10' MINUTE AS \"literalMinute\", "
+                                + "INTERVAL '10:22' MINUTE TO SECOND AS \"literalMinuteToSecond\", "
+                                + "INTERVAL '30' SECOND AS \"literalSecond\""
+                                + "FROM \"%s\".\"%s\"",
+                        getDatabaseName(), OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result6 = queryMapper.get(query6);
+        Assertions.assertNotNull(result6);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result6.getCollectionName());
+        Assertions.assertEquals(13, result6.getColumnMetaData().size());
+        Assertions.assertEquals(1, result6.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"literalYearToMonth\": {\"$literal\": {\"$numberLong\": \"1478\"}}, "
+                                + "\"literalYear\": {\"$literal\": {\"$numberLong\": \"1476\"}}, "
+                                + "\"literalMonth\": {'$multiply': [{\"$literal\": {\"$numberInt\": \"300\"}}, {\"$literal\": {\"$numberLong\": \"1\" }}]}, "
+                                + "\"literalDay\": {\"$literal\": {\"$numberLong\": \"34560000000\"}}, "
+                                + "\"literalDayToHour\": {\"$literal\": {\"$numberLong\": \"34578000000\"}}, "
+                                + "\"literalDayToMinute\": {\"$literal\": {\"$numberLong\": \"364320000\"}}, "
+                                + "\"literalDayToSecond\": {\"$literal\": {\"$numberLong\": \"364330789\"}}, "
+                                + "\"literalHour\": {\"$literal\": {\"$numberLong\": \"36000000\"}}, "
+                                + "\"literalHourToMinute\": {\"$literal\": {\"$numberLong\": \"40800000\"}}, "
+                                + "\"literalHourToSecond\": {\"$literal\": {\"$numberLong\": \"40810000\"}}, "
+                                + "\"literalMinute\": {\"$literal\": {\"$numberLong\": \"600000\"}}, "
+                                + "\"literalMinuteToSecond\": {\"$literal\": {\"$numberLong\": \"622000\"}}, "
+                                + "\"literalSecond\": {\"$literal\": {\"$numberLong\": \"30000\"}}, "
+                                + "_id: 0}}"),
+                result6.getAggregateOperations().get(0));
     }
 }

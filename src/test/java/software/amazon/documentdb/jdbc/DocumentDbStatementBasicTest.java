@@ -29,9 +29,13 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import java.io.IOException;
 import java.sql.Blob;
 import java.sql.Connection;
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
@@ -1523,6 +1527,272 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet1.next());
             Assertions.assertEquals(1, resultSet1.getInt(1));
             Assertions.assertFalse(resultSet1.next());
+        }
+    }
+
+    @DisplayName("Tests that all supported literal types can be retrieved.")
+    @ParameterizedTest(name = "testBooleanLiteralTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testBooleanLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testBooleanLiteralTypes";
+        final BsonDocument doc1 =
+                BsonDocument.parse("{\"_id\": 101}");
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT TRUE AS \"literalTrue\", "
+                                            + "FALSE AS \"literalFalse\", "
+                                            + "UNKNOWN AS \"literalUnknown\" "
+                                            + "FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(Types.BOOLEAN, resultSet.getMetaData().getColumnType(1));
+            Assertions.assertEquals(Types.BOOLEAN, resultSet.getMetaData().getColumnType(2));
+            Assertions.assertEquals(Types.BOOLEAN, resultSet.getMetaData().getColumnType(3));
+            Assertions.assertEquals(true, resultSet.getBoolean(1));
+            Assertions.assertEquals(false, resultSet.getBoolean(2));
+            Assertions.assertEquals(null, resultSet.getObject(3));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @DisplayName("Tests that all supported numeric literal types can be retrieved.")
+    @ParameterizedTest(name = "testNumericLiteralTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testNumericLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testNumericLiteralTypes";
+        final BsonDocument doc1 =
+                BsonDocument.parse("{\"_id\": 101}");
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            // Values wrapped in CAST to ensure they aren't interpreted as a wider type.
+            final ResultSet resultSet =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT CAST(-128 AS TINYINT) AS \"literalTinyInt\", "
+                                            + "CAST(-32768 AS SMALLINT) AS \"literalSmallInt\", "
+                                            + "CAST(-2147483648 AS INT) AS \"literalInt\", "
+                                            + "CAST(-9223372036854775808 AS BIGINT) AS \"literalBigInt\", "
+                                            + "CAST(123.45 AS DECIMAL(5, 2)) AS \"literalDecimal\", "
+                                            + "CAST(123.45 AS NUMERIC(5, 2)) AS \"literalNumeric\", "
+                                            + "CAST(1234.56 AS FLOAT) AS \"literalFloat\", "
+                                            + "CAST(12345.678 AS REAL) AS \"literalReal\", "
+                                            + "CAST(12345.6789999999999 AS DOUBLE) AS \"literalDouble\""
+                                            + "FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(Types.TINYINT, resultSet.getMetaData().getColumnType(1));
+            Assertions.assertEquals(Types.SMALLINT, resultSet.getMetaData().getColumnType(2));
+            Assertions.assertEquals(Types.INTEGER, resultSet.getMetaData().getColumnType(3));
+            Assertions.assertEquals(Types.BIGINT, resultSet.getMetaData().getColumnType(4));
+            Assertions.assertEquals(Types.DECIMAL, resultSet.getMetaData().getColumnType(5));
+            Assertions.assertEquals(Types.DECIMAL, resultSet.getMetaData().getColumnType(6));
+            Assertions.assertEquals(Types.FLOAT, resultSet.getMetaData().getColumnType(7));
+            Assertions.assertEquals(Types.REAL, resultSet.getMetaData().getColumnType(8));;
+            Assertions.assertEquals(Types.DOUBLE, resultSet.getMetaData().getColumnType(9));;
+            Assertions.assertEquals(-128, resultSet.getInt(1));
+            Assertions.assertEquals(-32768, resultSet.getInt(2));
+            Assertions.assertEquals(-2147483648, resultSet.getInt(3));
+            Assertions.assertEquals(-9223372036854775808L, resultSet.getLong(4));
+            Assertions.assertEquals(123.45, resultSet.getDouble(5));
+            Assertions.assertEquals(123.45, resultSet.getDouble(6));
+            Assertions.assertEquals(1234.56, resultSet.getDouble(7));
+            Assertions.assertEquals(12345.678, resultSet.getDouble(8));
+            Assertions.assertEquals(12345.6789999999999, resultSet.getDouble(9));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @DisplayName("Tests that all supported string literal types can be retrieved.")
+    @ParameterizedTest(name = "testStringLiteralTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testStringLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testStringLiteralTypes";
+        final BsonDocument doc1 =
+                BsonDocument.parse("{\"_id\": 101}");
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            // Values wrapped in CAST to ensure they aren't interpreted as a wider type.
+            final ResultSet resultSet =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT CAST('Hello' AS CHAR(5)) AS \"literalChar\", "
+                                            + "CAST('' AS CHAR(5)) AS \"literalCharEmpty\", "
+                                            + "CAST('Hello' AS VARCHAR) AS \"literalVarchar\", "
+                                            + "CAST('' AS VARCHAR) AS \"literalVarcharEmpty\" "
+                                            + "FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(Types.CHAR, resultSet.getMetaData().getColumnType(1));
+            Assertions.assertEquals(Types.CHAR, resultSet.getMetaData().getColumnType(2));
+            Assertions.assertEquals(Types.VARCHAR, resultSet.getMetaData().getColumnType(3));
+            Assertions.assertEquals(Types.VARCHAR, resultSet.getMetaData().getColumnType(4));
+            Assertions.assertEquals("Hello", resultSet.getString(1));
+            Assertions.assertEquals("     ", resultSet.getString(2));
+            Assertions.assertEquals("Hello", resultSet.getString(3));
+            Assertions.assertEquals("", resultSet.getString(4));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @DisplayName("Tests that all supported binary literal types can be retrieved.")
+    @ParameterizedTest(name = "testBinaryLiteralTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testBinaryLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testBinaryLiteralTypes";
+        final byte[] expected = {69, -16, -85};
+        final BsonDocument doc1 =
+                BsonDocument.parse("{\"_id\": 101}");
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            // Values wrapped in CAST to ensure they aren't interpreted as a wider type.
+            final ResultSet resultSet =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT CAST(x'45F0AB' AS BINARY(3)) AS \"literalBinary\", "
+                                            + "CAST(x'' AS BINARY(3)) AS \"literalBinaryEmpty\", "
+                                            + "CAST(x'45F0AB' AS VARBINARY) AS \"literalVarbinary\", "
+                                            + "CAST(x'' AS VARBINARY) AS \"literalVarbinaryEmpty\" "
+                                            + "FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(Types.BINARY, resultSet.getMetaData().getColumnType(1));
+            Assertions.assertEquals(Types.BINARY, resultSet.getMetaData().getColumnType(2));
+            Assertions.assertEquals(Types.VARBINARY, resultSet.getMetaData().getColumnType(3));
+            Assertions.assertEquals(Types.VARBINARY, resultSet.getMetaData().getColumnType(4));
+            Assertions.assertArrayEquals(expected, resultSet.getBytes(1));
+            Assertions.assertArrayEquals(new byte[] {0, 0, 0}, resultSet.getBytes(2));
+            Assertions.assertArrayEquals(expected, resultSet.getBytes(3));
+            Assertions.assertArrayEquals(new byte[]{}, resultSet.getBytes(4));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @DisplayName("Tests that all supported date time literal types can be retrieved.")
+    @ParameterizedTest(name = "testDateTimeLiteralTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testDateTimeLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testDateTimeLiteralTypes";
+        final BsonDocument doc1 =
+                BsonDocument.parse("{\"_id\": 101}");
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT TIME '20:17:40' AS \"literalTime\", "
+                                            + "DATE '2017-09-20' AS \"literalDate\", "
+                                            + "TIMESTAMP '2017-09-20 20:17:40' AS \"literalTimestamp\""
+                                            + "FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(Types.TIME, resultSet.getMetaData().getColumnType(1));
+            Assertions.assertEquals(Types.DATE, resultSet.getMetaData().getColumnType(2));
+            Assertions.assertEquals(Types.TIMESTAMP, resultSet.getMetaData().getColumnType(3));
+            Assertions.assertEquals(new Time(73060000), resultSet.getTime(1));
+            Assertions.assertEquals(new Date(1505865600000L), resultSet.getDate(2));
+            Assertions.assertEquals(new Timestamp(1505938660000L), resultSet.getTimestamp(3));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @DisplayName("Tests that all supported interval literal types can be retrieved.")
+    @ParameterizedTest(name = "testIntervalLiteralTypes - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testIntervalLiteralTypes(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testIntervalLiteralTypes";
+        final BsonDocument doc1 =
+                BsonDocument.parse("{\"_id\": 101}");
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT INTERVAL '123-2' YEAR(3) TO MONTH AS \"literalYearToMonth\", "
+                                            + "INTERVAL '123' YEAR(3) AS \"literalYear\", "
+                                            + "INTERVAL 300 MONTH(3) AS \"literalMonth\", "
+                                            + "INTERVAL '400' DAY(3) AS \"literalDay\", "
+                                            + "INTERVAL '400 5' DAY(3) TO HOUR AS \"literalDayToHour\", "
+                                            + "INTERVAL '4 5:12' DAY TO MINUTE AS \"literalDayToMinute\", "
+                                            + "INTERVAL '4 5:12:10.789' DAY TO SECOND AS \"literalDayToSecond\", "
+                                            + "INTERVAL '10' HOUR AS \"literalHour\", "
+                                            + "INTERVAL '11:20' HOUR TO MINUTE AS \"literalHourToMinute\", "
+                                            + "INTERVAL '11:20:10' HOUR TO SECOND AS \"literalHourToSecond\", "
+                                            + "INTERVAL '10' MINUTE AS \"literalMinute\", "
+                                            + "INTERVAL '10:22' MINUTE TO SECOND AS \"literalMinuteToSecond\", "
+                                            + "INTERVAL '30' SECOND AS \"literalSecond\""
+                                            + "FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+
+            // Interval SQL type is not a JDBC type but can be retrieved as a Long.
+            Assertions.assertTrue(resultSet.next());
+            for (int i = 1; i <= resultSet.getMetaData().getColumnCount(); i++ ) {
+                Assertions.assertEquals(Types.OTHER, resultSet.getMetaData().getColumnType(i));
+            }
+            // YEAR TO MONTH intervals are represented as months.
+            Assertions.assertEquals(1478, resultSet.getLong(1));
+            Assertions.assertEquals(1476, resultSet.getLong(2));
+            Assertions.assertEquals(300, resultSet.getLong(3));
+            // DAY TO SECOND intervals are represented as milliseconds.
+            Assertions.assertEquals(34560000000L, resultSet.getLong(4));
+            Assertions.assertEquals(34578000000L, resultSet.getLong(5));
+            Assertions.assertEquals(364320000, resultSet.getLong(6));
+            Assertions.assertEquals(364330789, resultSet.getLong(7));
+            Assertions.assertEquals(36000000, resultSet.getLong(8));
+            Assertions.assertEquals(40800000, resultSet.getLong(9));
+            Assertions.assertEquals(40810000, resultSet.getLong(10));
+            Assertions.assertEquals(600000, resultSet.getLong(11));
+            Assertions.assertEquals(622000, resultSet.getLong(12));
+            Assertions.assertEquals(30000, resultSet.getLong(13));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
+
+    @DisplayName("Tests that supported interval literals can be used to calculate a new interval literal.")
+    @ParameterizedTest(name = "testIntervalLiteralOperations - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testIntervalLiteralOperations(final DocumentDbTestEnvironment testEnvironment)
+            throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testIntervalLiteralOperations";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        insertBsonDocuments(tableName, new BsonDocument[] {doc1});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet =
+                    statement.executeQuery(
+                            String.format(
+                                    "SELECT INTERVAL '5-3' YEAR TO MONTH + INTERVAL '20' MONTH, "
+                                            + "INTERVAL '20' DAY - INTERVAL '240' HOUR(3) "
+                                            + "FROM \"%s\".\"%s\"",
+                                    getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            // YEAR TO MONTH intervals are represented as months (6 years, 11 months)
+            Assertions.assertEquals(83, resultSet.getLong(1));
+            // DAY TO SECOND intervals are represented as milliseconds (10 days)
+            Assertions.assertEquals(864000000, resultSet.getLong(2));
+            Assertions.assertFalse(resultSet.next());
         }
     }
 }
