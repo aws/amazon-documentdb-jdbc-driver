@@ -383,6 +383,7 @@ public final class DocumentDbRules {
             }
 
             switch (literal.getType().getSqlTypeName()) {
+                // TODO: Use $numberDecimal to handle DECIMAL instead if support for 128-bit decimals is added.
                 case DECIMAL:
                 case DOUBLE:
                 case FLOAT:
