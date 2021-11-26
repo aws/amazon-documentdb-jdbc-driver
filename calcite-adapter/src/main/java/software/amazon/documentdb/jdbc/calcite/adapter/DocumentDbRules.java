@@ -49,6 +49,7 @@ import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Bug;
 import org.apache.calcite.util.DateString;
+import org.apache.calcite.util.TimeString;
 import org.apache.calcite.util.Util;
 import org.apache.calcite.util.trace.CalciteTrace;
 import org.bson.BsonType;
@@ -382,22 +383,44 @@ public final class DocumentDbRules {
             }
 
             switch (literal.getType().getSqlTypeName()) {
-                case DOUBLE:
+                // TODO: Use $numberDecimal to handle DECIMAL instead if support for 128-bit decimals is added.
                 case DECIMAL:
+                case DOUBLE:
+                case FLOAT:
+                case REAL:
                     final String doubleFormat = "{\"$numberDouble\": \"" + getValueAs(literal, Double.class) + "\"}";
-                    return new Operand(doubleFormat, doubleFormat, true);
-                case BIGINT:
-                case INTERVAL_DAY:
-                case INTERVAL_HOUR:
-                case INTERVAL_MINUTE:
-                case INTERVAL_SECOND:
+                    return new Operand("{\"$literal\": " + doubleFormat + "}", doubleFormat, true);
+                case TINYINT:
+                case SMALLINT:
+                case INTEGER:
                     // Convert supported intervals to milliseconds.
+                    final String intFormat = "{\"$numberInt\": \"" +  getValueAs(literal, Long.class) + "\"}";
+                    return new Operand("{\"$literal\": " + intFormat + "}", intFormat, true);
+                case BIGINT:
+                case INTERVAL_MONTH:
+                case INTERVAL_YEAR:
+                case INTERVAL_YEAR_MONTH:
+                case INTERVAL_DAY:
+                case INTERVAL_DAY_HOUR:
+                case INTERVAL_DAY_MINUTE:
+                case INTERVAL_DAY_SECOND:
+                case INTERVAL_HOUR:
+                case INTERVAL_HOUR_MINUTE:
+                case INTERVAL_HOUR_SECOND:
+                case INTERVAL_MINUTE:
+                case INTERVAL_MINUTE_SECOND:
+                case INTERVAL_SECOND:
+                    // Convert supported intervals to milliseconds (DAY TO SECOND types) OR months (YEAR TO MONTH types).
                     final String longFormat = "{\"$numberLong\": \"" + getValueAs(literal, Long.class) + "\"}";
-                    return new Operand(longFormat, longFormat, true);
+                    return new Operand("{\"$literal\": " + longFormat + "}", longFormat, true);
                 case DATE:
                     // NOTE: Need to get the number of milliseconds from Epoch (not # of days).
                     final String dateFormat = "{\"$date\": {\"$numberLong\": \"" + getValueAs(literal, DateString.class).getMillisSinceEpoch() + "\" } }";
                     return new Operand(dateFormat, dateFormat, true);
+                case TIME:
+                    // NOTE: Need to get the number of milliseconds from day. Date portion is left as zero epoch.
+                    final String timeFormat = "{\"$date\": {\"$numberLong\": \"" + getValueAs(literal, TimeString.class).getMillisOfDay() + "\" } }";
+                    return new Operand(timeFormat, timeFormat, true);
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                     // Convert from date in milliseconds to MongoDb date.
@@ -577,22 +600,10 @@ public final class DocumentDbRules {
             final RexCall call,
             final List<Operand> strings,
             final String stdOperator) {
-        verifySupportedType(call);
         if (hasObjectIdAndLiteral(call, strings)) {
             return new Operand(getObjectIdAggregateForOperator(call, strings, stdOperator));
         }
         return new Operand("{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}");
-    }
-
-    private static void verifySupportedType(final RexCall call)
-            throws SQLFeatureNotSupportedException {
-        if (call.type.getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
-                || call.type.getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
-            throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
-                    SqlError.UNSUPPORTED_CONVERSION,
-                    call.type.getSqlTypeName().getName(),
-                    SqlTypeName.TIMESTAMP.getName());
-        }
     }
 
     private static Operand getIntegerDivisionOperation(final String value, final String divisor) {
@@ -732,9 +743,21 @@ public final class DocumentDbRules {
             return new Operand(currentTimestamp, currentTimestamp, true);
         }
 
+        @SneakyThrows
         private static Operand translateDateAdd(final RexCall call, final List<Operand> strings) {
-            // TODO: Check for unsupported intervals and throw error/emulate in some other way.
+            verifySupportedDateAddType(call.getOperands().get(1));
             return new Operand("{ \"$add\":" + "[" + Util.commaList(strings) + "]}");
+        }
+
+        private static void verifySupportedDateAddType(final RexNode node)
+                throws SQLFeatureNotSupportedException {
+            if (node.getType().getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
+                    || node.getType().getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
+                throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
+                        SqlError.UNSUPPORTED_CONVERSION,
+                        node.getType().getSqlTypeName().getName(),
+                        SqlTypeName.TIMESTAMP.getName());
+            }
         }
 
         @SneakyThrows
