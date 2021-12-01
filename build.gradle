@@ -297,7 +297,7 @@ dependencies {
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.3.4'
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
-    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '9.1'
+    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '9.2'
     compileOnly         'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
