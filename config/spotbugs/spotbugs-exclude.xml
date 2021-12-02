@@ -51,6 +51,7 @@
       <Source name="DocumentDbStatementDateTimeTest.java"/>
       <Source name="DocumentDbStatementFilterTest.java"/>
       <Source name="DocumentDbStatementJoinTest.java"/>
+      <Source name="DocumentDbStatementStringTest.java"/>
       <Source name="DocumentDbConnection.java"/>
       <Source name="DocumentDbConnection.java"/>
       <Source name="DocumentDbPreparedStatement.java"/>
