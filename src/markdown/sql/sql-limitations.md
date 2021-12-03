@@ -274,7 +274,7 @@ This can produce results that are unexpected for those unfamiliar with the under
 Note that using `%` as a modulo operator is not supported. Use `MOD` instead.
 
 ### String Operators and Functions  
-- `string || string` or `{fn CONCAT(string, string)}` concatenate two strings.
+- `string || string` or `{fn CONCAT(string, string)}` to concatenate two strings.
 - `CONCAT(string [, string ]*)` to concatenate two or more strings.
 - `CHAR_LENGTH(string)` or `CHARACTER_LENGTH(string)` or `{fn LENGTH(string)}`
 - `LOWER(string)`or `{fn LCASE(string)}` 
