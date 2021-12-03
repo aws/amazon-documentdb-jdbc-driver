@@ -274,17 +274,16 @@ This can produce results that are unexpected for those unfamiliar with the under
 Note that using `%` as a modulo operator is not supported. Use `MOD` instead.
 
 ### String Operators and Functions  
-- `string || string` or `{fn CONCAT(string, string)}` to concatenate two strings.
-- `CONCAT(string [, string ]*)` to concatenate two or more strings.
+- `string || string` or `{fn CONCAT(string, string)}` to concatenate two strings
+- `CONCAT(string [, string ]*)` to concatenate two or more strings
 - `CHAR_LENGTH(string)` or `CHARACTER_LENGTH(string)` or `{fn LENGTH(string)}`
 - `LOWER(string)`or `{fn LCASE(string)}` 
 - `POSITION(substring IN string)` or `{fn LOCATE(substring, string)}`
-  where `offset` is an integer.
 - `POSITION(substring IN string FROM offset)` or `{fn LOCATE(substring, string)}`
-  where `offset` is an integer.
-- `SUBSTRING(string FROM offset)` or `SUBSTRING(string, offset)` where `offset` is an integer.
+  where `offset` is an integer
+- `SUBSTRING(string FROM offset)` or `SUBSTRING(string, offset)` where `offset` is an integer
 - `SUBSTRING(string FROM offset FOR length)` or `SUBSTRING(string, offset, length)` 
-or `{fn SUBSTRING(string, offset, length)}` where `offset` and `length` are integers.
+or `{fn SUBSTRING(string, offset, length)}` where `offset` and `length` are integers
 - `UPPER(string)` or `{fn UCASE(string)}`
 
 ### Date/time Functions
