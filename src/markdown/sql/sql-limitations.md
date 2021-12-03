@@ -279,7 +279,7 @@ Note that using `%` as a modulo operator is not supported. Use `MOD` instead.
 - `CHAR_LENGTH(string)` or `CHARACTER_LENGTH(string)` or `{fn LENGTH(string)}`
 - `LOWER(string)`or `{fn LCASE(string)}` 
 - `POSITION(substring IN string)` or `{fn LOCATE(substring, string)}`
-- `POSITION(substring IN string FROM offset)` or `{fn LOCATE(substring, string)}`
+- `POSITION(substring IN string FROM offset)` or `{fn LOCATE(substring, string, offset)}`
   where `offset` is an integer
 - `SUBSTRING(string FROM offset)` or `SUBSTRING(string, offset)` where `offset` is an integer
 - `SUBSTRING(string FROM offset FOR length)` or `SUBSTRING(string, offset, length)` 
