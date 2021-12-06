@@ -282,8 +282,11 @@ public abstract class DocumentDbAbstractResultSet extends
 
     @Override
     public Object getObject(final int columnIndex) throws SQLException {
-        // Don't try to convert to Object here.
-        return getValue(columnIndex);
+        // Don't try to convert to Object here. Return value as is but check if null.
+        verifyState(columnIndex);
+        final Object o = getValue(columnIndex);
+        wasNull = (o == null);
+        return o;
     }
 
     @Override

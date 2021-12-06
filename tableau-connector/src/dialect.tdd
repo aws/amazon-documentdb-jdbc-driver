@@ -439,6 +439,11 @@
       <argument type='int' />
       <argument type='int' />
     </function>
+    <function group='operator' name='+' return-type='str'>
+      <formula>(%1 || %2)</formula>
+      <argument type='str' />
+      <argument type='str' />
+    </function>
     <function group='operator' name='+' return-type='datetime'>
       <formula>TIMESTAMPADD(SECOND, CAST((%2 * 86400) AS BIGINT), %1)</formula>
       <argument type='datetime' />
@@ -572,6 +577,35 @@
       <argument type='bool' />
       <argument type='bool' />
     </function>
+    <function group='string' name='CONTAINS' return-type='bool'>
+      <formula>(POSITION(%2 IN %1) &gt; 0)</formula>
+      <argument type='str' />
+      <argument type='str' />
+    </function>
+    <function group='string' name='ENDSWITH' return-type='bool'>
+      <formula>POSITION(%2 IN %1 FROM (CHAR_LENGTH(%1) - CHAR_LENGTH(%2) + 1)) = (CHAR_LENGTH(%1) - CHAR_LENGTH(%2) + 1) </formula>
+      <argument type='str' />
+      <argument type='str' />
+    </function>
+    <function group='string' name='FIND' return-type='int'>
+      <formula>POSITION(%2 IN %1)</formula>
+      <argument type='str' />
+      <argument type='str' />
+    </function>
+    <function group='string' name='FIND' return-type='int'>
+      <formula>POSITION(%2 IN %1 FROM %3)</formula>
+      <argument type='str' />
+      <argument type='str' />
+      <argument type='int' />
+    </function>
+    <function group='string' name='LEN' return-type='int'>
+      <formula>CHAR_LENGTH(%1)</formula>
+      <argument type='str' />
+    </function>
+    <function group='string' name='LOWER' return-type='str'>
+      <formula>LOWER(%1)</formula>
+      <argument type='str' />
+    </function>
     <function group='string' name='MID' return-type='str'>
       <formula>SUBSTRING(%1, %2)</formula>
       <argument type='str' />
@@ -582,6 +616,15 @@
       <argument type='str' />
       <argument type='int' />
       <argument type='int' />
+    </function>
+    <function group='string' name='STARTSWITH' return-type='bool'>
+      <formula>POSITION(%2 IN %1) = 1</formula>
+      <argument type='str' />
+      <argument type='str' />
+    </function>
+    <function group='string' name='UPPER' return-type='str'>
+      <formula>UPPER(%1)</formula>
+      <argument type='str' />
     </function>
     <function group='string' name='MAX' return-type='str'>
       <formula>(CASE
@@ -807,8 +850,8 @@
     <format-date-literal formula="(DATE '%1')" format='yyyy-MM-dd' />
     <format-datetime-literal formula="(TIMESTAMP '%1')" format='yyyy-MM-dd HH:mm:ss.SSS' />
     <format-false literal='FALSE' predicate='FALSE' />
-    <format-is-distinct value='Keyword' />
-    <format-order-by value='Nulls' />
+    <format-is-distinct value='Formula' />
+    <format-order-by value='DirectionOnly' />
     <format-select>
       <part name='Select' value='SELECT %1' />
       <part name='From' value='FROM %1' />
