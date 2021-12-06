@@ -1124,22 +1124,25 @@ public final class DocumentDbRules {
                 new HashMap<>();
 
         static {
-            STRING_OPERATORS.put(SqlStdOperatorTable.CONCAT, "$concat");
-            STRING_OPERATORS.put(SqlLibraryOperators.CONCAT_FUNCTION, "$concat");
+            STRING_OPERATORS.put(SqlStdOperatorTable.CONCAT, "$concat");;
             STRING_OPERATORS.put(SqlStdOperatorTable.LOWER, "$toLower");
             STRING_OPERATORS.put(SqlStdOperatorTable.UPPER, "$toUpper");
             STRING_OPERATORS.put(SqlStdOperatorTable.CHAR_LENGTH, "$strLenCP");
+            STRING_OPERATORS.put(SqlStdOperatorTable.SUBSTRING, "$substrCP");
+            STRING_OPERATORS.put(SqlStdOperatorTable.POSITION, "$indexOfCP");
         }
 
         private static Operand getMongoAggregateForSubstringOperator(
                 final RexCall call,
                 final List<Operand> strings) {
             final List<Operand> inputs = new ArrayList<>(strings);
-            inputs.set(1, new Operand("{$subtract: [" + inputs.get(1) + ", 1]}")); // Conversion from one-indexed to zero-indexed
+            // Convert from one-indexed to zero-indexed
+            inputs.set(1, new Operand("{\"$subtract\": [" + inputs.get(1) + ", 1]}"));
             if (inputs.size() == 2) {
                 inputs.add(new Operand(String.valueOf(Integer.MAX_VALUE)));
             }
-            return new Operand("{$substrCP: [" + Util.commaList(inputs) + "]}");
+            return new Operand("{"
+                    + STRING_OPERATORS.get(SqlStdOperatorTable.SUBSTRING) + ": [" + Util.commaList(inputs) + "]}");
         }
 
         private static Operand getMongoAggregateForConcatOperator(
@@ -1153,7 +1156,8 @@ public final class DocumentDbRules {
                                             ? "{\"$ifNull\": [" + string + ", \"\" ]}"
                                             : string.toString())
                             .collect(Collectors.toList());
-            return new Operand("{\"$concat\": [" + Util.commaList(inputs) + "]}");
+            return new Operand("{" + STRING_OPERATORS.get(SqlStdOperatorTable.CONCAT)
+                    + ": [" + Util.commaList(inputs) + "]}");
         }
         private static Operand getMongoAggregateForPositionStringOperator(
                 final RexCall call,
@@ -1163,8 +1167,8 @@ public final class DocumentDbRules {
             final StringBuilder finish = new StringBuilder();
             // Comparison is case-insensitive so convert both strings to same case.
             // Note also that argument order in $indexOfCP needs to be string, substring, [startIndex].
-            args.add("{\"$toLower\":" + strings.get(1) + "}");
-            args.add("{\"$toLower\":" + strings.get(0) + "}");
+            args.add("{" + STRING_OPERATORS.get(SqlStdOperatorTable.LOWER) + ":" + strings.get(1) + "}");
+            args.add("{" + STRING_OPERATORS.get(SqlStdOperatorTable.LOWER) + ":" + strings.get(0) + "}");
             // Check if either string is null.
             operand.append("{\"$cond\": [" + RexToMongoTranslator.getNullCheckExpr(strings) + ", ");
             // Add starting index if any.
@@ -1174,7 +1178,7 @@ public final class DocumentDbRules {
                 finish.append("]}");
             }
             // Convert 0-based index to 1-based.
-            operand.append("{\"$add\": [{\"$indexOfCP\": [" + Util.commaList(args) + "]}, 1]}");
+            operand.append("{\"$add\": [{" + STRING_OPERATORS.get(SqlStdOperatorTable.POSITION) + ": [" + Util.commaList(args) + "]}, 1]}");
             operand.append(finish);
             operand.append(", null ]}");
             // Return 1-based index when string is found.
