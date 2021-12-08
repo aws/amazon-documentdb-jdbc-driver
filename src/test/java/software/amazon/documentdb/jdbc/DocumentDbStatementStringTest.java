@@ -436,21 +436,31 @@ public class DocumentDbStatementStringTest extends DocumentDbStatementTest {
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);
 
-            final ResultSet resultSet = statement.executeQuery(
+            final ResultSet resultSet1 = statement.executeQuery(
                     String.format("SELECT LEFT(\"field\", 5) FROM \"%s\".\"%s\"",
                             getDatabaseName(), tableName));
-            Assertions.assertNotNull(resultSet);
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("Hello", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("寿司", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertNull(resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertNull(resultSet.getString(1));
-            Assertions.assertFalse(resultSet.next());
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("Hello", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("寿司", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getString(1));
+            Assertions.assertFalse(resultSet1.next());
+
+            // A negative length always results in null.
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format("SELECT LEFT(\"field\", -2) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            while (resultSet2.next()) {
+                Assertions.assertNull(resultSet2.getObject(1));
+                Assertions.assertTrue(resultSet2.wasNull());
+            }
         }
     }
 
@@ -474,21 +484,31 @@ public class DocumentDbStatementStringTest extends DocumentDbStatementTest {
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);
 
-            final ResultSet resultSet = statement.executeQuery(
+            final ResultSet resultSet1 = statement.executeQuery(
                     String.format("SELECT RIGHT(\"field\", 5) FROM \"%s\".\"%s\"",
                             getDatabaseName(), tableName));
-            Assertions.assertNotNull(resultSet);
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("orld!", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("寿司", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertEquals("", resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertNull(resultSet.getString(1));
-            Assertions.assertTrue(resultSet.next());
-            Assertions.assertNull(resultSet.getString(1));
-            Assertions.assertFalse(resultSet.next());
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("orld!", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("寿司", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getString(1));
+            Assertions.assertFalse(resultSet1.next());
+
+            // A negative length always results in null.
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format("SELECT RIGHT(\"field\", -2) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            while (resultSet2.next()) {
+                Assertions.assertNull(resultSet2.getObject(1));
+                Assertions.assertTrue(resultSet2.wasNull());
+            }
         }
     }
 }

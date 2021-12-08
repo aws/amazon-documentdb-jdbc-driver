@@ -247,7 +247,7 @@ public class DocumentDbQueryMappingServiceStringTest extends DocumentDbQueryMapp
         Assertions.assertEquals(1, result1.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$substrCP\": [\"$field\", 0, {\"$literal\": 5}]}, null]}, \"_id\": 0}}"),
+                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$gte\": [{\"$literal\": 5}, 0]}]}, {\"$substrCP\": [\"$field\", 0, {\"$literal\": 5}]}, null]}, \"_id\": 0}}"),
                 result1.getAggregateOperations().get(0));
 
         final String query2 =
@@ -260,7 +260,7 @@ public class DocumentDbQueryMappingServiceStringTest extends DocumentDbQueryMapp
         Assertions.assertEquals(1, result2.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$substrCP\": [\"$field\", 0, {\"$literal\": 5}]}, null]}, \"_id\": 0}}"),
+                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$gte\": [{\"$literal\": 5}, 0]}]}, {\"$substrCP\": [\"$field\", 0, {\"$literal\": 5}]}, null]}, \"_id\": 0}}"),
                 result1.getAggregateOperations().get(0));
     }
 
@@ -277,7 +277,7 @@ public class DocumentDbQueryMappingServiceStringTest extends DocumentDbQueryMapp
         Assertions.assertEquals(1, result1.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$cond\": [{\"$lte\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, \"$field\", {\"$substrCP\": [\"$field\", {\"$subtract\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, {\"$literal\": 5}]}]}, null]}, \"_id\": 0}}"),
+                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$gte\": [{\"$literal\": 5}, 0]}]}, {\"$cond\": [{\"$lte\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, \"$field\", {\"$substrCP\": [\"$field\", {\"$subtract\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, {\"$literal\": 5}]}]}, null]}, \"_id\": 0}}"),
                 result1.getAggregateOperations().get(0));
 
         final String query2 =
@@ -290,7 +290,7 @@ public class DocumentDbQueryMappingServiceStringTest extends DocumentDbQueryMapp
         Assertions.assertEquals(1, result2.getAggregateOperations().size());
         Assertions.assertEquals(
                 BsonDocument.parse(
-                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$cond\": [{\"$lte\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, \"$field\", {\"$substrCP\": [\"$field\", {\"$subtract\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, {\"$literal\": 5}]}]}, null]}, \"_id\": 0}}"),
+                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$gte\": [{\"$literal\": 5}, 0]}]}, {\"$cond\": [{\"$lte\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, \"$field\", {\"$substrCP\": [\"$field\", {\"$subtract\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, {\"$literal\": 5}]}]}, null]}, \"_id\": 0}}"),
                 result1.getAggregateOperations().get(0));
     }
 }

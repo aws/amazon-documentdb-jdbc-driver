@@ -1211,8 +1211,11 @@ public final class DocumentDbRules {
             // Returns substring starting from 0 to given length.
             // If length is greater than length of string, the entire string will be returned.
             return new Operand("{\"$cond\": ["
+                    + "{\"$and\": ["
                     + RexToMongoTranslator.getNullCheckExpr(strings)
                     + ", "
+                    + "{\"$gte\":[" + strings.get(1) + ", 0]}"
+                    + "]}, "
                     + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.SUBSTRING) + ": [" + Util.commaList(inputs) + "]}"
                     + ", null]}");
         }
@@ -1230,8 +1233,11 @@ public final class DocumentDbRules {
             // If string length is less than or equal to number of characters then return the entire
             // string. Else, return substring.
             return new Operand("{\"$cond\": ["
+                    + "{\"$and\": ["
                     + RexToMongoTranslator.getNullCheckExpr(strings)
                     + ", "
+                    + "{\"$gte\":[" + strings.get(1) + ", 0]}"
+                    + "]}, "
                     + "{\"$cond\": [ "
                     + "{\"$lte\": ["
                     + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.CHAR_LENGTH) + ":" + strings.get(0) + "}, "
