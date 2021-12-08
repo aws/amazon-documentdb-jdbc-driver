@@ -280,12 +280,12 @@ Note that using `%` as a modulo operator is not supported. Use `MOD` instead.
 - `LEFT(string, length)` or `{fn LEFT(string, length)}` where `length` is an integer
 - `LOWER(string)`or `{fn LCASE(string)}` 
 - `POSITION(substring IN string)` or `{fn LOCATE(substring, string)}`
-- `POSITION(substring IN string FROM offset)` or `{fn LOCATE(substring, string, offset)}` 
+- `POSITION(substring IN string FROM offset)` or `{fn LOCATE(substring, string, offset)}`
   where `offset` is an integer
 - `RIGHT(string, length)` or `{fn RIGHT(string, length)}` where `length` is an integer
-- `SUBSTRING(string FROM offset)` or `SUBSTRING(string, offset)` or  `{fn SUBSTRING(string, offset)}` where `offset` is an integer
-- `SUBSTRING(string FROM offset FOR length)` or `SUBSTRING(string, offset, length)` 
-or `{fn SUBSTRING(string, offset, length)}` where `offset` and `length` are integers
+- `SUBSTRING(string FROM offset)` or `SUBSTRING(string, offset)` where `offset` is an integer
+- `SUBSTRING(string FROM offset FOR length)` or `SUBSTRING(string, offset, length)`
+  or `{fn SUBSTRING(string, offset, length)}` where `offset` and `length` are integers
 - `UPPER(string)` or `{fn UCASE(string)}`
 
 ### Date/time Functions
