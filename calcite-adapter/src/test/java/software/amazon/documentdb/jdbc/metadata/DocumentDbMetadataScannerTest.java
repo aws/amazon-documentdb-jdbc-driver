@@ -90,17 +90,12 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
         final HashSet<BsonDocument> documentSet = new HashSet<>(documents);
         Assertions.assertEquals(DocumentDbMetadataScanMethod.RANDOM, properties.getMetadataScanMethod());
         properties.setMetadataScanLimit("1");
-        final MongoCollection<RawBsonDocument> collection = database.getCollection("testGetIteratorBasic",
-                RawBsonDocument.class);
+        final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorBasic",
+                BsonDocument.class);
 
-        final Iterator<RawBsonDocument> iterator = collection.find().limit(1).iterator(); // DocumentDbMetadataScanner.getIterator(properties, collection);
+        final Iterator<BsonDocument> iterator = collection.find().limit(1).iterator(); // DocumentDbMetadataScanner.getIterator(properties, collection);
 
-        final RawBsonDocument nextDocument = iterator.next();
-        final ByteBuf byteBuffer = nextDocument.getByteBuffer();
-        final byte[] bytes = new byte[byteBuffer.limit()];
-        byteBuffer.get(bytes);
-
-        Assertions.assertTrue(documentSet.contains(nextDocument));
+        Assertions.assertTrue(documentSet.contains(iterator.next()));
         Assertions.assertThrows(NoSuchElementException.class,
                 iterator::next);
     }
