@@ -17,8 +17,6 @@
 package software.amazon.documentdb.jdbc.query;
 
 import com.google.common.collect.ImmutableList;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import lombok.SneakyThrows;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
@@ -77,12 +75,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DocumentDbQueryMappingService implements AutoCloseable {
+public class DocumentDbQueryMappingService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
     private final DocumentDbPrepareContext prepareContext;
     private final CalcitePrepare prepare;
-    private final MongoClient client;
-    private final boolean closeClient;
     private final BsonDocument maxRowsBSON;
 
     /**
@@ -92,24 +88,17 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
      *
      * @param connectionProperties the connection properties.
      * @param databaseMetadata the database schema metadata.
-     * @param client the {@link MongoClient} client.
      */
     public DocumentDbQueryMappingService(final DocumentDbConnectionProperties connectionProperties,
-            final DocumentDbDatabaseSchemaMetadata databaseMetadata,
-            final MongoClient client) {
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
         // Add MYSQL function support
         connectionProperties.putIfAbsent("FUN", "standard,mysql");
         // Leave unquoted identifiers in their original case. Identifiers are still case-sensitive
         // but do not need to be quoted
         connectionProperties.putIfAbsent("UNQUOTEDCASING", "UNCHANGED");
-        // Initialize the MongoClient
-        this.client = client != null
-                ? client
-                : MongoClients.create(connectionProperties.buildMongoClientSettings());
-        this.closeClient = client == null;
         this.prepareContext =
                 new DocumentDbPrepareContext(
-                        getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata, this.client),
+                        getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
                         connectionProperties.getDatabase(),
                         connectionProperties);
         this.prepare = new DocumentDbPrepareImplementation();
@@ -195,20 +184,12 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
      */
     private static CalciteSchema getRootSchemaFromDatabaseMetadata(
             final DocumentDbConnectionProperties connectionProperties,
-            final DocumentDbDatabaseSchemaMetadata databaseMetadata,
-            final MongoClient client) {
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
         final SchemaPlus parentSchema = CalciteSchema.createRootSchema(true).plus();
         final Schema schema = DocumentDbSchemaFactory
-                .create(databaseMetadata, connectionProperties, client);
+                .create(databaseMetadata, connectionProperties);
         parentSchema.add(connectionProperties.getDatabase(), schema);
         return CalciteSchema.from(parentSchema);
-    }
-
-    @Override
-    public void close() {
-        if (closeClient && client != null) {
-            client.close();
-        }
     }
 
     /**

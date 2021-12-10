@@ -16,18 +16,12 @@
 
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoDatabase;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.apache.calcite.linq4j.AbstractEnumerable;
 import org.apache.calcite.linq4j.Enumerator;
-import org.apache.calcite.linq4j.function.Function1;
-import org.apache.calcite.util.Util;
-import org.bson.Document;
 import org.bson.conversions.Bson;
 
-import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -38,24 +32,14 @@ import java.util.List;
 @AllArgsConstructor
 public class DocumentDbEnumerable extends AbstractEnumerable<Object> {
 
-    private final MongoClient client;
     private final String databaseName;
     private final String collectionName;
     private final List<Bson> list;
-    private final Function1<Document, Object> getter;
     private final List<String> paths;
 
     @Override
     public Enumerator<Object> enumerator() {
-        final Iterator<Document> resultIterator;
-        try {
-            final MongoDatabase database = client.getDatabase(databaseName);
-            resultIterator = database.getCollection(collectionName)
-                    .aggregate(list).iterator();
-        } catch (Exception e) {
-            throw new RuntimeException("While running MongoDB query "
-                    + Util.toString(list, "[", ",\n", "]"), e);
-        }
-        return new DocumentDbEnumerator(resultIterator, getter);
+        // Implement the enumerable interface but do not execute query.
+        return new DocumentDbEnumerator(null);
     }
 }

@@ -67,7 +67,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
     protected DocumentDbQueryMappingService getQueryMappingService() throws SQLException {
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
                 DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW, client);
-        return new DocumentDbQueryMappingService(connectionProperties, databaseMetadata, client);
+        return new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
     }
 
     protected static String getDatabaseName() {
