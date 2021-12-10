@@ -22,8 +22,6 @@ import com.mongodb.client.MongoDatabase;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
 import org.bson.BsonObjectId;
-import org.bson.ByteBuf;
-import org.bson.RawBsonDocument;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -93,7 +91,7 @@ public class DocumentDbMetadataScannerTest extends DocumentDbFlapDoodleTest {
         final MongoCollection<BsonDocument> collection = database.getCollection("testGetIteratorBasic",
                 BsonDocument.class);
 
-        final Iterator<BsonDocument> iterator = collection.find().limit(1).iterator(); // DocumentDbMetadataScanner.getIterator(properties, collection);
+        final Iterator<BsonDocument> iterator = DocumentDbMetadataScanner.getIterator(properties, collection);
 
         Assertions.assertTrue(documentSet.contains(iterator.next()));
         Assertions.assertThrows(NoSuchElementException.class,
