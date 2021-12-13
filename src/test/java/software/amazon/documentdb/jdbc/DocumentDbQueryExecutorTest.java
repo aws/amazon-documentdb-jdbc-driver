@@ -37,8 +37,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.ResultSet;
@@ -94,7 +93,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
 
     @AfterEach
     void afterAll() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(
                 VALID_CONNECTION_PROPERTIES, null)) {
             schemaWriter.remove("id");
         }

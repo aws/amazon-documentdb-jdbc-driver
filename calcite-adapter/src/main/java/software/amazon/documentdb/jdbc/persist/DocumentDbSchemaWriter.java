@@ -67,10 +67,7 @@ import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader.SCH
 import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader.TABLE_SCHEMA_COLLECTION;
 import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader.getSchema;
 
-/**
- * Implements the {@link SchemaWriter} interface for DocumentDB storage.
- */
-public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
+public class DocumentDbSchemaWriter implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchemaWriter.class);
     static final int MONGO_AUTHORIZATION_FAILURE = 13;
     private static final int MONGO_ALREADY_EXISTS = 48;
@@ -94,7 +91,11 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
         this.closeClient = client == null;
     }
 
-    @Override
+    /**
+     * Writes the complete schema for the database including any associated tables.
+     *
+     * @param schema the schema to write.
+     */
     public void write(
             final @NonNull DocumentDbSchema schema,
             final @NonNull Collection<DocumentDbSchemaTable> tablesSchema)
@@ -120,7 +121,11 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
                         tablesSchema));
     }
 
-    @Override
+    /**
+     * Writes only the specific table schemaName.
+     *  @param schema the database schema.
+     * @param tableSchemas the table schema to update.
+     */
     public void update(
             final @NonNull DocumentDbSchema schema,
             final @NonNull Collection<DocumentDbSchemaTable> tableSchemas) {
@@ -157,13 +162,22 @@ public class DocumentDbSchemaWriter implements SchemaWriter, AutoCloseable {
                         tableReferences));
     }
 
-    @Override
+    /**
+     * Remove all versions of the schema associated with the given schema name.
+     *
+     * @param schemaName the name of the database schema.
+     */
     public void remove(final @NonNull String schemaName) {
         remove(schemaName, 0);
     }
 
+    /**
+     * Remove the specific version of the schema associated with the given schema name.
+     *
+     * @param schemaName the name of the database schema.
+     * @param schemaVersion the version of the schema.
+     */
     @SneakyThrows
-    @Override
     public void remove(final @NonNull String schemaName, final int schemaVersion) {
         // NOTE: schemaVersion <= 0 indicates "any" version.
         final MongoDatabase database = getDatabase(client, properties.getDatabase());

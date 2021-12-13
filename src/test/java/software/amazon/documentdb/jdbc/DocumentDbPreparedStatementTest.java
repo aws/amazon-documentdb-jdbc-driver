@@ -25,8 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -64,7 +63,7 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
                         new Properties(),
                         getJdbcConnectionString(),
                         "jdbc:documentdb:");
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, null)) {
             schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         }
     }

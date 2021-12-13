@@ -56,10 +56,8 @@ import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter.get
 import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter.getTableSchemaFilter;
 import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter.isAuthorizationFailure;
 
-/**
- * Implementation of the {@link SchemaReader} for DocumentDB storage.
- */
-public class DocumentDbSchemaReader implements SchemaReader, AutoCloseable {
+
+public class DocumentDbSchemaReader implements AutoCloseable {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchemaReader.class);
     private final DocumentDbConnectionProperties properties;
     private final MongoClient client;
@@ -93,25 +91,44 @@ public class DocumentDbSchemaReader implements SchemaReader, AutoCloseable {
         this.closeClient = client == null;
     }
 
-    @Override
+    /**
+     * Reads the latest version of the default schema for current database.
+     *
+     * @return a {@link DocumentDbSchema} schema for the database.
+     */
     public DocumentDbSchema read() {
         return read(DEFAULT_SCHEMA_NAME);
     }
 
-    @Override
+    /**
+     * Reads the list of all schema in the current database.
+     *
+     * @return a list of {@link DocumentDbSchema} items for the current database.
+     */
     public List<DocumentDbSchema> list() throws SQLException {
         final MongoDatabase database = client.getDatabase(properties.getDatabase());
         return getAllSchema(database);
     }
 
+    /**
+     * Reads the latest version of the specified schema for current database.
+     *
+     * @param schemaName the name of the schema to read.
+     * @return a {@link DocumentDbSchema} schema for the database, or {@code null}, if not found.
+     */
     @Nullable
-    @Override
     public DocumentDbSchema read(final @NonNull String schemaName) {
         return read(schemaName, 0);
     }
 
+    /**
+     * Reads the given version of the specified schema for current database.
+     *
+     * @param schemaName the name of the schema to read.
+     * @param schemaVersion the specific version of the schema.
+     * @return a {@link DocumentDbSchema} schema for the database, or {@code null}, if not found.
+     */
     @Nullable
-    @Override
     public DocumentDbSchema read(final @NonNull String schemaName, final int schemaVersion) {
         final MongoDatabase database = getDatabase(client, properties.getDatabase());
         return getSchema(schemaName, schemaVersion, database);
@@ -137,7 +154,14 @@ public class DocumentDbSchemaReader implements SchemaReader, AutoCloseable {
         }
     }
 
-    @Override
+    /**
+     * Reads the table schema for the given table ID.
+     *
+     * @param schemaName the name of the schema to read.
+     * @param schemaVersion the specific version of the schema.
+     * @param tableId the table ID for the table schema.
+     * @return a {@link DocumentDbSchemaTable} table schema.
+     */
     public DocumentDbSchemaTable readTable(
             final @NonNull String schemaName,
             final int schemaVersion,
@@ -151,7 +175,15 @@ public class DocumentDbSchemaReader implements SchemaReader, AutoCloseable {
                 .first();
     }
 
-    @Override
+    /**
+     * Reads the table schema for the given set of table ID.
+     *
+     * @param schemaName the name of the database schema.
+     * @param schemaVersion the version of the database schema.
+     * @param tableIds the set of table IDs to read.
+     *
+     * @return a collection of {@link DocumentDbSchemaTable} table schema.
+     */
     public Collection<DocumentDbSchemaTable> readTables(
             final String schemaName,
             final int schemaVersion,

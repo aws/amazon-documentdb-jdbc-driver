@@ -24,8 +24,7 @@ import org.junit.jupiter.api.BeforeAll;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.sql.SQLException;
 
@@ -53,8 +52,7 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
 
     @AfterAll
     void teardown() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory
-                .createWriter(connectionProperties, client)) {
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(connectionProperties, client)) {
             schemaWriter.remove("id");
         }
         client.close();

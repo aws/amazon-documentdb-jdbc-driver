@@ -35,8 +35,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbMongoTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -90,7 +89,7 @@ class DocumentDbMainTest {
     @AfterEach
     void afterEach() throws Exception {
         if (properties != null) {
-            try (SchemaWriter writer = SchemaStoreFactory.createWriter(properties, null)) {
+            try (DocumentDbSchemaWriter writer = new DocumentDbSchemaWriter(properties, null)) {
                 writer.remove(DEFAULT_SCHEMA_NAME);
                 writer.remove(CUSTOM_SCHEMA_NAME);
             }

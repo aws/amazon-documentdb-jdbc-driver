@@ -30,9 +30,8 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
-import software.amazon.documentdb.jdbc.persist.SchemaReader;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -80,7 +79,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
     @AfterAll
     static void afterAll() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(
                 VALID_CONNECTION_PROPERTIES, null)) {
             schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         }
@@ -362,7 +361,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
 
         int expectedVersion = 1;
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -378,7 +377,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         expectedVersion++;
 
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -394,7 +393,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         expectedVersion++;
 
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -410,7 +409,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         expectedVersion++;
 
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -425,7 +424,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
             Assertions.assertNotNull(connection.getDatabaseMetadata());
         }
 
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
