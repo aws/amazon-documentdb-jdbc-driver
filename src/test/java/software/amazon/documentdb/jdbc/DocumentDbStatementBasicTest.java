@@ -1729,4 +1729,28 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertFalse(resultSet.next());
         }
     }
+
+    @DisplayName("Tests query with MOD() for real and integer numbers.")
+    @ParameterizedTest(name = "testQueryMod - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryMod(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryMod";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": 4}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102, \"field\": 5}");
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+            final ResultSet resultSet = statement.executeQuery(
+                    String.format("SELECT MOD(\"field\" * 0.5, 1) from \"%s\".\"%s\"", getDatabaseName(),
+                            tableName));
+            Assertions.assertNotNull(resultSet);
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(0, resultSet.getFloat(1));
+            Assertions.assertTrue(resultSet.next());
+            Assertions.assertEquals(.5, resultSet.getFloat(1));
+            Assertions.assertFalse(resultSet.next());
+        }
+    }
 }

@@ -598,6 +598,22 @@
       <argument type='str' />
       <argument type='int' />
     </function>
+    <function group='string' name='FIND' return-type='int'>
+      <formula>POSITION(%2 IN %1 FROM CAST((%3 - MOD(%3, 1)) AS BIGINT))</formula>
+      <argument type='str' />
+      <argument type='str' />
+      <argument type='real' />
+    </function>
+    <function group='string' name='LEFT' return-type='str'>
+      <formula>LEFT(%1, %2)</formula>
+      <argument type='str' />
+      <argument type='int' />
+    </function>
+    <function group='string' name='LEFT' return-type='str'>
+      <formula>LEFT(%1, CAST((%2 - MOD(%2, 1)) AS BIGINT))</formula>
+      <argument type='str' />
+      <argument type='real' />
+    </function>
     <function group='string' name='LEN' return-type='int'>
       <formula>CHAR_LENGTH(%1)</formula>
       <argument type='str' />
@@ -612,10 +628,34 @@
       <argument type='int' />
     </function>
     <function group='string' name='MID' return-type='str'>
+      <formula>SUBSTRING(%1, CAST((%2 - MOD(%2, 1)) AS BIGINT))</formula>
+      <argument type='str' />
+      <argument type='real' />
+    </function>
+    <function group='string' name='MID' return-type='str'>
       <formula>SUBSTRING(%1, %2, %3)</formula>
       <argument type='str' />
       <argument type='int' />
       <argument type='int' />
+    </function>
+    <function group='string' name='MID' return-type='str'>
+      <formula>SUBSTRING(
+        %1,
+        CAST((%2 - MOD(%2, 1)) AS BIGINT),
+        CAST((%3 - MOD(%3, 1)) AS BIGINT))</formula>
+      <argument type='str' />
+      <argument type='real' />
+      <argument type='real' />
+    </function>
+    <function group='string' name='RIGHT' return-type='str'>
+      <formula>RIGHT(%1, %2)</formula>
+      <argument type='str' />
+      <argument type='int' />
+    </function>
+    <function group='string' name='RIGHT' return-type='str'>
+      <formula>RIGHT(%1, CAST((%2 - MOD(%2, 1)) AS BIGINT))</formula>
+      <argument type='str' />
+      <argument type='real' />
     </function>
     <function group='string' name='STARTSWITH' return-type='bool'>
       <formula>POSITION(%2 IN %1) = 1</formula>
