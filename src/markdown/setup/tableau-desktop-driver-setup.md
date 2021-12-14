@@ -17,7 +17,7 @@
 #### Connecting to Amazon DocumentDB Using Tableau - External SSH Tunnel
 1. Launch the Tableau Desktop application.
 
-2. Navigate to **Connect > To A Server > More**. **Amazon DocumentDB by AWS** should be listed
+2. Navigate to **Connect > To A Server > More**. **Amazon DocumentDB by Amazon Web Services** should be listed
    under **Installed Connectors**. Select it.
 
     ![Select a Connector](../images/tableau/tableau-connector.png)

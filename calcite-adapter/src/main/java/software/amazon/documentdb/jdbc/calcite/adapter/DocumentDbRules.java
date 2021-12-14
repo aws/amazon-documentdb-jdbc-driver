@@ -328,6 +328,8 @@ public final class DocumentDbRules {
             rexCallToMongoMap.put(SqlStdOperatorTable.UPPER, StringFunctionTranslator::getMongoAggregateForStringOperator);
             rexCallToMongoMap.put(SqlStdOperatorTable.LOWER, StringFunctionTranslator::getMongoAggregateForStringOperator);
             rexCallToMongoMap.put(SqlStdOperatorTable.CHAR_LENGTH, StringFunctionTranslator::getMongoAggregateForStringOperator);
+            rexCallToMongoMap.put(SqlLibraryOperators.LEFT, StringFunctionTranslator::getMongoAggregateForLeftOperator);
+            rexCallToMongoMap.put(SqlLibraryOperators.RIGHT, StringFunctionTranslator::getMongoAggregateForRightOperator);
         }
 
         private static Operand getMongoAggregateForAndOperator(final RexCall call, final List<Operand> operands, final String s) {
@@ -1195,6 +1197,53 @@ public final class DocumentDbRules {
                     + RexToMongoTranslator.getNullCheckExpr(strings)
                     + ", "
                     + "{" + STRING_OPERATORS.get(call.getOperator()) + ": " + strings.get(0) + "}"
+                    + ", null]}");
+        }
+
+        private static Operand getMongoAggregateForLeftOperator(
+                final RexCall call,
+                final List<Operand> strings) {
+            final List<Operand> inputs = new ArrayList<>();
+            inputs.add(strings.get(0));
+            // Substring as if starting from left. Start index = 0.
+            inputs.add(new Operand("0"));
+            inputs.add(strings.get(1));
+            // Returns substring starting from 0 to given length.
+            // If length is greater than length of string, the entire string will be returned.
+            return new Operand("{\"$cond\": ["
+                    + "{\"$and\": ["
+                    + RexToMongoTranslator.getNullCheckExpr(strings)
+                    + ", "
+                    + "{\"$gte\":[" + strings.get(1) + ", 0]}"
+                    + "]}, "
+                    + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.SUBSTRING) + ": [" + Util.commaList(inputs) + "]}"
+                    + ", null]}");
+        }
+
+        private static Operand getMongoAggregateForRightOperator(
+                final RexCall call,
+                final List<Operand> strings) {
+            final List<Operand> inputs = new ArrayList<>();
+            inputs.add(strings.get(0));
+            // Substring as if starting from right. Start index = length - # of chars
+            inputs.add(new Operand("{\"$subtract\": [ "
+                    + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.CHAR_LENGTH) + ":" + strings.get(0) + "}, "
+                    + strings.get(1) + "]}"));
+            inputs.add(strings.get(1));
+            // If string length is less than or equal to number of characters then return the entire
+            // string. Else, return substring.
+            return new Operand("{\"$cond\": ["
+                    + "{\"$and\": ["
+                    + RexToMongoTranslator.getNullCheckExpr(strings)
+                    + ", "
+                    + "{\"$gte\":[" + strings.get(1) + ", 0]}"
+                    + "]}, "
+                    + "{\"$cond\": [ "
+                    + "{\"$lte\": ["
+                    + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.CHAR_LENGTH) + ":" + strings.get(0) + "}, "
+                    + strings.get(1) + "]}, "
+                    + strings.get(0) + ", "
+                    + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.SUBSTRING) + ": [" + Util.commaList(inputs) + "]}]}"
                     + ", null]}");
         }
     }
