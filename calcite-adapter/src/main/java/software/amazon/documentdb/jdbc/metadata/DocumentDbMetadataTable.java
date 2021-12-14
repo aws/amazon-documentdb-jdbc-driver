@@ -26,9 +26,6 @@ import lombok.Getter;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 import java.util.LinkedHashMap;
-import java.util.Map.Entry;
-
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
 /** Represents the fields in a document, embedded document or array. */
 @Getter
