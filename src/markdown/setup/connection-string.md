@@ -18,7 +18,7 @@
 ### Options
 | Option | Description | Default |
 |--------|-------------|---------------|
-| `appName` | (string) Sets the logical name of the application. | `NONE`
+| `appName` | (string) Sets the logical name of the application. | `Amazon DocumentDB JDBC Driver`
 | `loginTimeoutSec` | (int) How long a connection can take to be opened before timing out (in seconds). Alias for connectTimeoutMS but using seconds. | `NONE`
 | `readPreference` | (enum/string) The read preference for this connection. Allowed values: `primary`, `primaryPreferred`, `secondary`, `secondaryPreferred` or `nearest`. | `primary`
 | `replicaSet` | (string) Name of replica set to connect to. For now, passing a name other than `rs0` will log a warning. | `NONE`

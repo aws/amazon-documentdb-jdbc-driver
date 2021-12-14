@@ -327,4 +327,24 @@ public class DocumentDbConnectionPropertiesTest {
             Assertions.assertTrue(tempFile != null && tempFile.delete());
         }
     }
+
+    /**
+     * Tests getting and setting the application name.
+     */
+    @Test
+    @DisplayName("Tests retrieving default and overridden application name and that the name is used in client settings.")
+    public void testApplicationName() throws SQLException {
+        // Get default app name.
+        final Properties info = new Properties();
+        final String connectionString = "jdbc:documentdb://username:password@localhost/database";
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
+        Assertions.assertEquals("Amazon DocumentDB JDBC Driver", properties.getApplicationName());
+        // Override app name.
+        properties.setApplicationName("APPNAME");
+        Assertions.assertEquals("APPNAME", properties.getApplicationName());
+        // Build client settings and ensure app name is passed.
+        final MongoClientSettings settings = properties.buildMongoClientSettings();
+        Assertions.assertEquals("APPNAME", settings.getApplicationName());
+    }
 }

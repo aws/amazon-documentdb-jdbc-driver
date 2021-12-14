@@ -239,7 +239,9 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return The name of the application.
      */
     public String getApplicationName() {
-        return getProperty(DocumentDbConnectionProperty.APPLICATION_NAME.getName());
+        return getProperty(
+                DocumentDbConnectionProperty.APPLICATION_NAME.getName(),
+                DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue());
     }
 
     /**
