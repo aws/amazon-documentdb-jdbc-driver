@@ -298,6 +298,10 @@ public class DocumentDbConnectionPropertiesTest {
         Path documentDbTempFilePath = null;
         try {
             documentDbTempFilePath = Paths.get(getDocumentdbHomePathName(), tempFilename1);
+            final File documentDbDirectory = Paths.get(getDocumentdbHomePathName()).toFile();
+            if (!documentDbDirectory.exists()) {
+                Assertions.assertTrue(documentDbDirectory.mkdir());
+            }
             Assertions.assertTrue(documentDbTempFilePath.toFile().createNewFile());
             final Path path4 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
             Assertions.assertEquals(Paths.get(getDocumentdbHomePathName(), tempFilename1), path4);
