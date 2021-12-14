@@ -217,7 +217,7 @@ public class DocumentDbTable extends AbstractQueryableTable
         @SuppressWarnings("unchecked")
         @Override public Enumerator<T> enumerator() {
             //noinspection unchecked
-            return (Enumerator<T>) new DocumentDbEnumerator(null);
+            return (Enumerator<T>) new DocumentDbEnumerator();
         }
 
         private String getDatabaseName() {

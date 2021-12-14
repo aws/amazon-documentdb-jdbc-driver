@@ -16,22 +16,15 @@
  */
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import lombok.SneakyThrows;
 import org.apache.calcite.linq4j.Enumerator;
-import org.bson.Document;
 
-import java.util.Iterator;
-
-/** Enumerator that reads from a MongoDB collection. */
+/** Implements the enumerator interface but does not return data. */
 class DocumentDbEnumerator implements Enumerator<Object> {
-    private final Iterator<Document> cursor;
 
     /** Creates a DocumentDbEnumerator.
      *
-     * @param cursor Mongo iterator (usually a {@link com.mongodb.client.MongoCursor})
      */
-    DocumentDbEnumerator(final Iterator<Document> cursor) {
-        this.cursor = cursor;
+    DocumentDbEnumerator() {
     }
 
     @Override public Object current() {
@@ -46,12 +39,6 @@ class DocumentDbEnumerator implements Enumerator<Object> {
         throw new UnsupportedOperationException();
     }
 
-    @SneakyThrows
     @Override public void close() {
-        if (cursor instanceof AutoCloseable) {
-            ((AutoCloseable) cursor).close();
-        }
-        // AggregationOutput implements Iterator but not DBCursor. There is no
-        // available close() method -- apparently there is no open resource.
     }
 }

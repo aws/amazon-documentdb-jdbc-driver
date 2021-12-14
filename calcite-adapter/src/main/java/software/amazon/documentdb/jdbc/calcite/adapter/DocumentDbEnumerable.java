@@ -40,6 +40,6 @@ public class DocumentDbEnumerable extends AbstractEnumerable<Object> {
     @Override
     public Enumerator<Object> enumerator() {
         // Implement the enumerable interface but do not execute query.
-        return new DocumentDbEnumerator(null);
+        return new DocumentDbEnumerator();
     }
 }
