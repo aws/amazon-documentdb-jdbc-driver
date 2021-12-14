@@ -52,9 +52,12 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.DEFAULT_SCHEMA_NAME;
@@ -208,5 +211,30 @@ class DocumentDbSchemaTest {
             final List<DocumentDbSchemaColumn> columns = (List<DocumentDbSchemaColumn>) tableMap.get("columns");
             Assertions.assertEquals(13, columns.size());
         }
+    }
+
+    @DisplayName("Tests equals() method with different combinations.")
+    @Test
+    void testEquals() {
+        final Date date = new Date(100);
+        final Date otherDate = new Date(200);
+        final Set<String> tables = new LinkedHashSet<>();
+        tables.add("table");
+        final DocumentDbSchema schema1 = new DocumentDbSchema("_default", 1, "testDb", date, null);
+        final DocumentDbSchema schema2 = new DocumentDbSchema("_default", 1, "testDb", date, null);
+        final DocumentDbSchema schema3 = new DocumentDbSchema("_default", 2, "testDb", date, null);
+        final DocumentDbSchema schema4 = new DocumentDbSchema("_other", 1, "testDb", date, null);
+        final DocumentDbSchema schema5 = new DocumentDbSchema("_default", 1, "otherTestDb", date, null);
+        final DocumentDbSchema schema6 = new DocumentDbSchema("_default", 1, "testDb", otherDate, null);
+        final DocumentDbSchema schema7 = new DocumentDbSchema("_default", 1, "testDb", date, tables);
+
+        Assertions.assertTrue(schema1.equals(schema1));
+        Assertions.assertTrue(schema1.equals(schema2));
+        Assertions.assertFalse(schema1.equals(schema3));
+        Assertions.assertFalse(schema1.equals(schema4));
+        Assertions.assertFalse(schema1.equals(schema5));
+        Assertions.assertFalse(schema1.equals(schema6));
+        Assertions.assertFalse(schema1.equals(schema7));
+        Assertions.assertFalse(schema1.equals(new Object()));
     }
 }
