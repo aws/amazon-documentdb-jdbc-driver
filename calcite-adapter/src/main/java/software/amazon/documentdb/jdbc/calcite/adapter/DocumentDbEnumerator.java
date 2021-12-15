@@ -21,11 +21,8 @@ import org.apache.calcite.linq4j.Enumerator;
 /** Implements the enumerator interface but does not return data. */
 class DocumentDbEnumerator implements Enumerator<Object> {
 
-    /** Creates a DocumentDbEnumerator.
-     *
-     */
-    DocumentDbEnumerator() {
-    }
+    /** Creates a DocumentDbEnumerator. */
+    DocumentDbEnumerator() {}
 
     @Override public Object current() {
         return null;
@@ -39,6 +36,5 @@ class DocumentDbEnumerator implements Enumerator<Object> {
         throw new UnsupportedOperationException();
     }
 
-    @Override public void close() {
-    }
+    @Override public void close() {}
 }
