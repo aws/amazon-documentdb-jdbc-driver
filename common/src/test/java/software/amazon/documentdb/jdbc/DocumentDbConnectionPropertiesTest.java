@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.jupiter.api.Assertions;
@@ -326,5 +327,26 @@ public class DocumentDbConnectionPropertiesTest {
         } finally {
             Assertions.assertTrue(tempFile != null && tempFile.delete());
         }
+    }
+
+    /**
+     * Tests getting and setting the application name.
+     */
+    @Test
+    @DisplayName("Tests retrieving default and overridden application name and that the name is used in client settings.")
+    public void testApplicationName() throws SQLException {
+        // Get default app name.
+        final Properties info = new Properties();
+        final String connectionString = "jdbc:documentdb://username:password@localhost/database";
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
+        Assertions.assertFalse(Strings.isNullOrEmpty(properties.getApplicationName()));
+        Assertions.assertEquals(DocumentDbConnectionProperties.DEFAULT_APPLICATION_NAME, properties.getApplicationName());
+        // Override app name.
+        properties.setApplicationName("APPNAME");
+        Assertions.assertEquals("APPNAME", properties.getApplicationName());
+        // Build client settings and ensure app name is passed.
+        final MongoClientSettings settings = properties.buildMongoClientSettings();
+        Assertions.assertEquals("APPNAME", settings.getApplicationName());
     }
 }
