@@ -415,4 +415,100 @@ public class DocumentDbStatementStringTest extends DocumentDbStatementTest {
             Assertions.assertFalse(resultSet.next());
         }
     }
+
+    @DisplayName("Test queries using LEFT().")
+    @ParameterizedTest(name = "testQueryLeft - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryLeft(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryLeft";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"Hello World!\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"寿司\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\"}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105}");
+
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format("SELECT LEFT(\"field\", 5) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("Hello", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("寿司", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getString(1));
+            Assertions.assertFalse(resultSet1.next());
+
+            // A negative length always results in null.
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format("SELECT LEFT(\"field\", -2) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            while (resultSet2.next()) {
+                Assertions.assertNull(resultSet2.getObject(1));
+                Assertions.assertTrue(resultSet2.wasNull());
+            }
+        }
+    }
+
+    @DisplayName("Test queries using RIGHT().")
+    @ParameterizedTest(name = "testQueryRight - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testQueryRight(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testQueryRight";
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101,\n" +
+                "\"field\": \"Hello World!\"}");
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102,\n" +
+                "\"field\": \"寿司\"}");
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103,\n" +
+                "\"field\": \"\"}");
+        final BsonDocument doc4 = BsonDocument.parse("{\"_id\": 104, \n" +
+                "\"field\": null}");
+        final BsonDocument doc5 = BsonDocument.parse("{\"_id\": 105}");
+
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3, doc4, doc5});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format("SELECT RIGHT(\"field\", 5) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("orld!", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("寿司", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertEquals("", resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getString(1));
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getString(1));
+            Assertions.assertFalse(resultSet1.next());
+
+            // A negative length always results in null.
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format("SELECT RIGHT(\"field\", -2) FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            while (resultSet2.next()) {
+                Assertions.assertNull(resultSet2.getObject(1));
+                Assertions.assertTrue(resultSet2.wasNull());
+            }
+        }
+    }
 }

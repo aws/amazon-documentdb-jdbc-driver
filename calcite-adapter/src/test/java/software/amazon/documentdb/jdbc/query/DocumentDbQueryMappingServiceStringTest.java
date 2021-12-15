@@ -233,4 +233,64 @@ public class DocumentDbQueryMappingServiceStringTest extends DocumentDbQueryMapp
                         "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$gt\": [{\"$literal\": \"world\"}, null]}, {\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 3}, null]}]}, {\"$cond\": [{\"$lte\": [{\"$literal\": 3}, 0]}, 0, {\"$add\": [{\"$indexOfCP\": [{\"$toLower\": \"$field\"}, {\"$toLower\": {\"$literal\": \"world\"}}, {\"$subtract\": [{\"$literal\": 3}, 1]}]}, 1]}]}, null]}, \"_id\": 0}}"),
                 result3.getAggregateOperations().get(0));
     }
+
+    @Test
+    @DisplayName("Test queries with LEFT() and fn-escaped LEFT().")
+    void testQueryWithLeft() throws SQLException {
+        final String query1 =
+                String.format(
+                        "SELECT LEFT(\"field\", 5) FROM \"%s\".\"%s\"", getDatabaseName(), COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result1 = queryMapper.get(query1);
+        Assertions.assertNotNull(result1);
+        Assertions.assertEquals(COLLECTION_NAME, result1.getCollectionName());
+        Assertions.assertEquals(1, result1.getColumnMetaData().size());
+        Assertions.assertEquals(1, result1.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$gte\": [{\"$literal\": 5}, 0]}]}, {\"$substrCP\": [\"$field\", 0, {\"$literal\": 5}]}, null]}, \"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+
+        final String query2 =
+                String.format(
+                        "SELECT {fn LEFT(\"field\", 5)} FROM \"%s\".\"%s\"", getDatabaseName(), COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result2 = queryMapper.get(query2);
+        Assertions.assertNotNull(result2);
+        Assertions.assertEquals(COLLECTION_NAME, result2.getCollectionName());
+        Assertions.assertEquals(1, result2.getColumnMetaData().size());
+        Assertions.assertEquals(1, result2.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$gte\": [{\"$literal\": 5}, 0]}]}, {\"$substrCP\": [\"$field\", 0, {\"$literal\": 5}]}, null]}, \"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+    }
+
+    @Test
+    @DisplayName("Test queries with RIGHT() and fn-escaped RIGHT().")
+    void testQueryWithRight() throws SQLException {
+        final String query1 =
+                String.format(
+                        "SELECT RIGHT(\"field\", 5) FROM \"%s\".\"%s\"", getDatabaseName(), COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result1 = queryMapper.get(query1);
+        Assertions.assertNotNull(result1);
+        Assertions.assertEquals(COLLECTION_NAME, result1.getCollectionName());
+        Assertions.assertEquals(1, result1.getColumnMetaData().size());
+        Assertions.assertEquals(1, result1.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$gte\": [{\"$literal\": 5}, 0]}]}, {\"$cond\": [{\"$lte\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, \"$field\", {\"$substrCP\": [\"$field\", {\"$subtract\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, {\"$literal\": 5}]}]}, null]}, \"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+
+        final String query2 =
+                String.format(
+                        "SELECT {fn RIGHT(\"field\", 5)} FROM \"%s\".\"%s\"", getDatabaseName(), COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result2 = queryMapper.get(query2);
+        Assertions.assertNotNull(result2);
+        Assertions.assertEquals(COLLECTION_NAME, result2.getCollectionName());
+        Assertions.assertEquals(1, result2.getColumnMetaData().size());
+        Assertions.assertEquals(1, result2.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {\"EXPR$0\": {\"$cond\": [{\"$and\": [{\"$and\": [{\"$gt\": [\"$field\", null]}, {\"$gt\": [{\"$literal\": 5}, null]}]}, {\"$gte\": [{\"$literal\": 5}, 0]}]}, {\"$cond\": [{\"$lte\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, \"$field\", {\"$substrCP\": [\"$field\", {\"$subtract\": [{\"$strLenCP\": \"$field\"}, {\"$literal\": 5}]}, {\"$literal\": 5}]}]}, null]}, \"_id\": 0}}"),
+                result1.getAggregateOperations().get(0));
+    }
 }
