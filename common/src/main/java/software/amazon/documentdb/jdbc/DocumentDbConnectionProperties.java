@@ -743,7 +743,8 @@ public class DocumentDbConnectionProperties extends Properties {
         final String hostInfo = isNullOrWhitespace(getHostname()) ? "" : getHostname();
         final String databaseInfo = isNullOrWhitespace(getDatabase()) ? "" : getDatabase();
         final StringBuilder optionalInfo = new StringBuilder();
-        if (getApplicationName() != null) {
+        if (!getApplicationName()
+                .equals(DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.APPLICATION_NAME, getApplicationName());
         }
         if (getLoginTimeout() != Integer.parseInt(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getDefaultValue())) {
