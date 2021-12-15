@@ -136,39 +136,39 @@ public class DocumentDbTable extends AbstractQueryableTable
     }
 
     // TODO: Investigate using find() for simpler queries.
-//    /** Executes a "find" operation on the underlying collection.
-//     *
-//     * <p>For example,
-//     * <code>zipsTable.find("{state: 'OR'}", "{city: 1, zipcode: 1}")</code></p>
-//     *
-//     * @param client {@link MongoClient} client
-//     * @param filterJson Filter JSON string, or null
-//     * @param projectJson Project JSON string, or null
-//     * @param fields List of fields to project; or null to return map
-//     * @return Enumerator of results
-//     */
-//    private Enumerable<Object> find(
-//            final MongoClient client,
-//            final String databaseName,
-//            final String filterJson,
-//            final String projectJson,
-//            final List<Entry<String, Class<?>>> fields) {
-//        final MongoDatabase database = client.getDatabase(databaseName);
-//        final MongoCollection<Document> collection =
-//                database.getCollection(collectionName);
-//        final Bson filter = filterJson == null
-//                ? BsonDocument.parse("{}")
-//                : BsonDocument.parse(filterJson);
-//        final Bson project =
-//                projectJson == null ? null : BsonDocument.parse(projectJson);
-//        return new AbstractEnumerable<Object>() {
-//            @Override public Enumerator<Object> enumerator() {
-//                final FindIterable<Document> cursor =
-//                        collection.find(filter).projection(project);
-//                return new DocumentDbEnumerator(cursor.iterator());
-//            }
-//        };
-//    }
+    //    /** Executes a "find" operation on the underlying collection.
+    //     *
+    //     * <p>For example,
+    //     * <code>zipsTable.find("{state: 'OR'}", "{city: 1, zipcode: 1}")</code></p>
+    //     *
+    //     * @param client {@link MongoClient} client
+    //     * @param filterJson Filter JSON string, or null
+    //     * @param projectJson Project JSON string, or null
+    //     * @param fields List of fields to project; or null to return map
+    //     * @return Enumerator of results
+    //     */
+    //    private Enumerable<Object> find(
+    //            final MongoClient client,
+    //            final String databaseName,
+    //            final String filterJson,
+    //            final String projectJson,
+    //            final List<Entry<String, Class<?>>> fields) {
+    //        final MongoDatabase database = client.getDatabase(databaseName);
+    //        final MongoCollection<Document> collection =
+    //                database.getCollection(collectionName);
+    //        final Bson filter = filterJson == null
+    //                ? BsonDocument.parse("{}")
+    //                : BsonDocument.parse(filterJson);
+    //        final Bson project =
+    //                projectJson == null ? null : BsonDocument.parse(projectJson);
+    //        return new AbstractEnumerable<Object>() {
+    //            @Override public Enumerator<Object> enumerator() {
+    //                final FindIterable<Document> cursor =
+    //                        collection.find(filter).projection(project);
+    //                return new DocumentDbEnumerator(cursor.iterator());
+    //            }
+    //        };
+    //    }
 
     /** Executes an "aggregate" operation on the underlying collection.
      *
@@ -250,21 +250,21 @@ public class DocumentDbTable extends AbstractQueryableTable
         }
 
         // TODO: Investigate using find() for simpler queries.
-//        /** Called via code-generation.
-//         *
-//         * @param filterJson Filter document
-//         * @param projectJson Projection document
-//         * @param fields List of expected fields (and their types)
-//         * @return result of mongo query
-//         *
-//         * @see DocumentDbMethod#MONGO_QUERYABLE_FIND
-//         */
-//        @SuppressWarnings("UnusedDeclaration")
-//        public Enumerable<Object> find(final String filterJson,
-//                final String projectJson, final List<Entry<String, Class<?>>> fields) {
-//            return getTable()
-//                    .find(getClient(), getDatabaseName(), filterJson, projectJson, fields);
-//        }
+        //        /** Called via code-generation.
+        //         *
+        //         * @param filterJson Filter document
+        //         * @param projectJson Projection document
+        //         * @param fields List of expected fields (and their types)
+        //         * @return result of mongo query
+        //         *
+        //         * @see DocumentDbMethod#MONGO_QUERYABLE_FIND
+        //         */
+        //        @SuppressWarnings("UnusedDeclaration")
+        //        public Enumerable<Object> find(final String filterJson,
+        //                final String projectJson, final List<Entry<String, Class<?>>> fields) {
+        //            return getTable()
+        //                    .find(getClient(), getDatabaseName(), filterJson, projectJson, fields);
+        //        }
     }
 
     private static synchronized void initializeRelDataTypeMap(final RelDataTypeFactory typeFactory) {

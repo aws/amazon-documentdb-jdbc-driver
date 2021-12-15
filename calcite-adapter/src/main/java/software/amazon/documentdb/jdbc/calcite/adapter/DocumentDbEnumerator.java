@@ -22,7 +22,7 @@ import org.apache.calcite.linq4j.Enumerator;
 class DocumentDbEnumerator implements Enumerator<Object> {
 
     /** Creates a DocumentDbEnumerator. */
-    DocumentDbEnumerator() {}
+    DocumentDbEnumerator() { }
 
     @Override public Object current() {
         return null;
@@ -36,5 +36,5 @@ class DocumentDbEnumerator implements Enumerator<Object> {
         throw new UnsupportedOperationException();
     }
 
-    @Override public void close() {}
+    @Override public void close() { }
 }
