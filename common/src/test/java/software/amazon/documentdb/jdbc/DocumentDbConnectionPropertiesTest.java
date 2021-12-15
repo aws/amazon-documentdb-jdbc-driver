@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.jupiter.api.Assertions;
@@ -339,7 +340,8 @@ public class DocumentDbConnectionPropertiesTest {
         final String connectionString = "jdbc:documentdb://username:password@localhost/database";
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
-        Assertions.assertEquals("Amazon DocumentDB JDBC Driver", properties.getApplicationName());
+        Assertions.assertFalse(Strings.isNullOrEmpty(properties.getApplicationName()));
+        Assertions.assertEquals(DocumentDbConnectionProperties.DEFAULT_APPLICATION_NAME, properties.getApplicationName());
         // Override app name.
         properties.setApplicationName("APPNAME");
         Assertions.assertEquals("APPNAME", properties.getApplicationName());

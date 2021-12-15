@@ -69,6 +69,21 @@ public class DocumentDbConnectionProperties extends Properties {
     public static final int FETCH_SIZE_DEFAULT = 2000;
     private static String classPathLocationName = null;
     private static String[] sshPrivateKeyFileSearchPaths = null;
+    private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
+    private static final String PROPERTIES_FILE_PATH = "/common.properties";
+    static final String DEFAULT_APPLICATION_NAME;
+
+    static {
+        String defaultAppName = "";
+        try (InputStream is = DocumentDbConnectionProperties.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
+            final Properties p = new Properties();
+            p.load(is);
+            defaultAppName = p.getProperty(DEFAULT_APPLICATION_NAME_KEY);
+        } catch (Exception e) {
+            LOGGER.error("Error loading default application name: " + e.getMessage());
+        }
+        DEFAULT_APPLICATION_NAME = defaultAppName;
+    }
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -241,7 +256,7 @@ public class DocumentDbConnectionProperties extends Properties {
     public String getApplicationName() {
         return getProperty(
                 DocumentDbConnectionProperty.APPLICATION_NAME.getName(),
-                DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue());
+                DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue() );
     }
 
     /**

@@ -33,7 +33,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
             "The name of the database to connect to in DocumentDB."),
     READ_PREFERENCE("readPreference", "primary",
             "The read preference"),
-    APPLICATION_NAME(ConnectionProperty.APPLICATION_NAME, "Amazon DocumentDB JDBC Driver",
+    APPLICATION_NAME(ConnectionProperty.APPLICATION_NAME, DocumentDbConnectionProperties.DEFAULT_APPLICATION_NAME,
             "Sets the logical name of the application. The application name may be used by the client to identify the application to the server, for use in server logs, slow query logs, and profile collection."),
     REPLICA_SET("replicaSet", "rs0",
             "Implies that the hosts given are a seed list, and the driver will attempt to find all members of the set."),
