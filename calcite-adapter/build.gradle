@@ -211,7 +211,7 @@ dependencies {
     testImplementation(testFixtures(project(':common')))
     testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.1'
-    testImplementation group: 'org.mockito', name: 'mockito-core', version: '4.0.0'
+    testImplementation group: 'org.mockito', name: 'mockito-core', version: '4.2.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
