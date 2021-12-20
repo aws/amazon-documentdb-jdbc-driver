@@ -317,7 +317,7 @@ dependencies {
     testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.2.3'
     testImplementation      group: 'junit', name: 'junit', version: '4.13.2'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.8.1'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.1'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.2'
     testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.2.0'
     testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.8.1'
 
