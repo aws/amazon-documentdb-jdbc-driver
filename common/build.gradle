@@ -206,7 +206,7 @@ dependencies {
     testCompileOnly    group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
 
     testFixturesImplementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-    testFixturesImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
+    testFixturesImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.2.3'
     testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.16.0'
