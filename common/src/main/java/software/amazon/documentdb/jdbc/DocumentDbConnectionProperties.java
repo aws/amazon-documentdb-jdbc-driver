@@ -429,27 +429,6 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
-     * Gets the schema persisted storage type.
-     *
-     * @return the schema persisted storage type.
-     */
-    public DocumentDbSchemaStoreType getPersistedSchemaStore() {
-        return getPropertyAsSchemaStoreType(
-                DocumentDbConnectionProperty.SCHEMA_PERSISTENCE_STORE.getName());
-    }
-
-    /**
-     * Sets the schema persisted storage type.
-     *
-     * @param persistedStore the schema persisted storage type.
-     */
-    public void setPersistedSchemaStore(final DocumentDbSchemaStoreType persistedStore) {
-        setProperty(
-                DocumentDbConnectionProperty.SCHEMA_PERSISTENCE_STORE.getName(),
-                persistedStore.getName());
-    }
-
-    /**
      * Gets the schema name for persisted schema.
      *
      * @return the name of the schema.
@@ -1263,28 +1242,6 @@ public class DocumentDbConnectionProperties extends Properties {
             }
         } catch (NumberFormatException e) {
             LOGGER.warn("Property {{}} was ignored as it was not of type integer.",  key, e);
-        }
-        return property;
-    }
-
-    /**
-     * Attempts to retrieve a property as a DocumentDbSchemaStoreType.
-     *
-     * @param key the property to retrieve.
-     * @return the retrieved property as a DocumentDbSchemaStoreType or null if it did not exist
-     * or was not a valid ReadPreference.
-     */
-    private DocumentDbSchemaStoreType getPropertyAsSchemaStoreType(@NonNull final String key) {
-        DocumentDbSchemaStoreType property = null;
-        try {
-            if (getProperty(key) != null) {
-                property = DocumentDbSchemaStoreType.fromString(getProperty(key));
-            } else if (DocumentDbConnectionProperty.getPropertyFromKey(key) != null) {
-                property =  DocumentDbSchemaStoreType.fromString(
-                        DocumentDbConnectionProperty.getPropertyFromKey(key).getDefaultValue());
-            }
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Property {{}} was ignored as it was not a valid schema storage type.", key, e);
         }
         return property;
     }

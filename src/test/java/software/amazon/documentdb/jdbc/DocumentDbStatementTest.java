@@ -28,8 +28,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -56,7 +55,7 @@ class DocumentDbStatementTest {
     void afterEach() throws Exception {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, null)) {
             schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         }
     }

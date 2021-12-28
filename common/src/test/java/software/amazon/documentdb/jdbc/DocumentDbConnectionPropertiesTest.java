@@ -220,7 +220,6 @@ public class DocumentDbConnectionPropertiesTest {
                 "&" + DocumentDbConnectionProperty.RETRY_READS_ENABLED.getName() + "=" + "true" +
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getName() + "=" + "random" +
                 "&" + DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName() + "=" + "1" +
-                "&" + DocumentDbConnectionProperty.SCHEMA_PERSISTENCE_STORE.getName() + "=" + "file" +
                 "&" + DocumentDbConnectionProperty.SCHEMA_NAME.getName() + "=" + "notDefault" +
                 "&" + DocumentDbConnectionProperty.SSH_USER.getName() + "=" + "sshUser" +
                 "&" + DocumentDbConnectionProperty.SSH_HOSTNAME.getName() + "=" + "sshHost" +
@@ -300,6 +299,10 @@ public class DocumentDbConnectionPropertiesTest {
         Path documentDbTempFilePath = null;
         try {
             documentDbTempFilePath = Paths.get(getDocumentdbHomePathName(), tempFilename1);
+            final File documentDbDirectory = Paths.get(getDocumentdbHomePathName()).toFile();
+            if (!documentDbDirectory.exists()) {
+                Assertions.assertTrue(documentDbDirectory.mkdir());
+            }
             Assertions.assertTrue(documentDbTempFilePath.toFile().createNewFile());
             final Path path4 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
             Assertions.assertEquals(Paths.get(getDocumentdbHomePathName(), tempFilename1), path4);

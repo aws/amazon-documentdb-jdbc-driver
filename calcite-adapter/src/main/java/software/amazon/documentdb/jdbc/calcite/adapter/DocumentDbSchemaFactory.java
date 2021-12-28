@@ -17,7 +17,6 @@
 
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
-import com.mongodb.client.MongoClient;
 import org.apache.calcite.schema.Schema;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
@@ -28,12 +27,10 @@ public class DocumentDbSchemaFactory {
      *
      * @param databaseMetadata the database metadata.
      * @param connectionProperties the connection properties.
-     * @param client the {@link MongoClient} client.
      * @return a new {@link Schema} for the database.
      */
     public static Schema create(final DocumentDbDatabaseSchemaMetadata databaseMetadata,
-            final DocumentDbConnectionProperties connectionProperties,
-            final MongoClient client) {
-        return new DocumentDbSchema(databaseMetadata, connectionProperties, client);
+            final DocumentDbConnectionProperties connectionProperties) {
+        return new DocumentDbSchema(databaseMetadata, connectionProperties);
     }
 }

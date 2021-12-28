@@ -46,8 +46,7 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
         setDefaultFetchSize(this, connection.getConnectionProperties());
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
-                connection.getDatabaseMetadata(),
-                connection.getMongoClient());
+                connection.getDatabaseMetadata());
         queryExecutor = new DocumentDbQueryExecutor(
                 this,
                 connection.getConnectionProperties(),

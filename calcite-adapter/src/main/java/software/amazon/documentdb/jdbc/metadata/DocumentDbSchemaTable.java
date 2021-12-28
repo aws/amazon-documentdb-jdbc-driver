@@ -20,7 +20,6 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import lombok.Getter;
 import lombok.NonNull;
@@ -167,18 +166,6 @@ public class DocumentDbSchemaTable {
         this.columns = new ArrayList<>(columnMap.values());
         this.columnMap = ImmutableMap.copyOf(columnMap);
  }
-
-    /**
-     * The columns that are foreign keys.
-     *
-     * @return the foreign keys as a list of {@link DocumentDbMetadataColumn}.
-     */
-    public ImmutableList<DocumentDbSchemaColumn> getForeignKeys() {
-        return ImmutableList.copyOf(getColumnMap().values()
-                .stream()
-                .filter(entry -> entry.getForeignKeyTableName() != null)
-                .collect(Collectors.toList()));
-    }
 
     public Date getModifyDate() {
         return new Date(modifyDate.getTime());

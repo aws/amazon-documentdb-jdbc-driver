@@ -78,7 +78,7 @@ class DocumentDbSchemaWriterTest {
     void afterEach() throws SQLException {
         final DocumentDbConnectionProperties properties = getPropertiesFromConnectionString(
                 testEnvironment.getJdbcConnectionString());
-        final SchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, null);
+        final DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, null);
         schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
     }
 
@@ -99,7 +99,7 @@ class DocumentDbSchemaWriterTest {
         final Map<String, DocumentDbSchemaTable> metadata = getSchemaTableMap(collectionName);
         final DocumentDbSchema schema = new DocumentDbSchema(DATABASE_NAME, 1, metadata);
 
-        final SchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
+        final DocumentDbSchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
         writer.write(schema, metadata.values());
     }
 
@@ -114,7 +114,7 @@ class DocumentDbSchemaWriterTest {
         final String newUuid = UUID.randomUUID().toString();
         final String newSqlName = UUID.randomUUID().toString();
 
-        try (SchemaWriter writer = new DocumentDbSchemaWriter(properties, null)) {
+        try (DocumentDbSchemaWriter writer = new DocumentDbSchemaWriter(properties, null)) {
             // Write initial schema
             writer.write(schema, schema.getTableMap().values());
 
@@ -126,7 +126,7 @@ class DocumentDbSchemaWriterTest {
         }
 
         // Ensure both versions exist.
-        try (SchemaReader reader = new DocumentDbSchemaReader(properties, null)) {
+        try (DocumentDbSchemaReader reader = new DocumentDbSchemaReader(properties, null)) {
             final DocumentDbSchema schema1 = reader.read(schema.getSchemaName(), 1);
             Assertions.assertNotNull(schema1);
             Assertions.assertEquals(schema, schema1);
@@ -154,7 +154,7 @@ class DocumentDbSchemaWriterTest {
         final String collectionName = "testWriteTableSchema";
         final Map<String, DocumentDbSchemaTable> metadata = getSchemaTableMap(collectionName);
         final DocumentDbSchema schema = new DocumentDbSchema(DATABASE_NAME, 1, metadata);
-        final SchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
+        final DocumentDbSchemaWriter writer = new DocumentDbSchemaWriter(properties, null);
         final DocumentDbSchemaSecurityException exception = Assertions
                 .assertThrows(DocumentDbSchemaSecurityException.class,
                         () -> writer.write(schema, schema.getTableMap().values()));

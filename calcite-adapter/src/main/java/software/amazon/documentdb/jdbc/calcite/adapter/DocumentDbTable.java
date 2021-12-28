@@ -17,18 +17,12 @@
 package software.amazon.documentdb.jdbc.calcite.adapter;
 
 import com.google.common.collect.ImmutableMap;
-import com.mongodb.client.FindIterable;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
 import lombok.SneakyThrows;
 import org.apache.calcite.adapter.java.AbstractQueryableTable;
-import org.apache.calcite.linq4j.AbstractEnumerable;
 import org.apache.calcite.linq4j.Enumerable;
 import org.apache.calcite.linq4j.Enumerator;
 import org.apache.calcite.linq4j.QueryProvider;
 import org.apache.calcite.linq4j.Queryable;
-import org.apache.calcite.linq4j.function.Function1;
 import org.apache.calcite.plan.RelOptCluster;
 import org.apache.calcite.plan.RelOptTable;
 import org.apache.calcite.rel.RelNode;
@@ -41,7 +35,6 @@ import org.apache.calcite.schema.TranslatableTable;
 import org.apache.calcite.schema.impl.AbstractTableQueryable;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.bson.BsonDocument;
-import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
@@ -142,40 +135,8 @@ public class DocumentDbTable extends AbstractQueryableTable
                 relOptTable, this, null, tableMetadata);
     }
 
-    /** Executes a "find" operation on the underlying collection.
-     *
-     * <p>For example,
-     * <code>zipsTable.find("{state: 'OR'}", "{city: 1, zipcode: 1}")</code></p>
-     *
-     * @param client {@link MongoClient} client
-     * @param filterJson Filter JSON string, or null
-     * @param projectJson Project JSON string, or null
-     * @param fields List of fields to project; or null to return map
-     * @return Enumerator of results
-     */
-    private Enumerable<Object> find(
-            final MongoClient client,
-            final String databaseName,
-            final String filterJson,
-            final String projectJson,
-            final List<Entry<String, Class<?>>> fields) {
-        final MongoDatabase database = client.getDatabase(databaseName);
-        final MongoCollection<Document> collection =
-                database.getCollection(collectionName);
-        final Bson filter = filterJson == null
-                ? BsonDocument.parse("{}")
-                : BsonDocument.parse(filterJson);
-        final Bson project =
-                projectJson == null ? null : BsonDocument.parse(projectJson);
-        final Function1<Document, Object> getter = DocumentDbEnumerator.getter(fields, tableMetadata);
-        return new AbstractEnumerable<Object>() {
-            @Override public Enumerator<Object> enumerator() {
-                final FindIterable<Document> cursor =
-                        collection.find(filter).projection(project);
-                return new DocumentDbEnumerator(cursor.iterator(), getter);
-            }
-        };
-    }
+    // TODO: Investigate using find() here for simpler queries.
+    //  See: https://github.com/aws/amazon-documentdb-jdbc-driver/issues/240
 
     /** Executes an "aggregate" operation on the underlying collection.
      *
@@ -185,7 +146,6 @@ public class DocumentDbTable extends AbstractQueryableTable
      * "{$group: {_id: '$city', c: {$sum: 1}, p: {$sum: '$pop'}}}")
      * </code></p>
      *
-     * @param client {@link MongoClient} client.
      * @param databaseName Name of the database
      * @param fields List of fields to project; or null to return map
      * @param paths List of paths
@@ -193,7 +153,6 @@ public class DocumentDbTable extends AbstractQueryableTable
      * @return Enumerator of results
      */
     Enumerable<Object> aggregate(
-            final MongoClient client,
             final String databaseName,
             final List<Entry<String, Class<?>>> fields,
             final List<String> paths,
@@ -204,14 +163,12 @@ public class DocumentDbTable extends AbstractQueryableTable
             list.add(BsonDocument.parse(operation));
         }
 
-        final Function1<Document, Object> getter =
-                DocumentDbEnumerator.getter(fields, tableMetadata);
         // Return this instead of the anonymous class to get more information from CalciteSignature.
         return new DocumentDbEnumerable(
-                client,
                 databaseName,
                 collectionName,
-                list, getter, paths);
+                list,
+                paths);
     }
 
     /** Implementation of {@link org.apache.calcite.linq4j.Queryable} based on
@@ -227,13 +184,7 @@ public class DocumentDbTable extends AbstractQueryableTable
         @SuppressWarnings("unchecked")
         @Override public Enumerator<T> enumerator() {
             //noinspection unchecked
-            final Enumerable<T> enumerable =
-                    (Enumerable<T>) getTable().find(getClient(), getDatabaseName(), null, null, null);
-            return enumerable.enumerator();
-        }
-
-        private MongoClient getClient() {
-            return getUnwrappedDocumentDbSchema().getClient();
+            return (Enumerator<T>) new DocumentDbEnumerator();
         }
 
         private String getDatabaseName() {
@@ -263,24 +214,11 @@ public class DocumentDbTable extends AbstractQueryableTable
                 final List<String> paths,
                 final List<String> operations) {
             return getTable()
-                    .aggregate(getClient(), getDatabaseName(), fields, paths, operations);
+                    .aggregate(getDatabaseName(), fields, paths, operations);
         }
 
-        /** Called via code-generation.
-         *
-         * @param filterJson Filter document
-         * @param projectJson Projection document
-         * @param fields List of expected fields (and their types)
-         * @return result of mongo query
-         *
-         * @see DocumentDbMethod#MONGO_QUERYABLE_FIND
-         */
-        @SuppressWarnings("UnusedDeclaration")
-        public Enumerable<Object> find(final String filterJson,
-                final String projectJson, final List<Entry<String, Class<?>>> fields) {
-            return getTable()
-                    .find(getClient(), getDatabaseName(), filterJson, projectJson, fields);
-        }
+        // TODO: Investigate using find() here for simpler queries.
+        //  See: https://github.com/aws/amazon-documentdb-jdbc-driver/issues/240
     }
 
     private static synchronized void initializeRelDataTypeMap(final RelDataTypeFactory typeFactory) {

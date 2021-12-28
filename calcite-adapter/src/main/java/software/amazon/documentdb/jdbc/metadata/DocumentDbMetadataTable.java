@@ -26,9 +26,6 @@ import lombok.Getter;
 import org.bson.codecs.pojo.annotations.BsonIgnore;
 
 import java.util.LinkedHashMap;
-import java.util.Map.Entry;
-
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
 /** Represents the fields in a document, embedded document or array. */
 @Getter
@@ -60,28 +57,6 @@ public class DocumentDbMetadataTable extends DocumentDbSchemaTable {
                                    final ImmutableList<DocumentDbSchemaColumn> foreignKeys) {
         super(sqlName, collectionName, columns);
         this.foreignKeys = foreignKeys;
-    }
-
-    /**
-     * The columns mapped by (non-empty) path.
-     *
-     * @return the map of path to {@link DocumentDbMetadataColumn}.
-     */
-    @BsonIgnore
-    @JsonIgnore
-    public ImmutableMap<String, DocumentDbSchemaColumn> getColumnsByPath() {
-        if (columnsByPath == null) {
-            final ImmutableMap.Builder<String, DocumentDbSchemaColumn> builder =
-                    ImmutableMap.builder();
-            for (Entry<String, DocumentDbSchemaColumn> entry : getColumnMap().entrySet()) {
-                final DocumentDbSchemaColumn column = entry.getValue();
-                if (!isNullOrWhitespace(column.getFieldPath())) {
-                    builder.put(entry.getValue().getFieldPath(), entry.getValue());
-                }
-            }
-            columnsByPath = builder.build();
-        }
-        return columnsByPath;
     }
 
     @Override

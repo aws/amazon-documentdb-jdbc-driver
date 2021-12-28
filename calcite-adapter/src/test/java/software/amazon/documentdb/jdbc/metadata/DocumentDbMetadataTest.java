@@ -28,12 +28,12 @@ import org.junit.jupiter.api.Test;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.sql.SQLException;
 import java.util.UUID;
 import java.util.function.Consumer;
+
 
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
@@ -102,7 +102,7 @@ class DocumentDbMetadataTest {
         // This is exactly the same as it is cached.
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
         Assertions.assertEquals(2, databaseMetadata2.getSchemaVersion());
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client)) {
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, client)) {
             schemaWriter.remove(schemaName);
         }
     }
@@ -150,7 +150,7 @@ class DocumentDbMetadataTest {
         final DocumentDbDatabaseSchemaMetadata databaseMetadata3 = DocumentDbDatabaseSchemaMetadata
                 .get(properties, schemaName, databaseMetadata1.getSchemaVersion() + 1, client);
         Assertions.assertNull(databaseMetadata3);
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client)) {
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, client)) {
             schemaWriter.remove(schemaName);
         }
     }

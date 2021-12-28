@@ -49,8 +49,7 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -110,7 +109,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                         getJdbcConnectionString(),
                         "jdbc:documentdb:");
 
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties,  null)) {
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties,  null)) {
             schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         }
     }
