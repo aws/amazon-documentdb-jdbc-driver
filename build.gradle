@@ -314,7 +314,7 @@ dependencies {
     testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
-    testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.2.4'
+    testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.2.6'
     testImplementation      group: 'junit', name: 'junit', version: '4.13.2'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.8.1'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.2'

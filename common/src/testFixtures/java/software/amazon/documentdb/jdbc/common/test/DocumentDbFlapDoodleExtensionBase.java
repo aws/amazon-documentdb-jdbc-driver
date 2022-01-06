@@ -30,7 +30,7 @@ import de.flapdoodle.embed.mongo.config.MongodConfig;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version.Main;
 import de.flapdoodle.embed.process.config.RuntimeConfig;
-import de.flapdoodle.embed.process.config.io.ProcessOutput;
+import de.flapdoodle.embed.process.config.process.ProcessOutput;
 import de.flapdoodle.embed.process.io.LogWatchStreamProcessor;
 import de.flapdoodle.embed.process.io.NamedOutputStreamProcessor;
 import de.flapdoodle.embed.process.io.Processors;
@@ -152,7 +152,7 @@ abstract class DocumentDbFlapDoodleExtensionBase extends TypeBasedParameterResol
      * @throws IOException if unable to start the mongod.
      */
     protected static boolean startMongoDbInstance() throws IOException {
-        return startMongoDbInstance(Network.getFreeServerPort());
+        return startMongoDbInstance(Network.freeServerPort(Network.getLocalHost()));
     }
 
     /**
@@ -171,8 +171,10 @@ abstract class DocumentDbFlapDoodleExtensionBase extends TypeBasedParameterResol
      * @return returns true if the mongod is started, or false if already started.
      * @throws IOException if unable to start the mongod.
      */
-    protected static boolean startMongoDbInstance(final boolean enableAuthentication) throws IOException {
-        return startMongoDbInstance(Network.getFreeServerPort(), enableAuthentication);
+    protected static boolean startMongoDbInstance(final boolean enableAuthentication)
+            throws IOException {
+        return startMongoDbInstance(Network.freeServerPort(Network.getLocalHost()),
+                enableAuthentication);
     }
 
     /**
@@ -278,10 +280,11 @@ abstract class DocumentDbFlapDoodleExtensionBase extends TypeBasedParameterResol
             mongoOutput = new NamedOutputStreamProcessor("[mongo shell output]", Processors.console());
         }
         final RuntimeConfig runtimeConfig = Defaults.runtimeConfigFor(Command.Mongo)
-                .processOutput(new ProcessOutput(
-                        mongoOutput,
-                        namedConsole("[mongo shell error]"),
-                        Processors.console()))
+                .processOutput(ProcessOutput.builder()
+                        .output(mongoOutput)
+                        .error(Processors.namedConsole("[mongo shell error]"))
+                        .commands(Processors.console())
+                        .build())
                 .build();
         final MongoShellStarter starter = MongoShellStarter.getInstance(runtimeConfig);
         final File scriptFile = writeTmpScriptFile(scriptText);
