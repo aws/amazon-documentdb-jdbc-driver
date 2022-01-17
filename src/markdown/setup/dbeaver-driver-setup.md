@@ -23,7 +23,7 @@
         or username and password can be entered later when [connecting to Amazon DocumentDB using DBeaver](#connecting-to-amazon-documentdb-using-dbeaver).
         
     3. In **Settings** tab, for **Default Port** field, enter **27017**.
-    4. In **Libraries** tab, click **Add file** and navigate and select your [Amazon DocumentDB JDBC driver JAR file](setup.md#documentdb-jdbc-driver).
+    4. In **Libraries** tab, click **Add file** and navigate and select your [Amazon DocumentDB JDBC driver JAR file](https://github.com/aws/amazon-documentdb-jdbc-driver/releases/latest).
     5. In **Libraries** tab, after adding the JAR file, click **Find Class**.
     6. In **Settings** tab, the field **Class Name** should be automatically filled in. If not, enter the 
     **Class Name**: *software.amazon.documentdb.jdbc.DocumentDbDriver*. Click **Ok**.
