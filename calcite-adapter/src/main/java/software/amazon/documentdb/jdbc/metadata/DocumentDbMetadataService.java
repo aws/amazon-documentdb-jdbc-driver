@@ -31,9 +31,7 @@ import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
-import software.amazon.documentdb.jdbc.persist.SchemaReader;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import javax.annotation.Nullable;
 import java.sql.SQLException;
@@ -106,7 +104,7 @@ public class DocumentDbMetadataService {
         final DocumentDbSchema schema;
         // ASSUMPTION: Negative versions handle special cases
         final int lookupVersion = Math.max(schemaVersion, VERSION_LATEST_OR_NEW);
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        final DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(properties, client);
         try {
             // Get the latest or specific version, might not exist
             schema = schemaReader.read(schemaName, lookupVersion);
@@ -182,7 +180,7 @@ public class DocumentDbMetadataService {
             return TABLE_MAP.get(tableId);
         }
         // Otherwise, assume it's in the stored location.
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        final DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(properties, client);;
         try {
             final DocumentDbSchemaTable schemaTable = schemaReader.readTable(schemaName, schemaVersion, tableId);
             if (client != null) {
@@ -226,7 +224,7 @@ public class DocumentDbMetadataService {
         }
 
         // Otherwise, assume it's in the stored location.
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        final DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(properties, client);
         try {
             final Map<String, DocumentDbSchemaTable> schemaTables = schemaReader
                     .readTables(schemaName, schemaVersion, remainingTableIds)
@@ -260,7 +258,7 @@ public class DocumentDbMetadataService {
             final DocumentDbConnectionProperties properties,
             final String schemaName,
             final MongoClient client) throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
+        final DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, client);
         try {
             schemaWriter.remove(schemaName);
         } finally {
@@ -283,7 +281,7 @@ public class DocumentDbMetadataService {
             final String schemaName,
             final int schemaVersion,
             final MongoClient client) throws SQLException {
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
+        final DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, client);
         try  {
             schemaWriter.remove(schemaName, schemaVersion);
         } finally {
@@ -301,7 +299,7 @@ public class DocumentDbMetadataService {
     public static List<DocumentDbSchema> getSchemaList(
             final DocumentDbConnectionProperties properties,
             final MongoClient client) throws SQLException {
-        final SchemaReader schemaReader = SchemaStoreFactory.createReader(properties, client);
+        final DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(properties, client);
         try {
             return schemaReader.list();
         } finally {
@@ -337,7 +335,7 @@ public class DocumentDbMetadataService {
                     new LinkedHashMap<>());
             LOGGER.info("A new schema {} will be created.", schemaName);
         }
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
+        final DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, client);
         try {
             schemaWriter.update(schema, schemaTables);
         } finally {
@@ -360,7 +358,7 @@ public class DocumentDbMetadataService {
                 properties,
                 tableMap,
                 client);
-        final SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, client);
+        final DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, client);
         try {
             schemaWriter.write(schema, tableMap.values());
         } catch (DocumentDbSchemaSecurityException e) {
@@ -430,7 +428,7 @@ public class DocumentDbMetadataService {
                 .collect(Collectors.toList());
     }
 
-    private static void closeSchemaReader(final SchemaReader schemaReader) throws SQLException {
+    private static void closeSchemaReader(final DocumentDbSchemaReader schemaReader) throws SQLException {
         try {
             schemaReader.close();
         } catch (Exception e) {
@@ -438,7 +436,7 @@ public class DocumentDbMetadataService {
         }
     }
 
-    private static void closeSchemaWriter(final SchemaWriter schemaWriter) throws SQLException {
+    private static void closeSchemaWriter(final DocumentDbSchemaWriter schemaWriter) throws SQLException {
         try {
             schemaWriter.close();
         } catch (Exception e) {

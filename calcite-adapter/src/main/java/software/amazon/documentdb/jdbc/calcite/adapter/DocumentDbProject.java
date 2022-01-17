@@ -93,7 +93,10 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
 
     @Override public @Nullable RelOptCost computeSelfCost(final RelOptPlanner planner,
             final RelMetadataQuery mq) {
-        return super.computeSelfCost(planner, mq).multiplyBy(DocumentDbRules.PROJECT_COST_FACTOR);
+        final RelOptCost relOptCost = super.computeSelfCost(planner, mq);
+        return relOptCost != null
+                ? relOptCost.multiplyBy(DocumentDbRules.PROJECT_COST_FACTOR)
+                : null;
     }
 
     @Override public void implement(final Implementor implementor) {
@@ -110,7 +113,8 @@ public class DocumentDbProject extends Project implements DocumentDbRel {
                         DocumentDbRules.mongoFieldNames(
                                 getInput().getRowType(),
                                 mongoImplementor.getMetadataTable()),
-                        inNames, mongoImplementor.getMetadataTable());
+                        inNames, mongoImplementor.getMetadataTable(),
+                        implementor.getCurrentTime());
         final List<String> items = new ArrayList<>();
         final LinkedHashMap<String, DocumentDbSchemaColumn> columnMap = new LinkedHashMap<>(implementor.getMetadataTable().getColumnMap());
         for (Pair<RexNode, String> pair : getNamedProjects()) {

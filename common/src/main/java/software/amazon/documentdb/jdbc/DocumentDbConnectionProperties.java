@@ -69,6 +69,21 @@ public class DocumentDbConnectionProperties extends Properties {
     public static final int FETCH_SIZE_DEFAULT = 2000;
     private static String classPathLocationName = null;
     private static String[] sshPrivateKeyFileSearchPaths = null;
+    private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
+    private static final String PROPERTIES_FILE_PATH = "/common.properties";
+    static final String DEFAULT_APPLICATION_NAME;
+
+    static {
+        String defaultAppName = "";
+        try (InputStream is = DocumentDbConnectionProperties.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
+            final Properties p = new Properties();
+            p.load(is);
+            defaultAppName = p.getProperty(DEFAULT_APPLICATION_NAME_KEY);
+        } catch (Exception e) {
+            LOGGER.error("Error loading default application name: " + e.getMessage());
+        }
+        DEFAULT_APPLICATION_NAME = defaultAppName;
+    }
 
     /**
      * Constructor for DocumentDbConnectionProperties, initializes with given properties.
@@ -239,7 +254,9 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return The name of the application.
      */
     public String getApplicationName() {
-        return getProperty(DocumentDbConnectionProperty.APPLICATION_NAME.getName());
+        return getProperty(
+                DocumentDbConnectionProperty.APPLICATION_NAME.getName(),
+                DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue() );
     }
 
     /**
@@ -409,27 +426,6 @@ public class DocumentDbConnectionProperties extends Properties {
      */
     public void setMetadataScanLimit(final String limit) {
         setProperty(DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getName(), limit);
-    }
-
-    /**
-     * Gets the schema persisted storage type.
-     *
-     * @return the schema persisted storage type.
-     */
-    public DocumentDbSchemaStoreType getPersistedSchemaStore() {
-        return getPropertyAsSchemaStoreType(
-                DocumentDbConnectionProperty.SCHEMA_PERSISTENCE_STORE.getName());
-    }
-
-    /**
-     * Sets the schema persisted storage type.
-     *
-     * @param persistedStore the schema persisted storage type.
-     */
-    public void setPersistedSchemaStore(final DocumentDbSchemaStoreType persistedStore) {
-        setProperty(
-                DocumentDbConnectionProperty.SCHEMA_PERSISTENCE_STORE.getName(),
-                persistedStore.getName());
     }
 
     /**
@@ -741,7 +737,8 @@ public class DocumentDbConnectionProperties extends Properties {
         final String hostInfo = isNullOrWhitespace(getHostname()) ? "" : getHostname();
         final String databaseInfo = isNullOrWhitespace(getDatabase()) ? "" : getDatabase();
         final StringBuilder optionalInfo = new StringBuilder();
-        if (getApplicationName() != null) {
+        if (!getApplicationName()
+                .equals(DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.APPLICATION_NAME, getApplicationName());
         }
         if (getLoginTimeout() != Integer.parseInt(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getDefaultValue())) {
@@ -1245,28 +1242,6 @@ public class DocumentDbConnectionProperties extends Properties {
             }
         } catch (NumberFormatException e) {
             LOGGER.warn("Property {{}} was ignored as it was not of type integer.",  key, e);
-        }
-        return property;
-    }
-
-    /**
-     * Attempts to retrieve a property as a DocumentDbSchemaStoreType.
-     *
-     * @param key the property to retrieve.
-     * @return the retrieved property as a DocumentDbSchemaStoreType or null if it did not exist
-     * or was not a valid ReadPreference.
-     */
-    private DocumentDbSchemaStoreType getPropertyAsSchemaStoreType(@NonNull final String key) {
-        DocumentDbSchemaStoreType property = null;
-        try {
-            if (getProperty(key) != null) {
-                property = DocumentDbSchemaStoreType.fromString(getProperty(key));
-            } else if (DocumentDbConnectionProperty.getPropertyFromKey(key) != null) {
-                property =  DocumentDbSchemaStoreType.fromString(
-                        DocumentDbConnectionProperty.getPropertyFromKey(key).getDefaultValue());
-            }
-        } catch (IllegalArgumentException e) {
-            LOGGER.warn("Property {{}} was ignored as it was not a valid schema storage type.", key, e);
         }
         return property;
     }

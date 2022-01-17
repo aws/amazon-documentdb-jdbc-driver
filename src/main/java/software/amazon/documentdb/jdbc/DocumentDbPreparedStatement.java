@@ -49,8 +49,7 @@ public class DocumentDbPreparedStatement extends PreparedStatement
                 .getConnectionProperties();
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connectionProperties,
-                documentDbConnection.getDatabaseMetadata(),
-                documentDbConnection.getMongoClient());
+                documentDbConnection.getDatabaseMetadata());
         queryExecutor = new DocumentDbQueryExecutor(
                 this,
                 connectionProperties,
@@ -79,8 +78,7 @@ public class DocumentDbPreparedStatement extends PreparedStatement
             final DocumentDbConnection connection = (DocumentDbConnection)getConnection();
             final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                     connection.getConnectionProperties(),
-                    connection.getDatabaseMetadata(),
-                    connection.getMongoClient());
+                    connection.getDatabaseMetadata());
             return new DocumentDbResultSetMetaData(ImmutableList.copyOf(mappingService.get(getSql()).getColumnMetaData()));
         }
         return getResultSet().getMetaData();

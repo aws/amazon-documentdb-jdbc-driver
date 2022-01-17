@@ -19,7 +19,7 @@ package software.amazon.documentdb.jdbc.calcite.adapter;
 import com.google.common.io.BaseEncoding;
 import lombok.Getter;
 import lombok.SneakyThrows;
-import org.apache.calcite.adapter.enumerable.RexImpTable;
+import org.apache.calcite.adapter.enumerable.RexImpTable.NullAs;
 import org.apache.calcite.adapter.enumerable.RexToLixTranslator;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.avatica.util.TimeUnitRange;
@@ -41,6 +41,7 @@ import org.apache.calcite.rex.RexInputRef;
 import org.apache.calcite.rex.RexLiteral;
 import org.apache.calcite.rex.RexNode;
 import org.apache.calcite.rex.RexVisitorImpl;
+import org.apache.calcite.sql.SqlIntervalQualifier;
 import org.apache.calcite.sql.SqlKind;
 import org.apache.calcite.sql.SqlOperator;
 import org.apache.calcite.sql.fun.SqlLibraryOperators;
@@ -48,15 +49,19 @@ import org.apache.calcite.sql.fun.SqlStdOperatorTable;
 import org.apache.calcite.sql.type.SqlTypeName;
 import org.apache.calcite.util.Bug;
 import org.apache.calcite.util.DateString;
+import org.apache.calcite.util.TimeString;
 import org.apache.calcite.util.Util;
 import org.apache.calcite.util.trace.CalciteTrace;
 import org.bson.BsonType;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -72,6 +77,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
@@ -208,11 +214,11 @@ public final class DocumentDbRules {
         private final List<String> inFields;
         private final List<String> keys;
         private final DocumentDbSchemaTable schemaTable;
+        private final Map<SqlOperator,
+                BiFunction<RexCall, List<Operand>, Operand>> rexCallToMongoMap = new HashMap<>();
 
         private static final Map<SqlOperator, String> MONGO_OPERATORS =
                 new HashMap<>();
-        private static final Map<SqlOperator,
-                BiFunction<RexCall, List<Operand>, Operand>> REX_CALL_TO_MONGO_MAP = new HashMap<>();
 
         static {
             // Arithmetic
@@ -237,79 +243,93 @@ public final class DocumentDbRules {
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NULL, "$lte");
             MONGO_OPERATORS.put(SqlStdOperatorTable.IS_NOT_NULL, "$gt");
 
+        }
+
+        private void initializeRexCallToMongoMap(final Instant currentTime) {
             // Arithmetic
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE,
+            rexCallToMongoMap.put(SqlStdOperatorTable.DIVIDE,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MULTIPLY,
+            rexCallToMongoMap.put(SqlStdOperatorTable.MULTIPLY,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MOD,
+            rexCallToMongoMap.put(SqlStdOperatorTable.MOD,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.PLUS,
+            rexCallToMongoMap.put(SqlStdOperatorTable.PLUS,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MINUS,
+            rexCallToMongoMap.put(SqlStdOperatorTable.MINUS,
                     (call, strings) -> getMongoAggregateForOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DIVIDE_INTEGER,
+            rexCallToMongoMap.put(SqlStdOperatorTable.DIVIDE_INTEGER,
                     RexToMongoTranslator::getMongoAggregateForIntegerDivide);
             // Boolean
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.AND,
+            rexCallToMongoMap.put(SqlStdOperatorTable.AND,
                     (call, strings) -> getMongoAggregateForAndOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.OR,
+            rexCallToMongoMap.put(SqlStdOperatorTable.OR,
                     (call, strings) -> getMongoAggregateForOrOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.NOT,
+            rexCallToMongoMap.put(SqlStdOperatorTable.NOT,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             // Comparison
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.EQUALS,
-                    (call, strings) -> getMongoAggregateForOperator(
+            rexCallToMongoMap.put(SqlStdOperatorTable.EQUALS,
+                    (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
             // Need to handle null value
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.NOT_EQUALS,
+            rexCallToMongoMap.put(SqlStdOperatorTable.NOT_EQUALS,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.GREATER_THAN,
+            rexCallToMongoMap.put(SqlStdOperatorTable.GREATER_THAN,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL,
+            rexCallToMongoMap.put(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.LESS_THAN,
+            rexCallToMongoMap.put(SqlStdOperatorTable.LESS_THAN,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL,
+            rexCallToMongoMap.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL,
                     (call, strings) -> getMongoAggregateForComparisonOperator(
                             call, strings, MONGO_OPERATORS.get(call.getOperator())));
 
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NULL,
+            rexCallToMongoMap.put(SqlStdOperatorTable.IS_NULL,
                     (call, strings) -> getMongoAggregateForNullOperator(
-                            strings, MONGO_OPERATORS.get(call.getOperator())));
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.IS_NOT_NULL,
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
+            rexCallToMongoMap.put(SqlStdOperatorTable.IS_NOT_NULL,
                     (call, strings) -> getMongoAggregateForNullOperator(
-                            strings, MONGO_OPERATORS.get(call.getOperator())));
+                            call, strings, MONGO_OPERATORS.get(call.getOperator())));
 
             // Date operations
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_DATE, DateFunctionTranslator::translateCurrentTimestamp);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_TIME, DateFunctionTranslator::translateCurrentTimestamp);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CURRENT_TIMESTAMP, DateFunctionTranslator::translateCurrentTimestamp);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.DATETIME_PLUS, DateFunctionTranslator::translateDateAdd);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.EXTRACT, DateFunctionTranslator::translateExtract);
-            REX_CALL_TO_MONGO_MAP.put(SqlLibraryOperators.DAYNAME, DateFunctionTranslator::translateDayName);
-            REX_CALL_TO_MONGO_MAP.put(SqlLibraryOperators.MONTHNAME, DateFunctionTranslator::translateMonthName);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.FLOOR, DateFunctionTranslator::translateFloor);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.MINUS_DATE, DateFunctionTranslator::translateDateDiff);
+            rexCallToMongoMap.put(SqlStdOperatorTable.CURRENT_DATE,
+                    (call, operands) -> DateFunctionTranslator.translateCurrentTimestamp(currentTime));
+            rexCallToMongoMap.put(SqlStdOperatorTable.CURRENT_TIME,
+                    (call, operands) -> DateFunctionTranslator.translateCurrentTimestamp(currentTime));
+            rexCallToMongoMap.put(SqlStdOperatorTable.CURRENT_TIMESTAMP,
+                    (call, operands) -> DateFunctionTranslator.translateCurrentTimestamp(currentTime));
+            rexCallToMongoMap.put(SqlStdOperatorTable.DATETIME_PLUS, DateFunctionTranslator::translateDateAdd);
+            rexCallToMongoMap.put(SqlStdOperatorTable.EXTRACT, DateFunctionTranslator::translateExtract);
+            rexCallToMongoMap.put(SqlLibraryOperators.DAYNAME, DateFunctionTranslator::translateDayName);
+            rexCallToMongoMap.put(SqlLibraryOperators.MONTHNAME, DateFunctionTranslator::translateMonthName);
+            rexCallToMongoMap.put(SqlStdOperatorTable.FLOOR, DateFunctionTranslator::translateFloor);
+            rexCallToMongoMap.put(SqlStdOperatorTable.MINUS_DATE, DateFunctionTranslator::translateDateDiff);
 
             // CASE, ITEM
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.CASE, RexToMongoTranslator::getMongoAggregateForCase);
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.ITEM, RexToMongoTranslator::getMongoAggregateForItem);
+            rexCallToMongoMap.put(SqlStdOperatorTable.CASE, RexToMongoTranslator::getMongoAggregateForCase);
+            rexCallToMongoMap.put(SqlStdOperatorTable.ITEM, RexToMongoTranslator::getMongoAggregateForItem);
 
-            REX_CALL_TO_MONGO_MAP.put(SqlStdOperatorTable.SUBSTRING,
-                    RexToMongoTranslator::getMongoAggregateForSubstringOperator);
+            // String operations
+            rexCallToMongoMap.put(SqlStdOperatorTable.CONCAT, StringFunctionTranslator::getMongoAggregateForConcatOperator);
+            rexCallToMongoMap.put(SqlLibraryOperators.CONCAT_FUNCTION, StringFunctionTranslator::getMongoAggregateForConcatOperator);
+            rexCallToMongoMap.put(SqlStdOperatorTable.SUBSTRING, StringFunctionTranslator::getMongoAggregateForSubstringOperator);
+            rexCallToMongoMap.put(SqlStdOperatorTable.POSITION, StringFunctionTranslator::getMongoAggregateForPositionStringOperator);
+            rexCallToMongoMap.put(SqlStdOperatorTable.UPPER, StringFunctionTranslator::getMongoAggregateForStringOperator);
+            rexCallToMongoMap.put(SqlStdOperatorTable.LOWER, StringFunctionTranslator::getMongoAggregateForStringOperator);
+            rexCallToMongoMap.put(SqlStdOperatorTable.CHAR_LENGTH, StringFunctionTranslator::getMongoAggregateForStringOperator);
+            rexCallToMongoMap.put(SqlLibraryOperators.LEFT, StringFunctionTranslator::getMongoAggregateForLeftOperator);
+            rexCallToMongoMap.put(SqlLibraryOperators.RIGHT, StringFunctionTranslator::getMongoAggregateForRightOperator);
         }
 
         private static Operand getMongoAggregateForAndOperator(final RexCall call, final List<Operand> operands, final String s) {
@@ -327,73 +347,106 @@ public final class DocumentDbRules {
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, false, null]}]}");
 
-            return new Operand(sb.toString());
+            return new Operand(
+                    sb.toString(),
+                    SimpleMatchTranslator.getAndOrOperator(operands, s),
+                    false);
         }
 
         private static Operand getMongoAggregateForOrOperator(final RexCall call, final List<Operand> operands, final String s) {
             final StringBuilder sb = new StringBuilder();
             sb.append("{$cond: [{$or: [");
             for (Operand value: operands) {
-                sb.append("{$eq: [true, ").append(value.getValue()).append("]},");
+                sb.append("{$eq: [true, ").append(value.getAggregationValue()).append("]},");
             }
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, true,");
             sb.append("{$cond: [{$and: [");
             for (Operand value: operands) {
-                sb.append("{$eq: [false, ").append(value.getValue()).append("]},");
+                sb.append("{$eq: [false, ").append(value.getAggregationValue()).append("]},");
             }
             sb.deleteCharAt(sb.length() - 1);
             sb.append("]}, false, null]}]}");
-            return new Operand(sb.toString());
+            return new Operand(
+                    sb.toString(),
+                    SimpleMatchTranslator.getAndOrOperator(operands, s),
+                    false);
         }
 
         protected RexToMongoTranslator(final JavaTypeFactory typeFactory,
                 final List<String> inFields,
-                final List<String> keys, final DocumentDbSchemaTable schemaTable) {
+                final List<String> keys, final DocumentDbSchemaTable schemaTable,
+                final Instant currentTime) {
             super(true);
+            initializeRexCallToMongoMap(currentTime);
             this.typeFactory = typeFactory;
             this.inFields = inFields;
             this.keys = keys;
             this.schemaTable = schemaTable;
         }
 
+        @SneakyThrows
         @Override public Operand visitLiteral(final RexLiteral literal) {
             if (literal.getValue() == null) {
                 return new Operand("null");
             }
 
             switch (literal.getType().getSqlTypeName()) {
-                case DOUBLE:
+                // TODO: Use $numberDecimal to handle DECIMAL instead if support for 128-bit decimals is added.
                 case DECIMAL:
-                    return new Operand("{\"$numberDouble\": \"" + literal.getValueAs(Double.class) + "\"}");
-                case BIGINT:
-                case INTERVAL_DAY:
-                case INTERVAL_HOUR:
-                case INTERVAL_MINUTE:
-                case INTERVAL_SECOND:
+                case DOUBLE:
+                case FLOAT:
+                case REAL:
+                    final String doubleFormat = "{\"$numberDouble\": \"" + getValueAs(literal, Double.class) + "\"}";
+                    return new Operand("{\"$literal\": " + doubleFormat + "}", doubleFormat, true);
+                case TINYINT:
+                case SMALLINT:
+                case INTEGER:
                     // Convert supported intervals to milliseconds.
-                    return new Operand("{\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\"}");
+                    final String intFormat = "{\"$numberInt\": \"" +  getValueAs(literal, Long.class) + "\"}";
+                    return new Operand("{\"$literal\": " + intFormat + "}", intFormat, true);
+                case BIGINT:
+                case INTERVAL_MONTH:
+                case INTERVAL_YEAR:
+                case INTERVAL_YEAR_MONTH:
+                case INTERVAL_DAY:
+                case INTERVAL_DAY_HOUR:
+                case INTERVAL_DAY_MINUTE:
+                case INTERVAL_DAY_SECOND:
+                case INTERVAL_HOUR:
+                case INTERVAL_HOUR_MINUTE:
+                case INTERVAL_HOUR_SECOND:
+                case INTERVAL_MINUTE:
+                case INTERVAL_MINUTE_SECOND:
+                case INTERVAL_SECOND:
+                    // Convert supported intervals to milliseconds (DAY TO SECOND types) OR months (YEAR TO MONTH types).
+                    final String longFormat = "{\"$numberLong\": \"" + getValueAs(literal, Long.class) + "\"}";
+                    return new Operand("{\"$literal\": " + longFormat + "}", longFormat, true);
                 case DATE:
                     // NOTE: Need to get the number of milliseconds from Epoch (not # of days).
-                    final DateString dateString = literal.getValueAs(DateString.class);
-                    return new Operand("{\"$date\": {\"$numberLong\": \"" + dateString.getMillisSinceEpoch() + "\" } }");
+                    final String dateFormat = "{\"$date\": {\"$numberLong\": \"" + getValueAs(literal, DateString.class).getMillisSinceEpoch() + "\" } }";
+                    return new Operand(dateFormat, dateFormat, true);
+                case TIME:
+                    // NOTE: Need to get the number of milliseconds from day. Date portion is left as zero epoch.
+                    final String timeFormat = "{\"$date\": {\"$numberLong\": \"" + getValueAs(literal, TimeString.class).getMillisOfDay() + "\" } }";
+                    return new Operand(timeFormat, timeFormat, true);
                 case TIMESTAMP:
                 case TIMESTAMP_WITH_LOCAL_TIME_ZONE:
                     // Convert from date in milliseconds to MongoDb date.
-                    return new Operand("{\"$date\": {\"$numberLong\": \"" + literal.getValueAs(Long.class) + "\" } }");
+                    final String datetimeFormat = "{\"$date\": {\"$numberLong\": \"" + getValueAs(literal, Long.class) + "\" } }";
+                    return new Operand(datetimeFormat, datetimeFormat, true);
                 case BINARY:
                 case VARBINARY:
                     final String base64Literal = BaseEncoding.base64()
-                            .encode(literal.getValueAs(byte[].class));
+                            .encode(getValueAs(literal, byte[].class));
                     final String binaryFormat = "{\"$binary\": {\"base64\": \""
                             + base64Literal
                             + "\", \"subType\": \"00\"}}";
-                    return new Operand(binaryFormat);
+                    return new Operand(binaryFormat, binaryFormat, true);
                 default:
-                    return new Operand("{\"$literal\": "
-                            + RexToLixTranslator.translateLiteral(literal, literal.getType(),
-                            typeFactory, RexImpTable.NullAs.NOT_POSSIBLE)
-                            + "}");
+                    final String simpleLiteral = RexToLixTranslator.translateLiteral(literal, literal.getType(),
+                            typeFactory, NullAs.NOT_POSSIBLE).toString();
+                    return new Operand("{\"$literal\": " + simpleLiteral + "}", simpleLiteral, true);
             }
         }
 
@@ -401,6 +454,8 @@ public final class DocumentDbRules {
             // NOTE: Pass the column metadata with the operand.
             return new Operand(
                     maybeQuote("$" + inFields.get(inputRef.getIndex())),
+                    maybeQuote(inFields.get(inputRef.getIndex())),
+                    false,
                     schemaTable.getColumnMap().get(keys.get(inputRef.getIndex())));
         }
 
@@ -417,8 +472,8 @@ public final class DocumentDbRules {
                 return strings.get(0);
             }
 
-            if (REX_CALL_TO_MONGO_MAP.containsKey(call.getOperator())) {
-                final Operand result = REX_CALL_TO_MONGO_MAP.get(call.getOperator()).apply(call, strings);
+            if (rexCallToMongoMap.containsKey(call.getOperator())) {
+                final Operand result = rexCallToMongoMap.get(call.getOperator()).apply(call, strings);
                 if (result != null) {
                     return result;
                 }
@@ -468,7 +523,7 @@ public final class DocumentDbRules {
             if (op1 instanceof RexLiteral
                     && op1.getType().getSqlTypeName() == SqlTypeName.INTEGER) {
                 if (!Bug.CALCITE_194_FIXED) {
-                    return new Operand("'" + stripQuotes(strings.get(0).getValue()) + "["
+                    return new Operand("'" + stripQuotes(strings.get(0).getAggregationValue()) + "["
                             + ((RexLiteral) op1).getValue2() + "]'");
                 }
                 return new Operand(strings.get(0) + "[" + strings.get(1) + "]");
@@ -482,11 +537,18 @@ public final class DocumentDbRules {
                 final List<Operand> strings,
                 final String stdOperator) {
             // {$cond: [<null check expression>, <comparison expression>, null]}
-            final String condExpr = "{\"$cond\": [" + getNullCheckExpr(strings) +
-                    ", " +
-                    getMongoAggregateForOperator(call, strings, stdOperator) +
-                    ", null]}";
-            return new Operand(condExpr);
+            final String aggregateExpr = "{\"$cond\": ["
+                                    + getNullCheckExpr(strings)
+                                    + ", "
+                                    + getMongoAggregateForOperator(call, strings, stdOperator)
+                                    + ", null]}";
+
+            return new Operand(
+                    aggregateExpr,
+                    hasObjectIdAndLiteral(call, strings)
+                            ? SimpleMatchTranslator.getObjectIdComparisonOperator(call, strings, stdOperator)
+                            : SimpleMatchTranslator.getComparisonOperator(call, strings, stdOperator),
+                    false);
         }
 
         private static String getNullCheckExpr(final List<Operand> strings) {
@@ -502,22 +564,26 @@ public final class DocumentDbRules {
         }
 
         private static Operand getMongoAggregateForNullOperator(
+                final RexCall call,
                 final List<Operand> strings,
                 final String stdOperator) {
-            return new Operand("{" + stdOperator + ": [" + strings.get(0) + ", null]}");
+            return new Operand(
+                    "{" + stdOperator + ": [" + strings.get(0) + ", null]}",
+                    SimpleMatchTranslator.getNullCheckOperator(call, strings), false);
         }
+    }
 
-        private static Operand getMongoAggregateForSubstringOperator(
-                final RexCall call,
-                final List<Operand> strings) {
-            final List<Operand> inputs = new ArrayList<>(strings);
-            inputs.set(1, new Operand("{$subtract: [" + inputs.get(1) + ", 1]}")); // Conversion from one-indexed to zero-indexed
-            if (inputs.size() == 2) {
-                inputs.add(new Operand(String.valueOf(Integer.MAX_VALUE)));
-            }
-            return new Operand("{$substrCP: [" + Util.commaList(inputs) + "]}");
+    @NonNull
+    private static <T> T getValueAs(final RexLiteral literal, final Class<T> clazz)
+            throws SQLException {
+        final T result = literal.getValueAs(clazz);
+        if (result == null) {
+            throw SqlError.createSQLException(LOGGER,
+                    SqlState.INVALID_QUERY_EXPRESSION,
+                    SqlError.MISSING_LITERAL_VALUE,
+                    literal.getTypeName().getName());
         }
-
+        return result;
     }
 
     private static String stripQuotes(final String s) {
@@ -531,22 +597,10 @@ public final class DocumentDbRules {
             final RexCall call,
             final List<Operand> strings,
             final String stdOperator) {
-        verifySupportedType(call);
         if (hasObjectIdAndLiteral(call, strings)) {
             return new Operand(getObjectIdAggregateForOperator(call, strings, stdOperator));
         }
         return new Operand("{" + maybeQuote(stdOperator) + ": [" + Util.commaList(strings) + "]}");
-    }
-
-    private static void verifySupportedType(final RexCall call)
-            throws SQLFeatureNotSupportedException {
-        if (call.type.getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
-                || call.type.getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
-            throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
-                    SqlError.UNSUPPORTED_CONVERSION,
-                    call.type.getSqlTypeName().getName(),
-                    SqlTypeName.TIMESTAMP.getName());
-        }
     }
 
     private static Operand getIntegerDivisionOperation(final String value, final String divisor) {
@@ -561,13 +615,13 @@ public final class DocumentDbRules {
     }
 
     private static Operand getIntegerDivisionOperation(final Operand value, final Operand divisor) {
-        return getIntegerDivisionOperation(value.getValue(), divisor.getValue());
+        return getIntegerDivisionOperation(value.getAggregationValue(), divisor.getAggregationValue());
     }
 
     private static String getObjectIdAggregateForOperator(
             final RexCall call,
             final List<Operand> strings,
-            final String stdOperator) {
+            final String stdOperator) throws SQLException {
         // $or together the $oid and native operations.
         final String oidOperation = "{" + maybeQuote(stdOperator)
                 + ": [" + Util.commaList(reformatObjectIdOperands(call, strings)) + "]}";
@@ -576,6 +630,7 @@ public final class DocumentDbRules {
         return "{\"$or\": [" + oidOperation + ", " + nativeOperation + "]}";
     }
 
+    @SneakyThrows
     private static boolean hasObjectIdAndLiteral(
             final RexCall call,
             final List<Operand> strings) {
@@ -595,14 +650,14 @@ public final class DocumentDbRules {
             switch (literal.getTypeName()) {
                 case BINARY:
                 case VARBINARY:
-                    final byte[] valueAsByteArray = literal.getValueAs(byte[].class);
+                    final byte[] valueAsByteArray = getValueAs(literal, byte[].class);
                     if (valueAsByteArray.length == 12) {
                         return true;
                     }
                     break;
                 case CHAR:
                 case VARCHAR:
-                    final String valueAsString = literal.getValueAs(String.class);
+                    final String valueAsString = getValueAs(literal, String.class);
                     if (OBJECT_ID_PATTERN.matcher(valueAsString).matches()) {
                         return true;
                     }
@@ -614,7 +669,7 @@ public final class DocumentDbRules {
 
     private static List<Operand> reformatObjectIdOperands(
             final RexCall call,
-            final List<Operand> strings) {
+            final List<Operand> strings) throws SQLException {
         final List<Operand> copyOfStrings = new ArrayList<>();
         for (int index = 0; index < strings.size(); index++) {
             final Operand operand = strings.get(index);
@@ -630,25 +685,25 @@ public final class DocumentDbRules {
 
     private static Operand reformatObjectIdLiteral(
             final RexLiteral literal,
-            final Operand operand) {
+            final Operand operand) throws SQLException {
         switch (literal.getTypeName()) {
             case BINARY:
             case VARBINARY:
-                final byte[] valueAsByteArray = literal.getValueAs(byte[].class);
+                final byte[] valueAsByteArray = getValueAs(literal, byte[].class);
                 if (valueAsByteArray.length == 12) {
                     final String value = "{\"$oid\": \""
                             + BaseEncoding.base16().encode(valueAsByteArray)
                             + "\"}";
-                    return new Operand(value);
+                    return new Operand(value, value, true);
                 } else {
                     return operand;
                 }
             case CHAR:
             case VARCHAR:
-                final String valueAsString = literal.getValueAs(String.class);
+                final String valueAsString = getValueAs(literal, String.class);
                 if (OBJECT_ID_PATTERN.matcher(valueAsString).matches()) {
                     final String value = "{\"$oid\": \"" + valueAsString + "\"}";
-                    return new Operand(value);
+                    return new Operand(value, value, true);
                 } else {
                     return operand;
                 }
@@ -679,17 +734,32 @@ public final class DocumentDbRules {
             DATE_PART_OPERATORS.put(TimeUnitRange.ISOYEAR, "$isoWeekYear");
         }
 
-        private static Operand translateCurrentTimestamp(final RexCall rexCall, final List<Operand> strings) {
-            return new Operand("new Date()");
+        private static Operand translateCurrentTimestamp(final Instant currentTime) {
+            final String currentTimestamp = "{\"$date\": {\"$numberLong\": "
+                    + "\"" + currentTime.toEpochMilli() + "\"}}";
+            return new Operand(currentTimestamp, currentTimestamp, true);
         }
 
+        @SneakyThrows
         private static Operand translateDateAdd(final RexCall call, final List<Operand> strings) {
-            // TODO: Check for unsupported intervals and throw error/emulate in some other way.
+            verifySupportedDateAddType(call.getOperands().get(1));
             return new Operand("{ \"$add\":" + "[" + Util.commaList(strings) + "]}");
         }
 
+        private static void verifySupportedDateAddType(final RexNode node)
+                throws SQLFeatureNotSupportedException {
+            if (node.getType().getSqlTypeName() == SqlTypeName.INTERVAL_MONTH
+                    || node.getType().getSqlTypeName() == SqlTypeName.INTERVAL_YEAR) {
+                throw SqlError.createSQLFeatureNotSupportedException(LOGGER,
+                        SqlError.UNSUPPORTED_CONVERSION,
+                        node.getType().getSqlTypeName().getName(),
+                        SqlTypeName.TIMESTAMP.getName());
+            }
+        }
+
+        @SneakyThrows
         private static Operand translateDateDiff(final RexCall call, final List<Operand> strings) {
-            final TimeUnitRange interval = call.getType().getIntervalQualifier().timeUnitRange;
+            final TimeUnitRange interval = getIntervalQualifier(call).timeUnitRange;
             switch (interval) {
                 case YEAR:
                     return formatDateDiffYear(strings);
@@ -704,6 +774,19 @@ public final class DocumentDbRules {
             }
         }
 
+        @NonNull
+        private static SqlIntervalQualifier getIntervalQualifier(final RexCall call)
+                throws SQLException {
+            final SqlIntervalQualifier result = call.getType().getIntervalQualifier();
+            if (result == null) {
+                throw SqlError.createSQLException(LOGGER,
+                        SqlState.INVALID_QUERY_EXPRESSION,
+                        SqlError.MISSING_LITERAL_VALUE,
+                        call.getType().getSqlTypeName().getName());
+            }
+            return result;
+        }
+
         private static Operand formatDateDiffYear(final List<Operand> strings) {
             final String dateDiffYearFormat =
                     "{'$subtract': [{'$year': %1$s}, {'$year': %2$s}]}";
@@ -714,11 +797,11 @@ public final class DocumentDbRules {
             final String yearPartMultiplier = timeUnitRange == TimeUnitRange.QUARTER ? "4" : "12";
             final String monthPart1 =
                     timeUnitRange == TimeUnitRange.QUARTER
-                            ? translateExtractQuarter(strings.get(0)).getValue()
+                            ? translateExtractQuarter(strings.get(0)).getAggregationValue()
                             : String.format("{'$month': %s}", strings.get(0));
             final String monthPart2 =
                     timeUnitRange == TimeUnitRange.QUARTER
-                            ? translateExtractQuarter(strings.get(1)).getValue()
+                            ? translateExtractQuarter(strings.get(1)).getAggregationValue()
                             : String.format("{'$month': %s}", strings.get(1));
             final String dateDiffMonthFormat =
                     "{'$subtract': [ "
@@ -826,7 +909,7 @@ public final class DocumentDbRules {
                 return null;
             }
             final RexLiteral literal = (RexLiteral) operand2;
-            final TimeUnitRange timeUnitRange = literal.getValueAs(TimeUnitRange.class);
+            final TimeUnitRange timeUnitRange = getValueAs(literal, TimeUnitRange.class);
             switch (timeUnitRange) {
                 case YEAR:
                 case MONTH:
@@ -931,6 +1014,237 @@ public final class DocumentDbRules {
                             SqlError.UNSUPPORTED_PROPERTY, timeUnitRange.toString());
             }
             return divisorLong;
+        }
+    }
+
+    /**
+     * Translates expressions using only query operators.
+     */
+    private static class SimpleMatchTranslator {
+        private static final Map<SqlOperator, String> REVERSE_OPERATORS =
+                new HashMap<>();
+        static {
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.EQUALS, "$eq");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.NOT_EQUALS, "$ne");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.GREATER_THAN, "$lte");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.GREATER_THAN_OR_EQUAL, "$lt");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.LESS_THAN, "$gte");
+            REVERSE_OPERATORS.put(SqlStdOperatorTable.LESS_THAN_OR_EQUAL, "$gt");
+        }
+
+        private static String getObjectIdComparisonOperator(
+                final RexCall call,
+                final List<Operand> strings,
+                final String stdOperator
+        ) throws SQLException {
+            // $or together the $oid and native operations.
+            final String nativeOperation = getComparisonOperator(call, strings, stdOperator);
+            final String oidOperation = getComparisonOperator(call, reformatObjectIdOperands(call, strings), stdOperator);
+            if (nativeOperation != null && oidOperation != null) {
+                return "{\"$or\": [" + oidOperation + ", " + nativeOperation + "]}";
+            }
+            return null;
+        }
+
+        private static String getComparisonOperator(
+                final RexCall call,
+                final List<Operand> strings,
+                final String stdOperator) {
+            // Handle NOT if the argument is a field reference.
+            if (call.isA(SqlKind.NOT) && strings.get(0).isInputRef()) {
+                return "{" + strings.get(0).getQueryValue() + ": false}";
+            }
+            // If given 2 arguments, attempt to do a binary comparison. Only 1 side can be a field reference.
+            // The other side must be a literal or an expression that can be supported without aggregate operators.
+            if (strings.size() == 2) {
+                final Operand left = strings.get(0);
+                final Operand right = strings.get(1);
+                final String reverseOp = REVERSE_OPERATORS.get(call.getOperator());
+                final String simpleComparison = formatSimpleBinaryComparison(stdOperator, left, right);
+                if (simpleComparison != null) {
+                    return simpleComparison;
+                }
+                // Try to return a simple comparison by swapping the operands or return null.
+                return formatSimpleBinaryComparison(reverseOp, right, left);
+            }
+            // For any other scenario, return null.
+            return null;
+        }
+
+        private static String getAndOrOperator(final List<Operand> operands, final String op) {
+            final StringBuilder simple = new StringBuilder();
+            simple.append("{").append(op).append(": [");
+            for (Operand value: operands) {
+                // If any operand is null, return null.
+                if (value.getQueryValue() == null) {
+                    return null;
+                }
+                simple.append(value.isInputRef() ? "{" + value.getQueryValue() + ": true}" : value.getQueryValue());
+                simple.append(",");
+
+            }
+            simple.deleteCharAt(simple.length() - 1);
+            simple.append("]}");
+            return simple.toString();
+        }
+
+        private static String formatSimpleBinaryComparison(
+                final String op,
+                final Operand leftOperand,
+                final Operand rightOperand
+        ) {
+            // If left side is field reference and the right side is not and neither query values are null,
+            // return the simple comparison.
+            if (leftOperand.isInputRef()
+                    && rightOperand.isQuerySyntax()
+                    && leftOperand.getQueryValue() != null
+                    && rightOperand.getQueryValue() != null) {
+                String comparison = "{" +  leftOperand.getQueryValue() + ": {" + op + ": " + rightOperand.getQueryValue() + "}}";
+
+                // For not equals, need to also handle that value is not null or undefined.
+                if (op.equals(RexToMongoTranslator.MONGO_OPERATORS.get(SqlStdOperatorTable.NOT_EQUALS))) {
+                    comparison = "{" + leftOperand.getQueryValue() + ": {$nin: [null, " + rightOperand.getQueryValue() + "]}}";
+                }
+                return comparison;
+            }
+            return null;
+        }
+
+        private static String getNullCheckOperator(
+                final RexCall call,
+                final List<Operand> operands
+        ) {
+            final String op = call.getOperator() == SqlStdOperatorTable.IS_NULL ? "$eq" : "$ne";
+            return operands.get(0).isInputRef()
+                    ? "{" + operands.get(0).getQueryValue() + ": {" + op + ": null }}"
+                    : null;
+        }
+    }
+
+    private static class StringFunctionTranslator {
+        private static final Map<SqlOperator, String> STRING_OPERATORS =
+                new HashMap<>();
+
+        static {
+            STRING_OPERATORS.put(SqlStdOperatorTable.CONCAT, "$concat");;
+            STRING_OPERATORS.put(SqlStdOperatorTable.LOWER, "$toLower");
+            STRING_OPERATORS.put(SqlStdOperatorTable.UPPER, "$toUpper");
+            STRING_OPERATORS.put(SqlStdOperatorTable.CHAR_LENGTH, "$strLenCP");
+            STRING_OPERATORS.put(SqlStdOperatorTable.SUBSTRING, "$substrCP");
+            STRING_OPERATORS.put(SqlStdOperatorTable.POSITION, "$indexOfCP");
+        }
+
+        private static Operand getMongoAggregateForSubstringOperator(
+                final RexCall call,
+                final List<Operand> strings) {
+            final List<Operand> inputs = new ArrayList<>(strings);
+            // Convert from one-indexed to zero-indexed
+            inputs.set(1, new Operand("{\"$subtract\": [" + inputs.get(1) + ", 1]}"));
+            if (inputs.size() == 2) {
+                inputs.add(new Operand(String.valueOf(Integer.MAX_VALUE)));
+            }
+            return new Operand("{"
+                    + STRING_OPERATORS.get(SqlStdOperatorTable.SUBSTRING) + ": [" + Util.commaList(inputs) + "]}");
+        }
+
+        private static Operand getMongoAggregateForConcatOperator(
+                final RexCall call,
+                final List<Operand> strings) {
+            // If using CONCAT function instead of operator, convert any null values to empty string.
+            final List<String> inputs =
+                    strings.stream()
+                            .map(string ->
+                                    call.getOperator() == SqlLibraryOperators.CONCAT_FUNCTION
+                                            ? "{\"$ifNull\": [" + string + ", \"\" ]}"
+                                            : string.toString())
+                            .collect(Collectors.toList());
+            return new Operand("{" + STRING_OPERATORS.get(SqlStdOperatorTable.CONCAT)
+                    + ": [" + Util.commaList(inputs) + "]}");
+        }
+        private static Operand getMongoAggregateForPositionStringOperator(
+                final RexCall call,
+                final List<Operand> strings) {
+            final List<String> args = new ArrayList<>();
+            final StringBuilder operand = new StringBuilder();
+            final StringBuilder finish = new StringBuilder();
+            // Comparison is case-insensitive so convert both strings to same case.
+            // Note also that argument order in $indexOfCP needs to be string, substring, [startIndex].
+            args.add("{" + STRING_OPERATORS.get(SqlStdOperatorTable.LOWER) + ":" + strings.get(1) + "}");
+            args.add("{" + STRING_OPERATORS.get(SqlStdOperatorTable.LOWER) + ":" + strings.get(0) + "}");
+            // Check if either string is null.
+            operand.append("{\"$cond\": [" + RexToMongoTranslator.getNullCheckExpr(strings) + ", ");
+            // Add starting index if any.
+            if (strings.size() == 3) {
+                args.add("{\"$subtract\": [" + strings.get(2) + ", 1]}"); // Convert to 0-based.
+                operand.append("{\"$cond\": [{\"$lte\": [" + strings.get(2) + ", 0]}, 0, "); // Check if 1-based index > 0.
+                finish.append("]}");
+            }
+            // Convert 0-based index to 1-based.
+            operand.append("{\"$add\": [{" + STRING_OPERATORS.get(SqlStdOperatorTable.POSITION) + ": [" + Util.commaList(args) + "]}, 1]}");
+            operand.append(finish);
+            operand.append(", null ]}");
+            // Return 1-based index when string is found.
+            // Returns null if either base string or substring is null.
+            // Returns 0 if substring cannot be found or index (if any) is null or non-positive.
+            return new Operand(operand.toString());
+        }
+
+        private static Operand getMongoAggregateForStringOperator(
+                final RexCall call,
+                final List<Operand> strings) {
+            // Add a null check since these operators do not handle null or missing expressions correctly.
+            return new Operand("{\"$cond\": ["
+                    + RexToMongoTranslator.getNullCheckExpr(strings)
+                    + ", "
+                    + "{" + STRING_OPERATORS.get(call.getOperator()) + ": " + strings.get(0) + "}"
+                    + ", null]}");
+        }
+
+        private static Operand getMongoAggregateForLeftOperator(
+                final RexCall call,
+                final List<Operand> strings) {
+            final List<Operand> inputs = new ArrayList<>();
+            inputs.add(strings.get(0));
+            // Substring as if starting from left. Start index = 0.
+            inputs.add(new Operand("0"));
+            inputs.add(strings.get(1));
+            // Returns substring starting from 0 to given length.
+            // If length is greater than length of string, the entire string will be returned.
+            return new Operand("{\"$cond\": ["
+                    + "{\"$and\": ["
+                    + RexToMongoTranslator.getNullCheckExpr(strings)
+                    + ", "
+                    + "{\"$gte\":[" + strings.get(1) + ", 0]}"
+                    + "]}, "
+                    + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.SUBSTRING) + ": [" + Util.commaList(inputs) + "]}"
+                    + ", null]}");
+        }
+
+        private static Operand getMongoAggregateForRightOperator(
+                final RexCall call,
+                final List<Operand> strings) {
+            final List<Operand> inputs = new ArrayList<>();
+            inputs.add(strings.get(0));
+            // Substring as if starting from right. Start index = length - # of chars
+            inputs.add(new Operand("{\"$subtract\": [ "
+                    + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.CHAR_LENGTH) + ":" + strings.get(0) + "}, "
+                    + strings.get(1) + "]}"));
+            inputs.add(strings.get(1));
+            // If string length is less than or equal to number of characters then return the entire
+            // string. Else, return substring.
+            return new Operand("{\"$cond\": ["
+                    + "{\"$and\": ["
+                    + RexToMongoTranslator.getNullCheckExpr(strings)
+                    + ", "
+                    + "{\"$gte\":[" + strings.get(1) + ", 0]}"
+                    + "]}, "
+                    + "{\"$cond\": [ "
+                    + "{\"$lte\": ["
+                    + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.CHAR_LENGTH) + ":" + strings.get(0) + "}, "
+                    + strings.get(1) + "]}, "
+                    + strings.get(0) + ", "
+                    + "{" + STRING_OPERATORS.get(SqlStdOperatorTable.SUBSTRING) + ": [" + Util.commaList(inputs) + "]}]}"
+                    + ", null]}");
         }
     }
 
@@ -1251,28 +1565,51 @@ public final class DocumentDbRules {
      */
     @Getter
     static class Operand {
-        private final String value;
+        private final String aggregationValue;
+        private final String queryValue;
+        private final boolean isQuerySyntax;
         private final DocumentDbSchemaColumn column;
 
         /**
-         * Constructs an Operand from a String value.
+         * Constructs an Operand from a String value. Only aggregation value is set. All other values
+         * will be null.
          *
-         * @param value the String value.
+         * @param aggregationValue the String value.
          */
-        public Operand(final String value) {
-            this(value, null);
+        public Operand(final String aggregationValue) {
+            this(aggregationValue, null, false, null);
         }
 
         /**
-         * Constructs an Operand from a String value and column metadata.
+         * Constructs an Operand from the given values.The column value is left as null.
          *
-         * @param value the String value.
-         * @param column the column metadata.
+         * @param aggregationValue the String value. This is an expression using aggregation operators.
+         * @param queryValue This is an expression using query operators.
+         * @param isQuerySyntax Whether or not the operand can be used on the right of query operators. This
+         *     includes literals, literals wrapped in CAST, and simple scalar function calls such as
+         *     CURRENT TIME.
          */
         public Operand(
-                final String value,
+                final String aggregationValue, final String queryValue, final boolean isQuerySyntax) {
+            this(aggregationValue, queryValue, isQuerySyntax, null);
+        }
+
+        /**
+         * Constructs an Operand from the given values.
+         * @param aggregationValue the String value. This is an expression using aggregation operators.
+         * @param queryValue This is an expression using query operators.
+         * @param isQuerySyntax Whether or not the operand can be used on the right of query operators. This includes literals, literals wrapped in CAST,
+         *                      and simple scalar function calls such as CURRENT TIME.
+         * @param column Column metadata if the operand represents a field reference.
+         */
+        public Operand(
+                final String aggregationValue,
+                final String queryValue,
+                final boolean isQuerySyntax,
                 final DocumentDbSchemaColumn column) {
-            this.value = value;
+            this.aggregationValue = aggregationValue;
+            this.queryValue = queryValue;
+            this.isQuerySyntax = isQuerySyntax;
             this.column = column;
         }
 
@@ -1287,9 +1624,17 @@ public final class DocumentDbRules {
             return new Operand(String.format(format, args));
         }
 
+        /**
+         * Checks if operand represents a field reference. This includes RexInputRef as well as
+         * field references wrapped in calls to CAST or REINTERPRET.
+         */
+        public boolean isInputRef() {
+            return this.column != null;
+        }
+
         @Override
         public String toString() {
-            return value;
+            return aggregationValue;
         }
 
         @Override
@@ -1299,18 +1644,18 @@ public final class DocumentDbRules {
             }
             if (o instanceof String) {
                 final String stringValue = (String) o;
-                return stringValue.equals(this.getValue());
+                return stringValue.equals(this.getAggregationValue());
             }
             if (!(o instanceof Operand)) {
                 return false;
             }
             final Operand that = (Operand) o;
-            return Objects.equals(getValue(), that.getValue());
+            return Objects.equals(getAggregationValue(), that.getAggregationValue());
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(getValue());
+            return Objects.hash(getAggregationValue());
         }
     }
 

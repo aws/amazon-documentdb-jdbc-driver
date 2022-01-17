@@ -194,23 +194,24 @@ repositories {
 
 dependencies {
     implementation project(':common')
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.1'
-    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.12.3'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.13.1'
+    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.13.0'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.1'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'
-    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.26.0'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.28.0'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.3.4'
 
-    compileOnly         'org.projectlombok:lombok:1.18.16'
+    compileOnly group: 'org.immutables', name: 'value', version: '2.8.8'
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     testCompileOnly group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     testImplementation(testFixtures(project(':common')))
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
-    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.7.2'
-    testImplementation group: 'org.mockito', name: 'mockito-core', version: '3.11.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.2'
+    testImplementation group: 'org.mockito', name: 'mockito-core', version: '4.2.0'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'

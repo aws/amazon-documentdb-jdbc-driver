@@ -30,7 +30,7 @@ import de.flapdoodle.embed.mongo.config.MongodConfig;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version.Main;
 import de.flapdoodle.embed.process.config.RuntimeConfig;
-import de.flapdoodle.embed.process.config.io.ProcessOutput;
+import de.flapdoodle.embed.process.config.process.ProcessOutput;
 import de.flapdoodle.embed.process.io.LogWatchStreamProcessor;
 import de.flapdoodle.embed.process.io.NamedOutputStreamProcessor;
 import de.flapdoodle.embed.process.io.Processors;
@@ -107,7 +107,7 @@ public class DocumentDbMongoTestEnvironment extends DocumentDbAbstractTestEnviro
             return false;
         }
 
-        port = Network.getFreeServerPort();
+        port = Network.freeServerPort(Network.getLocalHost());
         final MongoCmdOptions cmdOptions = MongoCmdOptions.builder()
                 .auth(enableAuthentication)
                 .build();
@@ -226,10 +226,11 @@ public class DocumentDbMongoTestEnvironment extends DocumentDbAbstractTestEnviro
             mongoOutput = new NamedOutputStreamProcessor("[mongo shell output]", Processors.console());
         }
         final RuntimeConfig runtimeConfig = Defaults.runtimeConfigFor(Command.Mongo)
-                .processOutput(new ProcessOutput(
-                        mongoOutput,
-                        namedConsole("[mongo shell error]"),
-                        Processors.console()))
+                .processOutput(ProcessOutput.builder()
+                        .output(mongoOutput)
+                        .error(Processors.namedConsole("[mongo shell error]"))
+                        .commands(Processors.console())
+                        .build())
                 .build();
         final MongoShellStarter starter = MongoShellStarter.getInstance(runtimeConfig);
         final File scriptFile = writeTmpScriptFile(scriptText);

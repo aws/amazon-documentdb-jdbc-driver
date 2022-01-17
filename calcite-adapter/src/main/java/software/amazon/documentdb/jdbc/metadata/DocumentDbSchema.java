@@ -24,6 +24,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NonNull;
@@ -59,10 +60,11 @@ public class DocumentDbSchema {
     public static final String TABLES_PROPERTY = "tables";
     public static final String SCHEMA_TABLE_ID_SEPARATOR = "::";
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSchema.class);
-    private static final ObjectMapper JSON_OBJECT_MAPPER = new ObjectMapper()
-            .setSerializationInclusion(Include.NON_NULL)
-            .setSerializationInclusion(Include.NON_EMPTY)
-            .enable(SerializationFeature.INDENT_OUTPUT);
+    private static final ObjectMapper JSON_OBJECT_MAPPER = JsonMapper.builder()
+            .serializationInclusion(Include.NON_NULL)
+            .serializationInclusion(Include.NON_EMPTY)
+            .enable(SerializationFeature.INDENT_OUTPUT)
+            .build();
     private static final String EMPTY_STRING = "";
 
     public static final String DEFAULT_SCHEMA_NAME = "_default";

@@ -28,15 +28,17 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
+import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
-import software.amazon.documentdb.jdbc.persist.SchemaReader;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.stream.Stream;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
@@ -49,6 +51,9 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     private static final String COLLECTION_NAME = "COLLECTION";
     private static final DocumentDbConnectionProperties VALID_CONNECTION_PROPERTIES = new DocumentDbConnectionProperties();
     private static Connection basicConnection;
+    private static final String DOC_DB_USER_PROPERTY = "DOC_DB_USER";
+    private static final String DOC_DB_HOST_PROPERTY = "DOC_DB_HOST";
+    private static final String DOC_DB_PRIV_KEY_FILE_PROPERTY = "DOC_DB_PRIV_KEY_FILE";
 
     /** Initializes the test class. */
     @BeforeAll
@@ -74,7 +79,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
 
     @AfterAll
     static void afterAll() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(
                 VALID_CONNECTION_PROPERTIES, null)) {
             schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         }
@@ -256,6 +261,44 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(tables.next());
     }
 
+    @Test
+    @DisplayName("Tests that a statement can be created given valid type and concurrency")
+    void testStatement() throws SQLException {
+        try (Statement statement = basicConnection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+            Assertions.assertNotNull(statement);
+        }
+        try (Statement ignored = basicConnection.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)) {
+            Assertions.fail("Exception should be thrown.");
+        } catch (Exception e) {
+            Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE),e.getMessage());
+        }
+        try (Statement ignored = basicConnection.createStatement(ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+           Assertions.fail("Exception should be thrown.");
+        } catch (Exception e) {
+            Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE),e.getMessage());
+        }
+
+    }
+
+    @Test
+    @DisplayName("Tests that a prepared statement can be created given valid type and concurrency")
+    void testPreparedStatement() throws SQLException {
+        final String sql = "SELECT * FROM " + COLLECTION_NAME;
+        try (PreparedStatement statement = basicConnection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+            Assertions.assertNotNull(statement);
+        }
+        try (PreparedStatement ignored = basicConnection.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_UPDATABLE)) {
+            Assertions.fail("Exception should be thrown.");
+        } catch (Exception e) {
+            Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE), e.getMessage());
+        }
+        try (PreparedStatement ignored = basicConnection.prepareStatement(sql, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY)) {
+            Assertions.fail("Exception should be thrown.");
+        } catch (Exception e) {
+            Assertions.assertEquals(SqlError.lookup(SqlError.UNSUPPORTED_RESULT_SET_TYPE), e.getMessage());
+        }
+    }
+
     /**
      * Tests metadata for table types.
      */
@@ -277,30 +320,38 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         if (environment == null) {
             return;
         }
-
-        final String docDbUserProperty = "DOC_DB_USER";
-        final String docDbHostProperty = "DOC_DB_HOST";
-        final String docDbPrivKeyFileProperty = "DOC_DB_PRIV_KEY_FILE";
-        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(environment.getJdbcConnectionString());
-
-        final String docDbRemoteHost = System.getenv(docDbHostProperty);
-        final String docDbSshUserAndHost = System.getenv(docDbUserProperty);
-        final String docDbPrivKeyFile = System.getenv(docDbPrivKeyFileProperty);
-        final int userSeparatorIndex = docDbSshUserAndHost.indexOf('@');
-        final String sshUser = docDbSshUserAndHost.substring(0, userSeparatorIndex);
-        final String sshHostname = docDbSshUserAndHost.substring(userSeparatorIndex + 1);
-
-        properties.setHostname(docDbRemoteHost);
-        properties.setSshUser(sshUser);
-        properties.setSshHostname(sshHostname);
-        properties.setSshPrivateKeyFile(docDbPrivKeyFile);
-        properties.setSshStrictHostKeyChecking("false");
-
+        final DocumentDbConnectionProperties properties = getInternalSSHTunnelProperties(environment);
         try (Connection connection = DriverManager.getConnection("jdbc:documentdb:", properties)) {
             Assertions.assertTrue(connection instanceof DocumentDbConnection);
             Assertions.assertTrue(connection.isValid(10));
         }
+    }
+
+    @ParameterizedTest(name = "testSshTunnelInvalidOptions - [{index}] - {arguments}")
+    @DisplayName("Tests SSH tunnel with invalid options")
+    @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
+    void testSshTunnelInvalidOptions(final DocumentDbTestEnvironment environment) throws SQLException {
+        // NOTE: a "null" environment means it isn't configured to run. So bypass.
+        if (environment == null) {
+            return;
+        }
+        final DocumentDbConnectionProperties properties = getInternalSSHTunnelProperties(environment);
+        // Test incorrect private key file path.
+        properties.setSshPrivateKeyFile("~/certs/other.pem");
+        Assertions.assertEquals(SqlError.lookup(SqlError.SSH_PRIVATE_KEY_FILE_NOT_FOUND, "~/certs/other.pem"),
+                Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection("jdbc:documentdb:", properties)).getMessage());
+
+        // Test incorrect known hosts path.
+        properties.setSshPrivateKeyFile(System.getenv(DOC_DB_PRIV_KEY_FILE_PROPERTY));
+        properties.setSshStrictHostKeyChecking("true");
+        properties.setSshKnownHostsFile("~/.ssh/unknown_hosts");
+        Assertions.assertEquals(SqlError.lookup(SqlError.KNOWN_HOSTS_FILE_NOT_FOUND, "~/.ssh/unknown_hosts"),
+                Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection("jdbc:documentdb:", properties)).getMessage());
+
+        // Test where TLSAllowInvalidHostnames is disabled - host will not match certificate.
+        properties.setSshStrictHostKeyChecking("false");
+        properties.setTlsAllowInvalidHostnames("false");
+        Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection("jdbc:documentdb:", properties));
     }
 
     @Test()
@@ -310,7 +361,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
 
         int expectedVersion = 1;
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -326,7 +377,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         expectedVersion++;
 
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -342,7 +393,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         expectedVersion++;
 
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -358,7 +409,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         expectedVersion++;
 
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -373,7 +424,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
             Assertions.assertNotNull(connection.getDatabaseMetadata());
         }
 
-        try (SchemaReader schemaReader = SchemaStoreFactory.createReader(
+        try (DocumentDbSchemaReader schemaReader = new DocumentDbSchemaReader(
                 VALID_CONNECTION_PROPERTIES, null)) {
             final DocumentDbSchema schema = schemaReader.read(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
             Assertions.assertNotNull(schema);
@@ -395,5 +446,24 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         } else {
             return Stream.of((DocumentDbTestEnvironment) null);
         }
+    }
+
+    private static DocumentDbConnectionProperties getInternalSSHTunnelProperties(
+            final DocumentDbTestEnvironment environment)
+            throws SQLException {
+        final String docDbRemoteHost = System.getenv(DOC_DB_HOST_PROPERTY);
+        final String docDbSshUserAndHost = System.getenv(DOC_DB_USER_PROPERTY);
+        final String docDbPrivKeyFile = System.getenv(DOC_DB_PRIV_KEY_FILE_PROPERTY);
+        final int userSeparatorIndex = docDbSshUserAndHost.indexOf('@');
+        final String sshUser = docDbSshUserAndHost.substring(0, userSeparatorIndex);
+        final String sshHostname = docDbSshUserAndHost.substring(userSeparatorIndex + 1);
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(environment.getJdbcConnectionString());
+        properties.setHostname(docDbRemoteHost);
+        properties.setSshUser(sshUser);
+        properties.setSshHostname(sshHostname);
+        properties.setSshPrivateKeyFile(docDbPrivKeyFile);
+        properties.setSshStrictHostKeyChecking("false");
+        return properties;
     }
 }

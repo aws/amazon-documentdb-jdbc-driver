@@ -11,7 +11,8 @@ information to effectively respond to your bug report or contribution.
 
 We welcome you to use the GitHub issue tracker to report bugs or suggest features.
 
-When filing an issue, please check existing open, or recently closed, issues to make sure somebody else hasn't already
+When filing an issue, please check [existing open](https://github.com/aws/amazon-documentdb-jdbc-driver/issues),
+or [recently closed](https://github.com/aws/amazon-documentdb-jdbc-driver/issues?q=is%3Aissue+is%3Aclosed), issues to make sure somebody else hasn't already
 reported the issue. Please try to include as much information as you can. Details like these are incredibly useful:
 
 * A reproducible test case or series of steps

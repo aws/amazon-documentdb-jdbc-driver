@@ -25,8 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -46,11 +45,15 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
     private static final String USER = "user";
     private static final String PASSWORD = "password";
     private static final String CONNECTION_STRING_TEMPLATE = "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false&scanLimit=1000&scanMethod=%s";
+    private static final String COLLECTION_NAME = "testCollection";
+    private static final String QUERY =  String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, COLLECTION_NAME);
+    private static final int RECORD_COUNT = 10;
 
     @BeforeAll
     static void initialize()  {
         // Add a valid users to the local MongoDB instance.
         createUser(DATABASE_NAME, USER, PASSWORD);
+        prepareSimpleConsistentData(DATABASE_NAME, COLLECTION_NAME, RECORD_COUNT, USER, PASSWORD);
     }
 
     @AfterEach
@@ -58,9 +61,9 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(
                         new Properties(),
-                        getJdbcConnectionString(DocumentDbMetadataScanMethod.RANDOM),
+                        getJdbcConnectionString(),
                         "jdbc:documentdb:");
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(properties, null)) {
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, null)) {
             schemaWriter.remove(DocumentDbSchema.DEFAULT_SCHEMA_NAME);
         }
     }
@@ -73,26 +76,17 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests that queries can be executed using PreparedStatement.")
     void testExecuteQuery() throws SQLException {
-        final String collectionName = "testPreparedStatementBasicQuery";
-        final String query = String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collectionName);
-        final int recordCount = 10;
-        prepareSimpleConsistentData(DATABASE_NAME, collectionName,
-                recordCount, USER, PASSWORD);
-        final String connectionString =
-                String.format(
-                        "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false",
-                        USER, PASSWORD, getMongoPort(), DATABASE_NAME);
-        final Connection connection = DriverManager.getConnection(connectionString);
-        final PreparedStatement preparedStatement = new DocumentDbPreparedStatement(connection, query);
-        final ResultSet resultSet = preparedStatement.executeQuery();
-        try {
+        final Connection connection = DriverManager.getConnection(getJdbcConnectionString());
+        final PreparedStatement preparedStatement = new DocumentDbPreparedStatement(connection, QUERY);
+        try (ResultSet resultSet = preparedStatement.executeQuery()) {
             int count = 0;
             while (resultSet.next()) {
                 Assertions.assertTrue(
-                        Pattern.matches("^\\w+$", resultSet.getString(collectionName + "__id")));
+                        Pattern.matches("^\\w+$", resultSet.getString(COLLECTION_NAME + "__id")));
                 Assertions.assertEquals(Double.MAX_VALUE, resultSet.getDouble("fieldDouble"));
                 Assertions.assertEquals("新年快乐", resultSet.getString("fieldString"));
-                Assertions.assertTrue(Pattern.matches("^\\w+$", resultSet.getString("fieldObjectId")));
+                Assertions.assertTrue(
+                        Pattern.matches("^\\w+$", resultSet.getString("fieldObjectId")));
                 Assertions.assertTrue(resultSet.getBoolean("fieldBoolean"));
                 Assertions.assertEquals(
                         Instant.parse("2020-01-01T00:00:00.00Z"),
@@ -104,97 +98,104 @@ class DocumentDbPreparedStatementTest extends DocumentDbFlapDoodleTest {
                 Assertions.assertNull(resultSet.getString("fieldNull"));
                 count++;
             }
-            Assertions.assertEquals(recordCount, count);
-        } finally {
-            resultSet.close();
+            Assertions.assertEquals(RECORD_COUNT, count);
         }
     }
 
 
     /**
-     * Tests that metadata can be retrieved before the query is executed.
+     * Tests that metadata can be retrieved before the query is executed and
+     * that it matches after execution.
      *
      * @throws SQLException if connection or query fails.
      */
     @Test
-    @DisplayName("Tests getMetadata without querying.")
-    void testGetMetadataQuery() throws SQLException {
-        final String collectionName = "testPreparedStatementMetadata";
-        final String query = String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collectionName);
-        final int recordCount = 10;
-        prepareSimpleConsistentData(DATABASE_NAME, collectionName,
-                recordCount, USER, PASSWORD);
-        final String connectionString =
-                String.format(
-                        "jdbc:documentdb://%s:%s@localhost:%s/%s?tls=false",
-                        USER, PASSWORD, getMongoPort(), DATABASE_NAME);
-        final Connection connection = DriverManager.getConnection(connectionString);
-        final PreparedStatement preparedStatement = new DocumentDbPreparedStatement(connection, query);
-        final ResultSetMetaData metadata = preparedStatement.getMetaData();
-        Assertions.assertNotNull(metadata);
-        Assertions.assertEquals(13, metadata.getColumnCount());
-        Assertions.assertEquals(collectionName, metadata.getTableName(1));
-        Assertions.assertNull(metadata.getCatalogName(1));
-        Assertions.assertEquals(DATABASE_NAME, metadata.getSchemaName(1));
-
-        Assertions.assertEquals(collectionName + "__id", metadata.getColumnName(1));
-        Assertions.assertEquals(collectionName + "__id", metadata.getColumnLabel(1));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(1));
-        Assertions.assertEquals("java.lang.String", metadata.getColumnClassName(1));
-        Assertions.assertEquals(Types.VARCHAR, metadata.getColumnType(1));
-        Assertions.assertEquals(0, metadata.isNullable(1));
-        Assertions.assertEquals(65536, metadata.getPrecision(1));
-        Assertions.assertEquals(65536, metadata.getColumnDisplaySize(1));
-
-        Assertions.assertTrue(metadata.isReadOnly(1));
-        Assertions.assertTrue(metadata.isSigned(1));
-        Assertions.assertTrue(metadata.isCaseSensitive(1));
-        Assertions.assertFalse(metadata.isWritable(1));
-        Assertions.assertFalse(metadata.isAutoIncrement(1));
-        Assertions.assertFalse(metadata.isCurrency(1));
-
-        Assertions.assertEquals("fieldDouble", metadata.getColumnName(2));
-        Assertions.assertEquals("DOUBLE", metadata.getColumnTypeName(2));
-        Assertions.assertEquals(1, metadata.isNullable(2));
-        Assertions.assertEquals(0, metadata.getScale(2));
-
-        Assertions.assertEquals("fieldString", metadata.getColumnName(3));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(3));
-
-        Assertions.assertEquals("fieldObjectId", metadata.getColumnName(4));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(4));
-
-        Assertions.assertEquals("fieldBoolean", metadata.getColumnName(5));
-        Assertions.assertEquals("BOOLEAN", metadata.getColumnTypeName(5));
-
-        Assertions.assertEquals("fieldDate", metadata.getColumnName(6));
-        Assertions.assertEquals("TIMESTAMP", metadata.getColumnTypeName(6));
-
-        Assertions.assertEquals("fieldInt", metadata.getColumnName(7));
-        Assertions.assertEquals("INTEGER", metadata.getColumnTypeName(7));
-
-        Assertions.assertEquals("fieldLong", metadata.getColumnName(8));
-        Assertions.assertEquals("BIGINT", metadata.getColumnTypeName(8));
-
-        Assertions.assertEquals("fieldMaxKey", metadata.getColumnName(9));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(9));
-
-        Assertions.assertEquals("fieldMinKey", metadata.getColumnName(10));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(10));
-
-        Assertions.assertEquals("fieldNull", metadata.getColumnName(11));
-        Assertions.assertEquals("VARCHAR", metadata.getColumnTypeName(11));
-
-        Assertions.assertEquals("fieldBinary", metadata.getColumnName(12));
-        Assertions.assertEquals("VARBINARY", metadata.getColumnTypeName(12));
-
-        Assertions.assertEquals("fieldDecimal128", metadata.getColumnName(13));
-        Assertions.assertEquals("DECIMAL", metadata.getColumnTypeName(13));
+    @DisplayName("Tests getMetadata without querying and after querying.")
+    void testGetMetadataQueryBeforeExecute() throws SQLException {
+        final Connection connection = DriverManager.getConnection(getJdbcConnectionString());
+        final PreparedStatement preparedStatement = new DocumentDbPreparedStatement(connection, QUERY);
+        // Check the metadata.
+        checkMetadata(preparedStatement.getMetaData());
+        // Execute the statement.
+        preparedStatement.execute();
+        // Check the metadata again.
+        checkMetadata(preparedStatement.getMetaData());
     }
 
-    private static String getJdbcConnectionString(final DocumentDbMetadataScanMethod method) {
+    private static void checkMetadata(final ResultSetMetaData resultSetMetaData) throws SQLException {
+        Assertions.assertNotNull(resultSetMetaData);
+        Assertions.assertEquals(13, resultSetMetaData.getColumnCount());
+        Assertions.assertEquals(COLLECTION_NAME, resultSetMetaData.getTableName(1));
+        Assertions.assertNull(resultSetMetaData.getCatalogName(1));
+        Assertions.assertEquals(DATABASE_NAME, resultSetMetaData.getSchemaName(1));
+
+        Assertions.assertEquals(COLLECTION_NAME + "__id", resultSetMetaData.getColumnName(1));
+        Assertions.assertEquals(COLLECTION_NAME + "__id", resultSetMetaData.getColumnLabel(1));
+        Assertions.assertEquals("VARCHAR", resultSetMetaData.getColumnTypeName(1));
+        Assertions.assertEquals("java.lang.String", resultSetMetaData.getColumnClassName(1));
+        Assertions.assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(1));
+        Assertions.assertEquals(0, resultSetMetaData.isNullable(1));
+        Assertions.assertEquals(65536, resultSetMetaData.getPrecision(1));
+        Assertions.assertEquals(65536, resultSetMetaData.getColumnDisplaySize(1));
+
+        Assertions.assertTrue(resultSetMetaData.isReadOnly(1));
+        Assertions.assertTrue(resultSetMetaData.isSigned(1));
+        Assertions.assertTrue(resultSetMetaData.isCaseSensitive(1));
+        Assertions.assertFalse(resultSetMetaData.isWritable(1));
+        Assertions.assertFalse(resultSetMetaData.isAutoIncrement(1));
+        Assertions.assertFalse(resultSetMetaData.isCurrency(1));
+
+        Assertions.assertEquals("fieldDouble", resultSetMetaData.getColumnName(2));
+        Assertions.assertEquals("DOUBLE", resultSetMetaData.getColumnTypeName(2));
+        Assertions.assertEquals(1, resultSetMetaData.isNullable(2));
+        Assertions.assertEquals(0, resultSetMetaData.getScale(2));
+
+        Assertions.assertEquals("fieldString", resultSetMetaData.getColumnName(3));
+        Assertions.assertEquals("VARCHAR", resultSetMetaData.getColumnTypeName(3));
+
+        Assertions.assertEquals("fieldObjectId", resultSetMetaData.getColumnName(4));
+        Assertions.assertEquals("VARCHAR", resultSetMetaData.getColumnTypeName(4));
+
+        Assertions.assertEquals("fieldBoolean", resultSetMetaData.getColumnName(5));
+        Assertions.assertEquals("BOOLEAN", resultSetMetaData.getColumnTypeName(5));
+
+        Assertions.assertEquals("fieldDate", resultSetMetaData.getColumnName(6));
+        Assertions.assertEquals("TIMESTAMP", resultSetMetaData.getColumnTypeName(6));
+
+        Assertions.assertEquals("fieldInt", resultSetMetaData.getColumnName(7));
+        Assertions.assertEquals("INTEGER", resultSetMetaData.getColumnTypeName(7));
+
+        Assertions.assertEquals("fieldLong", resultSetMetaData.getColumnName(8));
+        Assertions.assertEquals("BIGINT", resultSetMetaData.getColumnTypeName(8));
+
+        Assertions.assertEquals("fieldMaxKey", resultSetMetaData.getColumnName(9));
+        Assertions.assertEquals("VARCHAR", resultSetMetaData.getColumnTypeName(9));
+
+        Assertions.assertEquals("fieldMinKey", resultSetMetaData.getColumnName(10));
+        Assertions.assertEquals("VARCHAR", resultSetMetaData.getColumnTypeName(10));
+
+        Assertions.assertEquals("fieldNull", resultSetMetaData.getColumnName(11));
+        Assertions.assertEquals("VARCHAR", resultSetMetaData.getColumnTypeName(11));
+
+        Assertions.assertEquals("fieldBinary", resultSetMetaData.getColumnName(12));
+        Assertions.assertEquals("VARBINARY", resultSetMetaData.getColumnTypeName(12));
+
+        Assertions.assertEquals("fieldDecimal128", resultSetMetaData.getColumnName(13));
+        Assertions.assertEquals("DECIMAL", resultSetMetaData.getColumnTypeName(13));
+    }
+
+    @Test
+    @DisplayName("Tests getting and setting query timeout")
+    void testGetSetQueryTimeout() throws SQLException {
+        final Connection connection = DriverManager.getConnection(getJdbcConnectionString());
+        final PreparedStatement preparedStatement = new DocumentDbPreparedStatement(connection, QUERY);
+        Assertions.assertDoesNotThrow(() -> preparedStatement.setQueryTimeout(30));
+        Assertions.assertEquals(30, preparedStatement.getQueryTimeout());
+    }
+
+    private static String getJdbcConnectionString() {
         return String.format(
                 CONNECTION_STRING_TEMPLATE,
-                USER, PASSWORD, getMongoPort(), DATABASE_NAME, method.getName());
+                USER, PASSWORD, getMongoPort(), DATABASE_NAME, DocumentDbMetadataScanMethod.RANDOM.getName());
     }
  }

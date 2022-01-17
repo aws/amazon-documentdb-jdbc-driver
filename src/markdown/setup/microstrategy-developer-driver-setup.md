@@ -4,7 +4,7 @@
 #### Adding the Amazon DocumentDB JDBC Driver
 Reference: [https://community.microstrategy.com/s/article/KB250923-Connecting-to-Databases-using-JDBC-Drivers-in?language=en_US](https://community.microstrategy.com/s/article/KB250923-Connecting-to-Databases-using-JDBC-Drivers-in?language=en_US)
 1. If connecting from outside the DocumentDB cluster's VPC, ensure you have [setup an SSH tunnel](setup.md#using-an-ssh-tunnel-to-connect-to-amazon-documentdb).
-2. Copy the [DocumentDB JDBC driver JAR file](setup.md#documentdb-jdbc-driver) to a folder on the MicroStrategy 
+2. Copy the [DocumentDB JDBC driver JAR file](https://github.com/aws/amazon-documentdb-jdbc-driver/releases/latest) to a folder on the MicroStrategy 
 Intelligence Server Machine.  
     - E.g. On Windows, `C:\Program Files (x86)\Common Files\Drivers\DocumentDB`.
     - E.g. On Linux, driver files should be copied to `<MSTR_INSTALL_HOME>/JDBC`. (eg; `/opt/MicroStrategy/JDBC`).

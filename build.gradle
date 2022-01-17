@@ -11,58 +11,8 @@ plugins {
 }
 
 group 'software.amazon.documentdb.jdbc'
-version "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}"
+version project.hasProperty("BETA_VERSION") ? "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}-beta.${project.BETA_VERSION}" : "${project.MAJOR_VERSION}.${project.MINOR_VERSION}.${project.PATCH_VERSION}"
 description 'documentdb-jdbc-driver'
-
-tasks.register('patchJanino') {
-    def janinoHash = "4b98b5b44ee329685503e264751067fab259f7b7";
-    if (!file("${buildDir}/"<< janinoHash << ".zip").exists()) {
-        download {
-            println "Dowloading Janino Library"
-            src 'https://github.com/janino-compiler/janino/archive/'<< janinoHash <<'.zip'
-            dest buildDir
-        }
-    }
-
-    if (!file("${buildDir}/dependencies/janino-"<< janinoHash << "/commons-compiler/src/main/java/org/codehaus/commons/compiler/CompilerFactoryFactory.java").exists()) {
-        copy {
-            def zipFile = file("${buildDir}/"<< janinoHash <<".zip")
-            def outputDir = file("${buildDir}/dependencies")
-            from zipTree(zipFile)
-            into outputDir
-        }
-    }
-
-    File destinationJavaFile = new File("src/main/dependency/org/codehaus/commons/compiler/CompilerFactoryFactory.java");
-    File sourceJavaFile = new File("${buildDir}/dependencies/janino-"+ janinoHash +"/commons-compiler/src/main/java/org/codehaus/commons/compiler/CompilerFactoryFactory.java");
-    def janinoJarSourcePath = "${buildDir}/dependencies/janino-"+ janinoHash +"/commons-compiler/target/commons-compiler-3.0.11.jar"
-    def janinoJarDestinationPath = "src/main/resources/commons-compiler-3.0.11.jar"
-    if (destinationJavaFile.readBytes() != sourceJavaFile.readBytes()) {
-        //If the destinationJavaFile and sourceJavaFile are different the jars files will be deleted to force a compilation and a copy and paste to the resource folder.
-        delete janinoJarSourcePath
-        delete janinoJarDestinationPath
-        copy {
-            from "src/main/dependency/org/codehaus/commons/compiler/CompilerFactoryFactory.java"
-            into "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler/src/main/java/org/codehaus/commons/compiler"
-        }
-    }
-
-    if (!file(janinoJarSourcePath).exists()) {
-        mavenexec {
-            workingDir "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler"
-            goals 'package'
-            threads '2C'
-            quiet false
-        }
-    }
-
-    if (!file(janinoJarDestinationPath).exists()) {
-        copy {
-            from "${buildDir}/dependencies/janino-"<< janinoHash <<"/commons-compiler/target/commons-compiler-3.0.11.jar"
-            into "src/main/resources"
-        }
-    }
-}
 
 tasks.register('licenseAndNotice') {
     copy {
@@ -102,7 +52,6 @@ jar {
 }
 
 shadowJar {
-    dependsOn('patchJanino')
     dependsOn('licenseAndNotice')
 
     //  Exclude driver unnecessary classes.
@@ -316,7 +265,7 @@ license {
 }
 
 /**
- * Write driver version data to properties file.
+ * Write driver version data to properties file under base project.
  */
 task writeProperties(type: WriteProperties) {
     outputFile("$projectDir/src/main/resources/project.properties")
@@ -325,8 +274,17 @@ task writeProperties(type: WriteProperties) {
     property("driver.full.version", project.version)
 }
 
+/**
+ * Write default application name to properties file under common.
+ */
+task writeCommonProperties(type: WriteProperties) {
+    outputFile("$projectDir/common/src/main/resources/common.properties")
+    property("default.application.name", "${APPLICATION_NAME} v${project.version}")
+}
+
 processResources {
     from(writeProperties)
+    from(writeCommonProperties)
     duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 
@@ -337,31 +295,31 @@ repositories {
 dependencies {
     implementation project(":calcite-adapter")
     implementation project(":common")
-    implementation group: 'commons-cli', name: 'commons-cli', version: '1.4'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.3'
-    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.12.3'
+    implementation group: 'commons-cli', name: 'commons-cli', version: '1.5.0'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.13.1'
+    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.13.0'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.1'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.1'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.3.4'
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
-    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '8.8'
-    compileOnly         'org.projectlombok:lombok:1.18.16'
+    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '9.2'
+    compileOnly         'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
     testImplementation(testFixtures(project(':common')))
     testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
-    testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
+    testImplementation      group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.2.6'
     testImplementation      group: 'junit', name: 'junit', version: '4.13.2'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.7.2'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.7.2'
-    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '3.11.2'
-    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.7.2'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.8.1'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.2'
+    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.2.0'
+    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.8.2'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
 }

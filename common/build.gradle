@@ -170,7 +170,7 @@ jacocoTestCoverageVerification.dependsOn jacocoTestReport
  */
 license {
     header =  project.parent.file('license-header.txt')
-    exclude "**/log4j.properties"
+    excludes(["**/log4j.properties", "common.properties"])
     headerDefinitions {
         slash_star_with_space {
             firstLine = '/*'
@@ -190,27 +190,27 @@ repositories {
 }
 
 dependencies {
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.12.1'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.13.1'
     implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.32'
     implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
-    implementation 'io.github.hakky54:sslcontext-kickstart:6.6.1'
+    implementation 'io.github.hakky54:sslcontext-kickstart:7.1.0'
 
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.3.4'
 
-    compileOnly         'org.projectlombok:lombok:1.18.16'
+    compileOnly         'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
-    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
     testCompileOnly    group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
 
     testFixturesImplementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-    testFixturesImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.0.0'
-    testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testFixturesImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.2.6'
+    testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.1.1'
-    testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.13.3'
-    testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.13.3'
+    testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.1'
+    testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.1'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
 }

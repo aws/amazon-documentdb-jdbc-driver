@@ -37,8 +37,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
+import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.ResultSet;
@@ -51,6 +50,8 @@ import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.FETCH_SIZE_DEFAULT;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
@@ -92,7 +93,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
 
     @AfterEach
     void afterAll() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(
+        try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(
                 VALID_CONNECTION_PROPERTIES, null)) {
             schemaWriter.remove("id");
         }
@@ -204,6 +205,43 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 "Cannot cancel query, it is either completed or has not started.",
                 exception.getMessage());
     }
+
+    /** Tests getting and setting the query timeout. **/
+    @Test
+    @DisplayName("Tests getting and setting the query timeout.")
+    public void testGetSetQueryTimeout() throws SQLException {
+        Assertions.assertDoesNotThrow(() -> statement.setQueryTimeout(30));
+        Assertions.assertEquals(30, statement.getQueryTimeout());
+    }
+
+    /** Tests setting default fetch size with valid size. **/
+    @Test
+    @DisplayName("Tests setting the default fetch size with valid size.")
+    public void testSetValidDefaultFetchSize() throws SQLException {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        properties.setDefaultFetchSize("123");
+        final DocumentDbConnection connection = new DocumentDbConnection(properties);
+        final DocumentDbStatement validFetchSizeStatement = new DocumentDbStatement(connection);
+        Assertions.assertEquals(
+                123,
+                validFetchSizeStatement.getFetchSize(),
+                "Custom fetch size should be used if valid.");
+    }
+
+    /** Tests setting default fetch size with invalid size. **/
+    @Test
+    @DisplayName("Tests setting the default fetch size with invalid size.")
+    public void testSetInvalidDefaultFetchSize() throws SQLException {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        properties.setDefaultFetchSize("123a");
+        final DocumentDbConnection connection = new DocumentDbConnection(properties);
+        final DocumentDbStatement invalidFetchSizeStatement = new DocumentDbStatement(connection);
+        Assertions.assertEquals(
+                FETCH_SIZE_DEFAULT,
+                invalidFetchSizeStatement.getFetchSize(),
+                "Default fetch size should be used if invalid.");
+    }
+
 
     private ExecutorService getCancelThread() {
         return Executors.newSingleThreadExecutor(

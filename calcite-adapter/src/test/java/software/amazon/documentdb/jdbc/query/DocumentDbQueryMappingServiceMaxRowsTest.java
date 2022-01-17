@@ -16,98 +16,35 @@
 
 package software.amazon.documentdb.jdbc.query;
 
-import com.mongodb.client.MongoClient;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
-import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.persist.SchemaStoreFactory;
-import software.amazon.documentdb.jdbc.persist.SchemaWriter;
 
 import java.sql.SQLException;
-import java.time.Instant;
-
-import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_NEW;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
-public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDoodleTest {
-    private static final String DATABASE_NAME = "database";
-    private static final String USER = "user";
-    private static final String PASSWORD = "password";
+public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbQueryMappingServiceTest {
     private static final String COLLECTION_NAME = "testCollection";
-    private static final String OTHER_COLLECTION_NAME = "otherTestCollection";
-    private static final String DATE_COLLECTION_NAME = "dateTestCollection";
-    private static final String NESTED_ID_COLLECTION_NAME = "nestedIdCollection";
-    private static final String COLLECTION_EXTRA_FIELD = "fieldTestCollection";
     private static DocumentDbQueryMappingService queryMapper;
-    private static DocumentDbConnectionProperties connectionProperties;
-    private static MongoClient client;
 
     @BeforeAll
-    @SuppressFBWarnings(value = "HARD_CODE_PASSWORD", justification = "Hardcoded for test purposes only")
-    static void initialize() throws SQLException {
-        // Add a valid users to the local MongoDB instance.
-        connectionProperties = new DocumentDbConnectionProperties();
-        createUser(DATABASE_NAME, USER, PASSWORD);
-        connectionProperties.setUser(USER);
-        connectionProperties.setPassword(PASSWORD);
-        connectionProperties.setDatabase(DATABASE_NAME);
-        connectionProperties.setTlsEnabled("false");
-        connectionProperties.setHostname("localhost:" + getMongoPort());
-        final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
+    void initialize() throws SQLException {
         final BsonDocument document =
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
-
-        final BsonDocument otherDocument =
-                BsonDocument.parse(
-                        "{ \"_id\" : \"key1\", \"otherArray\" : [ { \"field\" : 1, \"field3\": \"value\" }, { \"field\" : 2, \"field3\" : \"value\" } ]}");
-        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
-        doc1.append("field", new BsonDateTime(dateTime));
-        final BsonDocument document3 =
-                BsonDocument.parse(
-                        "{ \"_id\" : \"key\", \"fieldA\": 3, \"array\" : [ { \"field\" : 1, \"field1\": \"value\" }, { \"field\" : 2, \"field2\" : \"value\" } ]}");
-        final BsonDocument nestedIddocument =
-                BsonDocument.parse(
-                        "{ \"_id\" : \"key\", \"document\" : { \"_id\" : 1, \"field1\": \"value\" } }");
-
-        client = createMongoClient(ADMIN_DATABASE, USER, PASSWORD);
-
-        insertBsonDocuments(
-                COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{document}, client);
-        insertBsonDocuments(
-                OTHER_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{otherDocument}, client);
-        insertBsonDocuments(DATE_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{doc1}, client);
-        insertBsonDocuments(
-                COLLECTION_EXTRA_FIELD, DATABASE_NAME, new BsonDocument[]{document3}, client);
-        insertBsonDocuments(NESTED_ID_COLLECTION_NAME, DATABASE_NAME, new BsonDocument[]{nestedIddocument}, client);
-        final DocumentDbDatabaseSchemaMetadata databaseMetadata =
-                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW, client);
-        queryMapper = new DocumentDbQueryMappingService(connectionProperties, databaseMetadata, client);
-    }
-
-    @AfterAll
-    static void afterAll() throws Exception {
-        try (SchemaWriter schemaWriter = SchemaStoreFactory.createWriter(connectionProperties, client)) {
-            schemaWriter.remove("id");
-        }
-        client.close();
+        insertBsonDocuments(COLLECTION_NAME, new BsonDocument[]{document});
+        queryMapper = getQueryMappingService();
     }
 
     @Test
     @DisplayName("Tests $limit is produced when max rows is passed.")
     void testMaxRows() throws SQLException {
         final String query =
-                String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, COLLECTION_NAME);
+                String.format("SELECT * FROM \"%s\".\"%s\"", getDatabaseName(), COLLECTION_NAME);
         final DocumentDbMqlQueryContext result = queryMapper.get(query, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(1, result.getColumnMetaData().size());
@@ -125,7 +62,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
         final String queryWithAscendingSort =
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" ORDER BY \"%s\" ASC",
-                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+                        getDatabaseName(), COLLECTION_NAME + "_array", "field");
         final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(5, result.getColumnMetaData().size());
@@ -167,7 +104,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
         final String queryWithAscendingSort =
                 String.format(
                         "SELECT * FROM \"%s\".\"%s\" ORDER BY \"%s\" ASC LIMIT 5",
-                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+                        getDatabaseName(), COLLECTION_NAME + "_array", "field");
         final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(5, result.getColumnMetaData().size());
@@ -211,7 +148,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
         final String queryWithAscendingSort =
                 String.format(
                         "SELECT * FROM ( SELECT * FROM \"%s\".\"%s\" LIMIT 20 ) ORDER BY \"%s\" ASC",
-                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+                        getDatabaseName(), COLLECTION_NAME + "_array", "field");
         final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(5, result.getColumnMetaData().size());
@@ -265,7 +202,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
         final String queryWithAscendingSort =
                 String.format(
                         "SELECT * FROM  (SELECT * FROM \"%s\".\"%s\" LIMIT 20)  ORDER BY \"%s\" ASC LIMIT 30",
-                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+                        getDatabaseName(), COLLECTION_NAME + "_array", "field");
         final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(5, result.getColumnMetaData().size());
@@ -321,7 +258,7 @@ public class DocumentDbQueryMappingServiceMaxRowsTest extends DocumentDbFlapDood
         final String queryWithAscendingSort =
                 String.format(
                         "SELECT * FROM  (SELECT * FROM \"%s\".\"%s\" ORDER BY \"%s\" ASC) ",
-                        DATABASE_NAME, COLLECTION_NAME + "_array", "field");
+                        getDatabaseName(), COLLECTION_NAME + "_array", "field");
         final DocumentDbMqlQueryContext result = queryMapper.get(queryWithAscendingSort, 10);
         Assertions.assertNotNull(result);
         Assertions.assertEquals(5, result.getColumnMetaData().size());

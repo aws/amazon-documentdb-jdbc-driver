@@ -17,8 +17,7 @@
 package software.amazon.documentdb.jdbc.query;
 
 import com.google.common.collect.ImmutableList;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
+import lombok.SneakyThrows;
 import org.apache.calcite.DataContext;
 import org.apache.calcite.adapter.java.JavaTypeFactory;
 import org.apache.calcite.avatica.util.DateTimeUtils;
@@ -59,6 +58,7 @@ import org.apache.calcite.sql2rel.StandardConvertletTable;
 import org.apache.calcite.tools.RelRunner;
 import org.bson.BsonDocument;
 import org.bson.BsonInt64;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
@@ -75,13 +75,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DocumentDbQueryMappingService implements AutoCloseable {
+public class DocumentDbQueryMappingService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
     private final DocumentDbPrepareContext prepareContext;
     private final CalcitePrepare prepare;
-    private final MongoClient client;
-    private final boolean closeClient;
-    private BsonDocument maxRowsBSON;
+    private final BsonDocument maxRowsBSON;
 
     /**
      * Holds the DocumentDbDatabaseSchemaMetadata, CalcitePrepare.Context and the CalcitePrepare
@@ -90,24 +88,17 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
      *
      * @param connectionProperties the connection properties.
      * @param databaseMetadata the database schema metadata.
-     * @param client the {@link MongoClient} client.
      */
     public DocumentDbQueryMappingService(final DocumentDbConnectionProperties connectionProperties,
-            final DocumentDbDatabaseSchemaMetadata databaseMetadata,
-            final MongoClient client) {
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
         // Add MYSQL function support
         connectionProperties.putIfAbsent("FUN", "standard,mysql");
         // Leave unquoted identifiers in their original case. Identifiers are still case-sensitive
         // but do not need to be quoted
         connectionProperties.putIfAbsent("UNQUOTEDCASING", "UNCHANGED");
-        // Initialize the MongoClient
-        this.client = client != null
-                ? client
-                : MongoClients.create(connectionProperties.buildMongoClientSettings());
-        this.closeClient = client == null;
         this.prepareContext =
                 new DocumentDbPrepareContext(
-                        getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata, this.client),
+                        getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
                         connectionProperties.getDatabase(),
                         connectionProperties);
         this.prepare = new DocumentDbPrepareImplementation();
@@ -193,20 +184,12 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
      */
     private static CalciteSchema getRootSchemaFromDatabaseMetadata(
             final DocumentDbConnectionProperties connectionProperties,
-            final DocumentDbDatabaseSchemaMetadata databaseMetadata,
-            final MongoClient client) {
+            final DocumentDbDatabaseSchemaMetadata databaseMetadata) {
         final SchemaPlus parentSchema = CalciteSchema.createRootSchema(true).plus();
         final Schema schema = DocumentDbSchemaFactory
-                .create(databaseMetadata, connectionProperties, client);
+                .create(databaseMetadata, connectionProperties);
         parentSchema.add(connectionProperties.getDatabase(), schema);
         return CalciteSchema.from(parentSchema);
-    }
-
-    @Override
-    public void close() {
-        if (closeClient && client != null) {
-            client.close();
-        }
     }
 
     /**
@@ -270,11 +253,12 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
          * Implementation copied from original but adds lines 259-261.
          */
         private static class DocumentDbTimestampDiffConvertlet implements SqlRexConvertlet {
+            @SneakyThrows
             public RexNode convertCall(final SqlRexContext cx, final SqlCall call) {
                 // TIMESTAMPDIFF(unit, t1, t2) => (t2 - t1) UNIT
                 final RexBuilder rexBuilder = cx.getRexBuilder();
                 final SqlLiteral unitLiteral = call.operand(0);
-                TimeUnit unit = unitLiteral.symbolValue(TimeUnit.class);
+                TimeUnit unit = getSymbolValue(unitLiteral, TimeUnit.class);
                 final SqlTypeName sqlTypeName = unit == TimeUnit.NANOSECOND
                         ? SqlTypeName.BIGINT
                         : SqlTypeName.INTEGER;
@@ -319,6 +303,20 @@ public class DocumentDbQueryMappingService implements AutoCloseable {
                 return rexBuilder.multiplyDivide(e, multiplier, divider);
             }
         }
+    }
+
+    @NonNull
+    private static <E extends Enum<E>> E getSymbolValue(
+            final SqlLiteral literal,
+            final Class<E> clazz) throws SQLException {
+        final E result = literal.symbolValue(clazz);
+        if (result == null) {
+            throw SqlError.createSQLException(LOGGER,
+                    SqlState.INVALID_QUERY_EXPRESSION,
+                    SqlError.MISSING_LITERAL_VALUE,
+                    literal.getTypeName().getName());
+        }
+        return result;
     }
 
     /**

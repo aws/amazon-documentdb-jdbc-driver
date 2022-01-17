@@ -25,8 +25,8 @@ import java.util.List;
  * Builtin methods in the MongoDB adapter.
  */
 public enum DocumentDbMethod {
-    MONGO_QUERYABLE_FIND(DocumentDbTable.DocumentDbQueryable.class, "find", String.class,
-            String.class, List.class),
+    // TODO: Investigate using find() here for simpler queries.
+    //  See: https://github.com/aws/amazon-documentdb-jdbc-driver/issues/240
     MONGO_QUERYABLE_AGGREGATE(DocumentDbTable.DocumentDbQueryable.class, "aggregate",
             List.class, List.class, List.class);
 

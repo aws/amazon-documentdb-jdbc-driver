@@ -25,6 +25,7 @@ import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.std.StdSerializer;
 import com.fasterxml.jackson.databind.util.StdDateFormat;
@@ -51,33 +52,31 @@ import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbSchema.DEFAULT_SCHEMA_NAME;
 
 class DocumentDbSchemaTest {
     private static final String COLLECTION_NAME = DocumentDbTableSchemaGeneratorTest.class.getSimpleName();
-    private static final ObjectMapper OBJECT_MAPPER;
-
-    static {
-        OBJECT_MAPPER = new ObjectMapper()
-                .setSerializationInclusion(Include.NON_NULL)
-                .setSerializationInclusion(Include.NON_EMPTY)
-                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .setDateFormat(new StdDateFormat().withColonInTimeZone(true))
-                // Enable fail on unknown properties to ensure exact interface match
-                .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-                .enable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT);
-        // Make the enums lower case.
-        final SimpleModule module = buildEnumLowerCaseSerializerModule();
-        OBJECT_MAPPER
-                .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
-                .registerModule(module)
-                .registerModule(new GuavaModule());
-    }
+    private static final ObjectMapper OBJECT_MAPPER = JsonMapper.builder()
+            .serializationInclusion(Include.NON_NULL)
+            .serializationInclusion(Include.NON_EMPTY)
+            .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+            .defaultDateFormat(new StdDateFormat().withColonInTimeZone(true))
+            // Enable fail on unknown properties to ensure exact interface match
+            .enable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+            .enable(DeserializationFeature.ACCEPT_EMPTY_ARRAY_AS_NULL_OBJECT)
+            // Make the enums lower case.
+            .enable(MapperFeature.ACCEPT_CASE_INSENSITIVE_ENUMS)
+            .addModule(buildEnumLowerCaseSerializerModule())
+            .addModule(new GuavaModule())
+            .build();
 
     private static SimpleModule buildEnumLowerCaseSerializerModule() {
         final SimpleModule module = new SimpleModule();
@@ -212,5 +211,30 @@ class DocumentDbSchemaTest {
             final List<DocumentDbSchemaColumn> columns = (List<DocumentDbSchemaColumn>) tableMap.get("columns");
             Assertions.assertEquals(13, columns.size());
         }
+    }
+
+    @DisplayName("Tests equals() method with different combinations.")
+    @Test
+    void testEquals() {
+        final Date date = new Date(100);
+        final Date otherDate = new Date(200);
+        final Set<String> tables = new LinkedHashSet<>();
+        tables.add("table");
+        final DocumentDbSchema schema1 = new DocumentDbSchema("_default", 1, "testDb", date, null);
+        final DocumentDbSchema schema2 = new DocumentDbSchema("_default", 1, "testDb", date, null);
+        final DocumentDbSchema schema3 = new DocumentDbSchema("_default", 2, "testDb", date, null);
+        final DocumentDbSchema schema4 = new DocumentDbSchema("_other", 1, "testDb", date, null);
+        final DocumentDbSchema schema5 = new DocumentDbSchema("_default", 1, "otherTestDb", date, null);
+        final DocumentDbSchema schema6 = new DocumentDbSchema("_default", 1, "testDb", otherDate, null);
+        final DocumentDbSchema schema7 = new DocumentDbSchema("_default", 1, "testDb", date, tables);
+
+        Assertions.assertTrue(schema1.equals(schema1));
+        Assertions.assertTrue(schema1.equals(schema2));
+        Assertions.assertFalse(schema1.equals(schema3));
+        Assertions.assertFalse(schema1.equals(schema4));
+        Assertions.assertFalse(schema1.equals(schema5));
+        Assertions.assertFalse(schema1.equals(schema6));
+        Assertions.assertFalse(schema1.equals(schema7));
+        Assertions.assertFalse(schema1.equals(new Object()));
     }
 }
