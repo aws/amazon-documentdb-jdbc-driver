@@ -2,12 +2,12 @@
 [Link to product webpage](https://www.tableau.com/products/desktop).
 
 #### Adding the Amazon DocumentDB JDBC Driver
-1. [Download](setup.md#documentdb-jdbc-driver) the DocumentDB JDBC driver JAR file and copy it to one of these
+1. [Download](https://github.com/aws/amazon-documentdb-jdbc-driver/releases/latest) the DocumentDB JDBC driver JAR file and copy it to one of these
    directories according to your operating system:
     - **_Windows_**: `C:\Program Files\Tableau\Drivers`
     - **_Mac_**: `~/Library/Tableau/Drivers`
 
-2. [Download](setup.md#documentdb-jdbc-driver) the DocumentDB Tableau connector (a TACO file) and copy it to your `My Tableau Repository/Connectors`
+2. [Download](https://github.com/aws/amazon-documentdb-jdbc-driver/releases/latest) the DocumentDB Tableau connector (a TACO file) and copy it to your `My Tableau Repository/Connectors`
    directory.
     - **_Windows_**: `C:\Users\[user]\Documents\My Tableau Repository\Connectors`
     - **_Mac_**: `/Users/[user]/Documents/My Tableau Repository/Connectors`
