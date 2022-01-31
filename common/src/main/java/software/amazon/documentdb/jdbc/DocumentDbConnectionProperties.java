@@ -1106,7 +1106,6 @@ public class DocumentDbConnectionProperties extends Properties {
                         .build()
                         .getSslContext();
                 builder.context(sslContext);
-                builder.context(sslContext);
             }
         }
     }
