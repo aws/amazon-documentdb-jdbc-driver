@@ -25,6 +25,7 @@ import com.mongodb.connection.SslSettings;
 import com.mongodb.event.ServerMonitorListener;
 import lombok.SneakyThrows;
 import nl.altindag.ssl.SSLFactory;
+import nl.altindag.ssl.util.CertificateUtils;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
@@ -44,8 +45,6 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.Properties;
@@ -1102,13 +1101,11 @@ public class DocumentDbConnectionProperties extends Properties {
         // Handle the tlsCAFile option.
         try (InputStream inputStream = getTlsCAFileInputStream()) {
             if (inputStream != null) {
-                final X509Certificate certificate = (X509Certificate) CertificateFactory
-                        .getInstance("X.509")
-                        .generateCertificate(inputStream);
                 final SSLContext sslContext = SSLFactory.builder()
-                        .withTrustMaterial(certificate)
+                        .withTrustMaterial(CertificateUtils.loadCertificate(inputStream))
                         .build()
                         .getSslContext();
+                builder.context(sslContext);
                 builder.context(sslContext);
             }
         }
