@@ -16,7 +16,7 @@ name: Amazon DocumentDB JDBC Driver
 on:
   # Trigger the workflow on pull request,
   # but only for the master/develop branches
-  pull_request:
+  pull_request_target:
     branches:
       - master
       - develop
@@ -48,6 +48,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
       with:
+        repository: ${{ github.event.pull_request.head.repo.full_name }}
         ref: ${{ github.event.pull_request.head.ref }}
         fetch-depth: 0
     - name: Set up JDK 1.8
