@@ -48,6 +48,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.Executor;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
@@ -144,16 +145,28 @@ public class DocumentDbConnection extends Connection
     }
 
     /**
-     * Gets the ssh tunnel local port.
+     * Gets the Optional object that contains the ssh tunnel local port.
      *
-     * @return the ssh tunnel local port if it exists; 0 otherwise.
+     * @return the Optional object that contains the ssh tunnel local port if it exists;
+     * the Optional object is empty otherwise.
      */
-    public int getSshLocalPort() {
+    public Optional<Integer> getSshLocalPort() {
         // Get the port from the SSH tunnel session, if it exists.
-        if (session != null) {
-            return session.localPort;
+        if (isSshTunnelActive()) {
+            return Optional.of(session.localPort);
+        } else {
+            return Optional.empty();
         }
-        return 0;
+    }
+
+    /**
+     * Get whether the SSH tunnel is active.
+     *
+     * @return returns {@code true} if the SSH tunnel is active, {@code false}, otherwise.
+     */
+    public boolean isSshTunnelActive() {
+        // indicate whether the SSH tunnel is enabled
+        return session != null;
     }
 
     @Override
@@ -293,7 +306,7 @@ public class DocumentDbConnection extends Connection
             throws SQLException {
         // Create the mongo client.
         final MongoClientSettings settings = connectionProperties
-                .buildMongoClientSettings(getSshLocalPort());
+                .buildMongoClientSettings(getSshLocalPort().orElse(0));
         mongoClient = MongoClients.create(settings);
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
