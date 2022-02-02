@@ -48,7 +48,6 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.util.Arrays;
-import java.util.Optional;
 import java.util.concurrent.Executor;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
@@ -150,13 +149,12 @@ public class DocumentDbConnection extends Connection
      * @return the Optional object that contains the ssh tunnel local port if it exists;
      * the Optional object is empty otherwise.
      */
-    public Optional<Integer> getSshLocalPort() {
+    public int getSshLocalPort() {
         // Get the port from the SSH tunnel session, if it exists.
         if (isSshTunnelActive()) {
-            return Optional.of(session.localPort);
-        } else {
-            return Optional.empty();
+            return session.localPort;
         }
+        return 0;
     }
 
     /**
@@ -306,7 +304,7 @@ public class DocumentDbConnection extends Connection
             throws SQLException {
         // Create the mongo client.
         final MongoClientSettings settings = connectionProperties
-                .buildMongoClientSettings(getSshLocalPort().orElse(0));
+                .buildMongoClientSettings(getSshLocalPort());
         mongoClient = MongoClients.create(settings);
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
