@@ -144,10 +144,9 @@ public class DocumentDbConnection extends Connection
     }
 
     /**
-     * Gets the Optional object that contains the ssh tunnel local port.
+     * Gets the ssh tunnel local port.
      *
-     * @return the Optional object that contains the ssh tunnel local port if it exists;
-     * the Optional object is empty otherwise.
+     * @return the ssh tunnel local port if it exists; 0 otherwise.
      */
     public int getSshLocalPort() {
         // Get the port from the SSH tunnel session, if it exists.
