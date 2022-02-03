@@ -143,6 +143,29 @@ public class DocumentDbConnection extends Connection
         }
     }
 
+    /**
+     * Gets the ssh tunnel local port.
+     *
+     * @return the ssh tunnel local port if it exists; 0 otherwise.
+     */
+    public int getSshLocalPort() {
+        // Get the port from the SSH tunnel session, if it exists.
+        if (isSshTunnelActive()) {
+            return session.localPort;
+        }
+        return 0;
+    }
+
+    /**
+     * Get whether the SSH tunnel is active.
+     *
+     * @return returns {@code true} if the SSH tunnel is active, {@code false}, otherwise.
+     */
+    public boolean isSshTunnelActive() {
+        // indicate whether the SSH tunnel is enabled
+        return session != null;
+    }
+
     @Override
     public boolean isValid(final int timeout) throws SQLException {
         if (timeout < 0) {
@@ -284,14 +307,6 @@ public class DocumentDbConnection extends Connection
         mongoClient = MongoClients.create(settings);
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
-    }
-
-    private int getSshLocalPort() {
-        // Get the port from the SSH tunnel session, if it exists.
-        if (session != null) {
-            return session.localPort;
-        }
-        return 0;
     }
 
     private void pingDatabase() throws SQLException {
