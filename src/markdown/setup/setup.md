@@ -115,9 +115,12 @@ For further information on SSH tunneling , please refer to the documentation on
 [Connecting from Outside an Amazon VPC.](https://docs.aws.amazon.com/documentdb/latest/developerguide/connect-from-outside-a-vpc.html)
 
 ## Driver Setup in BI Applications
-To learn how to set up the driver in various BI tools, instructions are outlined here for:
-1. [Tableau Desktop](tableau-desktop-driver-setup.md) 
-2. [DbVisualizer](dbvisualizer-driver-setup.md)
-3. [SQuirrel SQL Client](squirrel-sql-client-driver-setup.md) ([Link to product webpage](https://www.dbvis.com/))
-4. [DBeaver](dbeaver-driver-setup.md)
-5. [MicroStrategy Developer](microstrategy-developer-driver-setup.md)
+The JDBC driver is compatible with a number of BI tools. Instructions are outlined here for:
+1. [Tableau Desktop](tableau-desktop-driver-setup.md)
+2. [Tableau Server](tableau-server-driver-setup.md)
+3. [DbVisualizer](dbvisualizer-driver-setup.md)
+4. [SQuirrel SQL Client](squirrel-sql-client-driver-setup.md)
+5. [DBeaver](dbeaver-driver-setup.md)
+6. [MicroStrategy Developer](microstrategy-developer-driver-setup.md) 
+
+For other BI tools, please refer to that tool's product documentation.
