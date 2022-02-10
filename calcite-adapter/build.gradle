@@ -201,7 +201,7 @@ dependencies {
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.1'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.36'
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.28.0'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.4.1'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.4.2'
 
     compileOnly group: 'org.immutables', name: 'value', version: '2.9.0'
     compileOnly group: 'org.projectlombok', name: 'lombok', version: '1.18.22'
