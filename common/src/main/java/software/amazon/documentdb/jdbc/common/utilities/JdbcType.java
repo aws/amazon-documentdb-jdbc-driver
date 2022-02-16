@@ -21,6 +21,11 @@ import java.util.Map;
 
 /**
  * Copy of the java.sql.Types constants but as an enum, for use in lookups.
+ * Warning: if a JDBC type is added or deprecated, the change should be reflected
+ * on the ODBC driver as well. Files to be changed in the ODBC driver:
+ * src\binary\include\ignite\impl\binary\binary_common.h, and
+ * functions BinaryToSqlTypeName, BinaryToSqlType and SqlTypeToBinary
+ * in src\odbc\src\type_traits.cpp
  */
 public enum JdbcType {
     BIT(-7),
