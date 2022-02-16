@@ -52,9 +52,6 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
 
 /**
  * DocumentDb implementation of DatabaseMetaData.
- * Warning: if TYPE_COLUMN_SIZE_MAP is changed, reflection of that change in the
- * ODBC driver is required as well. Files to be changed in the ODBC driver:
- * function BinaryTypeColumnSize in src\odbc\src\type_traits.cpp
  */
 public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java.sql.DatabaseMetaData {
     private static final Map<JdbcType, Integer> TYPE_COLUMN_SIZE_MAP;
