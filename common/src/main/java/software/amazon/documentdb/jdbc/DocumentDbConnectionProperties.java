@@ -61,7 +61,6 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final String USER_HOME_PATH_NAME  = System.getProperty(USER_HOME_PROPERTY);
     private static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
             USER_HOME_PATH_NAME, ".documentdb").toString();
-    private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
