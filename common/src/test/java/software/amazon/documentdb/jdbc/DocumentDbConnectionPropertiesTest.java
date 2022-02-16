@@ -72,6 +72,7 @@ public class DocumentDbConnectionPropertiesTest {
         properties.setSshKnownHostsFile("~/.ssh/unknown_hosts");
         properties.setDefaultFetchSize("1000");
         properties.setRefreshSchema("true");
+        properties.setDefaultAuthenticationDatabase("test");
 
         // Get properties.
         Assertions.assertEquals("USER", properties.getUser());
@@ -95,6 +96,7 @@ public class DocumentDbConnectionPropertiesTest {
         Assertions.assertEquals("~/.ssh/unknown_hosts", properties.getSshKnownHostsFile());
         Assertions.assertEquals(1000, properties.getDefaultFetchSize());
         Assertions.assertTrue(properties.getRefreshSchema());
+        Assertions.assertEquals("test", properties.getDefaultAuthenticationDatabase());
 
         // Build sanitized connection string.
         Assertions.assertEquals(
@@ -118,6 +120,7 @@ public class DocumentDbConnectionPropertiesTest {
         Assertions.assertNotNull(settings);
         Assertions.assertEquals("USER", settings.getCredential().getUserName());
         Assertions.assertEquals("PASSWORD", String.valueOf(settings.getCredential().getPassword()));
+        Assertions.assertEquals("test", settings.getCredential().getSource());
         Assertions.assertEquals("hostname",
                 settings.getClusterSettings().getHosts().get(0).getHost());
         Assertions.assertEquals("APPNAME", settings.getApplicationName());
@@ -228,7 +231,8 @@ public class DocumentDbConnectionPropertiesTest {
                 "&" + DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getName() + "=" + "false" +
                 "&" + DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getName() + "=" + "~/.ssh/known_hosts" +
                 "&" + DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName() + "=" + "1000" +
-                "&" + DocumentDbConnectionProperty.REFRESH_SCHEMA.getName() + "=" + "true";
+                "&" + DocumentDbConnectionProperty.REFRESH_SCHEMA.getName() + "=" + "true" +
+                "&" + DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName() + "=" + "test";
         properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
@@ -351,5 +355,25 @@ public class DocumentDbConnectionPropertiesTest {
         // Build client settings and ensure app name is passed.
         final MongoClientSettings settings = properties.buildMongoClientSettings();
         Assertions.assertEquals("APPNAME", settings.getApplicationName());
+    }
+
+    /**
+     * Tests getting and setting the default authentication database.
+     */
+    @Test
+    @DisplayName("Tests retrieving default and overridden authentication database and that thew database is used in client settings.")
+    public void testDefaultAuthenticationDatabase() throws SQLException {
+        // Get default authentication database.
+        final Properties info = new Properties();
+        final String connectionString = "jdbc:documentdb://username:password@localhost/database";
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
+        Assertions.assertEquals(DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getDefaultValue(), properties.getDefaultAuthenticationDatabase());
+        // Override test database.
+        properties.setDefaultAuthenticationDatabase("test");
+        Assertions.assertEquals("test", properties.getDefaultAuthenticationDatabase());
+        // Build client settings and ensure authentication database is passed.
+        final MongoClientSettings settings = properties.buildMongoClientSettings();
+        Assertions.assertEquals("test", settings.getCredential().getSource());
     }
 }

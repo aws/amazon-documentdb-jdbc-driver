@@ -640,6 +640,26 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Sets the default authentication database name.
+     *
+     * @param databaseName the name of the authentication database.
+     */
+    public void setDefaultAuthenticationDatabase(final String databaseName) {
+        setProperty(DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName(), databaseName);
+    }
+
+    /**
+     * Gets the default authentication database name.
+     *
+     * @return the name of the authentication database.
+     */
+    public String getDefaultAuthenticationDatabase() {
+        return getProperty(
+            DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName(),
+            DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getDefaultValue());
+    }
+
+    /**
      * Builds the MongoClientSettings from properties.
      *
      * @return a {@link MongoClientSettings} object.
@@ -684,12 +704,12 @@ public class DocumentDbConnectionProperties extends Properties {
 
         final MongoClientSettings.Builder clientSettingsBuilder = MongoClientSettings.builder();
 
-        // Create credential for admin database (only authentication database in DocumentDB).
+        // Create credential for authentication database.
         final String user = getUser();
         final String password = getPassword();
         if (user != null && password != null) {
             final MongoCredential credential =
-                    MongoCredential.createCredential(user, AUTHENTICATION_DATABASE, password.toCharArray());
+                    MongoCredential.createCredential(user, getDefaultAuthenticationDatabase(), password.toCharArray());
             clientSettingsBuilder.credential(credential);
         }
 

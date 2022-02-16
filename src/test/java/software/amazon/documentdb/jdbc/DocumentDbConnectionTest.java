@@ -187,6 +187,33 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                         .contains("Authorization failed for user"));
     }
 
+    /** Tests constructor when passed invalid credentials. */
+    @Test
+    void testConnectionWithAuthenticationDatabase() throws SQLException {
+        // Create another user for a different database on that same database (instead of admin)
+        final String otherUser = "other";
+        final String otherDatabase = "other";
+        final String otherUserPassword = "password";
+        createUser(otherDatabase, otherDatabase, otherUser, otherUserPassword);
+
+        // Attempt to authenticate with this user with default authentication database admin.
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
+        properties.setUser(otherUser);
+        properties.setPassword(otherUserPassword);
+        Assertions.assertTrue(
+                Assertions.assertThrows(SQLException.class, () -> DriverManager.getConnection(
+                        DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties))
+                        .getMessage()
+                        .contains("Authorization failed for user"));
+
+        // Attempt to authenticate with this user after setting correct authentication database.
+        properties.setDefaultAuthenticationDatabase(otherDatabase);
+        try (DocumentDbConnection connection = (DocumentDbConnection) DriverManager.getConnection(
+                DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME, properties)) {
+            Assertions.assertNotNull(connection);
+        }
+    }
+
     /**
      * Test for connection.getSchema() and getCatalog
      */
