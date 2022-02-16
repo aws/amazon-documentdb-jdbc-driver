@@ -810,6 +810,9 @@ public class DocumentDbConnectionProperties extends Properties {
         if (getRefreshSchema() != Boolean.parseBoolean(DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.REFRESH_SCHEMA, getRefreshSchema());
         }
+        if (getDefaultAuthenticationDatabase() != null && !DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getDefaultValue().equals(getDefaultAuthenticationDatabase())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_AUTH_DB, getDefaultAuthenticationDatabase());
+        }
         return String.format(connectionStringTemplate,
                 loginInfo,
                 hostInfo,

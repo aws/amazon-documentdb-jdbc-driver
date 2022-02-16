@@ -112,7 +112,8 @@ public class DocumentDbConnectionPropertiesTest {
                         + "&sshStrictHostKeyChecking=false"
                         + "&sshKnownHostsFile=~/.ssh/unknown_hosts"
                         + "&defaultFetchSize=1000"
-                        + "&refreshSchema=true",
+                        + "&refreshSchema=true"
+                        + "&defaultAuthDb=test",
                 properties.buildSanitizedConnectionString());
 
         // Build client settings.
