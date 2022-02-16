@@ -187,7 +187,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                         .contains("Authorization failed for user"));
     }
 
-    /** Tests constructor when passed invalid credentials. */
+    /** Tests constructor when authenticating with non-default database. */
     @Test
     void testConnectionWithAuthenticationDatabase() throws SQLException {
         // Create another user for a different database on that same database (instead of admin)
