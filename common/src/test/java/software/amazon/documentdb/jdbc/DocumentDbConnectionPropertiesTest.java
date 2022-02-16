@@ -361,7 +361,7 @@ public class DocumentDbConnectionPropertiesTest {
      * Tests getting and setting the default authentication database.
      */
     @Test
-    @DisplayName("Tests retrieving default and overridden authentication database and that thew database is used in client settings.")
+    @DisplayName("Tests retrieving default and overridden authentication database and that the database is used in client settings.")
     public void testDefaultAuthenticationDatabase() throws SQLException {
         // Get default authentication database.
         final Properties info = new Properties();
