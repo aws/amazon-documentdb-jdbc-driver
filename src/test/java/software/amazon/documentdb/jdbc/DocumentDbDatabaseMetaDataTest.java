@@ -164,11 +164,14 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
                 {" ", " ", " ", " "},
                 {null, null, null, "TABLE"},
                 {null, null, COLLECTION_BASIC, "TABLE"},
-                {null, DATABASE, COLLECTION_BASIC, "TABLE"}
+                {null, DATABASE, COLLECTION_BASIC, "TABLE"},
+                {null, null, null},
+                {" ", " ", " "}
         };
 
         for (String[] test : tests) {
-            final ResultSet tables = metadata.getTables(test[0], null, null, new String[]{test[3]});
+            final String[] tableTypes = test.length == 4 ? new String[]{test[3]} : new String[]{};
+            final ResultSet tables = metadata.getTables(test[0], test[1], test[2], tableTypes);
             final ResultSetMetaData tablesMetadata = tables.getMetaData();
             Assertions.assertEquals("TABLE_CAT", tablesMetadata.getColumnName(1));
             Assertions.assertEquals("TABLE_SCHEM", tablesMetadata.getColumnName(2));
