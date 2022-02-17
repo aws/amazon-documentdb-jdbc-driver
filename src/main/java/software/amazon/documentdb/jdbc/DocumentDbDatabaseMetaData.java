@@ -356,6 +356,12 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         }
     }
 
+    /**
+     * Warning: if any entry becomes used/unused, reflection of that change in the
+     *  ODBC driver is required as well. Files to be changed in the ODBC driver:
+     *  function ColumnMetadataQuery::GetColumn in namespace query
+     *  in column_metadata_query.cpp
+     */
     private void addColumnEntry(final List<List<Object>> metaData,
             final DocumentDbSchemaTable table,
             final DocumentDbSchemaColumn column) {
