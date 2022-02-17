@@ -71,6 +71,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
             "The default fetch size (in records) when retrieving results from Amazon DocumentDB. It is the number of records to retrieve in a single batch. The maximum number of records retrieved in a single batch may also be limited by the overall memory size of the result. The value can be changed by calling the `Statement.setFetchSize` JDBC method. Default is '2000'."),
     REFRESH_SCHEMA("refreshSchema", "false",
             "Refreshes any existing schema with a newly generated schema when the connection first requires the schema. Note that this will remove any existing schema customizations and will reduce performance for the first query or metadata inquiry."),
+    DEFAULT_AUTH_DB("defaultAuthDb", "admin", "The default authentication database to use."),
     ;
 
     // Unsupported MongoDB connection properties that will be ignored but should have warnings.

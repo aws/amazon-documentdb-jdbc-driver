@@ -37,6 +37,7 @@
 | `schemaName` | (string) The name of the SQL mapping schema for the database. | `_default`.  
 | `defaultFetchSize` | (int) The default fetch size (in records) when retrieving results from Amazon DocumentDB. It is the number of records to retrieve in a single batch. The maximum number of records retrieved in a single batch may also be limited by the overall memory size of the result. The value can be changed by calling the `Statement.setFetchSize` JDBC method. | `2000`
 | `refreshSchema` | (true/false) If true, generates (refreshes) the SQL schema with each connection. It creates a new version, leaving any existing versions in place. _Caution: use only when necessary to update schema as it can adversely affect performance._  | `false`
+| `defaultAuthDb` | (string) The name of the authentication database to use when authenticating with the passed `user` and `password`. This is where the authorized user is stored and can be different from what databases the user may have access to. On Amazon DocumentDB, all users are attributed to the `admin` database. | `admin`
 
 ## Examples
 

@@ -65,9 +65,25 @@ public class DocumentDbFlapDoodleTest extends DocumentDbTest {
             final String databaseName,
             final String username,
             final String password) {
+        createUser(ADMIN_DATABASE, databaseName, username, password);
+    }
+
+    /**
+     * Creates a user in authentication database with dbOwner role on another database.
+     * @param authenticationDatabaseName the name of the database to create the user in. Authentication must
+     *                                   be in the context of this database.
+     * @param databaseName the name of database to grant access for the user.
+     * @param username the user name to create.
+     * @param password the password for the user.
+     */
+    protected static void createUser(
+            final String authenticationDatabaseName,
+            final String databaseName,
+            final String username,
+            final String password) {
 
         try (MongoClient client = createMongoClient(ADMIN_DATABASE, ADMIN_USERNAME, ADMIN_PASSWORD)) {
-            final MongoDatabase db = client.getDatabase(ADMIN_DATABASE);
+            final MongoDatabase db = client.getDatabase(authenticationDatabaseName);
             final BasicDBObject createUserCommand = new BasicDBObject("createUser", username)
                     .append("pwd", password)
                     .append("roles",

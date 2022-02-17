@@ -61,7 +61,6 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final String USER_HOME_PATH_NAME  = System.getProperty(USER_HOME_PROPERTY);
     private static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
             USER_HOME_PATH_NAME, ".documentdb").toString();
-    private static final String AUTHENTICATION_DATABASE = "admin";
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
     public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
@@ -640,6 +639,26 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Sets the default authentication database name.
+     *
+     * @param databaseName the name of the authentication database.
+     */
+    public void setDefaultAuthenticationDatabase(final String databaseName) {
+        setProperty(DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName(), databaseName);
+    }
+
+    /**
+     * Gets the default authentication database name.
+     *
+     * @return the name of the authentication database.
+     */
+    public String getDefaultAuthenticationDatabase() {
+        return getProperty(
+            DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName(),
+            DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getDefaultValue());
+    }
+
+    /**
      * Builds the MongoClientSettings from properties.
      *
      * @return a {@link MongoClientSettings} object.
@@ -684,12 +703,12 @@ public class DocumentDbConnectionProperties extends Properties {
 
         final MongoClientSettings.Builder clientSettingsBuilder = MongoClientSettings.builder();
 
-        // Create credential for admin database (only authentication database in DocumentDB).
+        // Create credential for authentication database.
         final String user = getUser();
         final String password = getPassword();
         if (user != null && password != null) {
             final MongoCredential credential =
-                    MongoCredential.createCredential(user, AUTHENTICATION_DATABASE, password.toCharArray());
+                    MongoCredential.createCredential(user, getDefaultAuthenticationDatabase(), password.toCharArray());
             clientSettingsBuilder.credential(credential);
         }
 
@@ -790,6 +809,9 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getRefreshSchema() != Boolean.parseBoolean(DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.REFRESH_SCHEMA, getRefreshSchema());
+        }
+        if (getDefaultAuthenticationDatabase() != null && !DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getDefaultValue().equals(getDefaultAuthenticationDatabase())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_AUTH_DB, getDefaultAuthenticationDatabase());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,

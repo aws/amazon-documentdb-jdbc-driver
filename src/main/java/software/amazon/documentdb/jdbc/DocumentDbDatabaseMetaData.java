@@ -220,7 +220,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
         // ASSUMPTION: We're only supporting tables.
         if (isNullOrWhitespace(catalog)
-                && (types == null || Arrays.stream(types)
+                && (types == null || types.length == 0 || Arrays.stream(types)
                         .anyMatch(s -> isNullOrWhitespace(s) || s.equals("TABLE")))) {
             if (isNullOrWhitespace(schemaPattern)
                     || properties.getDatabase().matches(convertPatternToRegex(schemaPattern))) {
