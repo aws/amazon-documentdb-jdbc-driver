@@ -617,7 +617,7 @@ class DocumentDbTableSchemaGeneratorTest {
     void testComplexTwoLevelArray() {
         final Map<String, String> tableNameMap = new HashMap<>();
         final BsonDocument document = BsonDocument.parse(
-                "{ \"_id\" : \"key\", \"array\" : [ [1, 2, 3 ], [ 4, 5, 6 ] ]}");
+                "{ \"_id\" : \"key\", \"array\" : [ [1, 2, 3 ], [ 4, 5, 6 ], [7, 8, 9 ] ]}");
         final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
                 .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
 
@@ -1085,7 +1085,7 @@ class DocumentDbTableSchemaGeneratorTest {
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 2 }, [ 3, 4 ] ] }"),
                 BsonDocument.parse(
-                        "{ \"_id\" : \"key\", \"array\" : [ [ 1, 2 ], { \"field\" : 2 } ] }"),
+                        "{ \"_id\" : \"key\", \"array\" : [ [ 1, 2 ], { \"field\" : 2 }, null ] }"),
                 BsonDocument.parse(
                         "{ \"_id\" : \"key\", \"array\" : [ [ 1, 2 ], 2 ] }"),
         };
