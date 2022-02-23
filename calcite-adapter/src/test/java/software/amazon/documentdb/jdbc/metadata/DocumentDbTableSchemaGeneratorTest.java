@@ -1761,12 +1761,11 @@ class DocumentDbTableSchemaGeneratorTest {
                 "{ \"_id\" : \"key\", \"array\" : [ { \"field\" : 1 }, null, { \"field\": 2}, null]}");
         final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
                 .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
-
         Assertions.assertNotNull(metadata);
         Assertions.assertEquals(2, metadata.size());
 
         // Virtual table for array of documents
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(toName(combinePath(
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(toName(combinePath(
                 COLLECTION_NAME, "array"), tableNameMap));
         Assertions.assertEquals(3, metadataTable.getColumnMap().size());
 
@@ -1796,12 +1795,11 @@ class DocumentDbTableSchemaGeneratorTest {
         Assertions.assertEquals(0, metadataColumn.getForeignKeyIndex());
         Assertions.assertTrue(metadataColumn.isGenerated());
 
-        // document column
+        // field column
         metadataColumn = (DocumentDbMetadataColumn) metadataTable.getColumnMap().get("field");
         Assertions.assertNotNull(metadataColumn);
         Assertions.assertEquals(JdbcType.INTEGER, metadataColumn.getSqlType());
-        Assertions.assertEquals(combinePath("array", "field"),
-                metadataColumn.getFieldPath());
+        Assertions.assertEquals(combinePath("array", "field"), metadataColumn.getFieldPath());
         Assertions.assertEquals("field", metadataColumn.getSqlName());
         Assertions.assertEquals(0, metadataColumn.getPrimaryKeyIndex());
         Assertions.assertEquals(0, metadataColumn.getForeignKeyIndex());
@@ -1810,7 +1808,7 @@ class DocumentDbTableSchemaGeneratorTest {
         printMetadataOutput(metadata, getMethodName());
     }
 
-    @DisplayName("Tests a two-level array with nulls on both levels.")
+    @DisplayName("Tests a two-level scalar array with nulls on both levels.")
     @Test
     void testTwoLevelArrayWithNulls() {
         final Map<String, String> tableNameMap = new HashMap<>();
@@ -1818,12 +1816,11 @@ class DocumentDbTableSchemaGeneratorTest {
                 "{ \"_id\" : \"key\", \"array\" : [ [1, 2, 3 ], [], [ 4, 5, 6, null ], null]}");
         final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
                 .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
-
         Assertions.assertNotNull(metadata);
         Assertions.assertEquals(2, metadata.size());
 
         // Virtual table for 2 level nested array
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(COLLECTION_NAME, "array"), tableNameMap));
         Assertions.assertEquals(4, metadataTable.getColumnMap().size());
 
@@ -1895,16 +1892,14 @@ class DocumentDbTableSchemaGeneratorTest {
     @Test
     void testTwoLevelDocumentArrayWithNulls() {
         final Map<String, String> tableNameMap = new HashMap<>();
-        final BsonDocument document = BsonDocument.parse(
-                "{ \"_id\" : \"key\", \"array\" : [ [ {\"field\": 1}, null ], null]}");
+        final BsonDocument document = BsonDocument.parse("{ \"_id\" : \"key\", \"array\" : [ [ {\"field\": 1}, null ], null]}");
         final Map<String, DocumentDbSchemaTable> metadata = DocumentDbTableSchemaGenerator
                 .generate(COLLECTION_NAME, Arrays.stream((new BsonDocument[]{document})).iterator());
-
         Assertions.assertNotNull(metadata);
         Assertions.assertEquals(2, metadata.size());
 
         // Virtual table for 2 level nested array of documents
-        DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(
+        final DocumentDbMetadataTable metadataTable = (DocumentDbMetadataTable) metadata.get(
                 toName(combinePath(COLLECTION_NAME, "array"), tableNameMap));
         Assertions.assertEquals(4, metadataTable.getColumnMap().size());
 

@@ -506,7 +506,7 @@ public class DocumentDbTableSchemaGenerator {
             final int level,
             final Map<String, String> tableNameMap) {
         for (BsonValue element : array) {
-            if (!element.isNull())
+            if (!element.isNull()) {
                 processArray(
                         element.asArray(),
                         tableMap,
@@ -515,6 +515,8 @@ public class DocumentDbTableSchemaGenerator {
                         level,
                         collectionName,
                         tableNameMap);
+            }
+
         }
     }
 
