@@ -38,11 +38,13 @@ public class DocumentDbStatementJoinTest extends DocumentDbStatementTest {
     private static final String MULTI_NESTED_ARRAY_AND_DOCUMENT_JSON = "{ \"_id\" : \"key1\",  "
             + "\"document\": {\"field\": 1},"
             + "\"array\" : ["
-            + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
-            + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ], "
+            + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3, null], \"otherArray\": [4, 5, 6]}, "
+            + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9, null]}, "
+            + " null ], "
             + "\"otherArray\" : ["
-            + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3], \"otherArray\": [4, 5, 6]}, "
-            + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9]} ] }";
+            + " {\"field\": 1, \"document\": {\"field\": 1} , \"array\": [1, 2, 3, null], \"otherArray\": [4, 5, 6]}, "
+            + " {\"field\": 2, \"document\": {\"field\": 2} , \"array\": [4, 5, 6], \"otherArray\": [7, 8, 9, null]},"
+            + " null ] }";
 
     /**
      * Test querying for a virtual table from a nested document.

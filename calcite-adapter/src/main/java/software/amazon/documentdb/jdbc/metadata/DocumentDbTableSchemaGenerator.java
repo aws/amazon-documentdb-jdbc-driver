@@ -324,7 +324,7 @@ public class DocumentDbTableSchemaGenerator {
             handleComplexScalarConflict(tableMap, tableName, columnMap);
         }
 
-        if (!tableMap.containsKey(path)) {
+        if (!tableMap.containsKey(tableName)) {
             // Add foreign keys.
             //
             // Foreign key(s) are the primary key(s) passed from the parent table.
@@ -363,41 +363,41 @@ public class DocumentDbTableSchemaGenerator {
                         : null);
                 columnMap.put(metadataColumn.getSqlName(), metadataColumn);
             }
-
-            final Map<String, String> columnNameMap = columnMap.values().stream().collect(
-                    Collectors.toMap(
-                            DocumentDbSchemaColumn::getSqlName,
-                            DocumentDbSchemaColumn::getSqlName));
-            final String indexColumnName = toName(
-                    combinePath(path, INDEX_COLUMN_NAME_PREFIX + level),
-                    columnNameMap);
-            final DocumentDbMetadataColumn indexColumn;
-            if (!columnMap.containsKey(indexColumnName)) {
-                // Add index column. Although it has no path in the original document, we will
-                // use the path of the generated index field once the original document is unwound.
-                primaryKeyColumn++;
-                indexColumn = DocumentDbMetadataColumn
-                        .builder()
-                        .sqlName(indexColumnName)
-                        .fieldPath(path)  // Once unwound, the index will be at root level so path = name.
-                        .sqlType(JdbcType.BIGINT)
-                        .isIndex(true)
-                        .isPrimaryKey(true)
-                        .index(columnMap.size() + 1)
-                        .tableName(tableName)
-                        .primaryKeyIndex(primaryKeyColumn)
-                        .foreignKeyIndex(KEY_COLUMN_NONE)
-                        .arrayIndexLevel(level)
-                        .isGenerated(true)
-                        .build();
-                columnMap.put(indexColumn.getSqlName(), indexColumn);
-            } else {
-                // Cast exception should not occur, because we are always creating DocumentDbMetadataColumn.
-                indexColumn = (DocumentDbMetadataColumn) columnMap.get(indexColumnName);
-            }
-            // Add index column to foreign keys
-            foreignKeys.add(indexColumn);
         }
+
+        final Map<String, String> columnNameMap = columnMap.values().stream().collect(
+                Collectors.toMap(
+                        DocumentDbSchemaColumn::getSqlName,
+                        DocumentDbSchemaColumn::getSqlName));
+        final String indexColumnName = toName(
+                combinePath(path, INDEX_COLUMN_NAME_PREFIX + level),
+                columnNameMap);
+        final DocumentDbMetadataColumn indexColumn;
+        if (!columnMap.containsKey(indexColumnName)) {
+            // Add index column. Although it has no path in the original document, we will
+            // use the path of the generated index field once the original document is unwound.
+            primaryKeyColumn++;
+            indexColumn = DocumentDbMetadataColumn
+                    .builder()
+                    .sqlName(indexColumnName)
+                    .fieldPath(path)  // Once unwound, the index will be at root level so path = name.
+                    .sqlType(JdbcType.BIGINT)
+                    .isIndex(true)
+                    .isPrimaryKey(true)
+                    .index(columnMap.size() + 1)
+                    .tableName(tableName)
+                    .primaryKeyIndex(primaryKeyColumn)
+                    .foreignKeyIndex(KEY_COLUMN_NONE)
+                    .arrayIndexLevel(level)
+                    .isGenerated(true)
+                    .build();
+            columnMap.put(indexColumn.getSqlName(), indexColumn);
+        } else {
+            // Cast exception should not occur, because we are always creating DocumentDbMetadataColumn.
+            indexColumn = (DocumentDbMetadataColumn) columnMap.get(indexColumnName);
+        }
+        // Add index column to foreign keys
+        foreignKeys.add(indexColumn);
 
         // Add documents, arrays or just the scalar value.
         switch (sqlType) {
@@ -506,14 +506,17 @@ public class DocumentDbTableSchemaGenerator {
             final int level,
             final Map<String, String> tableNameMap) {
         for (BsonValue element : array) {
-            processArray(
-                    element.asArray(),
-                    tableMap,
-                    foreignKeys,
-                    path,
-                    level,
-                    collectionName,
-                    tableNameMap);
+            if (!element.isNull()) {
+                processArray(
+                        element.asArray(),
+                        tableMap,
+                        foreignKeys,
+                        path,
+                        level,
+                        collectionName,
+                        tableNameMap);
+            }
+
         }
     }
 
@@ -537,8 +540,11 @@ public class DocumentDbTableSchemaGenerator {
 
         // This will make the document fields part of this array.
         for (BsonValue element : array) {
-            processDocument(element.asDocument(),
-                    tableMap, foreignKeys, path, collectionName, false, tableNameMap);
+            if (!element.isNull()) {
+                processDocument(element.asDocument(),
+                        tableMap, foreignKeys, path, collectionName, false, tableNameMap);
+            }
+
         }
     }
 
