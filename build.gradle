@@ -303,7 +303,7 @@ dependencies {
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.2'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.2'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.4.2'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.0'
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
 
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.0'
