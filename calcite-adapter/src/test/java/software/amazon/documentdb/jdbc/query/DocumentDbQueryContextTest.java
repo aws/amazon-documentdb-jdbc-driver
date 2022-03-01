@@ -46,17 +46,15 @@ public class DocumentDbQueryContextTest {
                         + "\"literalBinary\": {\"$binary\": {\"base64\": \"RfCr\", \"subType\": \"00\"}}}}");
         // Stage with a lot of nesting and aggregate operators
         stages.add(
-            "{\"$project\": {\"EXPR$0\": {\"$substrCP\": [\"$array.field\", "
-                    + "{\"$subtract\": [\"$array.field2\", {\"$numberInt\": \"1\"}]}, "
-                    + "{\"$subtract\": [\"$array.field1\", \"$array.field2\"]}]}, "
-                    + "\"_id\": {\"$numberInt\": \"0\"}}}");
+                "{\"$project\": {\"EXPR$0\": {\"$substrCP\": [\"$array.field\", "
+                        + "{\"$subtract\": [\"$array.field2\", {\"$numberInt\": \"1\"}]}, "
+                        + "{\"$subtract\": [\"$array.field1\", \"$array.field2\"]}]}, "
+                        + "\"_id\": {\"$numberInt\": \"0\"}}}");
 
         final DocumentDbMqlQueryContext context =
                 DocumentDbMqlQueryContext.builder()
                         .aggregateOperations(
-                                stages.stream()
-                                        .map(BsonDocument::parse)
-                                        .collect(Collectors.toList()))
+                                stages.stream().map(BsonDocument::parse).collect(Collectors.toList()))
                         .build();
         Assertions.assertEquals(stages.size(), context.getAggregateOperationsAsStrings().size());
         for (int i = 0; i < stages.size(); i++) {
