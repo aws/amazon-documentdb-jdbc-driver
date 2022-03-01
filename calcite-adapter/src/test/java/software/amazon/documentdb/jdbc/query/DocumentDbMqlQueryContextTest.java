@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class DocumentDbQueryContextTest {
+public class DocumentDbMqlQueryContextTest {
 
     @Test
     @DisplayName("Tests that aggregate operations are correctly converted from BSON document to string in getter.")
