@@ -39,8 +39,8 @@ public class DocumentDbMqlQueryContextTest {
         // Stage with 3-valued logic (many null checks)
         stages.add(
                 "{\"$project\": {"
-                        + "\"booleanField\""
-                        + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, "
+                        + "\"booleanField\": "
+                        + "{\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, "
                         + "{\"$gt\": [\"$array.field2\", null]}]}, "
                         + "{\"$eq\": [\"$array.field\", \"$array.field2\"]}, null]}}}");
         // Stage with different Bson types
