@@ -36,13 +36,21 @@ public class DocumentDbMqlQueryContextTest {
                         + "\"path\": \"$array\", "
                         + "\"includeArrayIndex\": \"array_index_lvl_0\", "
                         + "\"preserveNullAndEmptyArrays\": true}}");
+        // Stage with 3-valued logic (many null checks)
+        stages.add(
+                "{\"$project\": {"
+                        + "\"booleanField\""
+                        + ": {\"$cond\": [{\"$and\": [{\"$gt\": [\"$array.field\", null]}, "
+                        + "{\"$gt\": [\"$array.field2\", null]}]}, "
+                        + "{\"$eq\": [\"$array.field\", \"$array.field2\"]}, null]}}}");
         // Stage with different Bson types
         stages.add(
                 "{\"$project\": {"
+                        + "\"literalNull\": {\"$literal\": null}, "
                         + "\"literalTimestamp\": {\"$date\": {\"$numberLong\": \"1505938660000\"}}, "
                         + "\"literalInt\": {\"$literal\": {\"$numberInt\": \"-2147483648\"}}, "
                         + "\"literalDecimal\": {\"$literal\": {\"$numberDouble\": \"123.45\"}}, "
-                        + "\"literalVarchar\": {\"$literal\": \"Hello\"}, "
+                        + "\"literalVarchar\": {\"$literal\": \"Hello! 你好!\"}, "
                         + "\"literalBinary\": {\"$binary\": {\"base64\": \"RfCr\", \"subType\": \"00\"}}}}");
         // Stage with a lot of nesting and aggregate operators
         stages.add(
