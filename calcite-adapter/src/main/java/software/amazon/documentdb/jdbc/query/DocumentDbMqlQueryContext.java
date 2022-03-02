@@ -48,10 +48,8 @@ public class DocumentDbMqlQueryContext {
      */
     public List<String> getAggregateOperationsAsStrings() {
         return aggregateOperations.stream()
-                .map(
-                        doc ->
-                                doc.toBsonDocument()
-                                        .toJson(JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build()))
+                .map(doc ->
+                        doc.toBsonDocument().toJson(JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build()))
                 .collect(Collectors.toList());
     }
 }
