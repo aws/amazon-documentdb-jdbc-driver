@@ -160,6 +160,7 @@ public class DocumentDbQueryExecutor {
      * Function to execute query.
      * @param sql Query to execute.
      * @return java.sql.ResultSet object returned from query execution.
+     * @throws SQLException throws a SQLException
      */
     @VisibleForTesting
     protected java.sql.ResultSet runQuery(final String sql) throws SQLException {

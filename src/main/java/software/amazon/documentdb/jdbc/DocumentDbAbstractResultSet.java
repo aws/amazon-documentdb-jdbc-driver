@@ -185,6 +185,7 @@ public abstract class DocumentDbAbstractResultSet extends
      * @param columnIndex the (one-based) column index in the current row.
      *
      * @return the cell value.
+     * @throws SQLException throws a SQLException
      */
     protected abstract Object getValue(final int columnIndex) throws SQLException;
 
