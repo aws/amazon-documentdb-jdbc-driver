@@ -70,21 +70,21 @@ public abstract class ResultSet implements java.sql.ResultSet {
     /**
      * Set the driver fetch size by the number of rows.
      * @param rows The number of rows for the driver to fetch.
-     * @throws SQLException
+     * @throws SQLException throws SQLException
      */
     protected abstract void setDriverFetchSize(int rows) throws SQLException;
 
     /**
      * Gets the current row (zero-based) index.
      * @return A value representing the current row (zero-based) index.
-     * @throws SQLException
+     * @throws SQLException throws SQLException
      */
     protected abstract int getRowIndex() throws SQLException;
 
     /**
      * Gets the number of rows in the result set.
      * @return A value representing the number of rows in the result set.
-     * @throws SQLException
+     * @throws SQLException throws SQLException
      */
     protected abstract int getRowCount() throws SQLException;
 

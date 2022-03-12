@@ -1158,7 +1158,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * '~' to be replaced by the user's home directory.
      *
      * @param filePath the given file path to process.
-     * @param searchFolders
+     * @param searchFolders list of folders
      * @return a {@link Path} for the absolution path for the given file path.
      */
     public static Path getPath(final String filePath, final String... searchFolders) {

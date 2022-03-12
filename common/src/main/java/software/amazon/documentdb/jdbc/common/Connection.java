@@ -187,7 +187,7 @@ public abstract class Connection implements java.sql.Connection {
 
     /**
      * Closes the connection and releases resources.
-     * @throws SQLException
+     * @throws SQLException throws SQLException
      */
     protected abstract void doClose() throws SQLException;
 
