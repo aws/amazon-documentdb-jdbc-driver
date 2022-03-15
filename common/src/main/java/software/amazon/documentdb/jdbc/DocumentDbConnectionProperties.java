@@ -874,6 +874,7 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @param info the given properties.
      * @param documentDbUrl the connection string.
+     * @param connectionStringPrefix the connection string prefix.
      * @return a {@link DocumentDbConnectionProperties} with the properties set.
      * @throws SQLException if connection string is invalid.
      */
