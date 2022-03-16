@@ -8,6 +8,7 @@ plugins {
     id 'org.kordamp.gradle.markdown' version '2.2.0'
     id "de.undercouch.download" version "5.0.1"
     id "com.github.dkorotych.gradle-maven-exec" version "2.2.1"
+    id "io.freefair.aggregate-javadoc" version "5.3.3.3"
 }
 
 group 'software.amazon.documentdb.jdbc'
