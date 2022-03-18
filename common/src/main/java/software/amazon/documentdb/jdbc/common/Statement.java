@@ -46,7 +46,6 @@ public abstract class Statement implements java.sql.Statement {
      * Constructor for seeding the statement with the parent connection.
      *
      * @param connection The parent connection.
-     * @throws SQLException if error occurs when get type map of connection.
      */
     protected Statement(final java.sql.Connection connection) {
         this.connection = connection;

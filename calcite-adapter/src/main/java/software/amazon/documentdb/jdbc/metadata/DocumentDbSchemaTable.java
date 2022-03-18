@@ -56,7 +56,7 @@ public class DocumentDbSchemaTable {
     /**
      * The unique ID for the table schema.
      *
-     * @return a {@link String} representing the combination of {@link #getSqlName} and
+     * @return a {@link String} representing the combination of {@link #getSqlName()} and
      * {@link #getUuid}.
      */
     @BsonId
