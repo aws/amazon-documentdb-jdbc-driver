@@ -289,8 +289,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         };
 
         for (String[] test : tests) {
-            String actualRegexPattern = DocumentDbDatabaseMetaData.convertPatternToRegex(test[0]);
-            Assertions.assertEquals(test[1], actualRegexPattern);
+            Assertions.assertEquals(test[1], DocumentDbDatabaseMetaData.convertPatternToRegex(test[0]));
         }
     }
 

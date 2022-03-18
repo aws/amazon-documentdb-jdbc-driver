@@ -115,4 +115,18 @@
     </Or>
     <Bug pattern="EQ_CHECK_FOR_OPERAND_NOT_COMPATIBLE_WITH_THIS"/>
   </Match>
+  <Match>
+    <Or>
+      <Source name="DocumentDbConnectionTest.java"/>
+      <Source name="DocumentDbFlapDoodleTest.java"/>
+      <Source name="DocumentDbFlapDoodleTestTest.java"/>
+      <Source name="DocumentDbMainTest.java"/>
+      <Source name="DocumentDbResultSetMetaDataTest.java"/>
+      <Source name="DocumentDbStatementTest.java"/>
+      <Source name="DocumentDbTestEnvironmentFactoryTest.java"/>
+      <Source name="DocumentDbConnectionProperties.java"/>
+    </Or>
+    <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
+  </Match>
+
 </FindBugsFilter>

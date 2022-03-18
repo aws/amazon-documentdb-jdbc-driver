@@ -238,7 +238,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addTablesForSchema(final String tableNamePattern,
             final List<List<Object>> metaData) {
-        String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
+        final String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
             if (isNullOrWhitespace(tableNamePattern)
                     || tableName.matches(regexTableNamePattern)) {
@@ -328,7 +328,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                 addColumnsForTable(columnNamePattern, metaData, table);
             }
         } else {
-            String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
+            final String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
                 if (isNullOrWhitespace(tableNamePattern)
                         || tableName.matches(regexTableNamePattern)) {
@@ -352,7 +352,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     private void addColumnsForTable(final String columnNamePattern,
             final List<List<Object>> metaData,
             final DocumentDbSchemaTable table) {
-        String regexColumnPattern = convertPatternToRegex(columnNamePattern);
+        final String regexColumnPattern = convertPatternToRegex(columnNamePattern);
         for (DocumentDbSchemaColumn column : table.getColumnMap().values()) {
             if (isNullOrWhitespace(columnNamePattern)
                     || column.getSqlName().matches(regexColumnPattern)) {
@@ -496,8 +496,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         // 5. KEY_SEQ short => sequence number within primary key( a value of 1 represents the first column of the primary key, a value of 2 would represent the second column within the primary key).
         // 6. PK_NAME String => primary key name (may be null)
         final List<List<Object>> metaData = new ArrayList<>();
-        String regexSchemaPattern = convertPatternToRegex(schema);
-        String regexTableSchemaPattern = convertPatternToRegex(table);
+        final String regexSchemaPattern = convertPatternToRegex(schema);
+        final String regexTableSchemaPattern = convertPatternToRegex(table);
         if (schema == null || properties.getDatabase().matches(regexSchemaPattern)) {
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
                 if (table == null ||
@@ -562,7 +562,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addImportedKeysForSchema(final String table,
             final List<List<Object>> metaData) throws SQLException {
-        String regexTablePattern = convertPatternToRegex(table);
+        final String regexTablePattern = convertPatternToRegex(table);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
             if (table == null || tableName.matches(regexTablePattern)) {
                 final DocumentDbSchemaTable schemaTable = databaseMetadata
@@ -772,7 +772,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         boolean escapeFound = false;
         int start = 0;
         for (int index = 0; index < pattern.length(); index++) {
-            char currChar = pattern.charAt(index);
+            final char currChar = pattern.charAt(index);
             if (currChar == ESCAPE_CHAR) {
                 if (escapeFound) {
                     // I.e., \\ - two backslash
@@ -795,12 +795,12 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         return converted.toString();
     }
 
-    private static int updateRegexExpression(int index, int start, String pattern, String str, StringBuilder converted) {
+    private static int updateRegexExpression(final int index, final int start, final String pattern, final String str, final StringBuilder converted) {
         if (index - start > 0) {
             converted.append(Pattern.quote(pattern.substring(start, index)));
         }
         converted.append(str);
-        start = index + 1;
-        return start;
+        final int newStart = index + 1;
+        return newStart;
     }
 }
