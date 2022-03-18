@@ -55,6 +55,7 @@ public class DocumentDbTableSchemaGeneratorVirtualTableTest extends DocumentDbTa
         Assertions.assertEquals(1, baseTable.getColumnMap().size());
         DocumentDbSchemaColumn schemaColumn = baseTable.getColumnMap().get(
                 toName(combinePath(COLLECTION_NAME, "_id"), tableNameMap));
+        Assertions.assertNotNull(schemaColumn);
         Assertions.assertEquals(1, schemaColumn.getIndex(baseTable).orElse(null));
         Assertions.assertEquals(1, schemaColumn.getPrimaryKeyIndex(baseTable).orElse(null));
         Assertions.assertNull(schemaColumn.getForeignKeyIndex(baseTable).orElse(null));
@@ -79,6 +80,7 @@ public class DocumentDbTableSchemaGeneratorVirtualTableTest extends DocumentDbTa
         // _id foreign key column
         schemaColumn = virtualTable.getColumnMap().get(
                 toName(combinePath(COLLECTION_NAME, "_id"), tableNameMap));
+        Assertions.assertNotNull(schemaColumn);
         Assertions.assertEquals(1, schemaColumn.getIndex(virtualTable).orElse(null));
         Assertions.assertEquals(1, schemaColumn.getPrimaryKeyIndex(virtualTable).orElse(null));
         Assertions.assertEquals(1, schemaColumn.getForeignKeyIndex(baseTable).orElse(null));
@@ -98,6 +100,7 @@ public class DocumentDbTableSchemaGeneratorVirtualTableTest extends DocumentDbTa
         Assertions.assertFalse(metadataColumn.isGenerated());
 
         schemaColumn = virtualTable.getColumnMap().get("field");
+        Assertions.assertNotNull(schemaColumn);
         Assertions.assertEquals(2, schemaColumn.getIndex(virtualTable).orElse(null));
         Assertions.assertEquals(0, schemaColumn.getPrimaryKeyIndex(virtualTable).orElse(null));
         Assertions.assertNull(schemaColumn.getForeignKeyIndex(baseTable).orElse(null));
@@ -989,14 +992,14 @@ public class DocumentDbTableSchemaGeneratorVirtualTableTest extends DocumentDbTa
                 COLLECTION_NAME, "array"), "components"), tableNameMap));
         Assertions.assertNotNull(schemaTable);
         Assertions.assertEquals(9, schemaTable.getColumns().size());
-        Assertions
-                .assertEquals(JdbcType.VARCHAR, schemaTable.getColumnMap().get("_id").getSqlType());
-        Assertions.assertEquals(BsonType.OBJECT_ID,
-                schemaTable.getColumnMap().get("_id").getDbType());
-        Assertions.assertEquals(JdbcType.BOOLEAN,
-                schemaTable.getColumnMap().get("required").getSqlType());
-        Assertions.assertEquals(BsonType.BOOLEAN,
-                schemaTable.getColumnMap().get("required").getDbType());
+        final DocumentDbSchemaColumn id = schemaTable.getColumnMap().get("_id");
+        Assertions.assertNotNull(id);
+        Assertions.assertEquals(JdbcType.VARCHAR, id.getSqlType());
+        Assertions.assertEquals(BsonType.OBJECT_ID, id.getDbType());
+        final DocumentDbSchemaColumn required = schemaTable.getColumnMap().get("required");
+        Assertions.assertNotNull(required);
+        Assertions.assertEquals(JdbcType.BOOLEAN, required.getSqlType());
+        Assertions.assertEquals(BsonType.BOOLEAN, required.getDbType());
         Assertions.assertNull(schemaTable.getColumnMap().get("value"));
     }
 

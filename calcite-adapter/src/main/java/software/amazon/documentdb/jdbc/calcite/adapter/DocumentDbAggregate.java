@@ -138,8 +138,10 @@ public class DocumentDbAggregate
             final String fieldName = mongoFieldNames.get(groupSet.nth(0));
             final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
             list.add("_id: " + maybeQuote("$" + fieldName));
-            columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
-            ++columnIndex;
+            if (oldColumn != null) {
+                columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
+                ++columnIndex;
+            }
         } else {
             final List<String> keys = new ArrayList<>();
             for (int group : groupSet) {
@@ -148,8 +150,10 @@ public class DocumentDbAggregate
                 final String fieldName =  mongoFieldNames.get(group);
                 final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
                 keys.add(maybeQuote(acceptedMongoFieldName(outName)) + ": " + DocumentDbRules.quote("$" + fieldName));
-                columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
-                ++columnIndex;
+                if (oldColumn != null) {
+                    columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
+                    ++columnIndex;
+                }
             }
             list.add("_id: " + Util.toString(keys, "{", ", ", "}"));
         }
