@@ -1123,13 +1123,11 @@ public class DocumentDbConnectionProperties extends Properties {
 
         // Handle the tlsCAFile option.
         try (InputStream inputStream = getTlsCAFileInputStream()) {
-            if (inputStream != null) {
-                final SSLContext sslContext = SSLFactory.builder()
-                        .withTrustMaterial(CertificateUtils.loadCertificate(inputStream))
-                        .build()
-                        .getSslContext();
-                builder.context(sslContext);
-            }
+            final SSLContext sslContext = SSLFactory.builder()
+                    .withTrustMaterial(CertificateUtils.loadCertificate(inputStream))
+                    .build()
+                    .getSslContext();
+            builder.context(sslContext);
         }
     }
 
