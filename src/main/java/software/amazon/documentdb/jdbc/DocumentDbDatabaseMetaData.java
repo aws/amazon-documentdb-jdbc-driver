@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.google.common.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.DatabaseMetaData;
@@ -56,6 +57,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
 public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java.sql.DatabaseMetaData {
     private static final Map<JdbcType, Integer> TYPE_COLUMN_SIZE_MAP;
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDatabaseMetaData.class);
+    private static final char ESCAPE_CHAR = '\\';
     private final DocumentDbDatabaseSchemaMetadata databaseMetadata;
     private final DocumentDbConnectionProperties properties;
 
@@ -236,9 +238,10 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addTablesForSchema(final String tableNamePattern,
             final List<List<Object>> metaData) {
+        String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
             if (isNullOrWhitespace(tableNamePattern)
-                    || tableName.matches(convertPatternToRegex(tableNamePattern))) {
+                    || tableName.matches(regexTableNamePattern)) {
                 addTableEntry(metaData, tableName);
             }
         }
@@ -325,9 +328,10 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                 addColumnsForTable(columnNamePattern, metaData, table);
             }
         } else {
+            String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
                 if (isNullOrWhitespace(tableNamePattern)
-                        || tableName.matches(convertPatternToRegex(tableNamePattern))) {
+                        || tableName.matches(regexTableNamePattern)) {
                     final DocumentDbSchemaTable table = databaseMetadata
                             .getTableSchemaMap().get(tableName);
                     if (table == null) {
@@ -348,9 +352,10 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     private void addColumnsForTable(final String columnNamePattern,
             final List<List<Object>> metaData,
             final DocumentDbSchemaTable table) {
+        String regexColumnPattern = convertPatternToRegex(columnNamePattern);
         for (DocumentDbSchemaColumn column : table.getColumnMap().values()) {
             if (isNullOrWhitespace(columnNamePattern)
-                    || column.getSqlName().matches(convertPatternToRegex(columnNamePattern))) {
+                    || column.getSqlName().matches(regexColumnPattern)) {
                 addColumnEntry(metaData, table, column);
             }
         }
@@ -491,10 +496,12 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         // 5. KEY_SEQ short => sequence number within primary key( a value of 1 represents the first column of the primary key, a value of 2 would represent the second column within the primary key).
         // 6. PK_NAME String => primary key name (may be null)
         final List<List<Object>> metaData = new ArrayList<>();
-        if (schema == null || properties.getDatabase().matches(convertPatternToRegex(schema))) {
+        String regexSchemaPattern = convertPatternToRegex(schema);
+        String regexTableSchemaPattern = convertPatternToRegex(table);
+        if (schema == null || properties.getDatabase().matches(regexSchemaPattern)) {
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
                 if (table == null ||
-                        tableName.matches(convertPatternToRegex(table))) {
+                        tableName.matches(regexTableSchemaPattern)) {
                     final DocumentDbSchemaTable metadataTable = databaseMetadata
                             .getTableSchemaMap().get(tableName);
                     if (metadataTable == null) {
@@ -555,8 +562,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addImportedKeysForSchema(final String table,
             final List<List<Object>> metaData) throws SQLException {
+        String regexTablePattern = convertPatternToRegex(table);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            if (table == null || tableName.matches(convertPatternToRegex(table))) {
+            if (table == null || tableName.matches(regexTablePattern)) {
                 final DocumentDbSchemaTable schemaTable = databaseMetadata
                         .getTableSchemaMap().get(tableName);
                 if (schemaTable == null) {
@@ -755,22 +763,29 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
      *
      * @return the pattern converted to a Regex pattern
      */
-    private String convertPatternToRegex(final String pattern) {
+    @VisibleForTesting
+    static String convertPatternToRegex(final String pattern) {
+        if (isNullOrWhitespace(pattern)) {
+            return "";
+        }
         final StringBuilder converted = new StringBuilder();
+        boolean escapeFound = false;
         int start = 0;
-        for (int i = 0; i < pattern.length(); i++) {
-            if (pattern.charAt(i) == '%') {
-                if (i - start > 0) {
-                    converted.append(Pattern.quote(pattern.substring(start, i)));
+        for (int index = 0; index < pattern.length(); index++) {
+            char currChar = pattern.charAt(index);
+            if (currChar == ESCAPE_CHAR) {
+                if (escapeFound) {
+                    // I.e., \\ - two backslash
+                    start = updateRegexExpression(index - 1, start, pattern, "[\\]", converted) + 1;
                 }
-                converted.append(".*");
-                start = i + 1;
-            } else if (pattern.charAt(i) == '_') {
-                if (i - start > 0) {
-                    converted.append(Pattern.quote(pattern.substring(start, i)));
-                }
-                converted.append(".");
-                start = i + 1;
+                escapeFound = !escapeFound;
+            } else if (escapeFound) {
+                start = updateRegexExpression(index - 1, start, pattern, "[" + currChar + "]", converted) + 1;
+                escapeFound = false;
+            } else if (currChar == '_') {
+                start = updateRegexExpression(index, start, pattern, ".", converted);
+            } else if (currChar == '%') {
+                start = updateRegexExpression(index, start, pattern, ".*", converted);
             }
         }
         // Handle the trailing string.
@@ -778,5 +793,14 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             converted.append(Pattern.quote(pattern.substring(start)));
         }
         return converted.toString();
+    }
+
+    private static int updateRegexExpression(int index, int start, String pattern, String str, StringBuilder converted) {
+        if (index - start > 0) {
+            converted.append(Pattern.quote(pattern.substring(start, index)));
+        }
+        converted.append(str);
+        start = index + 1;
+        return start;
     }
 }

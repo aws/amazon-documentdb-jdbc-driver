@@ -16,7 +16,7 @@
 
 package software.amazon.documentdb.jdbc.common.test;
 
-import de.flapdoodle.embed.mongo.Command;
+import de.flapdoodle.embed.mongo.packageresolver.Command;
 import de.flapdoodle.embed.mongo.MongoShellStarter;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
