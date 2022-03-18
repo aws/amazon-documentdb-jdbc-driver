@@ -138,22 +138,20 @@ public class DocumentDbAggregate
             final String fieldName = mongoFieldNames.get(groupSet.nth(0));
             final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
             list.add("_id: " + maybeQuote("$" + fieldName));
-            if (oldColumn != null) {
-                columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
-                ++columnIndex;
-            }
+            assert oldColumn != null;
+            columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
+            ++columnIndex;
         } else {
             final List<String> keys = new ArrayList<>();
             for (int group : groupSet) {
                 final String outName = outNames.get(columnIndex);
                 final String inName = inNames.get(group);
-                final String fieldName =  mongoFieldNames.get(group);
+                final String fieldName = mongoFieldNames.get(group);
                 final DocumentDbSchemaColumn oldColumn = implementor.getMetadataTable().getColumnMap().get(inName);
                 keys.add(maybeQuote(acceptedMongoFieldName(outName)) + ": " + DocumentDbRules.quote("$" + fieldName));
-                if (oldColumn != null) {
-                    columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
-                    ++columnIndex;
-                }
+                assert oldColumn != null;
+                columnMap.put(outName, getUpdatedColumn(oldColumn, outName));
+                ++columnIndex;
             }
             list.add("_id: " + Util.toString(keys, "{", ", ", "}"));
         }
