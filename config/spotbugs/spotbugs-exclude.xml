@@ -124,7 +124,6 @@
       <Source name="DocumentDbResultSetMetaDataTest.java"/>
       <Source name="DocumentDbStatementTest.java"/>
       <Source name="DocumentDbTestEnvironmentFactoryTest.java"/>
-      <Source name="DocumentDbConnectionProperties.java"/>
     </Or>
     <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
   </Match>
