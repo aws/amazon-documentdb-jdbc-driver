@@ -16,7 +16,6 @@
 
 package software.amazon.documentdb.jdbc.common.test;
 
-import de.flapdoodle.embed.mongo.Command;
 import de.flapdoodle.embed.mongo.MongoShellStarter;
 import de.flapdoodle.embed.mongo.MongodExecutable;
 import de.flapdoodle.embed.mongo.MongodProcess;
@@ -29,6 +28,7 @@ import de.flapdoodle.embed.mongo.config.MongoShellConfig;
 import de.flapdoodle.embed.mongo.config.MongodConfig;
 import de.flapdoodle.embed.mongo.config.Net;
 import de.flapdoodle.embed.mongo.distribution.Version.Main;
+import de.flapdoodle.embed.mongo.packageresolver.Command;
 import de.flapdoodle.embed.process.config.RuntimeConfig;
 import de.flapdoodle.embed.process.config.process.ProcessOutput;
 import de.flapdoodle.embed.process.io.LogWatchStreamProcessor;

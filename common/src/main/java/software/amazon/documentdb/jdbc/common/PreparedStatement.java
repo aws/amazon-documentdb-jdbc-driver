@@ -52,7 +52,6 @@ public abstract class PreparedStatement extends Statement implements java.sql.Pr
      *
      * @param connection The parent connection.
      * @param sql        The sql query.
-     * @throws SQLException if error occurs when get type map of connection.
      */
     protected PreparedStatement(final Connection connection, final String sql) {
         super(connection);

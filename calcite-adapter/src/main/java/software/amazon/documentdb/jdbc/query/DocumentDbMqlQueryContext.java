@@ -19,12 +19,14 @@ package software.amazon.documentdb.jdbc.query;
 import lombok.Builder;
 import lombok.Getter;
 import org.bson.conversions.Bson;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * This is meant to carry
- * all the information needed to execute the query in MongoDb and
+ * This is meant to carry all the information needed to execute the query in DocumentDB and
  * construct a ResultSet.
  */
 @Getter
@@ -38,4 +40,16 @@ public class DocumentDbMqlQueryContext {
     private final String collectionName;
     /** The path information for the output documents. Maps column names to field paths.*/
     private final List<String> paths;
+
+    /**
+     * Gets the aggregation operations (stages) for the query as a list of strings.
+     *
+     * @return the aggregation operations as an ordered list of strings in extended JSON format.
+     */
+    public List<String> getAggregateOperationsAsStrings() {
+        return aggregateOperations.stream()
+                .map(doc ->
+                        doc.toBsonDocument().toJson(JsonWriterSettings.builder().outputMode(JsonMode.EXTENDED).build()))
+                .collect(Collectors.toList());
+    }
 }

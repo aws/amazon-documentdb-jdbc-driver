@@ -194,7 +194,7 @@ dependencies {
     implementation group: 'com.google.guava', name: 'guava', version: '31.1-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.36'
     implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
-    implementation 'io.github.hakky54:sslcontext-kickstart:7.2.1'
+    implementation 'io.github.hakky54:sslcontext-kickstart:7.3.0'
 
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.0'
 

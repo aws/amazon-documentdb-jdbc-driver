@@ -222,7 +222,8 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
                 {null, null, null, "%__id"},
                 {null, "%", null, "%__id"},
                 {null, null, COLLECTION_BASIC, "%__id"},
-                {null, DATABASE, COLLECTION_BASIC, "%__id"}
+                {null, DATABASE, COLLECTION_BASIC, "%__id"},
+                {null, null, COLLECTION_BASIC, "%\\_\\_id"},
         };
         for (String[] test : tests) {
             final ResultSet columns = metadata.getColumns(test[0], test[1], test[2], test[3]);
@@ -252,6 +253,43 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
             Assertions.assertEquals("SOURCE_DATA_TYPE", columnsMetadata.getColumnName(22));
             Assertions.assertEquals("IS_AUTOINCREMENT", columnsMetadata.getColumnName(23));
             Assertions.assertEquals("IS_GENERATEDCOLUMN", columnsMetadata.getColumnName(24));
+        }
+    }
+
+    /**
+     * Tests that convertPatternToRegex works as expected.
+     */
+    @Test
+    @DisplayName("Tests that convertPatternToRegex works as expected.")
+    void testConvertPattern() {
+        // Test input, expected result
+        final String[][] tests = new String [][]{
+                {null, ""},
+                {"", ""},
+                {" ", ""},
+                {"_", "."},
+                {"_b", ".\\Qb\\E"},
+                {"a_b", "\\Qa\\E.\\Qb\\E"},
+                {"a_", "\\Qa\\E."},
+                {"%", ".*"},
+                {"a%b", "\\Qa\\E.*\\Qb\\E"},
+                {"%b", ".*\\Qb\\E"},
+                {"a%", "\\Qa\\E.*"},
+                {"\\_", "[_]"},
+                {"\\%", "[%]"},
+                {"\\\\", "[\\]"},
+                {"\\_\\%\\\\", "[_][%][\\]"},
+                {"\\_\\%", "[_][%]"},
+                {"a\\_b\\%c", "\\Qa\\E[_]\\Qb\\E[%]\\Qc\\E"},
+                {"a_b%c", "\\Qa\\E.\\Qb\\E.*\\Qc\\E"},
+                {"\\_\\\\%", "[_][\\].*"},
+                {"\\", "\\Q\\\\E"}, // mis-balanced escape
+                {"\\\\\\\\\\", "[\\][\\]\\Q\\\\E"}, // mis-balanced escape
+                {"\\_\\%\\", "[_][%]\\Q\\\\E"}, // mis-balanced escape
+        };
+
+        for (String[] test : tests) {
+            Assertions.assertEquals(test[1], DocumentDbDatabaseMetaData.convertPatternToRegex(test[0]));
         }
     }
 

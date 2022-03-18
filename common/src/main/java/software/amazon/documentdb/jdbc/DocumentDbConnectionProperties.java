@@ -874,6 +874,7 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @param info the given properties.
      * @param documentDbUrl the connection string.
+     * @param connectionStringPrefix the connection string prefix.
      * @return a {@link DocumentDbConnectionProperties} with the properties set.
      * @throws SQLException if connection string is invalid.
      */
@@ -1122,13 +1123,11 @@ public class DocumentDbConnectionProperties extends Properties {
 
         // Handle the tlsCAFile option.
         try (InputStream inputStream = getTlsCAFileInputStream()) {
-            if (inputStream != null) {
-                final SSLContext sslContext = SSLFactory.builder()
-                        .withTrustMaterial(CertificateUtils.loadCertificate(inputStream))
-                        .build()
-                        .getSslContext();
-                builder.context(sslContext);
-            }
+            final SSLContext sslContext = SSLFactory.builder()
+                    .withTrustMaterial(CertificateUtils.loadCertificate(inputStream))
+                    .build()
+                    .getSslContext();
+            builder.context(sslContext);
         }
     }
 
@@ -1158,6 +1157,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * '~' to be replaced by the user's home directory.
      *
      * @param filePath the given file path to process.
+     * @param searchFolders list of folders
      * @return a {@link Path} for the absolution path for the given file path.
      */
     public static Path getPath(final String filePath, final String... searchFolders) {
