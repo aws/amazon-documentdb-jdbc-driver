@@ -960,7 +960,7 @@ public class DocumentDbMain {
         return commandOptions;
     }
 
-    private static String getLibraryName() {
+    protected static String getLibraryName() {
         String libraryName = null;
         try {
             final Path path = Paths.get(DocumentDbMain.class

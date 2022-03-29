@@ -112,10 +112,12 @@ class DocumentDbMainTest {
         DocumentDbMain.handleCommandLine(new String[] {}, output);
         Assertions.assertEquals(
                 "Missing required options: [-g Generates a new schema for the database. This will have the effect of replacing an existing schema of the same name, if it exists., -r Removes the schema from storage for schema given by -m <schema-name>, or for schema '_default', if not provided., -l Lists the schema names, version and table names available in the schema repository., -b Lists the SQL table names in a schema., -e Exports the schema to for SQL tables named [<table-name>[,<table-name>[…]]]. If no <table-name> are given, all table schema will be exported. By default, the schema is written to stdout. Use the --output option to write to a file. The output format is JSON., -i Imports the schema from <file-name> in your home directory. The schema will be imported using the <schema-name> and a new version will be added - replacing the existing schema. The expected input format is JSON.], s, d, u\n"
-                        + "usage: main [-g | -r | -l | -b | -e <[table-name[,...]]> | -i <file-name>] -s\n"
-                        + "            <host-name> -d <database-name> -u <user-name> [-p <password>] [-n\n"
-                        + "            <schema-name>] [-m <method>] [-x <max-documents>] [-t] [-a] [-o\n"
-                        + "            <file-name>] [-h] [--version]\n"
+                        + "usage: " + DocumentDbMain.getLibraryName() + " [-g | -r | -l | -b | -e <[table-name[,...]]> |\n"
+                        + "                                 -i <file-name>] -s <host-name> -d\n"
+                        + "                                 <database-name> -u <user-name> [-p <password>]\n"
+                        + "                                 [-n <schema-name>] [-m <method>] [-x\n"
+                        + "                                 <max-documents>] [-t] [-a] [-o <file-name>]\n"
+                        + "                                 [-h] [--version]\n"
                         + " -a,--tls-allow-invalid-hostnames  The indicator of whether to allow invalid\n"
                         + "                                   hostnames when connecting to DocumentDB.\n"
                         + "                                   Default: false.\n"
@@ -726,10 +728,12 @@ class DocumentDbMainTest {
         final StringBuilder output = new StringBuilder();
         DocumentDbMain.handleCommandLine(new String[] {"--help"}, output);
         Assertions.assertEquals(
-                "usage: main [-g | -r | -l | -b | -e <[table-name[,...]]> | -i <file-name>] -s\n"
-                        + "            <host-name> -d <database-name> -u <user-name> [-p <password>] [-n\n"
-                        + "            <schema-name>] [-m <method>] [-x <max-documents>] [-t] [-a] [-o\n"
-                        + "            <file-name>] [-h] [--version]\n"
+                "usage: " + DocumentDbMain.getLibraryName() + " [-g | -r | -l | -b | -e <[table-name[,...]]> |\n"
+                        + "                                 -i <file-name>] -s <host-name> -d\n"
+                        + "                                 <database-name> -u <user-name> [-p <password>]\n"
+                        + "                                 [-n <schema-name>] [-m <method>] [-x\n"
+                        + "                                 <max-documents>] [-t] [-a] [-o <file-name>]\n"
+                        + "                                 [-h] [--version]\n"
                         + " -a,--tls-allow-invalid-hostnames  The indicator of whether to allow invalid\n"
                         + "                                   hostnames when connecting to DocumentDB.\n"
                         + "                                   Default: false.\n"

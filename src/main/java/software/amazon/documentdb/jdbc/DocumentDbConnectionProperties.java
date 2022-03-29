@@ -68,7 +68,7 @@ public class DocumentDbConnectionProperties extends Properties {
     private static String classPathLocationName = null;
     private static String[] sshPrivateKeyFileSearchPaths = null;
     private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
-    private static final String PROPERTIES_FILE_PATH = "/common.properties";
+    private static final String PROPERTIES_FILE_PATH = "/documentdb-jdbc.properties";
     static final String DEFAULT_APPLICATION_NAME;
 
     static {
