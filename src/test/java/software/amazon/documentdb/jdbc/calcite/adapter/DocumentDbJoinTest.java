@@ -37,7 +37,7 @@ class DocumentDbJoinTest {
         final List<String> keysUsed = new ArrayList<>();
         keysUsed.add("_id");
 
-        final software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbJoin documentDbJoin = Mockito.mock(software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbJoin.class,Mockito.CALLS_REAL_METHODS);
+        final DocumentDbJoin documentDbJoin = Mockito.mock(DocumentDbJoin.class,Mockito.CALLS_REAL_METHODS);
         Assertions.assertDoesNotThrow(() -> {
             documentDbJoin.validateMinimumPrimaryKeysUsage(keysUsed,leftPrimaryKeys,rightPrimaryKeys);
             documentDbJoin.validateMinimumPrimaryKeysUsage(keysUsed,leftPrimaryKeys,rightPrimaryKeys);
@@ -58,7 +58,7 @@ class DocumentDbJoinTest {
         final List<String> keysUsed = new ArrayList<>();
         keysUsed.add("_id");
 
-        final software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbJoin documentDbJoin = Mockito.mock(DocumentDbJoin.class,Mockito.CALLS_REAL_METHODS);
+        final DocumentDbJoin documentDbJoin = Mockito.mock(DocumentDbJoin.class,Mockito.CALLS_REAL_METHODS);
         Assertions.assertThrows(IllegalArgumentException.class,
                                 () -> documentDbJoin.validateMinimumPrimaryKeysUsage(keysUsed, leftPrimaryKeys, rightPrimaryKeys));
     }
