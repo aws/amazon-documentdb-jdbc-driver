@@ -251,6 +251,7 @@ jacocoTestCoverageVerification.dependsOn jacocoTestReport
  * License Plugin
  */
 license {
+    skipExistingHeaders = true
     header =  project.file('license-header.txt')
     exclude "**/*.properties"
     headerDefinitions {
