@@ -11,6 +11,7 @@ plugins {
     id "io.freefair.aggregate-javadoc" version "5.3.3.3"
     id 'io.franzbecker.gradle-lombok' version '5.0.0'
     id 'java-test-fixtures'
+    id 'maven'
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -355,6 +356,25 @@ dependencies {
     testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.0'
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.2'
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.2'
+}
+
+task createPom {
+    pom {
+        project {
+            groupId project.group
+            artifactId project.name
+            version version
+
+            inceptionYear '2008'
+            licenses {
+                license {
+                    name 'The Apache Software License, Version 2.0'
+                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    distribution 'repo'
+                }
+            }
+        }
+    }.writeTo("$buildDir/pom.xml")
 }
 
 test {
