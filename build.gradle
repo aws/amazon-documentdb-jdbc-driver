@@ -329,7 +329,7 @@ dependencies {
     implementation 'org.junit.jupiter:junit-jupiter:5.8.1'
 
     compileOnly         group: 'org.immutables', name: 'value', version: '2.9.0'
-    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.0'
+    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.1'
     compileOnly         'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
