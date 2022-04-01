@@ -9,6 +9,9 @@ plugins {
     id "de.undercouch.download" version "5.0.2"
     id "com.github.dkorotych.gradle-maven-exec" version "2.2.1"
     id "io.freefair.aggregate-javadoc" version "5.3.3.3"
+    id 'io.franzbecker.gradle-lombok' version '5.0.0'
+    id 'java-test-fixtures'
+    id 'maven'
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -249,6 +252,7 @@ jacocoTestCoverageVerification.dependsOn jacocoTestReport
  * License Plugin
  */
 license {
+    skipExistingHeaders = true
     header =  project.file('license-header.txt')
     exclude "**/*.properties"
     headerDefinitions {
@@ -283,6 +287,21 @@ task writeCommonProperties(type: WriteProperties) {
     property("default.application.name", "${APPLICATION_NAME} v${project.version}")
 }
 
+import io.franzbecker.gradle.lombok.task.DelombokTask
+task delombok(type: DelombokTask, dependsOn: compileJava) {
+    ext.outputDir = file("$buildDir/delombok")
+    outputs.dir(outputDir)
+    sourceSets.main.java.srcDirs.each {
+        inputs.dir(it)
+        args(it, "-d", outputDir)
+    }
+}
+
+javadoc {
+    dependsOn delombok
+    source = delombok.outputDir
+}
+
 processResources {
     from(writeProperties)
     from(writeCommonProperties)
@@ -294,8 +313,6 @@ repositories {
 }
 
 dependencies {
-    implementation project(":calcite-adapter")
-    implementation project(":common")
     implementation group: 'commons-cli', name: 'commons-cli', version: '1.5.0'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.13.2'
     implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.13.2'
@@ -306,12 +323,17 @@ dependencies {
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.2'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.0'
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
+    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.28.0'
+    implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
+    implementation 'io.github.hakky54:sslcontext-kickstart:7.3.0'
+    implementation 'org.junit.jupiter:junit-jupiter:5.8.1'
 
+    compileOnly         group: 'org.immutables', name: 'value', version: '2.9.0'
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.0'
     compileOnly         'org.projectlombok:lombok:1.18.22'
     annotationProcessor 'org.projectlombok:lombok:1.18.16'
 
-    testImplementation(testFixtures(project(':common')))
+    testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
@@ -320,7 +342,49 @@ dependencies {
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.8.1'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.2'
     testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.4.0'
+    testImplementation      'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testRuntimeOnly         'org.junit.jupiter:junit-jupiter-engine'
     testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.8.2'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.11.0'
+
+    testFixturesImplementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
+    testFixturesImplementation group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.3'
+    testFixturesImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.1'
+    testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.0'
+    testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.2'
+    testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.2'
+}
+
+task createPom {
+    pom {
+        project {
+            groupId project.group
+            artifactId project.name
+            version version
+
+            inceptionYear '2021'
+            licenses {
+                license {
+                    name 'The Apache Software License, Version 2.0'
+                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    distribution 'repo'
+                }
+            }
+        }
+    }.writeTo("$buildDir/pom.xml")
+}
+
+test {
+    useJUnitPlatform {
+        if (project.hasProperty('runRemoteIntegrationTests') && project.property('runRemoteIntegrationTests') == 'false') {
+            // Ensure to match the enumeration name exactly from DocumentDbTestEnvironmentType.
+            environment "CONFIGURED_ENVIRONMENTS", "MONGODB40_FLAPDOODLE"
+            excludeTags 'remote-integration'
+        } else {
+            // Ensure to match the enumeration name exactly from DocumentDbTestEnvironmentType.
+            environment "CONFIGURED_ENVIRONMENTS", "MONGODB40_FLAPDOODLE,DOCUMENTDB40_SSH_TUNNEL"
+            excludeTags 'local-integration'
+        }
+    }
 }

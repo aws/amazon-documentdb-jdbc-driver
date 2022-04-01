@@ -202,7 +202,9 @@ public class DocumentDbDataSource extends DataSource {
         if (replicaSet != null && !replicaSet.equals(DocumentDbConnectionProperty.REPLICA_SET.getDefaultValue())) {
             LOGGER.warn(String.format("DocumentDB may not support replica set '%s'.", replicaSet));
         }
-        properties.setReplicaSet(replicaSet);
+        if ( replicaSet != null) {
+            properties.setReplicaSet(replicaSet);
+        }
     }
 
     /**

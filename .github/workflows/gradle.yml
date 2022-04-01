@@ -69,13 +69,6 @@ jobs:
     - name: Build with Gradle with local and optional remote DocumentDB tests
       run: |
         ./gradlew build -PrunRemoteIntegrationTests=$RUN_REMOTE_INTEGRATION_TESTS
-    - name: Aggregate Reports
-      run: |
-        cp -R common/build/test-results/test/* build/test-results/test
-        cp -R calcite-adapter/build/test-results/test/* build/test-results/test
-        ed common/build/reports/jacoco/test/jacocoTestReport.csv <<< $'1d\nw\nq'
-        ed calcite-adapter/build/reports/jacoco/test/jacocoTestReport.csv <<< $'1d\nw\nq'
-        cat build/reports/jacoco/test/jacocoTestReport.csv common/build/reports/jacoco/test/jacocoTestReport.csv calcite-adapter/build/reports/jacoco/test/jacocoTestReport.csv > build/reports/jacoco/test/jacoco.csv
     - name: Copy Build
       run: |
         mkdir output
@@ -103,7 +96,7 @@ jobs:
       id: jacoco
       uses: cicirello/jacoco-badge-generator@v2.0.1
       with:
-        jacoco-csv-file: 'build/reports/jacoco/test/jacoco.csv'
+        jacoco-csv-file: 'build/reports/jacoco/test/jacocoTestReport.csv'
         generate-branches-badge: true
     - name: Commit Coverage Badge
       uses: stefanzweifel/git-auto-commit-action@v4
