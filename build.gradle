@@ -54,6 +54,16 @@ jar {
     }
 }
 
+task sourcesJar(type: Jar, dependsOn: classes) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    archiveClassifier = 'javadoc'
+    from javadoc.destinationDir
+}
+
 shadowJar {
     dependsOn('licenseAndNotice')
 
@@ -96,6 +106,8 @@ shadowJar {
 
 artifacts {
     archives shadowJar
+    archives sourcesJar
+    archives javadocJar
 }
 
 test {
