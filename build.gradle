@@ -336,7 +336,7 @@ dependencies {
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.28.0'
     implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
-    implementation 'io.github.hakky54:sslcontext-kickstart:7.3.0'
+    implementation 'io.github.hakky54:sslcontext-kickstart:7.4.0'
     implementation 'org.junit.jupiter:junit-jupiter:5.8.2'
 
     compileOnly         group: 'org.immutables', name: 'value', version: '2.9.0'
