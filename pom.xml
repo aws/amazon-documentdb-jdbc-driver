@@ -25,6 +25,11 @@
       </roles>
     </developer>
   </developers>
+  <scm>
+    <connection>scm:git:git@github.com:aws/amazon-documentdb-jdbc-driver.git</connection>
+    <developerConnection>scm:git:git@github.com:aws/amazon-documentdb-jdbc-driver.git</developerConnection>
+    <url>git@github.com:aws/amazon-documentdb-jdbc-driver.git</url>
+  </scm>
   <dependencies>
     <dependency>
       <groupId>commons-cli</groupId>

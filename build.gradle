@@ -380,7 +380,7 @@ task createPom {
                 developer {
                     id 'amazonwebservices'
                     organization {
-                        name "Amazon Web Services"
+                        name 'Amazon Web Services'
                         url 'https://aws.amazon.com'
                     }
                     roles {
@@ -388,7 +388,11 @@ task createPom {
                     }
                 }
             }
-
+            scm {
+                connection 'scm:git:git@github.com:aws/amazon-documentdb-jdbc-driver.git'
+                developerConnection 'scm:git:git@github.com:aws/amazon-documentdb-jdbc-driver.git'
+                url 'git@github.com:aws/amazon-documentdb-jdbc-driver.git'
+            }
             inceptionYear '2021'
             licenses {
                 license {
