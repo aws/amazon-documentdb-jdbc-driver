@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    runtimeOnly 'software.amazon.documentdb.jdbc:documentdb-jdbc:1.2.2'
+}
+
+test {
+    useJUnitPlatform()
+}
