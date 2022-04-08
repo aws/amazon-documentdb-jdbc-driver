@@ -370,9 +370,24 @@ dependencies {
 task createPom {
     pom {
         project {
+            name 'Amazon DocumentDB JDBC Driver'
             groupId project.group
             artifactId project.name
             version version
+            description 'The JDBC driver for the Amazon DocumentDB managed document database provides an SQL-relational interface for developers and BI tool users.'
+            url 'https://github.com/aws/amazon-documentdb-jdbc-driver'
+            developers {
+                developer {
+                    id 'amazonwebservices'
+                    organization {
+                        name "Amazon Web Services"
+                        url 'https://aws.amazon.com'
+                    }
+                    roles {
+                        role 'developer'
+                    }
+                }
+            }
 
             inceptionYear '2021'
             licenses {

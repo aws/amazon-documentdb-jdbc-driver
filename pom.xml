@@ -5,6 +5,9 @@
   <groupId>software.amazon.documentdb.jdbc</groupId>
   <artifactId>documentdb-jdbc</artifactId>
   <version>1.2.2</version>
+  <name>Amazon DocumentDB JDBC Driver</name>
+  <description>The JDBC driver for the Amazon DocumentDB managed document database provides an SQL-relational interface for developers and BI tool users.</description>
+  <url>https://github.com/aws/amazon-documentdb-jdbc-driver</url>
   <inceptionYear>2021</inceptionYear>
   <licenses>
     <license>
@@ -13,6 +16,15 @@
       <distribution>repo</distribution>
     </license>
   </licenses>
+  <developers>
+    <developer>
+      <id>amazonwebservices</id>
+      <organization>Amazon Web Services</organization>
+      <roles>
+        <role>developer</role>
+      </roles>
+    </developer>
+  </developers>
   <dependencies>
     <dependency>
       <groupId>commons-cli</groupId>
