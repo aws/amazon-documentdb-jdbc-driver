@@ -11,8 +11,8 @@
   <inceptionYear>2021</inceptionYear>
   <licenses>
     <license>
-      <name>The Apache Software License, Version 2.0</name>
-      <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <name>Apache License, Version 2.0</name>
+      <url>https://aws.amazon.com/apache2.0</url>
       <distribution>repo</distribution>
     </license>
   </licenses>
@@ -20,15 +20,16 @@
     <developer>
       <id>amazonwebservices</id>
       <organization>Amazon Web Services</organization>
+      <organizationUrl>https://aws.amazon.com</organizationUrl>
       <roles>
         <role>developer</role>
       </roles>
     </developer>
   </developers>
   <scm>
-    <connection>scm:git:git@github.com:aws/amazon-documentdb-jdbc-driver.git</connection>
+    <connection>scm:git:https://github.com/aws/amazon-documentdb-jdbc-driver.git</connection>
     <developerConnection>scm:git:git@github.com:aws/amazon-documentdb-jdbc-driver.git</developerConnection>
-    <url>git@github.com:aws/amazon-documentdb-jdbc-driver.git</url>
+    <url>https://github.com/aws/amazon-documentdb-jdbc-driver</url>
   </scm>
   <dependencies>
     <dependency>
