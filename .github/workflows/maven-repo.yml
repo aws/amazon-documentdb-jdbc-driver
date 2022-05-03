@@ -66,8 +66,8 @@ jobs:
     - name: Extract gpg-key-pair into file
       if: ${{ env.OMIT_DOCUMENTDB == '0' }}
       run: |
-        echo "$GPG_KEY_SECRET_KEY_RING" > ~/secring.kbx
-        chmod 400 ~/secring.kbx
+        echo "$GPG_KEY_SECRET_KEY_RING" > secring.kbx
+        chmod 400 secring.kbx
     - name: Run SSH tunnel to DocumentDB server
       if: ${{ env.OMIT_DOCUMENTDB == '0' }}
       run: |
