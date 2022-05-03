@@ -398,11 +398,11 @@ publishing {
 }
 
 signing {
+    required { gradle.taskGraph.hasTask("publishToMavenLocal") }
     sign publishing.publications.mavenJava
 }
 
 tasks.withType(Sign) {
-    onlyIf { gradle.taskGraph.hasTask("publish") }
 }
 
 test {
