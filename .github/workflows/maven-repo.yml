@@ -11,7 +11,7 @@
 # express or implied. See the License for the specific language governing
 # permissions and limitations under the License.
 
-name: Amazon DocumentDB JDBC Driver
+name: Amazon DocumentDB JDBC Driver Maven Prep
 
 on:
   # Trigger the workflow on pull request,
@@ -83,7 +83,6 @@ jobs:
         mkdir output/maven
         mkdir output/reports
         cp -R ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/* output/maven
-        cp -R build/reports output/reports
     - name: Upload Build
       uses: actions/upload-artifact@v1
       with:
