@@ -398,11 +398,7 @@ publishing {
 }
 
 signing {
-    required { gradle.taskGraph.hasTask("publishToMavenLocal") }
     sign publishing.publications.mavenJava
-}
-
-tasks.withType(Sign) {
 }
 
 test {
