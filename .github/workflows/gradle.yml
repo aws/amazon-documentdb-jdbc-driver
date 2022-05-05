@@ -99,7 +99,7 @@ jobs:
         cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers-sources.jar.asc output/maven
         cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers.pom output/maven
         cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers.pom.asc output/maven
-        cd output/mave
+        cd output/maven
         jar -cvf bundle.jar *
         rm documentdb-jdbc-$vers.jar
         rm documentdb-jdbc-$vers.jar.asc
