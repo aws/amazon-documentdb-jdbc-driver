@@ -30,7 +30,7 @@ on:
       mavenFilesPreparation:
         description: Prepare files to publish in maven repo? (1/0)
         required: false
-        default: '0'
+        default: '1'
 
 jobs:
   build:
@@ -89,7 +89,26 @@ jobs:
       if: ${{ github.event.inputs.mavenFilesPreparation }}
       run: | 
         mkdir output/maven
-        cp -R ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/* output/maven
+        name=$(ls build/libs | grep documentdb-jdbc.*-all.jar.asc)
+        vers=$(awk -F- '{print $3}' <<<"$name")
+        cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers.jar output/maven
+        cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers.jar.asc output/maven
+        cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers-javadoc.jar output/maven
+        cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers-javadoc.jar.asc output/maven
+        cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers-sources.jar output/maven
+        cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers-sources.jar.asc output/maven
+        cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers.pom output/maven
+        cp ~/.m2/repository/software/amazon/documentdb/jdbc/documentdb-jdbc/$vers/documentdb-jdbc-$vers.pom.asc output/maven
+        cd output/mave
+        jar -cvf bundle.jar *
+        rm documentdb-jdbc-$vers.jar
+        rm documentdb-jdbc-$vers.jar.asc
+        rm documentdb-jdbc-$vers-javadoc.jar
+        rm documentdb-jdbc-$vers-javadoc.jar.asc
+        rm documentdb-jdbc-$vers-sources.jar
+        rm documentdb-jdbc-$vers-sources.jar.asc
+        rm documentdb-jdbc-$vers.pom
+        rm documentdb-jdbc-$vers.pom.asc
     - name: Copy Build
       run: |
         mkdir output
