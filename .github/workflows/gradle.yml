@@ -85,6 +85,13 @@ jobs:
       #if: ${{ github.event.inputs.mavenFilesPreparation }}
       run: |
         ./gradlew build publishToMavenLocal -Psigning.secretKeyRingFile=secring.kbx -Psigning.password=$GPG_KEY_PASSWORD -Psigning.keyId=$GPG_SIGN_KEY
+    - name: Copy Build
+      run: |
+        mkdir output
+        mkdir output/jarfile
+        mkdir output/reports
+        cp build/libs/*.jar output/jarfile
+        cp -R build/reports output/reports
     - name: Copy Files for Maven
       #if: ${{ github.event.inputs.mavenFilesPreparation }}
       run: | 
@@ -109,13 +116,6 @@ jobs:
         rm documentdb-jdbc-$vers-sources.jar.asc
         rm documentdb-jdbc-$vers.pom
         rm documentdb-jdbc-$vers.pom.asc
-    - name: Copy Build
-      run: |
-        mkdir output
-        mkdir output/jarfile
-        mkdir output/reports
-        cp build/libs/*.jar output/jarfile
-        cp -R build/reports output/reports
     - name: Upload Build
       uses: actions/upload-artifact@v1
       with:
