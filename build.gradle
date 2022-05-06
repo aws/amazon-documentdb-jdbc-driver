@@ -10,7 +10,8 @@ plugins {
     id "com.github.dkorotych.gradle-maven-exec" version "2.2.1"
     id 'io.franzbecker.gradle-lombok' version '5.0.0'
     id 'java-test-fixtures'
-    id 'maven'
+    id 'maven-publish'
+    id 'signing'
 }
 
 group 'software.amazon.documentdb.jdbc'
@@ -31,6 +32,8 @@ tasks.register('licenseAndNotice') {
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8
     targetCompatibility = JavaVersion.VERSION_1_8
+    withJavadocJar()
+    withSourcesJar()
 }
 
 tasks.withType(JavaCompile) {
@@ -52,16 +55,6 @@ jar {
                 'Implementation-Version': archiveVersion.get(),
                 'Main-Class': 'software.amazon.documentdb.jdbc.DocumentDbMain')
     }
-}
-
-task sourcesJar(type: Jar, dependsOn: classes) {
-    archiveClassifier = 'sources'
-    from sourceSets.main.allSource
-}
-
-task javadocJar(type: Jar, dependsOn: javadoc) {
-    archiveClassifier = 'javadoc'
-    from javadoc.destinationDir
 }
 
 shadowJar {
@@ -365,43 +358,47 @@ dependencies {
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.2'
 }
 
-task createPom {
-    pom {
-        project {
-            name 'Amazon DocumentDB JDBC Driver'
-            groupId project.group
-            artifactId project.name
-            version version
-            description 'The JDBC driver for the Amazon DocumentDB managed document database provides an SQL-relational interface for developers and BI tool users.'
-            url 'https://github.com/aws/amazon-documentdb-jdbc-driver'
-            developers {
-                developer {
-                    id 'amazonwebservices'
-                    organization {
-                        name 'Amazon Web Services'
-
-                    }
-                    organizationUrl 'https://aws.amazon.com'
-                    roles {
-                        role 'developer'
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            pom {
+                name = 'Amazon DocumentDB JDBC Driver'
+                groupId = project.group
+                artifactId = project.name
+                version = version
+                description = 'The JDBC driver for the Amazon DocumentDB managed document database provides an SQL-relational interface for developers and BI tool users.'
+                url = 'https://github.com/aws/amazon-documentdb-jdbc-driver'
+                licenses {
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://aws.amazon.com/apache2.0'
+                        distribution = 'repo'
                     }
                 }
-            }
-            scm {
-                connection 'scm:git:https://github.com/aws/amazon-documentdb-jdbc-driver.git'
-                developerConnection 'scm:git:git@github.com:aws/amazon-documentdb-jdbc-driver.git'
-                url 'https://github.com/aws/amazon-documentdb-jdbc-driver'
-            }
-            inceptionYear '2021'
-            licenses {
-                license {
-                    name 'Apache License, Version 2.0'
-                    url 'https://aws.amazon.com/apache2.0'
-                    distribution 'repo'
+                scm {
+                    connection = 'scm:git:https://github.com/aws/amazon-documentdb-jdbc-driver.git'
+                    developerConnection = 'scm:git:git@github.com:aws/amazon-documentdb-jdbc-driver.git'
+                    url = 'https://github.com/aws/amazon-documentdb-jdbc-driver'
+                }
+                inceptionYear = '2021'
+                developers {
+                    developer {
+                        id = 'amazonwebservices'
+                        organization {
+                            name = 'Amazon Web Services'
+
+                        }
+                        organizationUrl = 'https://aws.amazon.com'
+                    }
                 }
             }
         }
-    }.writeTo("pom.xml")
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
 }
 
 test {
