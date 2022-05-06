@@ -84,7 +84,7 @@ jobs:
     - name: Prepare to publish to Maven
       if: ${{ github.event.inputs.mavenFilesPreparation }}
       run: |
-        ./gradlew publishToMavenLocal -Psigning.secretKeyRingFile=secring.kbx -Psigning.password=$GPG_KEY_PASSWORD -Psigning.keyId=$GPG_SIGN_KEY
+        ./gradlew publishToMavenLocal -Psigning.secretKeyRingFile=secring.kbx -Psigning.password=$GPG_KEY_PASSWORD -Psigning.keyId=$GPG_SIGN_KEY -PrunRemoteIntegrationTests=$RUN_REMOTE_INTEGRATION_TESTS
     - name: Copy Build
       run: |
         mkdir output
