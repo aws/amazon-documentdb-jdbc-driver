@@ -532,4 +532,21 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(1, arrayImportedKeys.getShort(9));
         Assertions.assertFalse(arrayImportedKeys.next());
     }
+
+    @Test
+    @DisplayName("Tests foreign keys of array virtual tables with whitespace parameters.")
+    void testGetImportedKeysArrayWithWhiteSpaces() throws SQLException {
+        final ResultSet arrayImportedKeys = metadata.getImportedKeys("", "", COLLECTION_ARRAY + "_array");
+        Assertions.assertTrue(arrayImportedKeys.next());
+        Assertions.assertNull(arrayImportedKeys.getString(1));
+        Assertions.assertEquals(DATABASE, arrayImportedKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_ARRAY, arrayImportedKeys.getString(3));
+        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayImportedKeys.getString(4));
+        Assertions.assertNull(arrayImportedKeys.getString(5));
+        Assertions.assertEquals(DATABASE, arrayImportedKeys.getString(6));
+        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayImportedKeys.getString(7));
+        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayImportedKeys.getString(8));
+        Assertions.assertEquals(1, arrayImportedKeys.getShort(9));
+        Assertions.assertFalse(arrayImportedKeys.next());
+    }
 }
