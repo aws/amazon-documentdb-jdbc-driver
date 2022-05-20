@@ -500,6 +500,27 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     @Test
+    @DisplayName("Tests primary keys of array virtual tables with white space parameters.")
+    void testGetPrimaryKeysArrayWithWhiteSpace() throws SQLException {
+        final ResultSet arrayPrimaryKeys = metadata.getPrimaryKeys("", "", COLLECTION_ARRAY + "_array");
+        Assertions.assertTrue(arrayPrimaryKeys.next());
+        Assertions.assertNull(arrayPrimaryKeys.getString(1));
+        Assertions.assertEquals(DATABASE, arrayPrimaryKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayPrimaryKeys.getString(3));
+        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayPrimaryKeys.getString(4));
+        Assertions.assertEquals(1, arrayPrimaryKeys.getShort(5));
+        Assertions.assertNull(arrayPrimaryKeys.getString(6));
+        Assertions.assertTrue(arrayPrimaryKeys.next());
+        Assertions.assertNull(arrayPrimaryKeys.getString(1));
+        Assertions.assertEquals(DATABASE, arrayPrimaryKeys.getString(2));
+        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayPrimaryKeys.getString(3));
+        Assertions.assertEquals("array_index_lvl_0", arrayPrimaryKeys.getString(4));
+        Assertions.assertEquals(2, arrayPrimaryKeys.getShort(5)); // Indicates second column of PK
+        Assertions.assertNull(arrayPrimaryKeys.getString(6));
+        Assertions.assertFalse(arrayPrimaryKeys.next());
+    }
+
+    @Test
     @DisplayName("Tests foreign keys of sub-document virtual tables.")
     void testGetImportedKeysDocument() throws SQLException {
         final ResultSet subdocImportedKeys = metadata.getImportedKeys(null, null, COLLECTION_SUB + "_doc");
