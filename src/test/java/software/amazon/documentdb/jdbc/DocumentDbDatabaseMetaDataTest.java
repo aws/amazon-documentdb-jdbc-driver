@@ -500,23 +500,9 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     @Test
-    @DisplayName("Tests primary keys of array virtual tables with white space parameters.")
+    @DisplayName("Tests primary keys of array virtual tables with white space parameters. An empty ResultSet should be returned.")
     void testGetPrimaryKeysArrayWithWhiteSpace() throws SQLException {
         final ResultSet arrayPrimaryKeys = metadata.getPrimaryKeys("", "", COLLECTION_ARRAY + "_array");
-        Assertions.assertTrue(arrayPrimaryKeys.next());
-        Assertions.assertNull(arrayPrimaryKeys.getString(1));
-        Assertions.assertEquals(DATABASE, arrayPrimaryKeys.getString(2));
-        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayPrimaryKeys.getString(3));
-        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayPrimaryKeys.getString(4));
-        Assertions.assertEquals(1, arrayPrimaryKeys.getShort(5));
-        Assertions.assertNull(arrayPrimaryKeys.getString(6));
-        Assertions.assertTrue(arrayPrimaryKeys.next());
-        Assertions.assertNull(arrayPrimaryKeys.getString(1));
-        Assertions.assertEquals(DATABASE, arrayPrimaryKeys.getString(2));
-        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayPrimaryKeys.getString(3));
-        Assertions.assertEquals("array_index_lvl_0", arrayPrimaryKeys.getString(4));
-        Assertions.assertEquals(2, arrayPrimaryKeys.getShort(5)); // Indicates second column of PK
-        Assertions.assertNull(arrayPrimaryKeys.getString(6));
         Assertions.assertFalse(arrayPrimaryKeys.next());
     }
 
@@ -555,19 +541,9 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     @Test
-    @DisplayName("Tests foreign keys of array virtual tables with whitespace parameters.")
+    @DisplayName("Tests foreign keys of array virtual tables with whitespace parameters. An empty ResultSet should be returned")
     void testGetImportedKeysArrayWithWhiteSpaces() throws SQLException {
         final ResultSet arrayImportedKeys = metadata.getImportedKeys("", "", COLLECTION_ARRAY + "_array");
-        Assertions.assertTrue(arrayImportedKeys.next());
-        Assertions.assertNull(arrayImportedKeys.getString(1));
-        Assertions.assertEquals(DATABASE, arrayImportedKeys.getString(2));
-        Assertions.assertEquals(COLLECTION_ARRAY, arrayImportedKeys.getString(3));
-        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayImportedKeys.getString(4));
-        Assertions.assertNull(arrayImportedKeys.getString(5));
-        Assertions.assertEquals(DATABASE, arrayImportedKeys.getString(6));
-        Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayImportedKeys.getString(7));
-        Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayImportedKeys.getString(8));
-        Assertions.assertEquals(1, arrayImportedKeys.getShort(9));
         Assertions.assertFalse(arrayImportedKeys.next());
     }
 }
