@@ -498,9 +498,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         final List<List<Object>> metaData = new ArrayList<>();
         final String regexSchemaPattern = convertPatternToRegex(schema);
         final String regexTableSchemaPattern = convertPatternToRegex(table);
-        if (isNullOrWhitespace(schema) || properties.getDatabase().matches(regexSchemaPattern)) {
+        if (schema == null || properties.getDatabase().matches(regexSchemaPattern)) {
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-                if (isNullOrWhitespace(table) ||
+                if (table == null ||
                         tableName.matches(regexTableSchemaPattern)) {
                     final DocumentDbSchemaTable metadataTable = databaseMetadata
                             .getTableSchemaMap().get(tableName);
@@ -549,7 +549,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final String table) throws SQLException {
         final List<List<Object>> metaData = new ArrayList<>();
         if (isNullOrWhitespace(catalog)) {
-            if (isNullOrWhitespace(schema) || properties.getDatabase().matches(convertPatternToRegex(schema))) {
+            if (schema == null || properties.getDatabase().matches(convertPatternToRegex(schema))) {
                 addImportedKeysForSchema(table, metaData);
             }
         }
@@ -564,7 +564,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final List<List<Object>> metaData) throws SQLException {
         final String regexTablePattern = convertPatternToRegex(table);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            if (isNullOrWhitespace(table) || tableName.matches(regexTablePattern)) {
+            if (table == null || tableName.matches(regexTablePattern)) {
                 final DocumentDbSchemaTable schemaTable = databaseMetadata
                         .getTableSchemaMap().get(tableName);
                 if (schemaTable == null) {
