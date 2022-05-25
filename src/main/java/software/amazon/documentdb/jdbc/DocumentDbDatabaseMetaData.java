@@ -307,8 +307,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     public ResultSet getColumns(final String catalog, final String schemaPattern,
             final String tableNamePattern, final String columnNamePattern) throws SQLException {
         final List<List<Object>> metaData = new ArrayList<>();
-        if (isNullOrWhitespace(catalog)) {
-            if (isNullOrWhitespace(schemaPattern)
+        if (catalog == null) {
+            if (schemaPattern == null
                     || properties.getDatabase().matches(convertPatternToRegex(schemaPattern))) {
                 addColumnsForSchema(tableNamePattern, columnNamePattern, metaData);
             }
