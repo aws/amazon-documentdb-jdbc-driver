@@ -470,15 +470,6 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     @Test
-    @DisplayName("Tests primary/foreign key queries with wildcard characters (% and _)")
-    void testPrimaryKeyWildcards() throws SQLException {
-        final ResultSet primaryWildcardKeys = metadata.getPrimaryKeys(null, null, "_ollect%");
-        Assertions.assertTrue(primaryWildcardKeys.next());
-        final ResultSet foreignWildcardKeys = metadata.getImportedKeys(null, null, "_ollect%");
-        Assertions.assertTrue(foreignWildcardKeys.next());
-    }
-
-    @Test
     @DisplayName("Tests primary keys of array virtual tables.")
     void testGetPrimaryKeysArray() throws SQLException {
         final ResultSet arrayPrimaryKeys = metadata.getPrimaryKeys(null, null, COLLECTION_ARRAY + "_array");
