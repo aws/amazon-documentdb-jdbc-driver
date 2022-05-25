@@ -186,6 +186,14 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         }
     }
 
+    @Test
+    @DisplayName("Test getTables returns empty ReseultSet .")
+    void testGetMetadataTablesEmpty() throws SQLException {
+        final String[] tableTypes = new String[]{"TABLE"};
+        final ResultSet tables = metadata.getTables(null, "", COLLECTION_BASIC, tableTypes);
+        Assertions.assertFalse(tables.next());
+    }
+
     /**
      * Tests columns of getSchemas.
      */
