@@ -186,8 +186,11 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         }
     }
 
+    /**
+     * Test getTables returns empty ReseultSet when empty string schemaPattern is passed.
+     */
     @Test
-    @DisplayName("Test getTables returns empty ReseultSet .")
+    @DisplayName("Test getTables returns empty ReseultSet when empty string schemaPattern is passed.")
     void testGetMetadataTablesEmpty() throws SQLException {
         final String[] tableTypes = new String[]{"TABLE"};
         final ResultSet tables = metadata.getTables(null, "", COLLECTION_BASIC, tableTypes);
@@ -262,6 +265,16 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
             Assertions.assertEquals("IS_AUTOINCREMENT", columnsMetadata.getColumnName(23));
             Assertions.assertEquals("IS_GENERATEDCOLUMN", columnsMetadata.getColumnName(24));
         }
+    }
+
+    /**
+     * Test getColumns returns empty ReseultSet when empty string schemaPattern is passed.
+     */
+    @Test
+    @DisplayName("Test getColumns returns empty ReseultSet when empty string schemaPattern is passed.")
+    void testGetMetadataColumnsEmpty() throws SQLException {
+        final ResultSet tables = metadata.getColumns(null, "", COLLECTION_BASIC, "%__id");
+        Assertions.assertFalse(tables.next());
     }
 
     /**
