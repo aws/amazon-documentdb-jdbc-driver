@@ -496,9 +496,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         // 5. KEY_SEQ short => sequence number within primary key( a value of 1 represents the first column of the primary key, a value of 2 would represent the second column within the primary key).
         // 6. PK_NAME String => primary key name (may be null)
         final List<List<Object>> metaData = new ArrayList<>();
-        if (schema == null) {
+        if (schema == null || properties.getDatabase().equals(schema)) {
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-                if (table == null) {
+                if (table == null || tableName.equals(table)) {
                     final DocumentDbSchemaTable metadataTable = databaseMetadata
                             .getTableSchemaMap().get(tableName);
                     if (metadataTable == null) {
@@ -546,7 +546,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final String table) throws SQLException {
         final List<List<Object>> metaData = new ArrayList<>();
         if (isNullOrWhitespace(catalog)) {
-            if (schema == null) {
+            if (schema == null || properties.getDatabase().equals(schema)) {
                 addImportedKeysForSchema(table, metaData);
             }
         }
