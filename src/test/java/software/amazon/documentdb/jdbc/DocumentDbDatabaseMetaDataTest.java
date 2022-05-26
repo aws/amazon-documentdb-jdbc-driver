@@ -268,7 +268,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
-     * Test getColumns returns empty ReseultSet when empty string schemaPattern is passed.
+     * Test getColumns returns empty ResultSet when empty string schemaPattern is passed.
      */
     @Test
     @DisplayName("Test getColumns returns empty ReseultSet when empty string schemaPattern is passed.")
