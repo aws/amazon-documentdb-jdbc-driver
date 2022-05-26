@@ -273,7 +273,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests the database metadata contains the expected tables.")
     void testGetMetadataTables() throws SQLException {
-        final ResultSet tables = basicConnection.getMetaData().getTables(null, null, null, null);
+        final ResultSet tables = basicConnection.getMetaData().getTables(null, null, COLLECTION_NAME, null);
         Assertions.assertTrue(tables.next());
         // Test by column index
         Assertions.assertNull(tables.getString(1));
