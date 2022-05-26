@@ -164,7 +164,11 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
                 {" ", " ", " ", " "},
                 {null, null, null, "TABLE"},
                 {null, null, COLLECTION_BASIC, "TABLE"},
+                {"", null, COLLECTION_BASIC, "TABLE"},
+                {" ", null, COLLECTION_BASIC, " "},
                 {null, DATABASE, COLLECTION_BASIC, "TABLE"},
+                {" ", DATABASE, COLLECTION_BASIC, "TABLE"},
+                {"non-existing catalog", DATABASE, COLLECTION_BASIC, "non-existing table"},
                 {null, null, null},
                 {" ", " ", " "}
         };
@@ -187,14 +191,23 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
-     * Test getTables returns empty ResultSet when empty string schemaPattern is passed.
+     * Test getTables returns empty ResultSet.
      */
     @Test
-    @DisplayName("Test getTables returns empty ResultSet when empty string schemaPattern is passed.")
+    @DisplayName("Test getTables returns empty ResultSet.")
     void testGetMetadataTablesEmpty() throws SQLException {
-        final String[] tableTypes = new String[]{"TABLE"};
-        final ResultSet tables = metadata.getTables(null, "", COLLECTION_BASIC, tableTypes);
-        Assertions.assertFalse(tables.next());
+        // Catalog pattern, schema pattern, table name pattern, table types
+        final String[][] tests = new String [][]{
+                {null, "", COLLECTION_BASIC, "TABLE"},
+                {" ", "", COLLECTION_BASIC, "TABLE"},
+                {"non-existing catalog", DATABASE, COLLECTION_BASIC, "non-existing table"},
+                {" ", "", COLLECTION_BASIC},
+        };
+        for (String[] test : tests) {
+            final String[] tableTypes = test.length == 4 ? new String[]{test[3]} : null;
+            final ResultSet tables = metadata.getTables(null, "", COLLECTION_BASIC, tableTypes);
+            Assertions.assertFalse(tables.next());
+        }
     }
 
     /**
@@ -232,9 +245,9 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
                 {" ", " ", " ", " "},
                 {null, null, null, "%__id"},
                 {null, "%", null, "%__id"},
-                {null, null, COLLECTION_BASIC, "%__id"},
+                {"", null, COLLECTION_BASIC, "%__id"},
                 {null, DATABASE, COLLECTION_BASIC, "%__id"},
-                {null, null, COLLECTION_BASIC, "%\\_\\_id"},
+                {"", null, COLLECTION_BASIC, "%\\_\\_id"},
         };
         for (String[] test : tests) {
             final ResultSet columns = metadata.getColumns(test[0], test[1], test[2], test[3]);
@@ -268,13 +281,22 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     /**
-     * Test getColumns returns empty ResultSet when empty string schemaPattern is passed.
+     * Test getColumns returns empty ResultSet.
      */
     @Test
-    @DisplayName("Test getColumns returns empty ResultSet when empty string schemaPattern is passed.")
+    @DisplayName("Test getColumns returns empty ResultSet.")
     void testGetMetadataColumnsEmpty() throws SQLException {
-        final ResultSet tables = metadata.getColumns(null, "", COLLECTION_BASIC, "%__id");
-        Assertions.assertFalse(tables.next());
+        // Catalog pattern, schema pattern, table pattern, column pattern
+        final String[][] tests = new String [][]{
+                {null, "", COLLECTION_BASIC, "%__id"},
+                {" ", "", COLLECTION_BASIC, "%__id"},
+                {"non-existent catalog", DATABASE, COLLECTION_BASIC, "%\\_\\_id"},
+                {"non-existent catalog", null, COLLECTION_BASIC, "non-existent column"}
+        };
+        for (String[] test : tests) {
+            final ResultSet columns = metadata.getColumns(test[0], test[1], test[2], test[3]);
+            Assertions.assertFalse(columns.next());
+        }
     }
 
     /**
@@ -481,10 +503,19 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     @Test
     @DisplayName("Tests that filtering by schema and table works on getImportedKeys.")
     void testGetImportedKeysFilters() throws SQLException {
-        final ResultSet emptyResultSetSchema = metadata.getImportedKeys(null, "invalidDb", null);
-        Assertions.assertFalse(emptyResultSetSchema.next());
-        final ResultSet emptyResultSetTable = metadata.getImportedKeys(null, null, "invalidCollection");
-        Assertions.assertFalse(emptyResultSetTable.next());
+        final String[][] tests = new String [][]{
+                {null, "invalidDb", null},
+                {null, null, "invalidCollection"},
+                {null, DATABASE, "invalidCollection"},
+                {"invalidCatalog", null, COLLECTION_SUB + "_doc"},
+                {null, null, "invalidCollection"},
+                {"invalidCatalog", "invalidDb", COLLECTION_SUB + "_doc"},
+        };
+        for (String[] test : tests) {
+            final ResultSet emptyResultSetSchema = metadata.getImportedKeys(test[0], test[1], test[2]);
+            Assertions.assertFalse(emptyResultSetSchema.next());
+        }
+
         final ResultSet noFilterImportedKeys = metadata.getImportedKeys(null, null, null);
         Assertions.assertTrue(noFilterImportedKeys.next());
 
