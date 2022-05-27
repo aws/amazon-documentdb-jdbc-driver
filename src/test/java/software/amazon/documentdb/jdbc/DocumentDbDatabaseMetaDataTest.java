@@ -202,6 +202,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
                 {" ", "", COLLECTION_BASIC, "TABLE"},
                 {"non-existing catalog", DATABASE, COLLECTION_BASIC, "non-existing table"},
                 {" ", "", COLLECTION_BASIC},
+                {null, "", COLLECTION_BASIC},
         };
         for (String[] test : tests) {
             final String[] tableTypes = test.length == 4 ? new String[]{test[3]} : null;
@@ -245,6 +246,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
                 {" ", " ", " ", " "},
                 {null, null, null, "%__id"},
                 {null, "%", null, "%__id"},
+                {null, "%", "%", "%__id"},
                 {"", null, COLLECTION_BASIC, "%__id"},
                 {null, DATABASE, COLLECTION_BASIC, "%__id"},
                 {"", null, COLLECTION_BASIC, "%\\_\\_id"},
