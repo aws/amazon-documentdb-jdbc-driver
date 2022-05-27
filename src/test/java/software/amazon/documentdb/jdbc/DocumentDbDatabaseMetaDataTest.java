@@ -491,7 +491,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     @Test
-    @DisplayName("Tests primary keys of array virtual tables with white space parameters. An empty ResultSet should be returned.")
+    @DisplayName("Tests primary keys of array virtual tables with empty string parameters. An empty ResultSet should be returned.")
     void testGetPrimaryKeysArrayWithWhiteSpace() throws SQLException {
         final ResultSet arrayPrimaryKeys = metadata.getPrimaryKeys("", "", COLLECTION_ARRAY + "_array");
         Assertions.assertFalse(arrayPrimaryKeys.next());
