@@ -470,15 +470,6 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     }
 
     @Test
-    @DisplayName("Tests primary/foreign key queries with wildcard characters (% and _)")
-    void testPrimaryKeyWildcards() throws SQLException {
-        final ResultSet primaryWildcardKeys = metadata.getPrimaryKeys(null, null, "_ollect%");
-        Assertions.assertTrue(primaryWildcardKeys.next());
-        final ResultSet foreignWildcardKeys = metadata.getImportedKeys(null, null, "_ollect%");
-        Assertions.assertTrue(foreignWildcardKeys.next());
-    }
-
-    @Test
     @DisplayName("Tests primary keys of array virtual tables.")
     void testGetPrimaryKeysArray() throws SQLException {
         final ResultSet arrayPrimaryKeys = metadata.getPrimaryKeys(null, null, COLLECTION_ARRAY + "_array");
@@ -496,6 +487,13 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals("array_index_lvl_0", arrayPrimaryKeys.getString(4));
         Assertions.assertEquals(2, arrayPrimaryKeys.getShort(5)); // Indicates second column of PK
         Assertions.assertNull(arrayPrimaryKeys.getString(6));
+        Assertions.assertFalse(arrayPrimaryKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests primary keys of array virtual tables with empty string parameters. An empty ResultSet should be returned.")
+    void testGetPrimaryKeysArrayWithWhiteSpace() throws SQLException {
+        final ResultSet arrayPrimaryKeys = metadata.getPrimaryKeys("", "", COLLECTION_ARRAY + "_array");
         Assertions.assertFalse(arrayPrimaryKeys.next());
     }
 
@@ -530,6 +528,13 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         Assertions.assertEquals(COLLECTION_ARRAY + "_array", arrayImportedKeys.getString(7));
         Assertions.assertEquals(COLLECTION_ARRAY + "__id", arrayImportedKeys.getString(8));
         Assertions.assertEquals(1, arrayImportedKeys.getShort(9));
+        Assertions.assertFalse(arrayImportedKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests foreign keys of array virtual tables with whitespace parameters. An empty ResultSet should be returned")
+    void testGetImportedKeysArrayWithWhiteSpaces() throws SQLException {
+        final ResultSet arrayImportedKeys = metadata.getImportedKeys("", "", COLLECTION_ARRAY + "_array");
         Assertions.assertFalse(arrayImportedKeys.next());
     }
 }
