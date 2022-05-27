@@ -224,7 +224,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         if (isNullOrWhitespace(catalog)
                 && (types == null || types.length == 0 || Arrays.stream(types)
                         .anyMatch(s -> isNullOrWhitespace(s) || s.equals("TABLE")))) {
-            if (isNullOrWhitespace(schemaPattern)
+            if (schemaPattern == null
                     || properties.getDatabase().matches(convertPatternToRegex(schemaPattern))) {
                 addTablesForSchema(tableNamePattern, metaData);
             }
@@ -240,8 +240,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final List<List<Object>> metaData) {
         final String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            if (isNullOrWhitespace(tableNamePattern)
-                    || tableName.matches(regexTableNamePattern)) {
+            if (tableName.matches(regexTableNamePattern)) {
                 addTableEntry(metaData, tableName);
             }
         }
@@ -308,7 +307,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final String tableNamePattern, final String columnNamePattern) throws SQLException {
         final List<List<Object>> metaData = new ArrayList<>();
         if (isNullOrWhitespace(catalog)) {
-            if (isNullOrWhitespace(schemaPattern)
+            if (schemaPattern == null
                     || properties.getDatabase().matches(convertPatternToRegex(schemaPattern))) {
                 addColumnsForSchema(tableNamePattern, columnNamePattern, metaData);
             }
@@ -322,7 +321,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     private void addColumnsForSchema(final String tableNamePattern, final String columnNamePattern,
             final List<List<Object>> metaData) throws SQLException {
-        if (tableNamePattern == null || "%".equals(tableNamePattern)) {
+        if ("%".equals(tableNamePattern)) {
             // Optimized to get the whole map at once.
             for (DocumentDbSchemaTable table : databaseMetadata.getTableSchemaMap().values()) {
                 addColumnsForTable(columnNamePattern, metaData, table);
@@ -330,8 +329,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         } else {
             final String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-                if (isNullOrWhitespace(tableNamePattern)
-                        || tableName.matches(regexTableNamePattern)) {
+                if (tableName.matches(regexTableNamePattern)) {
                     final DocumentDbSchemaTable table = databaseMetadata
                             .getTableSchemaMap().get(tableName);
                     if (table == null) {
@@ -354,8 +352,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final DocumentDbSchemaTable table) {
         final String regexColumnPattern = convertPatternToRegex(columnNamePattern);
         for (DocumentDbSchemaColumn column : table.getColumnMap().values()) {
-            if (isNullOrWhitespace(columnNamePattern)
-                    || column.getSqlName().matches(regexColumnPattern)) {
+            if (column.getSqlName().matches(regexColumnPattern)) {
                 addColumnEntry(metaData, table, column);
             }
         }
