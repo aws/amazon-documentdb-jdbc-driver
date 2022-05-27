@@ -205,7 +205,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         };
         for (String[] test : tests) {
             final String[] tableTypes = test.length == 4 ? new String[]{test[3]} : null;
-            final ResultSet tables = metadata.getTables(null, "", COLLECTION_BASIC, tableTypes);
+            final ResultSet tables = metadata.getTables(test[0], test[1], test[2], tableTypes);
             Assertions.assertFalse(tables.next());
         }
     }
