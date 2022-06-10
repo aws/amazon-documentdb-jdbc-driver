@@ -77,6 +77,8 @@ import java.util.Map;
 
 public class DocumentDbQueryMappingService {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbQueryMappingService.class);
+    private static final String CALCITE_DEFAULT_CHARSET = "calcite.default.charset";
+    private static final String CHARSET_UTF_8 = "utf8";
     private final DocumentDbPrepareContext prepareContext;
     private final CalcitePrepare prepare;
     private final BsonDocument maxRowsBSON;
@@ -96,6 +98,10 @@ public class DocumentDbQueryMappingService {
         // Leave unquoted identifiers in their original case. Identifiers are still case-sensitive
         // but do not need to be quoted
         connectionProperties.putIfAbsent("UNQUOTEDCASING", "UNCHANGED");
+        // Allow Unicode (utf-8) queries to be handled.
+        if (System.getProperty(CALCITE_DEFAULT_CHARSET) == null) {
+            System.setProperty(CALCITE_DEFAULT_CHARSET, CHARSET_UTF_8);
+        }
         this.prepareContext =
                 new DocumentDbPrepareContext(
                         getRootSchemaFromDatabaseMetadata(connectionProperties, databaseMetadata),
