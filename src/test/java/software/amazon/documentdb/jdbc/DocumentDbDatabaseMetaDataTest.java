@@ -499,7 +499,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         final ResultSet emptyResultSetTable = metadata.getPrimaryKeys(null, null, "invalidCollection");
         Assertions.assertFalse(emptyResultSetTable.next());
         final ResultSet noFilterPrimaryKeys = metadata.getPrimaryKeys(null, null, null);
-        Assertions.assertTrue(noFilterPrimaryKeys.next());
+        Assertions.assertFalse(noFilterPrimaryKeys.next());
     }
 
     @Test
@@ -519,7 +519,7 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
         }
 
         final ResultSet noFilterImportedKeys = metadata.getImportedKeys(null, null, null);
-        Assertions.assertTrue(noFilterImportedKeys.next());
+        Assertions.assertFalse(noFilterImportedKeys.next());
 
     }
 
