@@ -31,6 +31,7 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,6 +51,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
 import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSets.buildSchemasColumnMetaData;
 import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSets.buildTableTypesColumnMetaData;
 import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSets.buildTablesColumnMetaData;
+import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSets.buildTypeInfoColumnMetaData;
 
 /**
  * DocumentDb implementation of DatabaseMetaData.
@@ -240,7 +242,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final List<List<Object>> metaData) {
         final String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            if (tableName.matches(regexTableNamePattern)) {
+            if (tableNamePattern == null
+                    || tableName.matches(regexTableNamePattern)) {
                 addTableEntry(metaData, tableName);
             }
         }
@@ -352,7 +355,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final DocumentDbSchemaTable table) {
         final String regexColumnPattern = convertPatternToRegex(columnNamePattern);
         for (DocumentDbSchemaColumn column : table.getColumnMap().values()) {
-            if (column.getSqlName().matches(regexColumnPattern)) {
+            if (columnNamePattern == null
+                    || column.getSqlName().matches(regexColumnPattern)) {
                 addColumnEntry(metaData, table, column);
             }
         }
@@ -640,8 +644,315 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     @Override
     public ResultSet getTypeInfo() throws SQLException {
-        // TODO: Implement
-        throw new SQLFeatureNotSupportedException();
+        int UNUSED = -1;
+        int BASE_2 = 2;
+        int BASE_10 = 10;
+        return new DocumentDbListResultSet(
+                null,
+                buildTypeInfoColumnMetaData(),
+                new ArrayList<>(Arrays.asList(
+                        new ArrayList<>(Arrays.asList(
+                                "BOOLEAN", // TYPE_NAME
+                                Types.BOOLEAN, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.BOOLEAN), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "TINYINT", // TYPE_NAME
+                                Types.TINYINT, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.TINYINT), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "SMALLINT", // TYPE_NAME
+                                Types.SMALLINT, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.SMALLINT), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "INTEGER", // TYPE_NAME
+                                Types.INTEGER, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.INTEGER), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "BIGINT", // TYPE_NAME
+                                Types.BIGINT, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.BIGINT), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "REAL", // TYPE_NAME
+                                Types.REAL, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.REAL), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "FLOAT", // TYPE_NAME
+                                Types.FLOAT, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.FLOAT), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "DOUBLE", // TYPE_NAME
+                                Types.DOUBLE, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.DOUBLE), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "CHAR", // TYPE_NAME
+                                Types.CHAR, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.CHAR), // PRECISION
+                                "'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "VARCHAR", // TYPE_NAME
+                                Types.VARCHAR, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.VARCHAR), // PRECISION
+                                "'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "BINARY", // TYPE_NAME
+                                Types.BINARY, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.BINARY), // PRECISION
+                                "x'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "VARBINARY", // TYPE_NAME
+                                Types.VARBINARY, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.VARBINARY), // PRECISION
+                                "x'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "DATE", // TYPE_NAME
+                                Types.DATE, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.DATE), // PRECISION
+                                "DATE '", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "TIME", // TYPE_NAME
+                                Types.TIME, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.TIME), // PRECISION
+                                "TIME '", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                "TIMESTAMP", // TYPE_NAME
+                                Types.TIMESTAMP, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(Types.TIMESTAMP), // PRECISION
+                                "TIMESTAMP '", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                UNUSED, // SQL_DATA_TYPE (unused)
+                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        ))
+                ))
+        );
     }
 
     @Override
