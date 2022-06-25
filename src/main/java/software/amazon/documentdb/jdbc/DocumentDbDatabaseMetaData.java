@@ -57,6 +57,10 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
  * DocumentDb implementation of DatabaseMetaData.
  */
 public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java.sql.DatabaseMetaData {
+    public static final int UNUSED = -1;
+    public static final int BASE_2 = 2;
+    public static final int BASE_10 = 10;
+
     private static final Map<JdbcType, Integer> TYPE_COLUMN_SIZE_MAP;
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDatabaseMetaData.class);
     private static final char ESCAPE_CHAR = '\\';
@@ -644,17 +648,14 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
 
     @Override
     public ResultSet getTypeInfo() throws SQLException {
-        int UNUSED = -1;
-        int BASE_2 = 2;
-        int BASE_10 = 10;
         return new DocumentDbListResultSet(
                 null,
                 buildTypeInfoColumnMetaData(),
                 new ArrayList<>(Arrays.asList(
                         new ArrayList<>(Arrays.asList(
-                                "BOOLEAN", // TYPE_NAME
-                                Types.BOOLEAN, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.BOOLEAN), // PRECISION
+                                JdbcType.BOOLEAN.name(), // TYPE_NAME
+                                JdbcType.BOOLEAN.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.BOOLEAN), // PRECISION
                                 null, // LITERAL_PREFIX
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
@@ -672,16 +673,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "TINYINT", // TYPE_NAME
+                                JdbcType.TINYINT.name(), // TYPE_NAME
                                 Types.TINYINT, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.TINYINT), // PRECISION
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.TINYINT), // PRECISION
                                 null, // LITERAL_PREFIX
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
                                 true, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
-                                true, // UNSIGNED_ATTRIBUTE
+                                false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
                                 false, // AUTO_INCREMENT
                                 null, // LOCAL_TYPE_NAME
@@ -692,16 +693,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "SMALLINT", // TYPE_NAME
-                                Types.SMALLINT, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.SMALLINT), // PRECISION
+                                JdbcType.SMALLINT.name(), // TYPE_NAME
+                                JdbcType.SMALLINT.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.SMALLINT), // PRECISION
                                 null, // LITERAL_PREFIX
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
                                 true, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
-                                true, // UNSIGNED_ATTRIBUTE
+                                false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
                                 false, // AUTO_INCREMENT
                                 null, // LOCAL_TYPE_NAME
@@ -712,16 +713,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "INTEGER", // TYPE_NAME
-                                Types.INTEGER, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.INTEGER), // PRECISION
+                                JdbcType.INTEGER.name(), // TYPE_NAME
+                                JdbcType.INTEGER.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.INTEGER), // PRECISION
                                 null, // LITERAL_PREFIX
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
                                 true, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
-                                true, // UNSIGNED_ATTRIBUTE
+                                false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
                                 false, // AUTO_INCREMENT
                                 null, // LOCAL_TYPE_NAME
@@ -732,16 +733,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "BIGINT", // TYPE_NAME
-                                Types.BIGINT, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.BIGINT), // PRECISION
+                                JdbcType.BIGINT.name(), // TYPE_NAME
+                                JdbcType.BIGINT.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.BIGINT), // PRECISION
                                 null, // LITERAL_PREFIX
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
                                 true, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
-                                true, // UNSIGNED_ATTRIBUTE
+                                false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
                                 false, // AUTO_INCREMENT
                                 null, // LOCAL_TYPE_NAME
@@ -752,16 +753,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "REAL", // TYPE_NAME
-                                Types.REAL, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.REAL), // PRECISION
+                                JdbcType.REAL.name(), // TYPE_NAME
+                                JdbcType.REAL.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.REAL), // PRECISION
                                 null, // LITERAL_PREFIX
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
                                 true, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
-                                true, // UNSIGNED_ATTRIBUTE
+                                false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
                                 false, // AUTO_INCREMENT
                                 null, // LOCAL_TYPE_NAME
@@ -772,16 +773,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "FLOAT", // TYPE_NAME
-                                Types.FLOAT, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.FLOAT), // PRECISION
+                                JdbcType.FLOAT.name(), // TYPE_NAME
+                                JdbcType.FLOAT.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.FLOAT), // PRECISION
                                 null, // LITERAL_PREFIX
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
                                 true, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
-                                true, // UNSIGNED_ATTRIBUTE
+                                false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
                                 false, // AUTO_INCREMENT
                                 null, // LOCAL_TYPE_NAME
@@ -792,16 +793,16 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "DOUBLE", // TYPE_NAME
-                                Types.DOUBLE, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.DOUBLE), // PRECISION
+                                JdbcType.DOUBLE.name(), // TYPE_NAME
+                                JdbcType.DOUBLE.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.DOUBLE), // PRECISION
                                 null, // LITERAL_PREFIX
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
                                 true, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
-                                true, // UNSIGNED_ATTRIBUTE
+                                false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
                                 false, // AUTO_INCREMENT
                                 null, // LOCAL_TYPE_NAME
@@ -812,9 +813,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "CHAR", // TYPE_NAME
-                                Types.CHAR, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.CHAR), // PRECISION
+                                JdbcType.CHAR.name(), // TYPE_NAME
+                                JdbcType.CHAR.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.CHAR), // PRECISION
                                 "'", // LITERAL_PREFIX
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
@@ -832,9 +833,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "VARCHAR", // TYPE_NAME
-                                Types.VARCHAR, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.VARCHAR), // PRECISION
+                                JdbcType.VARCHAR.name(), // TYPE_NAME
+                                JdbcType.VARCHAR.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.VARCHAR), // PRECISION
                                 "'", // LITERAL_PREFIX
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
@@ -852,9 +853,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "BINARY", // TYPE_NAME
-                                Types.BINARY, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.BINARY), // PRECISION
+                                JdbcType.BINARY.name(), // TYPE_NAME
+                                JdbcType.BINARY.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.BINARY), // PRECISION
                                 "x'", // LITERAL_PREFIX
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
@@ -872,9 +873,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "VARBINARY", // TYPE_NAME
-                                Types.VARBINARY, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.VARBINARY), // PRECISION
+                                JdbcType.VARBINARY.name(), // TYPE_NAME
+                                JdbcType.VARBINARY.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.VARBINARY), // PRECISION
                                 "x'", // LITERAL_PREFIX
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
@@ -892,9 +893,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "DATE", // TYPE_NAME
-                                Types.DATE, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.DATE), // PRECISION
+                                JdbcType.DATE.name(), // TYPE_NAME
+                                JdbcType.DATE.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.DATE), // PRECISION
                                 "DATE '", // LITERAL_PREFIX
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
@@ -912,9 +913,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "TIME", // TYPE_NAME
-                                Types.TIME, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.TIME), // PRECISION
+                                JdbcType.TIME.name(), // TYPE_NAME
+                                JdbcType.TIME.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.TIME), // PRECISION
                                 "TIME '", // LITERAL_PREFIX
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
@@ -932,9 +933,9 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
-                                "TIMESTAMP", // TYPE_NAME
-                                Types.TIMESTAMP, // DATA_TYPE
-                                TYPE_COLUMN_SIZE_MAP.get(Types.TIMESTAMP), // PRECISION
+                                JdbcType.TIMESTAMP.name(), // TYPE_NAME
+                                JdbcType.TIMESTAMP.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.TIMESTAMP), // PRECISION
                                 "TIMESTAMP '", // LITERAL_PREFIX
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS

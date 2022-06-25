@@ -1843,7 +1843,7 @@ class DocumentDbDatabaseMetaDataResultSets {
                     .add(new JdbcColumnMetaData(
                             ordinal++,
                             false, //caseSensitive,
-                            ResultSetMetaData.columnNoNulls, //nullable,
+                            ResultSetMetaData.columnNullable, //nullable,
                             true, //signed,
                             64, //displaySize,
                             "LITERAL_PREFIX", //label,
@@ -1858,7 +1858,7 @@ class DocumentDbDatabaseMetaDataResultSets {
                     .add(new JdbcColumnMetaData(
                             ordinal++,
                             false, //caseSensitive,
-                            ResultSetMetaData.columnNoNulls, //nullable,
+                            ResultSetMetaData.columnNullable, //nullable,
                             true, //signed,
                             64, //displaySize,
                             "LITERAL_SUFFIX", //label,
@@ -1873,7 +1873,7 @@ class DocumentDbDatabaseMetaDataResultSets {
                     .add(new JdbcColumnMetaData(
                             ordinal++,
                             false, //caseSensitive,
-                            ResultSetMetaData.columnNoNulls, //nullable,
+                            ResultSetMetaData.columnNullable, //nullable,
                             true, //signed,
                             64, //displaySize,
                             "CREATE_PARAMS", //label,
@@ -1978,7 +1978,7 @@ class DocumentDbDatabaseMetaDataResultSets {
                     .add(new JdbcColumnMetaData(
                             ordinal++,
                             false, //caseSensitive,
-                            ResultSetMetaData.columnNoNulls, //nullable,
+                            ResultSetMetaData.columnNullable, //nullable,
                             true, //signed,
                             64, //displaySize,
                             "LOCAL_TYPE_NAME", //label,
