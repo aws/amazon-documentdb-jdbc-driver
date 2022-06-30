@@ -33,9 +33,9 @@ public class DocumentDbIntegrationTest {
     @Tag("local-integration")
     public void runLocalTest() {
         Assertions.assertEquals(true, true);
-        final String connectionString = System.getenv("connectionString");
-        Assertions.assertNotNull(connectionString);
-        Assertions.assertTrue(Pattern.matches(".*localhost.*", connectionString));
+        final String configuredEnvironments = System.getenv("CONFIGURED_ENVIRONMENTS");
+        Assertions.assertNotNull(configuredEnvironments);
+        Assertions.assertFalse(Pattern.matches(".*DOCUMENTDB40_SSH_TUNNEL.*", configuredEnvironments));
     }
 
     /**
@@ -45,8 +45,8 @@ public class DocumentDbIntegrationTest {
     @Tag("remote-integration")
     public void runRemoteTest() {
         Assertions.assertEquals(true, true);
-        final String connectionString = System.getenv("connectionString");
-        Assertions.assertNotNull(connectionString);
-        Assertions.assertTrue(Pattern.matches(".*remotehost.*", connectionString));
+        final String configuredEnvironments = System.getenv("CONFIGURED_ENVIRONMENTS");
+        Assertions.assertNotNull(configuredEnvironments);
+        Assertions.assertTrue(Pattern.matches(".*DOCUMENTDB40_SSH_TUNNEL.*", configuredEnvironments));
     }
 }
