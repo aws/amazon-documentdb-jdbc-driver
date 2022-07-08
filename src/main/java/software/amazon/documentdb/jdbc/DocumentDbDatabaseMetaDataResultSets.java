@@ -2051,7 +2051,7 @@ class DocumentDbDatabaseMetaDataResultSets {
                             int.class.getName()) //columnClassName
                     )
                     .add(new JdbcColumnMetaData(
-                            ordinal,
+                            ordinal, // not incremented
                             false, //caseSensitive,
                             ResultSetMetaData.columnNoNulls, //nullable,
                             true, //signed,
