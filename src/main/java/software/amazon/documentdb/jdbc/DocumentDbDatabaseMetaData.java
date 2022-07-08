@@ -27,10 +27,13 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,10 +60,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
  * DocumentDb implementation of DatabaseMetaData.
  */
 public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java.sql.DatabaseMetaData {
-    public static final int UNUSED = -1;
-    public static final int BASE_2 = 2;
-    public static final int BASE_10 = 10;
-
+    private static final int BASE_10 = 10;
     private static final Map<JdbcType, Integer> TYPE_COLUMN_SIZE_MAP;
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDatabaseMetaData.class);
     private static final char ESCAPE_CHAR = '\\';
@@ -94,7 +94,17 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                     break;
                 case VARBINARY:
                 case VARCHAR:
+                case NVARCHAR:
                     TYPE_COLUMN_SIZE_MAP.put(jdbcType, 65536);
+                    break;
+                case DATE:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, new Date(Long.MAX_VALUE).toString().length());
+                    break;
+                case TIME:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, new Time(Long.MAX_VALUE).toString().length());
+                    break;
+                case TIMESTAMP:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, new Timestamp(Long.MAX_VALUE).toString().length());
                     break;
                 default:
                     TYPE_COLUMN_SIZE_MAP.put(jdbcType, 0);
@@ -299,7 +309,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     public ResultSet getTableTypes() {
         final List<List<Object>> metaData = new ArrayList<>();
         // ASSUMPTION: We're only supporting TABLE types.
-        for (String tableType : Arrays.asList("TABLE")) {
+        for (String tableType : Collections.singletonList("TABLE")) {
             // 1. TABLE_TYPE String => table type. Typical types are "TABLE", "VIEW", "SYSTEM TABLE", "GLOBAL TEMPORARY", "LOCAL TEMPORARY", "ALIAS", "SYNONYM".
             metaData.add(Collections.singletonList(tableType));
         }
@@ -647,7 +657,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     }
 
     @Override
-    public ResultSet getTypeInfo() throws SQLException {
+    public ResultSet getTypeInfo() {
         return new DocumentDbListResultSet(
                 null,
                 buildTypeInfoColumnMetaData(),
@@ -660,7 +670,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 true, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -668,8 +678,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -680,7 +690,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -688,8 +698,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -700,7 +710,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -708,8 +718,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -720,7 +730,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -728,8 +738,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -740,7 +750,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -748,8 +758,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -760,7 +770,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -768,8 +778,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -780,7 +790,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -788,8 +798,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -800,7 +810,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 false, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -808,8 +818,28 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.DECIMAL.name(), // TYPE_NAME
+                                JdbcType.DECIMAL.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.DECIMAL), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -828,8 +858,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -848,8 +878,48 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.NCHAR.name(), // TYPE_NAME
+                                JdbcType.NCHAR.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.NCHAR), // PRECISION
+                                "'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.NVARCHAR.name(), // TYPE_NAME
+                                JdbcType.NVARCHAR.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.NVARCHAR), // PRECISION
+                                "'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -860,7 +930,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 true, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -868,8 +938,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -880,7 +950,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 true, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -888,8 +958,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -900,7 +970,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 true, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -908,8 +978,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -920,7 +990,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 true, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -928,8 +998,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         )),
                         new ArrayList<>(Arrays.asList(
@@ -940,7 +1010,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 "'", // LITERAL_SUFFIX
                                 null, // CREATE_PARAMS
                                 ResultSetMetaData.columnNullable, // NULLABLE
-                                true, // CASE_SENSITIVE
+                                false, // CASE_SENSITIVE
                                 DatabaseMetaData.typeSearchable, // SEARCHABLE
                                 true, // UNSIGNED_ATTRIBUTE
                                 false, // FIXED_PREC_SCALE
@@ -948,8 +1018,28 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                                 null, // LOCAL_TYPE_NAME
                                 0, // MINIMUM_SCALE
                                 0, // MAXIMUM_SCALE
-                                UNUSED, // SQL_DATA_TYPE (unused)
-                                UNUSED, // SQL_DATETIME_SUB (unused)
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.NULL.name(), // TYPE_NAME
+                                JdbcType.NULL.getJdbcType(), // DATA_TYPE
+                                null, // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
                                 BASE_10 // NUM_PREC_RADIX
                         ))
                 ))
@@ -1000,13 +1090,13 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     }
 
     @Override
-    public int getDatabaseMajorVersion() throws SQLException {
+    public int getDatabaseMajorVersion() {
         // TODO: Implement
         return 4;
     }
 
     @Override
-    public int getDatabaseMinorVersion() throws SQLException {
+    public int getDatabaseMinorVersion() {
         // TODO: Implement
         return 0;
     }
@@ -1106,7 +1196,6 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             converted.append(Pattern.quote(pattern.substring(start, index)));
         }
         converted.append(str);
-        final int newStart = index + 1;
-        return newStart;
+        return index + 1;
     }
 }
