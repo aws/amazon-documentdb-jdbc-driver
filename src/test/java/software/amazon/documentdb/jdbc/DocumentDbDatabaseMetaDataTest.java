@@ -39,7 +39,11 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
@@ -590,5 +594,50 @@ public class DocumentDbDatabaseMetaDataTest extends DocumentDbFlapDoodleTest {
     void testGetImportedKeysArrayWithWhiteSpaces() throws SQLException {
         final ResultSet arrayImportedKeys = metadata.getImportedKeys("", "", COLLECTION_ARRAY + "_array");
         Assertions.assertFalse(arrayImportedKeys.next());
+    }
+
+    @Test
+    @DisplayName("Tests getting type information.")
+    void testGetTypeInfo() throws SQLException {
+        final List<Integer> expectedDataTypes = Arrays.asList(
+                Types.BINARY,
+                Types.BIGINT,
+                Types.BOOLEAN,
+                Types.CHAR,
+                Types.DATE,
+                Types.DECIMAL,
+                Types.DOUBLE,
+                Types.FLOAT,
+                Types.INTEGER,
+                Types.NCHAR,
+                Types.NULL,
+                Types.NVARCHAR,
+                Types.REAL,
+                Types.SMALLINT,
+                Types.TIME,
+                Types.TIMESTAMP,
+                Types.TINYINT,
+                Types.VARBINARY,
+                Types.VARCHAR
+        ).stream().sorted().collect(Collectors.toList());
+        final List<Integer> observedDataTypes = new ArrayList<>();
+
+        final ResultSet resultSet = metadata.getTypeInfo();
+        while (resultSet.next()) {
+            final int jdbcDataType = resultSet.getInt(2);
+            observedDataTypes.add(jdbcDataType);
+            if (expectedDataTypes.contains(jdbcDataType)) {
+                Assertions.assertEquals(JdbcType.fromType(jdbcDataType).name(), resultSet.getString(1));
+            } else {
+                Assertions.fail(String.format(
+                        "Unexpected type returned %d-'%s'",
+                        jdbcDataType,
+                        JdbcType.fromType(jdbcDataType).name()));
+            }
+        }
+        final List<Integer> sortedDataTypes = observedDataTypes.stream()
+                .sorted()
+                .collect(Collectors.toList());
+        Assertions.assertArrayEquals(expectedDataTypes.toArray(), sortedDataTypes.toArray());
     }
 }

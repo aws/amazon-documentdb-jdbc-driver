@@ -6,7 +6,7 @@ plugins {
     id 'com.github.hierynomus.license' version '0.15.0'
     id 'com.github.johnrengelman.shadow' version '6.1.0'
     id 'org.kordamp.gradle.markdown' version '2.2.0'
-    id "de.undercouch.download" version "5.0.5"
+    id "de.undercouch.download" version "5.1.0"
     id "com.github.dkorotych.gradle-maven-exec" version "2.2.1"
     id 'io.franzbecker.gradle-lombok' version '5.0.0'
     id 'java-test-fixtures'
@@ -321,13 +321,13 @@ dependencies {
     implementation group: 'com.google.guava', name: 'guava', version: '31.1-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '1.7.36'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
-    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.2'
+    implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.18.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.2'
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.1'
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.30.0'
     implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
-    implementation 'io.github.hakky54:sslcontext-kickstart:7.4.4'
+    implementation 'io.github.hakky54:sslcontext-kickstart:7.4.5'
 
     compileOnly         group: 'org.immutables', name: 'value', version: '2.9.0'
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.3.1'

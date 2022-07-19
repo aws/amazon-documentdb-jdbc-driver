@@ -26,3 +26,6 @@ build/
 # LICENSE and NOTICE
 /src/main/resources/LICENSE
 /src/main/resources/NOTICE
+# Generated
+/common/src/main/resources/common.properties
+
