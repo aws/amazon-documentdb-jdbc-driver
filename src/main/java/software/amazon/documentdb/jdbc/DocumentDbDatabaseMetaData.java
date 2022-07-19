@@ -513,7 +513,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
         final List<List<Object>> metaData = new ArrayList<>();
         if (schema == null || properties.getDatabase().equals(schema)) {
             for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-                if (tableName.equals(table)) {
+                if (table == null || tableName.equals(table)) {
                     final DocumentDbSchemaTable metadataTable = databaseMetadata
                             .getTableSchemaMap().get(tableName);
                     if (metadataTable == null) {
@@ -576,7 +576,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final List<List<Object>> metaData) throws SQLException {
         final String regexTablePattern = convertPatternToRegex(table);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            if (tableName.matches(regexTablePattern)) {
+            if (table == null || tableName.matches(regexTablePattern)) {
                 final DocumentDbSchemaTable schemaTable = databaseMetadata
                         .getTableSchemaMap().get(tableName);
                 if (schemaTable == null) {
