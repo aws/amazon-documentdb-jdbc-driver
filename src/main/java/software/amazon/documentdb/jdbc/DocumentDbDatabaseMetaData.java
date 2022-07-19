@@ -27,10 +27,14 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 
+import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -50,11 +54,13 @@ import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSe
 import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSets.buildSchemasColumnMetaData;
 import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSets.buildTableTypesColumnMetaData;
 import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSets.buildTablesColumnMetaData;
+import static software.amazon.documentdb.jdbc.DocumentDbDatabaseMetaDataResultSets.buildTypeInfoColumnMetaData;
 
 /**
  * DocumentDb implementation of DatabaseMetaData.
  */
 public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java.sql.DatabaseMetaData {
+    private static final int BASE_10 = 10;
     private static final Map<JdbcType, Integer> TYPE_COLUMN_SIZE_MAP;
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbDatabaseMetaData.class);
     private static final char ESCAPE_CHAR = '\\';
@@ -88,7 +94,17 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
                     break;
                 case VARBINARY:
                 case VARCHAR:
+                case NVARCHAR:
                     TYPE_COLUMN_SIZE_MAP.put(jdbcType, 65536);
+                    break;
+                case DATE:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, new Date(Long.MAX_VALUE).toString().length());
+                    break;
+                case TIME:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, new Time(Long.MAX_VALUE).toString().length());
+                    break;
+                case TIMESTAMP:
+                    TYPE_COLUMN_SIZE_MAP.put(jdbcType, new Timestamp(Long.MAX_VALUE).toString().length());
                     break;
                 default:
                     TYPE_COLUMN_SIZE_MAP.put(jdbcType, 0);
@@ -240,7 +256,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final List<List<Object>> metaData) {
         final String regexTableNamePattern = convertPatternToRegex(tableNamePattern);
         for (String tableName : databaseMetadata.getTableSchemaMap().keySet()) {
-            if (tableName.matches(regexTableNamePattern)) {
+            if (tableNamePattern == null
+                    || tableName.matches(regexTableNamePattern)) {
                 addTableEntry(metaData, tableName);
             }
         }
@@ -292,7 +309,7 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     public ResultSet getTableTypes() {
         final List<List<Object>> metaData = new ArrayList<>();
         // ASSUMPTION: We're only supporting TABLE types.
-        for (String tableType : Arrays.asList("TABLE")) {
+        for (String tableType : Collections.singletonList("TABLE")) {
             // 1. TABLE_TYPE String => table type. Typical types are "TABLE", "VIEW", "SYSTEM TABLE", "GLOBAL TEMPORARY", "LOCAL TEMPORARY", "ALIAS", "SYNONYM".
             metaData.add(Collections.singletonList(tableType));
         }
@@ -352,7 +369,8 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             final DocumentDbSchemaTable table) {
         final String regexColumnPattern = convertPatternToRegex(columnNamePattern);
         for (DocumentDbSchemaColumn column : table.getColumnMap().values()) {
-            if (column.getSqlName().matches(regexColumnPattern)) {
+            if (columnNamePattern == null
+                    || column.getSqlName().matches(regexColumnPattern)) {
                 addColumnEntry(metaData, table, column);
             }
         }
@@ -639,9 +657,393 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     }
 
     @Override
-    public ResultSet getTypeInfo() throws SQLException {
-        // TODO: Implement
-        throw new SQLFeatureNotSupportedException();
+    public ResultSet getTypeInfo() {
+        return new DocumentDbListResultSet(
+                null,
+                buildTypeInfoColumnMetaData(),
+                new ArrayList<>(Arrays.asList(
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.BOOLEAN.name(), // TYPE_NAME
+                                JdbcType.BOOLEAN.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.BOOLEAN), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.TINYINT.name(), // TYPE_NAME
+                                Types.TINYINT, // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.TINYINT), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.SMALLINT.name(), // TYPE_NAME
+                                JdbcType.SMALLINT.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.SMALLINT), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.INTEGER.name(), // TYPE_NAME
+                                JdbcType.INTEGER.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.INTEGER), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.BIGINT.name(), // TYPE_NAME
+                                JdbcType.BIGINT.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.BIGINT), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.REAL.name(), // TYPE_NAME
+                                JdbcType.REAL.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.REAL), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.FLOAT.name(), // TYPE_NAME
+                                JdbcType.FLOAT.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.FLOAT), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.DOUBLE.name(), // TYPE_NAME
+                                JdbcType.DOUBLE.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.DOUBLE), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.DECIMAL.name(), // TYPE_NAME
+                                JdbcType.DECIMAL.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.DECIMAL), // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                false, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.CHAR.name(), // TYPE_NAME
+                                JdbcType.CHAR.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.CHAR), // PRECISION
+                                "'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.VARCHAR.name(), // TYPE_NAME
+                                JdbcType.VARCHAR.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.VARCHAR), // PRECISION
+                                "'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.NCHAR.name(), // TYPE_NAME
+                                JdbcType.NCHAR.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.NCHAR), // PRECISION
+                                "'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.NVARCHAR.name(), // TYPE_NAME
+                                JdbcType.NVARCHAR.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.NVARCHAR), // PRECISION
+                                "'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                true, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.BINARY.name(), // TYPE_NAME
+                                JdbcType.BINARY.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.BINARY), // PRECISION
+                                "x'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.VARBINARY.name(), // TYPE_NAME
+                                JdbcType.VARBINARY.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.VARBINARY), // PRECISION
+                                "x'", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.DATE.name(), // TYPE_NAME
+                                JdbcType.DATE.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.DATE), // PRECISION
+                                "DATE '", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.TIME.name(), // TYPE_NAME
+                                JdbcType.TIME.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.TIME), // PRECISION
+                                "TIME '", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.TIMESTAMP.name(), // TYPE_NAME
+                                JdbcType.TIMESTAMP.getJdbcType(), // DATA_TYPE
+                                TYPE_COLUMN_SIZE_MAP.get(JdbcType.TIMESTAMP), // PRECISION
+                                "TIMESTAMP '", // LITERAL_PREFIX
+                                "'", // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        )),
+                        new ArrayList<>(Arrays.asList(
+                                JdbcType.NULL.name(), // TYPE_NAME
+                                JdbcType.NULL.getJdbcType(), // DATA_TYPE
+                                null, // PRECISION
+                                null, // LITERAL_PREFIX
+                                null, // LITERAL_SUFFIX
+                                null, // CREATE_PARAMS
+                                ResultSetMetaData.columnNullable, // NULLABLE
+                                false, // CASE_SENSITIVE
+                                DatabaseMetaData.typeSearchable, // SEARCHABLE
+                                true, // UNSIGNED_ATTRIBUTE
+                                false, // FIXED_PREC_SCALE
+                                false, // AUTO_INCREMENT
+                                null, // LOCAL_TYPE_NAME
+                                0, // MINIMUM_SCALE
+                                0, // MAXIMUM_SCALE
+                                null, // SQL_DATA_TYPE (unused)
+                                null, // SQL_DATETIME_SUB (unused)
+                                BASE_10 // NUM_PREC_RADIX
+                        ))
+                ))
+        );
     }
 
     @Override
@@ -688,13 +1090,13 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
     }
 
     @Override
-    public int getDatabaseMajorVersion() throws SQLException {
+    public int getDatabaseMajorVersion() {
         // TODO: Implement
         return 4;
     }
 
     @Override
-    public int getDatabaseMinorVersion() throws SQLException {
+    public int getDatabaseMinorVersion() {
         // TODO: Implement
         return 0;
     }
@@ -794,7 +1196,6 @@ public class DocumentDbDatabaseMetaData extends DatabaseMetaData implements java
             converted.append(Pattern.quote(pattern.substring(start, index)));
         }
         converted.append(str);
-        final int newStart = index + 1;
-        return newStart;
+        return index + 1;
     }
 }
