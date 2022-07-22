@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>software.amazon.documentdb.jdbc</groupId>
   <artifactId>documentdb-jdbc</artifactId>
-  <version>1.2.5</version>
+  <version>1.3.0</version>
   <name>Amazon DocumentDB JDBC Driver</name>
   <description>The JDBC driver for the Amazon DocumentDB managed document database provides an SQL-relational interface for developers and BI tool users.</description>
   <url>https://github.com/aws/amazon-documentdb-jdbc-driver</url>
