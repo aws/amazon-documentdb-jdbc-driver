@@ -3,7 +3,7 @@ plugins {
     id 'com.github.spotbugs' version '5.0.9'
     id 'checkstyle'
     id 'jacoco'
-    id 'com.github.hierynomus.license' version '0.15.0'
+    id 'com.github.hierynomus.license' version '0.16.1'
     id 'com.github.johnrengelman.shadow' version '7.1.2'
     id 'org.kordamp.gradle.markdown' version '2.2.0'
     id "de.undercouch.download" version "5.1.1"
@@ -163,7 +163,7 @@ spotbugsTest {
 task checkSpotBugsMainReport {
     doLast {
         def xmlReport = spotbugsMain.reports.getByName("XML")
-        def slurped = new XmlSlurper().parse(xmlReport.destination)
+        def slurped = new groovy.xml.XmlSlurper().parse(xmlReport.destination)
         def bugsFound = slurped.BugInstance.size()
         slurped.BugInstance.each {
             println "SpotBugs Error"
@@ -211,8 +211,8 @@ jacoco {
 }
 jacocoTestReport {
     reports {
-        html.enabled true
-        csv.enabled true
+        html.required = true
+        csv.required = true
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
