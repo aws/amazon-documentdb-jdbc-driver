@@ -127,4 +127,31 @@
     </Or>
     <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
   </Match>
+  <Match>
+    <Or>
+      <Source name="DocumentDbConnection.java"/>
+      <Source name="DocumentDbEnumerable.java" />
+      <Source name="DocumentDbMethod.java" />
+      <Source name="DocumentDbMethod.java" />
+      <Source name="DocumentDbRel.java" />
+      <Source name="Connection.java" />
+      <Source name="DataSource.java" />
+      <Source name="DatabaseMetaData.java" />
+      <Source name="PooledConnection.java" />
+      <Source name="PreparedStatement.java" />
+      <Source name="ResultSet.java" />
+      <Source name="Statement.java" />
+      <Source name="DocumentDbMetadataTable.java" />
+      <Source name="DocumentDbSchema.java" />
+      <Source name="DocumentDbSchemaTable.java" />
+      <Source name="DocumentDbSchemaReader.java" />
+      <Source name="DocumentDbSchemaWriter.java" />
+      <Source name="DocumentDbMqlQueryContext.java" />
+      <Source name="MockStatement.java" />
+    </Or>
+    <Or>
+      <Bug pattern="EI_EXPOSE_REP" />
+      <Bug pattern="EI_EXPOSE_REP2" />
+    </Or>
+  </Match>
 </FindBugsFilter>

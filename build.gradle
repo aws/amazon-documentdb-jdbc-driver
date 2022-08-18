@@ -1,13 +1,12 @@
 plugins {
     id 'java'
-    id 'com.github.spotbugs' version '4.5.1'
+    id 'com.github.spotbugs' version '5.0.9'
     id 'checkstyle'
     id 'jacoco'
-    id 'com.github.hierynomus.license' version '0.15.0'
-    id 'com.github.johnrengelman.shadow' version '6.1.0'
+    id 'com.github.hierynomus.license' version '0.16.1'
+    id 'com.github.johnrengelman.shadow' version '7.1.2'
     id 'org.kordamp.gradle.markdown' version '2.2.0'
-    id "de.undercouch.download" version "5.1.0"
-    id "com.github.dkorotych.gradle-maven-exec" version "2.2.1"
+    id "de.undercouch.download" version "5.1.1"
     id 'io.franzbecker.gradle-lombok' version '5.0.0'
     id 'java-test-fixtures'
     id 'maven-publish'
@@ -164,7 +163,7 @@ spotbugsTest {
 task checkSpotBugsMainReport {
     doLast {
         def xmlReport = spotbugsMain.reports.getByName("XML")
-        def slurped = new XmlSlurper().parse(xmlReport.destination)
+        def slurped = new groovy.xml.XmlSlurper().parse(xmlReport.destination)
         def bugsFound = slurped.BugInstance.size()
         slurped.BugInstance.each {
             println "SpotBugs Error"
@@ -212,8 +211,8 @@ jacoco {
 }
 jacocoTestReport {
     reports {
-        html.enabled true
-        csv.enabled true
+        html.required = true
+        csv.required = true
     }
     afterEvaluate {
         classDirectories.setFrom(files(classDirectories.files.collect {
@@ -323,14 +322,14 @@ dependencies {
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.9'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.18.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.18.0'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.1'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.7.1'
     implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
-    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.30.0'
+    implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.31.0'
     implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
     implementation 'io.github.hakky54:sslcontext-kickstart:7.4.5'
 
     compileOnly         group: 'org.immutables', name: 'value', version: '2.9.0'
-    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.3.1'
+    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.3.2'
     compileOnly         'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 
@@ -338,17 +337,17 @@ dependencies {
     testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.16'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.8.1'
-    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.8.2'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.9.0'
+    testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.9.0'
     testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.6.1'
     testRuntimeOnly         group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.6'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-engine'
-    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.8.2'
+    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.9.0'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.12.0'
 
-    testFixturesCompileOnly group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.6'
+    testFixturesCompileOnly group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.8'
     testFixturesCompileOnly 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testFixturesImplementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.0'
