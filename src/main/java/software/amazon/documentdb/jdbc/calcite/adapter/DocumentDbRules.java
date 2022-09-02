@@ -393,8 +393,10 @@ public final class DocumentDbRules {
             }
 
             switch (literal.getType().getSqlTypeName()) {
-                // TODO: Use $numberDecimal to handle DECIMAL instead if support for 128-bit decimals is added.
                 case DECIMAL:
+                    final Comparable value = literal.getValue();
+                    final String decimal128Format = "{\"$numberDecimal\": \"" + value + "\"}";
+                    return new Operand("{\"$literal\": " + decimal128Format + "}", decimal128Format, true);
                 case DOUBLE:
                 case FLOAT:
                 case REAL:
@@ -469,8 +471,7 @@ public final class DocumentDbRules {
 
             final List<Operand> strings = visitList(call.operands);
             if (call.getKind() == SqlKind.CAST || call.getKind() == SqlKind.REINTERPRET) {
-                // TODO: Handle case when DocumentDB supports $convert.
-                return strings.get(0);
+                return getCastExpression(call, strings);
             }
 
             if (rexCallToMongoMap.containsKey(call.getOperator())) {
@@ -482,6 +483,47 @@ public final class DocumentDbRules {
 
             throw new IllegalArgumentException("Translation of " + call
                     + " is not supported by DocumentDbRules");
+        }
+
+        private static Operand getCastExpression(final RexCall call, final List<Operand> strings) {
+            // Handle CAST of CHAR/VARCHAR to numeric types.
+            if (call.operands.size() == 1 && call.operands.get(0) instanceof RexLiteral)  {
+                final RexLiteral operand = (RexLiteral) call.operands.get(0);
+                switch (operand.getType().getSqlTypeName()) {
+                    case CHAR:
+                    case VARCHAR:
+                        final String value = operand.getValueAs(String.class);
+                        switch (call.type.getSqlTypeName()) {
+                            case DECIMAL:
+                                final String decimal128Format = "{\"$numberDecimal\": \"" + value + "\"}";
+                                return new Operand("{\"$literal\": " + decimal128Format + "}", decimal128Format, true);
+                            case DOUBLE:
+                            case FLOAT:
+                            case REAL:
+                                final String doubleFormat = "{\"$numberDouble\": \"" + value + "\"}";
+                                return new Operand("{\"$literal\": " + doubleFormat + "}", doubleFormat, true);
+                            case BOOLEAN:
+                                break;
+                            case TINYINT:
+                            case SMALLINT:
+                            case INTEGER:
+                                // Convert supported intervals to milliseconds.
+                                final String intFormat = "{\"$numberInt\": \"" + value + "\"}";
+                                return new Operand("{\"$literal\": " + intFormat + "}", intFormat, true);
+                            case BIGINT:
+                                // Convert supported intervals to milliseconds.
+                                final String longFormat = "{\"$numberLong\": \"" +  value + "\"}";
+                                return new Operand("{\"$literal\": " + longFormat + "}", longFormat, true);
+                            default:
+                                break;
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            // TODO: Handle case when DocumentDB supports $convert.
+            return strings.get(0);
         }
 
         private static Operand getMongoAggregateForIntegerDivide(final RexCall call, final List<Operand> strings) {
