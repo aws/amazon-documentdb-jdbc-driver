@@ -65,7 +65,7 @@ types, and their associated JDBC data types.
 | MaxKey | Yes | VARCHAR |
 | Object | Yes | _virtual table_ |
 | Array | Yes | _virtual table_ |
-| Decimal128 | No | DECIMAL |
+| Decimal128 | Yes | DECIMAL |
 | JavaScript | No | VARCHAR |
 | JavaScript (with scope) | No | VARCHAR |
 | Undefined | No | VARCHAR |

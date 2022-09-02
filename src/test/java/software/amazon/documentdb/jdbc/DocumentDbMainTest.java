@@ -32,7 +32,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import software.amazon.documentdb.jdbc.common.test.DocumentDbMongoTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
@@ -998,18 +997,16 @@ class DocumentDbMainTest {
                     .append("    \"dbType\" : \"min_key\"\n").append("  }, {\n")
                     .append("    \"fieldPath\" : \"fieldNull\",\n")
                     .append("    \"sqlName\" : \"fieldNull\",\n")
-                    .append("    \"sqlType\" : \"null\",\n").append("    \"dbType\" : \"null\"\n")
-                    .append("  }, {\n").append("    \"fieldPath\" : \"fieldBinary\",\n")
+                    .append("    \"sqlType\" : \"null\",\n")
+                    .append("    \"dbType\" : \"null\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldBinary\",\n")
                     .append("    \"sqlName\" : \"fieldBinary\",\n")
                     .append("    \"sqlType\" : \"varbinary\",\n")
-                    .append("    \"dbType\" : \"binary\"\n")
-                    .append((testEnvironment instanceof DocumentDbMongoTestEnvironment)
-                            ? "  }, {\n"
-                            + "    \"fieldPath\" : \"fieldDecimal128\",\n"
-                            + "    \"sqlName\" : \"fieldDecimal128\",\n"
-                            + "    \"sqlType\" : \"decimal\",\n"
-                            + "    \"dbType\" : \"decimal128\"\n"
-                            : "")
+                    .append("    \"dbType\" : \"binary\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldDecimal128\",\n")
+                    .append("    \"sqlName\" : \"fieldDecimal128\",\n")
+                    .append("    \"sqlType\" : \"decimal\",\n")
+                    .append("    \"dbType\" : \"decimal128\"\n")
                     .append("  } ]\n")
                     .append("}");
         }

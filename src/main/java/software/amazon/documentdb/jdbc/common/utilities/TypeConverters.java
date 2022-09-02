@@ -28,11 +28,13 @@ import org.apache.commons.beanutils.converters.DoubleConverter;
 import org.apache.commons.beanutils.converters.FloatConverter;
 import org.apache.commons.beanutils.converters.IntegerConverter;
 import org.apache.commons.beanutils.converters.LongConverter;
+import org.apache.commons.beanutils.converters.NumberConverter;
 import org.apache.commons.beanutils.converters.ShortConverter;
 import org.apache.commons.beanutils.converters.SqlTimestampConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
 import org.bson.BsonRegularExpression;
 import org.bson.BsonTimestamp;
+import org.bson.types.Decimal128;
 import org.bson.types.MaxKey;
 import org.bson.types.MinKey;
 import org.bson.types.ObjectId;
@@ -52,6 +54,7 @@ public class TypeConverters {
 
     static {
         TYPE_CONVERTERS_MAP = ImmutableMap.<Class<?>, AbstractConverter>builder()
+                .put(Decimal128.class, new Decimal128Converter(new Decimal128(0)))
                 .put(BigDecimal.class, new BigDecimalConverter(0))
                 .put(Boolean.class, new BooleanConverter(false))
                 .put(boolean.class, new BooleanConverter(false))
@@ -101,6 +104,60 @@ public class TypeConverters {
                     targetType.getSimpleName());
         }
         return converter;
+    }
+
+    /**
+     * Converter for Decimal128 type.
+     */
+    private static class Decimal128Converter extends NumberConverter {
+        /**
+         * Default constructor for converter.
+         */
+        public Decimal128Converter() {
+            super(true);
+        }
+
+        /**
+         * Constuctor for converter where you can specify the default value.
+         * @param defaultValue the default value for conversion.
+         */
+        public Decimal128Converter(final Object defaultValue) {
+            super(true, defaultValue);
+        }
+
+        /**
+         * Converts to the target type. Specifically tries to handle conversion from {@link Decimal128} to
+         * type{@link BigDecimal}.
+         *
+         * @param targetType Data type to which this value should be converted.
+         * @param value The input value to be converted.
+         * @return a value converted to the target type or the value.
+         * @param <T> the type of return value.
+         * @throws Throwable thrown on conversion exception.
+         */
+        @Override
+        protected <T> T convertToType(final Class<T> targetType, final Object value) throws Throwable {
+            if (value instanceof Decimal128) {
+                if (targetType.isAssignableFrom(BigDecimal.class)) {
+                    return targetType.cast(((Decimal128) value).bigDecimalValue());
+                }
+                return super.convertToType(targetType, ((Decimal128) value).doubleValue());
+            }
+            return super.convertToType(targetType, value);
+        }
+
+        @Override
+        protected String convertToString(final Object value) throws Throwable {
+            if (value instanceof Decimal128) {
+                return ((Decimal128) value).toString();
+            }
+            return super.convertToString(value);
+        }
+
+        @Override
+        protected Class<?> getDefaultType() {
+            return Decimal128.class;
+        }
     }
 
     private static class BsonTimestampConverter extends DateTimeConverter {

@@ -316,8 +316,8 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
                         + "CAST(-32768 AS SMALLINT) AS \"literalSmallInt\", "
                         + "CAST(-2147483648 AS INT) AS \"literalInt\", "
                         + "CAST(-9223372036854775808 AS BIGINT) AS \"literalBigInt\", "
-                        + "CAST(123.45 AS DECIMAL(5, 2)) AS \"literalDecimal\", "
-                        + "CAST(123.45 AS NUMERIC(5, 2)) AS \"literalNumeric\", "
+                        + "CAST(1234567890.45 AS DECIMAL(100, 2)) AS \"literalDecimal\", "
+                        + "CAST(9876543210.45 AS NUMERIC(100, 2)) AS \"literalNumeric\", "
                         + "CAST(1234.56 AS FLOAT) AS \"literalFloat\", "
                         + "CAST(12345.678 AS REAL) AS \"literalReal\", "
                         + "CAST(12345.6789999999999 AS DOUBLE) AS \"literalDouble\""
@@ -335,13 +335,46 @@ public class DocumentDbQueryMappingServiceLiteralTest extends DocumentDbQueryMap
                                 + "\"literalSmallInt\": {\"$literal\": {\"$numberInt\": \"-32768\"}}, "
                                 + "\"literalInt\": {\"$literal\": {\"$numberInt\": \"-2147483648\"}}, "
                                 + "\"literalBigInt\": {\"$literal\": {\"$numberLong\": \"-9223372036854775808\"}}, "
-                                + "\"literalDecimal\": {\"$literal\": {\"$numberDouble\": \"123.45\"}}, "
-                                + "\"literalNumeric\": {\"$literal\": {\"$numberDouble\": \"123.45\"}}, "
+                                + "\"literalDecimal\": {\"$literal\": {\"$numberDecimal\": \"1234567890.45\"}}, "
+                                + "\"literalNumeric\": {\"$literal\": {\"$numberDecimal\": \"9876543210.45\"}}, "
                                 + "\"literalFloat\": {\"$literal\": {\"$numberDouble\": \"1234.56\"}}, "
                                 + "\"literalReal\": {\"$literal\": {\"$numberDouble\": \"12345.678\"}}, "
                                 + "\"literalDouble\": {\"$literal\": {\"$numberDouble\": \"12345.679\"}}, "
                                 + "\"_id\": 0}}"),
                  result2.getAggregateOperations().get(0));
+
+        // Numeric literals as strings
+        final String query7 = String.format(
+                "SELECT CAST(-128 AS TINYINT) AS \"literalTinyInt\", "
+                        + "CAST('-32768' AS SMALLINT) AS \"literalSmallInt\", "
+                        + "CAST('-2147483648' AS INT) AS \"literalInt\", "
+                        + "CAST('-9223372036854775808' AS BIGINT) AS \"literalBigInt\", "
+                        + "CAST('123456789012345678901234567890.45' AS DECIMAL(100, 2)) AS \"literalDecimal\", "
+                        + "CAST('987654321098765432109876543210.45' AS NUMERIC(100, 2)) AS \"literalNumeric\", "
+                        + "CAST('1234.56' AS FLOAT) AS \"literalFloat\", "
+                        + "CAST('12345.678' AS REAL) AS \"literalReal\", "
+                        + "CAST('12345.6789999999999' AS DOUBLE) AS \"literalDouble\""
+                        + "FROM \"%s\".\"%s\"",
+                getDatabaseName(), OBJECT_ID_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext result7 = queryMapper.get(query7);
+        Assertions.assertNotNull(result7);
+        Assertions.assertEquals(OBJECT_ID_COLLECTION_NAME, result7.getCollectionName());
+        Assertions.assertEquals(9, result7.getColumnMetaData().size());
+        Assertions.assertEquals(1, result7.getAggregateOperations().size());
+        Assertions.assertEquals(
+                BsonDocument.parse(
+                        "{\"$project\": {"
+                                + "\"literalTinyInt\": {\"$literal\": {\"$numberInt\": \"-128\"}}, "
+                                + "\"literalSmallInt\": {\"$literal\": {\"$numberInt\": \"-32768\"}}, "
+                                + "\"literalInt\": {\"$literal\": {\"$numberInt\": \"-2147483648\"}}, "
+                                + "\"literalBigInt\": {\"$literal\": {\"$numberLong\": \"-9223372036854775808\"}}, "
+                                + "\"literalDecimal\": {\"$literal\": {\"$numberDecimal\": \"123456789012345678901234567890.45\"}}, "
+                                + "\"literalNumeric\": {\"$literal\": {\"$numberDecimal\": \"987654321098765432109876543210.45\"}}, "
+                                + "\"literalFloat\": {\"$literal\": {\"$numberDouble\": \"1234.56\"}}, "
+                                + "\"literalReal\": {\"$literal\": {\"$numberDouble\": \"12345.677734375\"}}, "
+                                + "\"literalDouble\": {\"$literal\": {\"$numberDouble\": \"12345.679\"}}, "
+                                + "\"_id\": 0}}"),
+                result7.getAggregateOperations().get(0));
 
         // String literals
         final String query3 =

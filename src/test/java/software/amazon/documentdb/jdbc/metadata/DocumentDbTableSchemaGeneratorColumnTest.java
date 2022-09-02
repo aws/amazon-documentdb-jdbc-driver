@@ -74,7 +74,7 @@ public class DocumentDbTableSchemaGeneratorColumnTest extends DocumentDbTableSch
             final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
             final BsonDocument document = new BsonDocument()
                     .append("_id", new BsonObjectId())
-                    .append("fieldDecimal128", new BsonDecimal128(Decimal128.POSITIVE_INFINITY))
+                    .append("fieldDecimal128", new BsonDecimal128(Decimal128.parse(String.valueOf(Double.MAX_VALUE))))
                     .append("fieldDouble", new BsonDouble(Double.MAX_VALUE))
                     .append("fieldString", new BsonString("新年快乐"))
                     .append("fieldObjectId", new BsonObjectId())
@@ -146,7 +146,7 @@ public class DocumentDbTableSchemaGeneratorColumnTest extends DocumentDbTableSch
                 new BsonBinary(new byte[]{0, 1, 2}),
                 new BsonBoolean(false),
                 new BsonDateTime(dateTime),
-                new BsonDecimal128(Decimal128.POSITIVE_INFINITY),
+                new BsonDecimal128(Decimal128.parse(String.valueOf(Double.MAX_VALUE))),
                 new BsonDouble(Double.MAX_VALUE),
                 new BsonInt32(Integer.MAX_VALUE),
                 new BsonInt64(Long.MAX_VALUE),
@@ -277,7 +277,7 @@ public class DocumentDbTableSchemaGeneratorColumnTest extends DocumentDbTableSch
                 document.append("fieldBinary", new BsonBinary(new byte[]{0, 1, 2}));
             }
             if (count == 12) {
-                document.append("fieldDecimal128", new BsonDecimal128(Decimal128.POSITIVE_INFINITY));
+                document.append("fieldDecimal128", new BsonDecimal128(Decimal128.parse(String.valueOf(Double.MAX_VALUE))));
             }
             Assertions.assertTrue(documentList.add(document));
         }
