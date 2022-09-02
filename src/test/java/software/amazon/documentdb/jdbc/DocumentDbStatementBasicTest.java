@@ -27,6 +27,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.Blob;
 import java.sql.Connection;
 import java.sql.Date;
@@ -1515,8 +1516,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                                             + "CAST(-32768 AS SMALLINT) AS \"literalSmallInt\", "
                                             + "CAST(-2147483648 AS INT) AS \"literalInt\", "
                                             + "CAST(-9223372036854775808 AS BIGINT) AS \"literalBigInt\", "
-                                            + "CAST(123.45 AS DECIMAL(5, 2)) AS \"literalDecimal\", "
-                                            + "CAST(123.45 AS NUMERIC(5, 2)) AS \"literalNumeric\", "
+                                            + "CAST('123456789012345678901234567890.45' AS DECIMAL(5, 2)) AS \"literalDecimal\", "
+                                            + "CAST('987654321098765432109876543210.45' AS NUMERIC(5, 2)) AS \"literalNumeric\", "
                                             + "CAST(1234.56 AS FLOAT) AS \"literalFloat\", "
                                             + "CAST(12345.678 AS REAL) AS \"literalReal\", "
                                             + "CAST(12345.6789999999999 AS DOUBLE) AS \"literalDouble\""
@@ -1537,8 +1538,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
             Assertions.assertEquals(-32768, resultSet.getInt(2));
             Assertions.assertEquals(-2147483648, resultSet.getInt(3));
             Assertions.assertEquals(-9223372036854775808L, resultSet.getLong(4));
-            Assertions.assertEquals(123.45, resultSet.getDouble(5));
-            Assertions.assertEquals(123.45, resultSet.getDouble(6));
+            Assertions.assertEquals(new BigDecimal("123456789012345678901234567890.45"), resultSet.getBigDecimal(5));
+            Assertions.assertEquals(new BigDecimal("987654321098765432109876543210.45"), resultSet.getBigDecimal(6));
             Assertions.assertEquals(1234.56, resultSet.getDouble(7));
             Assertions.assertEquals(12345.678, resultSet.getDouble(8));
             Assertions.assertEquals(12345.6789999999999, resultSet.getDouble(9));
