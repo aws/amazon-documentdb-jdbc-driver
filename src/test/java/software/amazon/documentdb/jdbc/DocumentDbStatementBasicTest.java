@@ -93,6 +93,7 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
                         resultSet.getBinaryStream("fieldBinary").read(actualBytes));
                 Assertions.assertArrayEquals(expectedBytes, actualBytes);
 
+                Assertions.assertEquals(Double.MAX_VALUE, resultSet.getBigDecimal("fieldDecimal128").doubleValue());
                 count++;
             }
             Assertions.assertEquals(recordCount, count);

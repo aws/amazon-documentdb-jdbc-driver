@@ -73,7 +73,7 @@ class DocumentDbSchemaReaderTest {
             final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
             final BsonDocument document = new BsonDocument()
                     .append("_id", new BsonObjectId())
-                    .append("fieldDecimal128", new BsonDecimal128(Decimal128.POSITIVE_INFINITY))
+                    .append("fieldDecimal128", new BsonDecimal128(Decimal128.parse(String.valueOf(Double.MAX_VALUE))))
                     .append("fieldDouble", new BsonDouble(Double.MAX_VALUE))
                     .append("fieldString", new BsonString("新年快乐"))
                     .append("fieldObjectId", new BsonObjectId())

@@ -239,10 +239,8 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
                     .append("fieldMaxKey", new BsonMaxKey())
                     .append("fieldMinKey", new BsonMinKey())
                     .append("fieldNull", new BsonNull())
-                    .append("fieldBinary", new BsonBinary(new byte[]{0, 1, 2}));
-            if (isBsonTypeCompatible(BsonType.DECIMAL128)) {
-                document.append("fieldDecimal128", new BsonDecimal128(Decimal128.POSITIVE_INFINITY));
-            }
+                    .append("fieldBinary", new BsonBinary(new byte[]{0, 1, 2}))
+                    .append("fieldDecimal128", new BsonDecimal128(Decimal128.parse(String.valueOf(Double.MAX_VALUE))));
 
             final InsertOneResult result = collection.insertOne(document);
             Assertions.assertEquals(count + 1, collection.countDocuments());

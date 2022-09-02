@@ -77,7 +77,6 @@ public class DocumentDbDocumentDbTestEnvironment extends DocumentDbAbstractTestE
     protected boolean isBsonTypeCompatible(final BsonType bsonType) {
         switch (bsonType) {
             case DB_POINTER:
-            case DECIMAL128:
             case END_OF_DOCUMENT:
             case JAVASCRIPT:
             case JAVASCRIPT_WITH_SCOPE:
