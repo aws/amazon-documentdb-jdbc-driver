@@ -659,6 +659,24 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Sets the allow disk use option.
+     *
+     * @param allowDiskUseOption the disk use option to set.
+     */
+    public void setAllowDiskUseOption(final String allowDiskUseOption) {
+        setProperty(DocumentDbConnectionProperty.ALLOW_DISK_USE.getName(), allowDiskUseOption);
+    }
+
+    /**
+     * Gets the allow disk use option.
+     *
+     * @return the disk use option, or null, if invalid or not set.
+     */
+    public DocumentDbAllowDiskUseOption getAllowDiskUseOption() {
+        return getPropertyAsAllowDiskUseOption(DocumentDbConnectionProperty.ALLOW_DISK_USE.getName());
+    }
+
+    /**
      * Builds the MongoClientSettings from properties.
      *
      * @return a {@link MongoClientSettings} object.
@@ -812,6 +830,9 @@ public class DocumentDbConnectionProperties extends Properties {
         }
         if (getDefaultAuthenticationDatabase() != null && !DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getDefaultValue().equals(getDefaultAuthenticationDatabase())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_AUTH_DB, getDefaultAuthenticationDatabase());
+        }
+        if (getAllowDiskUseOption() != DocumentDbAllowDiskUseOption.fromString(DocumentDbConnectionProperty.ALLOW_DISK_USE.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.ALLOW_DISK_USE, getAllowDiskUseOption().getName());
         }
         return String.format(connectionStringTemplate,
                 loginInfo,
@@ -1220,6 +1241,28 @@ public class DocumentDbConnectionProperties extends Properties {
             }
         } catch (IllegalArgumentException e) {
             LOGGER.warn("Property {{}} was ignored as it was not a valid read preference.", key, e);
+        }
+        return property;
+    }
+
+    /**
+     * Attempts to retrieve a property as a DocumentDbAllowDiskUseOption.
+     *
+     * @param key The property to retrieve.
+     * @return The retrieved property as a DocumentDbAllowDiskUseOption or null if it did not exist or was not a
+     * valid DocumentDbAllowDiskUseOption.
+     */
+    private DocumentDbAllowDiskUseOption getPropertyAsAllowDiskUseOption(@NonNull final String key) {
+        DocumentDbAllowDiskUseOption property = null;
+        try {
+            if (getProperty(key) != null) {
+                property = DocumentDbAllowDiskUseOption.fromString(getProperty(key));
+            } else if (DocumentDbConnectionProperty.getPropertyFromKey(key) != null) {
+                property = DocumentDbAllowDiskUseOption.fromString(
+                        DocumentDbConnectionProperty.getPropertyFromKey(key).getDefaultValue());
+            }
+        } catch (IllegalArgumentException e) {
+            LOGGER.warn("Property {{}} was ignored as it was not a valid allow disk use option.", key, e);
         }
         return property;
     }

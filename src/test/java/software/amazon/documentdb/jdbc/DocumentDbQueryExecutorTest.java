@@ -88,7 +88,8 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                                 VALID_CONNECTION_PROPERTIES,
                                 null,
                                 0,
-                                0));
+                                0,
+                                DocumentDbAllowDiskUseOption.ENABLE));
     }
 
     @AfterEach
@@ -304,8 +305,9 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 final DocumentDbConnectionProperties connectionProperties,
                 final DocumentDbQueryMappingService queryMapper,
                 final int queryTimeoutSecs,
-                final int maxFetchSize) {
-            super(statement, connectionProperties, queryMapper, queryTimeoutSecs, maxFetchSize);
+                final int maxFetchSize,
+                final DocumentDbAllowDiskUseOption allowDiskUse) {
+            super(statement, connectionProperties, queryMapper, queryTimeoutSecs, maxFetchSize, allowDiskUse);
         }
 
         @Override

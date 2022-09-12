@@ -73,6 +73,7 @@ public class DocumentDbConnectionPropertiesTest {
         properties.setDefaultFetchSize("1000");
         properties.setRefreshSchema("true");
         properties.setDefaultAuthenticationDatabase("test");
+        properties.setAllowDiskUseOption("disable");
 
         // Get properties.
         Assertions.assertEquals("USER", properties.getUser());
@@ -97,6 +98,7 @@ public class DocumentDbConnectionPropertiesTest {
         Assertions.assertEquals(1000, properties.getDefaultFetchSize());
         Assertions.assertTrue(properties.getRefreshSchema());
         Assertions.assertEquals("test", properties.getDefaultAuthenticationDatabase());
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.DISABLE, properties.getAllowDiskUseOption());
 
         // Build sanitized connection string.
         Assertions.assertEquals(
@@ -113,7 +115,8 @@ public class DocumentDbConnectionPropertiesTest {
                         + "&sshKnownHostsFile=~/.ssh/unknown_hosts"
                         + "&defaultFetchSize=1000"
                         + "&refreshSchema=true"
-                        + "&defaultAuthDb=test",
+                        + "&defaultAuthDb=test"
+                        + "&allowDiskUse=disable",
                 properties.buildSanitizedConnectionString());
 
         // Build client settings.
@@ -151,6 +154,23 @@ public class DocumentDbConnectionPropertiesTest {
         Assertions.assertEquals(DocumentDbMetadataScanMethod.ID_REVERSE, properties.getMetadataScanMethod());
         properties.setMetadataScanMethod("garbage");
         Assertions.assertNull(properties.getMetadataScanMethod());
+    }
+
+    /**
+     * Tests setting the allow disk use option with the DocumentDbAllowDiskUseOption enum.
+     */
+    @Test
+    @DisplayName("Tests setting the allow disk use option with the DocumentDbAllowDiskUseOption enum.")
+    public void testAllowDiskUseOptions() {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setAllowDiskUseOption(DocumentDbAllowDiskUseOption.DEFAULT.getName());
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.DEFAULT, properties.getAllowDiskUseOption());
+        properties.setAllowDiskUseOption(DocumentDbAllowDiskUseOption.DISABLE.getName());
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.DISABLE, properties.getAllowDiskUseOption());
+        properties.setAllowDiskUseOption(DocumentDbAllowDiskUseOption.ENABLE.getName());
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.ENABLE, properties.getAllowDiskUseOption());
+        properties.setAllowDiskUseOption("garbage");
+        Assertions.assertNull(properties.getAllowDiskUseOption());
     }
 
     /**
@@ -233,7 +253,8 @@ public class DocumentDbConnectionPropertiesTest {
                 "&" + DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getName() + "=" + "~/.ssh/known_hosts" +
                 "&" + DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName() + "=" + "1000" +
                 "&" + DocumentDbConnectionProperty.REFRESH_SCHEMA.getName() + "=" + "true" +
-                "&" + DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName() + "=" + "test";
+                "&" + DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName() + "=" + "test" +
+                "&" + DocumentDbConnectionProperty.ALLOW_DISK_USE.getName() + "=" + "disable";
         properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());

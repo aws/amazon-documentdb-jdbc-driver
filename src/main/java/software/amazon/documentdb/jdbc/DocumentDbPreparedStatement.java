@@ -33,6 +33,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbStatement.setDefaultFetc
 public class DocumentDbPreparedStatement extends PreparedStatement
         implements java.sql.PreparedStatement {
     private int queryTimeout = 0;
+    private DocumentDbAllowDiskUseOption allowDiskUse = DocumentDbAllowDiskUseOption.ENABLE;
     private final DocumentDbQueryExecutor queryExecutor;
 
     /**
@@ -55,7 +56,8 @@ public class DocumentDbPreparedStatement extends PreparedStatement
                 connectionProperties,
                 mappingService,
                 getQueryTimeout(),
-                getFetchSize());
+                getFetchSize(),
+                getAllowDiskUse());
     }
 
     @Override
@@ -107,5 +109,27 @@ public class DocumentDbPreparedStatement extends PreparedStatement
         verifyOpen();
         queryTimeout = seconds;
         queryExecutor.setQueryTimeout(seconds);
+    }
+
+    /**
+     * Gets the allow disk use option for the statement.
+     *
+     * @return one of the allow disk use options.
+     * @throws SQLException if the connection is not open.
+     */
+    public DocumentDbAllowDiskUseOption getAllowDiskUse() throws SQLException {
+        verifyOpen();
+        return allowDiskUse;
+    }
+
+    /**
+     * Sets the allow disk use indicator for the statement.
+     *
+     * @param allowDiskUse the indicator of whether to set the allow disk use option.
+     * @throws SQLException if the connection is not open.
+     */
+    public void setAllowDiskUse(final DocumentDbAllowDiskUseOption allowDiskUse) throws SQLException {
+        verifyOpen();
+        this.allowDiskUse = allowDiskUse;
     }
 }
