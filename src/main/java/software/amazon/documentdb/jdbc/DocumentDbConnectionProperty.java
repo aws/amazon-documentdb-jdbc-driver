@@ -73,8 +73,8 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
     REFRESH_SCHEMA("refreshSchema", "false",
             "Refreshes any existing schema with a newly generated schema when the connection first requires the schema. Note that this will remove any existing schema customizations and will reduce performance for the first query or metadata inquiry."),
     DEFAULT_AUTH_DB("defaultAuthDb", "admin", "The default authentication database to use."),
-    ALLOW_DISK_USE("allowDiskUse", "enable",
-            "Indicator of whether to enable or disable the 'allow disk use' option on all queries. Valid values are 'enable', 'disable' or 'default'. Default is 'enable'."),
+    ALLOW_DISK_USE("allowDiskUse", "default",
+            "Indicator of whether to enable or disable the 'allow disk use' option on all queries. Valid values are 'enable', 'disable' or 'default'. Default is 'default'."),
     ;
 
     // Unsupported MongoDB connection properties that will be ignored but should have warnings.

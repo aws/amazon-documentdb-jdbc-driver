@@ -32,7 +32,7 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbStatement.class);
     private int queryTimeout;
-    private DocumentDbAllowDiskUseOption allowDiskUse = DocumentDbAllowDiskUseOption.ENABLE;
+    private DocumentDbAllowDiskUseOption allowDiskUse = DocumentDbAllowDiskUseOption.DEFAULT;
     private final DocumentDbQueryExecutor queryExecutor;
 
     /**
@@ -48,6 +48,7 @@ class DocumentDbStatement extends Statement implements java.sql.Statement {
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connection.getConnectionProperties(),
                 connection.getDatabaseMetadata());
+        setAllowDiskUse(connection.getConnectionProperties().getAllowDiskUseOption());
         queryExecutor = new DocumentDbQueryExecutor(
                 this,
                 connection.getConnectionProperties(),

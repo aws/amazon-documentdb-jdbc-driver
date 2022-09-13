@@ -33,7 +33,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbStatement.setDefaultFetc
 public class DocumentDbPreparedStatement extends PreparedStatement
         implements java.sql.PreparedStatement {
     private int queryTimeout = 0;
-    private DocumentDbAllowDiskUseOption allowDiskUse = DocumentDbAllowDiskUseOption.ENABLE;
+    private DocumentDbAllowDiskUseOption allowDiskUse = DocumentDbAllowDiskUseOption.DEFAULT;
     private final DocumentDbQueryExecutor queryExecutor;
 
     /**
@@ -51,6 +51,7 @@ public class DocumentDbPreparedStatement extends PreparedStatement
         final DocumentDbQueryMappingService mappingService = new DocumentDbQueryMappingService(
                 connectionProperties,
                 documentDbConnection.getDatabaseMetadata());
+        setAllowDiskUse(connectionProperties.getAllowDiskUseOption());
         queryExecutor = new DocumentDbQueryExecutor(
                 this,
                 connectionProperties,
