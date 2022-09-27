@@ -340,14 +340,14 @@ dependencies {
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.9.0'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.9.0'
     testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.7.0'
-    testRuntimeOnly         group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.6'
+    testRuntimeOnly         group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.11'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-engine'
     testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.9.0'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.12.0'
 
-    testFixturesCompileOnly group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.8'
+    testFixturesCompileOnly group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.11'
     testFixturesCompileOnly 'org.junit.jupiter:junit-jupiter-api:5.8.1'
     testFixturesImplementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.5.0'
