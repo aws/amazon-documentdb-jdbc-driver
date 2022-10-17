@@ -101,14 +101,6 @@
         </selection-group>
     </field>
 
-    <field name="v-allow-disk-use" label="Allow Disk Use" value-type="selection" category="advanced">
-        <selection-group>
-            <option value="enable" label="Enable"/>
-            <option value="disable" label="Disable"/>
-            <option value="default" label="Default"/>
-        </selection-group>
-    </field>
-
     <field name="v-scan-method" label="Scan Method" value-type="selection" category="advanced">
         <selection-group>
             <option value="random" label="Random"/>

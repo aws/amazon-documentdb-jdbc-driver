@@ -8,7 +8,6 @@
     const TLS_ENABLED_KEY = "tls";
     const TLS_ALLOW_INVALID_HOSTNAMES_KEY = "tlsAllowInvalidHostnames";
     const READ_PREFERENCE_KEY = "readPreference";
-    const ALLOW_DISK_USE = "allowDiskUse";
     const REPLICA_SET_KEY = "replicaSet";
     const SCAN_METHOD_KEY = "scanMethod";
     const SCAN_LIMIT_KEY = "scanLimit";
@@ -26,7 +25,6 @@
     params[TLS_ENABLED_KEY] = attr[connectionHelper.attributeSSLMode] === "require" ? "true" : "false";
     params[TLS_ALLOW_INVALID_HOSTNAMES_KEY] = attr["v-allow-invalid-hostnames"];
     params[READ_PREFERENCE_KEY] = attr["v-read-preference"];
-    params[ALLOW_DISK_USE] = attr["v-allow-disk-use"];
     params[SCAN_METHOD_KEY] = attr["v-scan-method"];
     params[RETRY_READS_KEY] = attr["v-retry-reads"];
     params[LOGIN_TIMEOUT_KEY] = attr["v-login-timeout"];

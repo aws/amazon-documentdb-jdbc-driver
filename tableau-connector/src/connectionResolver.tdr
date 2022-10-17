@@ -29,7 +29,6 @@
           <attr>v-scan-limit</attr>
           <attr>v-schema-name</attr>
           <attr>v-refresh-schema</attr>
-          <attr>v-allow-disk-use</attr>
         </attribute-list>
       </required-attributes>
     </connection-normalizer>
