@@ -57,8 +57,7 @@ public class DocumentDbPreparedStatement extends PreparedStatement
                 connectionProperties,
                 mappingService,
                 getQueryTimeout(),
-                getFetchSize(),
-                getAllowDiskUse());
+                getFetchSize());
     }
 
     @Override

@@ -197,7 +197,7 @@ abstract class DocumentDbFlapDoodleExtensionBase extends TypeBasedParameterResol
                 .build();
         final MongodStarter starter = MongodStarter.getDefaultInstance();
         final Builder builder = MongodConfig.builder()
-                .version(Main.PRODUCTION)
+                .version(Main.V4_4)
                 .net(new Net(port, Network.localhostIsIPv6()));
         if (cmdOptions != null) {
             builder.cmdOptions(cmdOptions);

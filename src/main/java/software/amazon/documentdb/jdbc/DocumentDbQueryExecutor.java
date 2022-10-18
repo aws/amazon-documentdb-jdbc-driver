@@ -72,14 +72,13 @@ public class DocumentDbQueryExecutor {
             final DocumentDbConnectionProperties connectionProperties,
             final DocumentDbQueryMappingService queryMapper,
             final int queryTimeoutSecs,
-            final int fetchSize,
-            final DocumentDbAllowDiskUseOption allowDiskUse) {
+            final int fetchSize) {
         this.statement = statement;
         this.connectionProperties = connectionProperties;
         this.queryMapper = queryMapper;
         this.fetchSize = fetchSize;
         this.queryTimeout = queryTimeoutSecs;
-        this.allowDiskUse = allowDiskUse;
+        this.allowDiskUse = connectionProperties.getAllowDiskUseOption();
     }
 
     /**
