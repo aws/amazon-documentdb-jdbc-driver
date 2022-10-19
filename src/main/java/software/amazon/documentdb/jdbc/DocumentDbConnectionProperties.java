@@ -949,7 +949,6 @@ public class DocumentDbConnectionProperties extends Properties {
 
             addPropertyIfValid(properties, key, value, true, true);
         }
-
     }
 
     private static void setDatabase(final Properties properties, final URI mongoUri)
