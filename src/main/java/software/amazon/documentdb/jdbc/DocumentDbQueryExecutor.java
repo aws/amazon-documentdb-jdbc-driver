@@ -54,6 +54,7 @@ public class DocumentDbQueryExecutor {
     private final DocumentDbQueryMappingService queryMapper;
     private int fetchSize;
     private int queryTimeout;
+    private  DocumentDbAllowDiskUseOption allowDiskUse;
     private String queryId = null;
     private QueryState queryState = QueryState.NOT_STARTED;
 
@@ -77,6 +78,7 @@ public class DocumentDbQueryExecutor {
         this.queryMapper = queryMapper;
         this.fetchSize = fetchSize;
         this.queryTimeout = queryTimeoutSecs;
+        this.allowDiskUse = connectionProperties.getAllowDiskUseOption();
     }
 
     /**
@@ -193,6 +195,11 @@ public class DocumentDbQueryExecutor {
         if (getFetchSize() > 0) {
             iterable = iterable.batchSize(getFetchSize());
         }
+        if (getAllowDiskUse() == DocumentDbAllowDiskUseOption.ENABLE) {
+            iterable = iterable.allowDiskUse(true);
+        } else if (getAllowDiskUse() == DocumentDbAllowDiskUseOption.DISABLE) {
+            iterable = iterable.allowDiskUse(false);
+        }
 
         final ImmutableList<JdbcColumnMetaData> columnMetaData = ImmutableList
                 .copyOf(queryContext.getColumnMetaData());
@@ -301,4 +308,13 @@ public class DocumentDbQueryExecutor {
     protected void setFetchSize(final int fetchSize) {
         this.fetchSize = fetchSize;
     }
+
+    protected DocumentDbAllowDiskUseOption getAllowDiskUse() {
+        return allowDiskUse;
+    }
+
+    protected void setAllowDiskUse(final DocumentDbAllowDiskUseOption allowDiskUse) {
+        this.allowDiskUse = allowDiskUse;
+    }
+
 }
