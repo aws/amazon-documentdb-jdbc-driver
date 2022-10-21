@@ -62,6 +62,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
     private static final String QUERY = "SELECT COUNT(*) FROM \"database\".\"testCollection\"";
     private static final DocumentDbConnectionProperties VALID_CONNECTION_PROPERTIES =
             new DocumentDbConnectionProperties();
+    private static DocumentDbQueryExecutor executor;
     private static DocumentDbStatement statement;
     private ResultSet resultSet;
 
@@ -77,18 +78,17 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         VALID_CONNECTION_PROPERTIES.setDatabase(DATABASE_NAME);
         VALID_CONNECTION_PROPERTIES.setTlsEnabled("false");
         VALID_CONNECTION_PROPERTIES.setHostname("localhost:" + getMongoPort());
+        VALID_CONNECTION_PROPERTIES.setAllowDiskUseOption("enable");
 
         prepareSimpleConsistentData(DATABASE_NAME, COLLECTION_NAME, 1, TEST_USER, TEST_PASSWORD);
         final DocumentDbConnection connection = new DocumentDbConnection(VALID_CONNECTION_PROPERTIES);
-        statement =
-                new DocumentDbStatement(
-                        connection,
-                        new MockQueryExecutor(
-                                statement,
-                                VALID_CONNECTION_PROPERTIES,
-                                null,
-                                0,
-                                0));
+        executor = new MockQueryExecutor(
+                statement,
+                VALID_CONNECTION_PROPERTIES,
+                null,
+                0,
+                0);
+        statement = new DocumentDbStatement(connection, executor);
     }
 
     @AfterEach
@@ -242,6 +242,17 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
                 "Default fetch size should be used if invalid.");
     }
 
+    /** Tests setting the allow disk usage option. **/
+    @Test
+    @DisplayName("Tests setting the allow disk usage option.")
+    public void testAllowDiskUse() throws SQLException {
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.ENABLE, executor.getAllowDiskUse());
+        executor.setAllowDiskUse(DocumentDbAllowDiskUseOption.DEFAULT);
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.DEFAULT, executor.getAllowDiskUse());
+        executor.setAllowDiskUse(DocumentDbAllowDiskUseOption.DISABLE);
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.DISABLE, executor.getAllowDiskUse());
+        executor.setAllowDiskUse(DocumentDbAllowDiskUseOption.ENABLE);
+    }
 
     private ExecutorService getCancelThread() {
         return Executors.newSingleThreadExecutor(

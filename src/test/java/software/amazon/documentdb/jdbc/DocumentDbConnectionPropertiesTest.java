@@ -26,14 +26,19 @@ import org.junit.jupiter.api.function.ThrowingSupplier;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENTDB_CUSTOM_OPTIONS;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getClassPathLocationName;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getDocumentdbHomePathName;
@@ -73,6 +78,7 @@ public class DocumentDbConnectionPropertiesTest {
         properties.setDefaultFetchSize("1000");
         properties.setRefreshSchema("true");
         properties.setDefaultAuthenticationDatabase("test");
+        properties.setAllowDiskUseOption("disable");
 
         // Get properties.
         Assertions.assertEquals("USER", properties.getUser());
@@ -97,6 +103,7 @@ public class DocumentDbConnectionPropertiesTest {
         Assertions.assertEquals(1000, properties.getDefaultFetchSize());
         Assertions.assertTrue(properties.getRefreshSchema());
         Assertions.assertEquals("test", properties.getDefaultAuthenticationDatabase());
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.DISABLE, properties.getAllowDiskUseOption());
 
         // Build sanitized connection string.
         Assertions.assertEquals(
@@ -113,7 +120,8 @@ public class DocumentDbConnectionPropertiesTest {
                         + "&sshKnownHostsFile=~/.ssh/unknown_hosts"
                         + "&defaultFetchSize=1000"
                         + "&refreshSchema=true"
-                        + "&defaultAuthDb=test",
+                        + "&defaultAuthDb=test"
+                        + "&allowDiskUse=disable",
                 properties.buildSanitizedConnectionString());
 
         // Build client settings.
@@ -151,6 +159,23 @@ public class DocumentDbConnectionPropertiesTest {
         Assertions.assertEquals(DocumentDbMetadataScanMethod.ID_REVERSE, properties.getMetadataScanMethod());
         properties.setMetadataScanMethod("garbage");
         Assertions.assertNull(properties.getMetadataScanMethod());
+    }
+
+    /**
+     * Tests setting the allow disk use option with the DocumentDbAllowDiskUseOption enum.
+     */
+    @Test
+    @DisplayName("Tests setting the allow disk use option with the DocumentDbAllowDiskUseOption enum.")
+    public void testAllowDiskUseOptions() {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setAllowDiskUseOption(DocumentDbAllowDiskUseOption.DEFAULT.getName());
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.DEFAULT, properties.getAllowDiskUseOption());
+        properties.setAllowDiskUseOption(DocumentDbAllowDiskUseOption.DISABLE.getName());
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.DISABLE, properties.getAllowDiskUseOption());
+        properties.setAllowDiskUseOption(DocumentDbAllowDiskUseOption.ENABLE.getName());
+        Assertions.assertEquals(DocumentDbAllowDiskUseOption.ENABLE, properties.getAllowDiskUseOption());
+        properties.setAllowDiskUseOption("garbage");
+        Assertions.assertNull(properties.getAllowDiskUseOption());
     }
 
     /**
@@ -233,7 +258,8 @@ public class DocumentDbConnectionPropertiesTest {
                 "&" + DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getName() + "=" + "~/.ssh/known_hosts" +
                 "&" + DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getName() + "=" + "1000" +
                 "&" + DocumentDbConnectionProperty.REFRESH_SCHEMA.getName() + "=" + "true" +
-                "&" + DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName() + "=" + "test";
+                "&" + DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getName() + "=" + "test" +
+                "&" + DocumentDbConnectionProperty.ALLOW_DISK_USE.getName() + "=" + "disable";
         properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(DocumentDbConnectionProperty.values().length, properties.size());
@@ -245,6 +271,76 @@ public class DocumentDbConnectionPropertiesTest {
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         Assertions.assertEquals(4, properties.size());
         Assertions.assertNull(properties.getProperty("maxStalenessSeconds"));
+    }
+
+    @DisplayName("Test that custom options are added.")
+    @Test
+    void testCustomOptions() throws Exception {
+        final Properties info = new Properties();
+        final Map<String, String> environment = new HashMap<>();
+        environment.putAll(System.getenv());
+        environment.put(DOCUMENTDB_CUSTOM_OPTIONS, "allowDiskUse=enable;unknownOption=true");
+        try {
+            setEnv(environment);
+
+            final String connectionString = "jdbc:documentdb://username:password@127.0.0.1/database";
+            final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                    .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
+            Assertions.assertEquals(6, properties.size());
+            Assertions.assertEquals("127.0.0.1", properties.getProperty("host"));
+            Assertions.assertEquals("database", properties.getProperty("database"));
+            Assertions.assertEquals("username", properties.getProperty("user"));
+            Assertions.assertEquals("password", properties.getProperty("password"));
+            Assertions.assertEquals("enable", properties.getProperty("allowDiskUse"));
+            Assertions.assertEquals("true", properties.getProperty("unknownOption"));
+        } finally {
+            // Restore the environment, so it doesn't affect other tests.
+            environment.clear();
+            environment.putAll(System.getenv());
+            environment.remove(DOCUMENTDB_CUSTOM_OPTIONS);
+            Assertions.assertEquals(null, environment.get(DOCUMENTDB_CUSTOM_OPTIONS));
+            setEnv(environment);
+            Assertions.assertEquals(null, System.getenv(DOCUMENTDB_CUSTOM_OPTIONS));
+        }
+    }
+
+    /**
+     * Resets the System's environment maps.
+     *
+     * https://stackoverflow.com/questions/318239/how-do-i-set-environment-variables-from-java
+     *
+     * @param newEnv the new map to replace the existing environment map.
+     * @throws Exception if environment private fields are not found or are not as
+     * previously implemented.
+     */
+    @SuppressWarnings("unchecked")
+    protected static void setEnv(final Map<String, String> newEnv) throws Exception {
+        try {
+            final Class<?> processEnvironmentClass = Class.forName("java.lang.ProcessEnvironment");
+            final Field theEnvironmentField = processEnvironmentClass.getDeclaredField("theEnvironment");
+            theEnvironmentField.setAccessible(true);
+            final Map<String, String> env = (Map<String, String>) theEnvironmentField.get(null);
+            env.clear();
+            env.putAll(newEnv);
+            final Field theCaseInsensitiveEnvironmentField = processEnvironmentClass.getDeclaredField("theCaseInsensitiveEnvironment");
+            theCaseInsensitiveEnvironmentField.setAccessible(true);
+            final Map<String, String> ciEnv = (Map<String, String>) theCaseInsensitiveEnvironmentField.get(null);
+            ciEnv.clear();
+            ciEnv.putAll(newEnv);
+        } catch (NoSuchFieldException e) {
+            final Class[] classes = Collections.class.getDeclaredClasses();
+            final Map<String, String> env = System.getenv();
+            for (final Class cl : classes) {
+                if ("java.util.Collections$UnmodifiableMap".equals(cl.getName())) {
+                    final Field field = cl.getDeclaredField("m");
+                    field.setAccessible(true);
+                    final Object obj = field.get(env);
+                    final Map<String, String> map = (Map<String, String>) obj;
+                    map.clear();
+                    map.putAll(newEnv);
+                }
+            }
+        }
     }
 
     @DisplayName("Test that non-existent tlsCAfile is handled correctly.")
