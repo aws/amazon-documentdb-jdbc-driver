@@ -22,6 +22,7 @@ import org.bson.BsonDocument;
 import org.bson.BsonDouble;
 import org.bson.BsonInt64;
 import org.bson.BsonMinKey;
+import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
 import org.bson.types.ObjectId;
@@ -37,6 +38,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
 
@@ -599,6 +601,74 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet1.next());
             Assertions.assertEquals(new Timestamp(dateTime), resultSet1.getTimestamp(2));
             Assertions.assertFalse(resultSet1.next());
+        }
+    }
+
+    /**
+     * Tests where condition of field compared to CURRENT_DATE.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @DisplayName("Tests where condition of field compared to CURRENT_DATE.")
+    @ParameterizedTest(name = "testWhereFieldComparedToCurrentDate - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testWhereFieldComparedToCurrentDate(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testWhereFieldComparedToCurrentDate";
+        final long dateTimePast = Instant.now().minus(2, ChronoUnit.DAYS).toEpochMilli();
+        final long dateTimeFuture = Instant.now().plus(2, ChronoUnit.DAYS).toEpochMilli();
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonDateTime(dateTimePast));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("field", new BsonDateTime(dateTimeFuture));
+        final BsonDocument doc3 = BsonDocument.parse("{\"_id\": 103}");
+        doc3.append("field", new BsonNull());
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2, doc3});
+
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            // Find condition that does exist.
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\"%n" +
+                                    " FROM \"%s\".\"%s\"%n" +
+                                    " WHERE \"field\" < TIMESTAMPADD(DAY, 1, CURRENT_DATE)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertFalse(resultSet1.next());
+
+            // Find condition that does exist.
+            final ResultSet resultSet2 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\"%n" +
+                                    " FROM \"%s\".\"%s\"%n" +
+                                    " WHERE \"field\" > TIMESTAMPADD(DAY, 1, CURRENT_DATE)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet2);
+            Assertions.assertTrue(resultSet2.next());
+            Assertions.assertFalse(resultSet2.next());
+
+            // Find condition that does NOT exist.
+            final ResultSet resultSet3 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\"%n" +
+                                    " FROM \"%s\".\"%s\"%n" +
+                                    " WHERE \"field\" > TIMESTAMPADD(DAY, 10, CURRENT_DATE)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet3);
+            Assertions.assertFalse(resultSet3.next());
+
+            // Find condition that does NOT exist.
+            final ResultSet resultSet4 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\"%n" +
+                                    " FROM \"%s\".\"%s\"%n" +
+                                    " WHERE \"field\" < TIMESTAMPADD(DAY, -10, CURRENT_DATE)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet4);
+            Assertions.assertFalse(resultSet4.next());
         }
     }
 

@@ -799,6 +799,32 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
     }
 
     @Test
+    @DisplayName("Tests TIMESTAMPADD on right in WHERE clause.")
+    void testWhereTimestampAddOnRight() throws SQLException {
+        final String dayNameQuery =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" <= TIMESTAMPADD(DAY, -3, CURRENT_DATE)",
+                        getDatabaseName(), DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context = queryMapper.get(dayNameQuery);
+        Assertions.assertNotNull(context);
+        final List<Bson> operations = context.getAggregateOperations();
+        Assertions.assertEquals(2, operations.size());
+        final BsonDocument rootDoc = operations.get(0).toBsonDocument();
+        final BsonDocument matchDoc = rootDoc.getDocument("$match");
+        final BsonDateTime currDate = matchDoc
+                .getDocument("field")
+                .getDateTime("$lte");
+        Assertions.assertNotNull(currDate);
+
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"field\": {\"$lte\": {\"$date\": {\"$numberLong\": \"" + currDate.getValue() + "\"}}}}}").toJson(),
+                operations.get(0).toBsonDocument().toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(1));
+    }
+
+    @Test
     @DisplayName("Tests TIMESTAMPDIFF in WHERE clause.")
     void testWhereTimestampDiff() throws SQLException {
         final String dayNameQuery =
