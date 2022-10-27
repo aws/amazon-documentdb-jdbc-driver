@@ -760,6 +760,7 @@ public final class DocumentDbRules {
     private static class DateFunctionTranslator {
 
         private static final String CURRENT_DATE = "CURRENT_DATE";
+        private static final String CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP";
         private static final Map<TimeUnitRange, String> DATE_PART_OPERATORS =
                 new HashMap<>();
         private static final Instant FIRST_DAY_OF_WEEK_AFTER_EPOCH =
@@ -806,7 +807,8 @@ public final class DocumentDbRules {
                         final SqlKind opKind = op.getKind();
                         final String opName = op.toString();
                         return opKind == SqlKind.LITERAL
-                                || opName.equalsIgnoreCase(CURRENT_DATE);
+                                || opName.equalsIgnoreCase(CURRENT_DATE)
+                                || opName.equalsIgnoreCase(CURRENT_TIMESTAMP);
                     });
             final boolean allHaveQueryValue = strings.stream().allMatch(op -> op.getQueryValue() != null);
             return allLiterals && allHaveQueryValue;
@@ -821,26 +823,11 @@ public final class DocumentDbRules {
             long sum = 0L;
             for (BsonValue v : new BsonValue[]{document0.get("field"), document1.get("field")}) {
                 switch (v.getBsonType()) {
-                    case DOUBLE:
-                        sum += v.asDouble().longValue();
-                        break;
-                    case STRING:
-                        sum += Long.parseLong(v.asString().getValue());
-                        break;
                     case DATE_TIME:
                         sum += v.asDateTime().getValue();
                         break;
                     case INT64:
                         sum += v.asInt64().getValue();
-                        break;
-                    case INT32:
-                        sum += v.asInt32().getValue();
-                        break;
-                    case TIMESTAMP:
-                        sum += v.asTimestamp().getValue();
-                        break;
-                    case DECIMAL128:
-                        sum += v.asDecimal128().longValue();
                         break;
                     default:
                         throw new UnsupportedOperationException(

@@ -822,6 +822,28 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
                 operations.get(0).toBsonDocument().toJson());
         Assertions.assertEquals(BsonDocument.parse(
                 "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations.get(1));
+
+        final String dayNameQuery2 =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" <= TIMESTAMPADD(DAY, -3, CURRENT_TIMESTAMP)",
+                        getDatabaseName(), DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context2 = queryMapper.get(dayNameQuery2);
+        Assertions.assertNotNull(context2);
+        final List<Bson> operations2 = context2.getAggregateOperations();
+        Assertions.assertEquals(2, operations2.size());
+        final BsonDocument rootDoc2 = operations2.get(0).toBsonDocument();
+        final BsonDocument matchDoc2 = rootDoc2.getDocument("$match");
+        final BsonDateTime currDate2 = matchDoc2
+                .getDocument("field")
+                .getDateTime("$lte");
+        Assertions.assertNotNull(currDate2);
+
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"field\": {\"$lte\": {\"$date\": {\"$numberLong\": \"" + currDate2.getValue() + "\"}}}}}").toJson(),
+                operations2.get(0).toBsonDocument().toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations2.get(1));
     }
 
     @Test

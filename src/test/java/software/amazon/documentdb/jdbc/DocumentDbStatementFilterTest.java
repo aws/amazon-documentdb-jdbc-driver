@@ -669,6 +669,48 @@ public class DocumentDbStatementFilterTest extends DocumentDbStatementTest {
                             getDatabaseName(), tableName));
             Assertions.assertNotNull(resultSet4);
             Assertions.assertFalse(resultSet4.next());
+
+            // Find condition that does exist.
+            final ResultSet resultSet5 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\"%n" +
+                                    " FROM \"%s\".\"%s\"%n" +
+                                    " WHERE \"field\" < TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet5);
+            Assertions.assertTrue(resultSet5.next());
+            Assertions.assertFalse(resultSet5.next());
+
+            // Find condition that does exist.
+            final ResultSet resultSet6 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\"%n" +
+                                    " FROM \"%s\".\"%s\"%n" +
+                                    " WHERE \"field\" > TIMESTAMPADD(DAY, 1, CURRENT_TIMESTAMP)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet6);
+            Assertions.assertTrue(resultSet6.next());
+            Assertions.assertFalse(resultSet6.next());
+
+            // Find condition that does NOT exist.
+            final ResultSet resultSet7 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\"%n" +
+                                    " FROM \"%s\".\"%s\"%n" +
+                                    " WHERE \"field\" > TIMESTAMPADD(DAY, 10, CURRENT_TIMESTAMP)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet7);
+            Assertions.assertFalse(resultSet7.next());
+
+            // Find condition that does NOT exist.
+            final ResultSet resultSet8 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\"%n" +
+                                    " FROM \"%s\".\"%s\"%n" +
+                                    " WHERE \"field\" < TIMESTAMPADD(DAY, -10, CURRENT_TIMESTAMP)",
+                            getDatabaseName(), tableName));
+            Assertions.assertNotNull(resultSet8);
+            Assertions.assertFalse(resultSet8.next());
         }
     }
 
