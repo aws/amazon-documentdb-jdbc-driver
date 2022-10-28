@@ -799,6 +799,124 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
     }
 
     @Test
+    @DisplayName("Tests TIMESTAMPADD on right in WHERE clause.")
+    void testWhereTimestampAddOnRightOrLeft() throws SQLException {
+        final String dayNameQuery1 =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" <= TIMESTAMPADD(DAY, -3, CURRENT_DATE)",
+                        getDatabaseName(), DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context1 = queryMapper.get(dayNameQuery1);
+        Assertions.assertNotNull(context1);
+        final List<Bson> operations1 = context1.getAggregateOperations();
+        Assertions.assertEquals(2, operations1.size());
+        final BsonDocument rootDoc1 = operations1.get(0).toBsonDocument();
+        final BsonDocument matchDoc1 = rootDoc1.getDocument("$match");
+        final BsonDateTime currDate1 = matchDoc1
+                .getDocument("field")
+                .getDateTime("$lte");
+        Assertions.assertNotNull(currDate1);
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"field\": {\"$lte\": {\"$date\": {\"$numberLong\": \"" + currDate1.getValue() + "\"}}}}}").toJson(),
+                operations1.get(0).toBsonDocument().toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations1.get(1));
+
+        final String dayNameQuery2 =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" <= TIMESTAMPADD(DAY, -3, CURRENT_TIMESTAMP)",
+                        getDatabaseName(), DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context2 = queryMapper.get(dayNameQuery2);
+        Assertions.assertNotNull(context2);
+        final List<Bson> operations2 = context2.getAggregateOperations();
+        Assertions.assertEquals(2, operations2.size());
+        final BsonDocument rootDoc2 = operations2.get(0).toBsonDocument();
+        final BsonDocument matchDoc2 = rootDoc2.getDocument("$match");
+        final BsonDateTime currDate2 = matchDoc2
+                .getDocument("field")
+                .getDateTime("$lte");
+        Assertions.assertNotNull(currDate2);
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"field\": {\"$lte\": {\"$date\": {\"$numberLong\": \"" + currDate2.getValue() + "\"}}}}}").toJson(),
+                operations2.get(0).toBsonDocument().toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations2.get(1));
+
+        final String dayNameQuery3 =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPADD(DAY, -3, CURRENT_DATE) >= \"field\"",
+                        getDatabaseName(), DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context3 = queryMapper.get(dayNameQuery3);
+        Assertions.assertNotNull(context3);
+        final List<Bson> operations3 = context3.getAggregateOperations();
+        Assertions.assertEquals(2, operations3.size());
+        final BsonDocument rootDoc3 = operations3.get(0).toBsonDocument();
+        final BsonDocument matchDoc3 = rootDoc3.getDocument("$match");
+        final BsonDateTime currDate3 = matchDoc3
+                .getDocument("field")
+                .getDateTime("$lt");
+        Assertions.assertNotNull(currDate3);
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"field\": {\"$lt\": {\"$date\": {\"$numberLong\": \"" + currDate3.getValue() + "\"}}}}}").toJson(),
+                operations3.get(0).toBsonDocument().toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations3.get(1));
+
+        final String dayNameQuery4 =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPADD(DAY, -3, CURRENT_TIMESTAMP) >= \"field\"",
+                        getDatabaseName(), DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context4 = queryMapper.get(dayNameQuery4);
+        Assertions.assertNotNull(context4);
+        final List<Bson> operations4 = context4.getAggregateOperations();
+        Assertions.assertEquals(2, operations4.size());
+        final BsonDocument rootDoc4 = operations4.get(0).toBsonDocument();
+        final BsonDocument matchDoc4 = rootDoc4.getDocument("$match");
+        final BsonDateTime currDate4 = matchDoc4
+                .getDocument("field")
+                .getDateTime("$lt");
+        Assertions.assertNotNull(currDate4);
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"field\": {\"$lt\": {\"$date\": {\"$numberLong\": \"" + currDate4.getValue() + "\"}}}}}").toJson(),
+                operations4.get(0).toBsonDocument().toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations4.get(1));
+
+        final String dayNameQuery5 =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE \"field\" <= TIMESTAMPADD(DAY, -3, DATE '2020-01-04')",
+                        getDatabaseName(), DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context5 = queryMapper.get(dayNameQuery5);
+        Assertions.assertNotNull(context5);
+        final List<Bson> operations5 = context5.getAggregateOperations();
+        Assertions.assertEquals(2, operations5.size());
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"field\": {\"$lte\": {\"$date\": \"2020-01-01T00:00:00Z\"}}}}}").toJson(),
+                operations5.get(0).toBsonDocument().toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations5.get(1));
+
+        final String dayNameQuery6 =
+                String.format(
+                        "SELECT * FROM \"%s\".\"%s\" " +
+                                "WHERE TIMESTAMPADD(DAY, -3, DATE '2020-01-04') >= \"field\"",
+                        getDatabaseName(), DATE_COLLECTION_NAME);
+        final DocumentDbMqlQueryContext context6 = queryMapper.get(dayNameQuery6);
+        Assertions.assertNotNull(context6);
+        final List<Bson> operations6 = context6.getAggregateOperations();
+        Assertions.assertEquals(2, operations6.size());
+        Assertions.assertEquals(
+                BsonDocument.parse("{\"$match\": {\"field\": {\"$lt\": {\"$date\": \"2020-01-01T00:00:00Z\"}}}}}").toJson(),
+                operations6.get(0).toBsonDocument().toJson());
+        Assertions.assertEquals(BsonDocument.parse(
+                "{\"$project\": {\"dateTestCollection__id\": \"$_id\", \"field\": \"$field\", \"_id\": 0}}"), operations6.get(1));
+    }
+
+    @Test
     @DisplayName("Tests TIMESTAMPDIFF in WHERE clause.")
     void testWhereTimestampDiff() throws SQLException {
         final String dayNameQuery =

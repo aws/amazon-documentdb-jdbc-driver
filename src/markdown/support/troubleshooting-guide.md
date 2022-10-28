@@ -263,3 +263,78 @@ For example:
     - In Windows: `start "" "c:\program files\Tableau\Tableau [version]\bin\tableau.exe" -DLogLevel=DEBUG`
     - In MacOS: `/Applications/Tableau\ Desktop\[version].app/Contents/MacOS/Tableau -DLogLevel=DEBUG`
     - Tableau logs are located at: `{user.home}/Documents/My Tableau Repository/Logs`
+
+## Permanently Setting Environment Variables
+
+### Windows
+
+- From the start menu (or press the `Windows` key), type '***Edit environment variables for your account***' and launch 
+the settings application. 
+- If an environment variable is already listed, click the '***Edit...***' button. Otherwise, click the
+"***New...***" button.
+- Enter the name of the variable (e.g., `JAVA_TOOL_OPTIONS`) in the '***Variable name***' field and then enter the value
+in the '***Variable value***' field (e.g., `-Ddocumentdb.jdbc.log.level=DEBUG`. Click the '***Ok***' button to save the value.
+- Restart the application or command window for the change to take effect.
+
+### MacOS
+
+- Create the file `~/Library/LaunchAgents/environment.plist` if it doesn't exist
+- Edit the file `~/Library/LaunchAgents/environment.plist`
+- If the contents do not exist, enter the following template:
+```xml
+?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>my.startup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>sh</string>
+    <string>-c</string>
+    <string>
+        <!-- Add more 'launchctl setenv ...' commands here -->
+    </string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+```
+
+- Add environment variables in the path `/dict/array/string` after the `<string>-c</string>` node.
+  - In the example below, we add two environment variables `JAVA_TOOL_OPTIONS` and `DOCUMENTDB_CUSTOM_OPTIONS`
+
+```xml
+?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>my.startup</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>sh</string>
+    <string>-c</string>
+    <string>
+        <!-- Add more 'launchctl setenv ...' commands here -->
+        launchctl setenv JAVA_TOOL_OPTIONS -Ddocumentdb.jdbc.log.level=DEBUG
+        launchctl setenv DOCUMENTDB_CUSTOM_OPTIONS allowDiskUse=enable
+    </string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+```
+
+- You can reboot your machine or in a terminal windows type the following commands to load your changes.
+
+```shell
+launchctl stop ~/Library/LaunchAgents/environment.plist
+launchctl unload ~/Library/LaunchAgents/environment.plist
+launchctl load ~/Library/LaunchAgents/environment.plist
+launchctl start ~/Library/LaunchAgents/environment.plist
+```
+
+- Restart your application for the changes to take effect.
