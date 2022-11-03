@@ -32,6 +32,7 @@ import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
+import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 
 import javax.annotation.Nullable;
 import java.sql.SQLException;
@@ -390,7 +391,7 @@ public class DocumentDbMetadataService {
         final MongoClientSettings settings = properties.buildMongoClientSettings();
         final MongoClient mongoClient = client != null
                 ? client
-                : MongoClients.create(settings);
+                : MongoClients.create(settings, DocumentDBDriverInformation.getMongoDriverInformation(properties));
         try {
             final MongoDatabase database = mongoClient.getDatabase(databaseName);
             for (String collectionName : getFilteredCollectionNames(database)) {

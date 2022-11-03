@@ -42,6 +42,7 @@ import org.junit.jupiter.api.Assertions;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
 import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
+import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -212,9 +213,10 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
 
     @Override
     public MongoClient createMongoClient() throws SQLException {
-        return MongoClients.create(DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(getJdbcConnectionString())
-                .buildMongoClientSettings());
+        DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(getJdbcConnectionString());
+        return MongoClients.create(properties
+                .buildMongoClientSettings(), DocumentDBDriverInformation.getMongoDriverInformation(properties));
     }
 
     @Override

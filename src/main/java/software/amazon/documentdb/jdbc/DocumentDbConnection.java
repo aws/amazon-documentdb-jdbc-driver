@@ -39,6 +39,7 @@ import software.amazon.documentdb.jdbc.common.Connection;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -304,7 +305,8 @@ public class DocumentDbConnection extends Connection
         // Create the mongo client.
         final MongoClientSettings settings = connectionProperties
                 .buildMongoClientSettings(getSshLocalPort());
-        mongoClient = MongoClients.create(settings);
+        mongoClient = MongoClients.create(settings,
+                DocumentDBDriverInformation.getMongoDriverInformation(connectionProperties));
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
     }

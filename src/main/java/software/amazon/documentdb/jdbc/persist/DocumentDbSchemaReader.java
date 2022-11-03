@@ -32,6 +32,7 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
+import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 
 import javax.annotation.Nullable;
 import java.sql.SQLException;
@@ -87,7 +88,8 @@ public class DocumentDbSchemaReader implements AutoCloseable {
         this.properties = properties;
         this.client = client != null
                 ? client
-                : MongoClients.create(properties.buildMongoClientSettings());
+                : MongoClients.create(properties.buildMongoClientSettings(),
+                DocumentDBDriverInformation.getMongoDriverInformation(properties));
         this.closeClient = client == null;
     }
 
