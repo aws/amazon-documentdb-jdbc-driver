@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
-import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 import software.amazon.documentdb.jdbc.query.DocumentDbMqlQueryContext;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
@@ -224,7 +223,7 @@ public class DocumentDbQueryExecutor {
     private void performCancel() throws SQLException {
         final MongoClientSettings settings = connectionProperties.buildMongoClientSettings();
         try (MongoClient client = MongoClients.create(settings,
-                DocumentDBDriverInformation.getMongoDriverInformation(connectionProperties))) {
+                DocumentDbConnection.getMongoDriverInformation(connectionProperties))) {
             final MongoDatabase database = client.getDatabase("admin");
 
             // Find the opId to kill using the queryId.

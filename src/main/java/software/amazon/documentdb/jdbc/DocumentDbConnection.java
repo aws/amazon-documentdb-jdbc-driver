@@ -23,6 +23,7 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
+import com.mongodb.MongoDriverInformation;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -39,7 +40,6 @@ import software.amazon.documentdb.jdbc.common.Connection;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
-import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -103,6 +103,20 @@ public class DocumentDbConnection extends Connection
         }
         this.session = createSshTunnel(connectionProperties);
         initializeClients(connectionProperties);
+    }
+
+    /**
+     * Return MongoDriverInformation object. It will initialize the Objectc with driver name
+     * and driver version.
+     * @param documentDbConnectionProperties DocumentDB connection properties
+     * @return MongoDriverInformation
+     */
+    public static MongoDriverInformation getMongoDriverInformation(final DocumentDbConnectionProperties documentDbConnectionProperties) {
+        final MongoDriverInformation mongoDriverInformation = MongoDriverInformation.builder()
+                .driverName(documentDbConnectionProperties.getApplicationName())
+                .driverVersion(documentDbConnectionProperties.getApplicationName())
+                .build();
+        return mongoDriverInformation;
     }
 
     /**
@@ -306,7 +320,7 @@ public class DocumentDbConnection extends Connection
         final MongoClientSettings settings = connectionProperties
                 .buildMongoClientSettings(getSshLocalPort());
         mongoClient = MongoClients.create(settings,
-                DocumentDBDriverInformation.getMongoDriverInformation(connectionProperties));
+                DocumentDbConnection.getMongoDriverInformation(connectionProperties));
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
     }

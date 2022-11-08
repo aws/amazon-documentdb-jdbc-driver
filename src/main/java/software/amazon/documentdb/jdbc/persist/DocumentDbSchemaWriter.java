@@ -34,13 +34,13 @@ import org.bson.conversions.Bson;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.DocumentDbConnection;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
-import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 
 import java.sql.SQLException;
 import java.time.Instant;
@@ -89,7 +89,7 @@ public class DocumentDbSchemaWriter implements AutoCloseable {
         this.client = client != null
                 ? client
                 : MongoClients.create(properties.buildMongoClientSettings(),
-                DocumentDBDriverInformation.getMongoDriverInformation(properties));
+                DocumentDbConnection.getMongoDriverInformation(properties));
         this.closeClient = client == null;
     }
 

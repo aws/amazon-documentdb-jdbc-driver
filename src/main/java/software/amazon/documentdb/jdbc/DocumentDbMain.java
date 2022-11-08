@@ -58,7 +58,6 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
-import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 
 import java.io.Console;
 import java.io.File;
@@ -395,7 +394,7 @@ public class DocumentDbMain {
     private static MongoClient getMongoClient(final DocumentDbConnectionProperties properties) {
         if (client == null) {
             client = MongoClients.create(properties.buildMongoClientSettings(),
-                    DocumentDBDriverInformation.getMongoDriverInformation(properties));
+                    DocumentDbConnection.getMongoDriverInformation(properties));
         }
         return client;
     }

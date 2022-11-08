@@ -38,7 +38,6 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
-import software.amazon.documentdb.jdbc.query.DocumentDBDriverInformation;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
 import java.sql.ResultSet;
@@ -324,7 +323,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
             final MongoClientSettings settings = VALID_CONNECTION_PROPERTIES.buildMongoClientSettings();
             try (MongoClient client = MongoClients.create(settings,
-                    DocumentDBDriverInformation.getMongoDriverInformation(VALID_CONNECTION_PROPERTIES))) {
+                    DocumentDbConnection.getMongoDriverInformation(VALID_CONNECTION_PROPERTIES))) {
                 final MongoDatabase database =
                         client.getDatabase(VALID_CONNECTION_PROPERTIES.getDatabase());
                 final MongoCollection<Document> collection = database.getCollection(
