@@ -213,7 +213,7 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
 
     @Override
     public MongoClient createMongoClient() throws SQLException {
-        DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(getJdbcConnectionString());
         return MongoClients.create(properties
                 .buildMongoClientSettings(), DocumentDbConnection.getMongoDriverInformation(properties));
