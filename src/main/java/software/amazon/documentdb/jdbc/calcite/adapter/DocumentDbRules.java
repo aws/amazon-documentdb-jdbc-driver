@@ -53,7 +53,9 @@ import org.apache.calcite.util.DateString;
 import org.apache.calcite.util.TimeString;
 import org.apache.calcite.util.Util;
 import org.apache.calcite.util.trace.CalciteTrace;
+import org.bson.BsonDocument;
 import org.bson.BsonType;
+import org.bson.BsonValue;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
@@ -204,7 +206,7 @@ public final class DocumentDbRules {
      * @param fieldName The non-normalized string
      * @return The input string with '$' replaced by '_'
      */
-    protected static String getNormalizedIdentifier(final String fieldName) {
+    static String getNormalizedIdentifier(final String fieldName) {
         return fieldName.startsWith("$") ? "_" + fieldName.substring(1) : fieldName;
     }
 
@@ -757,6 +759,8 @@ public final class DocumentDbRules {
 
     private static class DateFunctionTranslator {
 
+        private static final String CURRENT_DATE = "CURRENT_DATE";
+        private static final String CURRENT_TIMESTAMP = "CURRENT_TIMESTAMP";
         private static final Map<TimeUnitRange, String> DATE_PART_OPERATORS =
                 new HashMap<>();
         private static final Instant FIRST_DAY_OF_WEEK_AFTER_EPOCH =
@@ -786,7 +790,52 @@ public final class DocumentDbRules {
         @SneakyThrows
         private static Operand translateDateAdd(final RexCall call, final List<Operand> strings) {
             verifySupportedDateAddType(call.getOperands().get(1));
+
+            // Is date addition between literals (including CURRENT_DATE)?
+            final boolean isLiteralCandidate = isDateLiteralCandidate(call, strings);
+            if (isLiteralCandidate) {
+                // Perform in-memory calculation before sending to server.
+                return getDateAddLiteralOperand(strings);
+            }
+            // Otherwise, perform addition on server.
             return new Operand("{ \"$add\":" + "[" + Util.commaList(strings) + "]}");
+        }
+
+        private static boolean isDateLiteralCandidate(final RexCall call, final List<Operand> strings) {
+            final boolean allLiterals = call.getOperands().stream()
+                    .allMatch(op -> {
+                        final SqlKind opKind = op.getKind();
+                        final String opName = op.toString();
+                        return opKind == SqlKind.LITERAL
+                                || opName.equalsIgnoreCase(CURRENT_DATE)
+                                || opName.equalsIgnoreCase(CURRENT_TIMESTAMP);
+                    });
+            final boolean allHaveQueryValue = strings.stream().allMatch(op -> op.getQueryValue() != null);
+            return allLiterals && allHaveQueryValue;
+        }
+
+        private static Operand getDateAddLiteralOperand(final List<Operand> strings) {
+            final String queryValue0 = strings.get(0).getQueryValue();
+            final String queryValue1 = strings.get(1).getQueryValue();
+            final BsonDocument document0 =  BsonDocument.parse("{field: " + queryValue0 + "}");
+            final BsonDocument document1 =  BsonDocument.parse("{field: " + queryValue1 + "}");
+
+            long sum = 0L;
+            for (BsonValue v : new BsonValue[]{document0.get("field"), document1.get("field")}) {
+                switch (v.getBsonType()) {
+                    case DATE_TIME:
+                        sum += v.asDateTime().getValue();
+                        break;
+                    case INT64:
+                        sum += v.asInt64().getValue();
+                        break;
+                    default:
+                        throw new UnsupportedOperationException(
+                                "Unsupported data type '" + v.getBsonType().name() + "'");
+                }
+            }
+            final String query = "{\"$date\": {\"$numberLong\": \"" + sum + "\"}}";
+            return new Operand(query, query, true);
         }
 
         private static void verifySupportedDateAddType(final RexNode node)
@@ -1169,7 +1218,7 @@ public final class DocumentDbRules {
                 new HashMap<>();
 
         static {
-            STRING_OPERATORS.put(SqlStdOperatorTable.CONCAT, "$concat");;
+            STRING_OPERATORS.put(SqlStdOperatorTable.CONCAT, "$concat");
             STRING_OPERATORS.put(SqlStdOperatorTable.LOWER, "$toLower");
             STRING_OPERATORS.put(SqlStdOperatorTable.UPPER, "$toUpper");
             STRING_OPERATORS.put(SqlStdOperatorTable.CHAR_LENGTH, "$strLenCP");
@@ -1215,15 +1264,15 @@ public final class DocumentDbRules {
             args.add("{" + STRING_OPERATORS.get(SqlStdOperatorTable.LOWER) + ":" + strings.get(1) + "}");
             args.add("{" + STRING_OPERATORS.get(SqlStdOperatorTable.LOWER) + ":" + strings.get(0) + "}");
             // Check if either string is null.
-            operand.append("{\"$cond\": [" + RexToMongoTranslator.getNullCheckExpr(strings) + ", ");
+            operand.append("{\"$cond\": [").append(RexToMongoTranslator.getNullCheckExpr(strings)).append(", ");
             // Add starting index if any.
             if (strings.size() == 3) {
                 args.add("{\"$subtract\": [" + strings.get(2) + ", 1]}"); // Convert to 0-based.
-                operand.append("{\"$cond\": [{\"$lte\": [" + strings.get(2) + ", 0]}, 0, "); // Check if 1-based index > 0.
+                operand.append("{\"$cond\": [{\"$lte\": [").append(strings.get(2)).append(", 0]}, 0, "); // Check if 1-based index > 0.
                 finish.append("]}");
             }
             // Convert 0-based index to 1-based.
-            operand.append("{\"$add\": [{" + STRING_OPERATORS.get(SqlStdOperatorTable.POSITION) + ": [" + Util.commaList(args) + "]}, 1]}");
+            operand.append("{\"$add\": [{").append(STRING_OPERATORS.get(SqlStdOperatorTable.POSITION)).append(": [").append(Util.commaList(args)).append("]}, 1]}");
             operand.append(finish);
             operand.append(", null ]}");
             // Return 1-based index when string is found.
