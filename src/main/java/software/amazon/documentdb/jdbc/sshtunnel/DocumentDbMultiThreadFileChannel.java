@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc.sshtunnel;
 
 import org.checkerframework.checker.nullness.qual.NonNull;
-import sun.nio.ch.FileChannelImpl;
 
 import java.io.IOException;
 import java.nio.channels.FileChannel;

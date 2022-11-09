@@ -348,12 +348,12 @@ Package Artifact: https://repo.maven.apache.org/maven2/com/google/protobuf/proto
 Package Artifact: https://repo.maven.apache.org/maven2/com/google/protobuf/protobuf-java/3.6.1/protobuf-java-3.6.1-sources.jar
 Package Artifact: https://github.com/google/protobuf.git
 -----------------------
-Package ID: com.jcraft:jsch:0.1.55
-Package Homepage: http://www.jcraft.com/jsch/
+Package ID: com.github.mwiede:jsch:0.2.4
+Package Homepage: https://github.com/mwiede/jsch
 Package SPDX-License-Identifier: BSD-3-Clause
-Package Artifact: https://repo.maven.apache.org/maven2/com/jcraft/jsch/0.1.55/jsch-0.1.55.jar
-Package Artifact: https://repo.maven.apache.org/maven2/com/jcraft/jsch/0.1.55/jsch-0.1.55-sources.jar
-Package Artifact: http://git.jcraft.com/jsch.git
+Package Artifact: https://repo1.maven.org/maven2/com/github/mwiede/jsch/0.2.4/jsch-0.2.4.jar
+Package Artifact: https://repo1.maven.org/maven2/com/github/mwiede/jsch/0.2.4/jsch-0.2.4-sources.jar
+Package Artifact: https://github.com/mwiede/jsch.git
 -----------------------
 Package ID: org.codehaus.janino:commons-compiler:3.1.6
 Package Homepage: http://janino-compiler.github.io/commons-compiler/
@@ -16570,7 +16570,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 -----------------------
 
-com.jcraft/jsch/0.1.55 LICENSE
+github.com/mwiede/jsch/0.2.4 LICENSE
 
 JSch 0.0.* was released under the GNU LGPL license.  Later, we have switched
 over to a BSD-style license.
