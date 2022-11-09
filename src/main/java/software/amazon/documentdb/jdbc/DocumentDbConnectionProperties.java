@@ -35,18 +35,21 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 
 import javax.net.ssl.SSLContext;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -58,19 +61,20 @@ public class DocumentDbConnectionProperties extends Properties {
     public static final String USER_HOME_PROPERTY = "user.home";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
-    private static final String USER_HOME_PATH_NAME  = System.getProperty(USER_HOME_PROPERTY);
-    private static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
-            USER_HOME_PATH_NAME, ".documentdb").toString();
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
-    public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
-    public static final int FETCH_SIZE_DEFAULT = 2000;
-    public static final String DOCUMENTDB_CUSTOM_OPTIONS = "DOCUMENTDB_CUSTOM_OPTIONS";
-    private static String classPathLocationName = null;
-    private static String[] sshPrivateKeyFileSearchPaths = null;
     private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
     private static final String PROPERTIES_FILE_PATH = "/documentdb-jdbc.properties";
     static final String DEFAULT_APPLICATION_NAME;
+    private static String[] sshPrivateKeyFileSearchPaths = null;
+
+    public static final String USER_HOME_PATH_NAME  = System.getProperty(USER_HOME_PROPERTY);
+    public static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
+            USER_HOME_PATH_NAME, ".documentdb").toString();
+    public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
+    public static final int FETCH_SIZE_DEFAULT = 2000;
+    public static final String DOCUMENTDB_CUSTOM_OPTIONS = "DOCUMENTDB_CUSTOM_OPTIONS";
+    public static final String CONNECTION_STRING_TEMPLATE = "//%s%s/%s%s";
 
     static {
         String defaultAppName = "";
@@ -82,6 +86,24 @@ public class DocumentDbConnectionProperties extends Properties {
             LOGGER.error("Error loading default application name: " + e.getMessage());
         }
         DEFAULT_APPLICATION_NAME = defaultAppName;
+    }
+
+    /**
+     * Enumeration of type of validation.
+     */
+    public enum ValidationType {
+        /**
+         * No validation.
+         */
+        NONE,
+        /**
+         * Validate client connection required properties.
+         */
+        CLIENT,
+        /**
+         * Validate SSH tunnel required properties.
+         */
+        SSH_TUNNEL,
     }
 
     /**
@@ -106,7 +128,7 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @return an array of search paths.
      */
-    static String[] getSshPrivateKeyFileSearchPaths() {
+    public static String[] getSshPrivateKeyFileSearchPaths() {
         if (sshPrivateKeyFileSearchPaths == null) {
             sshPrivateKeyFileSearchPaths = new String[]{
                     USER_HOME_PATH_NAME,
@@ -114,40 +136,15 @@ public class DocumentDbConnectionProperties extends Properties {
                     getClassPathLocation(),
             };
         }
-        return sshPrivateKeyFileSearchPaths;
+        return sshPrivateKeyFileSearchPaths.clone();
     }
 
     /**
-     * Gets the user's home path name.
+     * Gets the parent folder location of the current class.
      *
-     * @return the user's home path name.
+     * @return a string representing the parent folder location of the current class.
      */
-    static String getUserHomePathName() {
-        return USER_HOME_PATH_NAME;
-    }
-
-    /**
-     * Gets the ~/.documentdb path name.
-     *
-     * @return the ~/.documentdb path name.
-     */
-    static String getDocumentdbHomePathName() {
-        return DOCUMENTDB_HOME_PATH_NAME;
-    }
-
-    /**
-     * Gets the class path's location name.
-     *
-     * @return the class path's location name.
-     */
-    static String getClassPathLocationName() {
-        if (classPathLocationName == null) {
-            classPathLocationName = getClassPathLocation();
-        }
-        return classPathLocationName;
-    }
-
-    private static String getClassPathLocation() {
+    public static String getClassPathLocation() {
         String classPathLocation = null;
         final URL classPathLocationUrl = DocumentDbConnectionProperties.class
                 .getProtectionDomain()
@@ -768,46 +765,151 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @return a {@link String} with the sanitized connection properties.
      */
-    public String buildSanitizedConnectionString() {
-        final String connectionStringTemplate = "//%s%s/%s%s";
-        final String loginInfo = isNullOrWhitespace(getUser()) ? "" : getUser() + "@";
-        final String hostInfo = isNullOrWhitespace(getHostname()) ? "" : getHostname();
-        final String databaseInfo = isNullOrWhitespace(getDatabase()) ? "" : getDatabase();
+    public @NonNull String buildSanitizedConnectionString() {
+        final String loginInfo = buildLoginInfo(getUser(), null);
+        final String hostInfo = buildHostInfo(getHostname());
+        final String databaseInfo = buildDatabaseInfo(getDatabase());
         final StringBuilder optionalInfo = new StringBuilder();
-        if (!getApplicationName()
-                .equals(DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.APPLICATION_NAME, getApplicationName());
+        buildSanitizedOptionalInfo(optionalInfo, this);
+        return buildConnectionString(loginInfo, hostInfo, databaseInfo, optionalInfo.toString());
+    }
+
+    @NonNull static String buildDatabaseInfo(final @Nullable String database) {
+        return isNullOrWhitespace(database) ? "" : encodeValue(database);
+    }
+
+    @NonNull static String buildHostInfo(final @Nullable String hostname) {
+        return isNullOrWhitespace(hostname) ? "" : hostname;
+    }
+
+    @NonNull static String buildLoginInfo(final @Nullable String user, final @Nullable String password) {
+        final String userString = isNullOrWhitespace(user)
+                ? ""
+                : encodeValue(user);
+        final String passwordString = isNullOrWhitespace(password)
+                ? ""
+                : ":" + encodeValue(password);
+        final String userInfo = isNullOrWhitespace(userString) && isNullOrWhitespace(passwordString)
+                ? ""
+                : "@";
+        return userString + passwordString + userInfo;
+    }
+
+    static @NonNull String buildConnectionString(
+            final String loginInfo,
+            final String hostInfo,
+            final String databaseInfo,
+            final String optionalInfo) {
+        return String.format(CONNECTION_STRING_TEMPLATE,
+                loginInfo,
+                hostInfo,
+                databaseInfo,
+                optionalInfo);
+    }
+
+    /**
+     * Builds the sanitized optional info connection string. I does not include
+     * sensitive options like SSH_PRIVATE_KEY_PASSPHRASE.
+     *
+     * @param optionalInfo the connection string to build.
+     */
+    static void buildSanitizedOptionalInfo(
+            final StringBuilder optionalInfo,
+            final DocumentDbConnectionProperties properties) {
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.APPLICATION_NAME, properties.getApplicationName());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC, properties.getLoginTimeout());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_LIMIT, properties.getMetadataScanLimit());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_METHOD, properties.getMetadataScanMethod());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.RETRY_READS_ENABLED, properties.getRetryReadsEnabled());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.READ_PREFERENCE, properties.getReadPreference());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.REPLICA_SET, properties.getReplicaSet(), null);
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.TLS_ENABLED, properties.getTlsEnabled());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES, properties.getTlsAllowInvalidHostnames());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.TLS_CA_FILE, properties.getTlsCAFilePath(), null);
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.SCHEMA_NAME, properties.getSchemaName());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.SSH_USER, properties.getSshUser(), null);
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.SSH_HOSTNAME, properties.getSshHostname(), null);
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE, properties.getSshPrivateKeyFile(), null);
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING, properties.getSshStrictHostKeyChecking());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE, properties.getSshKnownHostsFile(), null);
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE, properties.getDefaultFetchSize());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.REFRESH_SCHEMA, properties.getRefreshSchema());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.DEFAULT_AUTH_DB, properties.getDefaultAuthenticationDatabase());
+        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.ALLOW_DISK_USE, properties.getAllowDiskUseOption());
+    }
+
+    static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
+                                  final DocumentDbConnectionProperty property,
+                                  final String value) {
+        if (!property.getDefaultValue().equals(value)) {
+            appendOption(optionalInfo, property, value);
         }
-        if (getLoginTimeout() != Integer.parseInt(DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC, getLoginTimeout());
+    }
+
+    static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
+                                  final DocumentDbConnectionProperty property,
+                                  final String value,
+                                  final String defaultValue) {
+        if (!Objects.equals(defaultValue, value)) {
+            appendOption(optionalInfo, property, value);
         }
-        if (getMetadataScanLimit() != Integer.parseInt(DocumentDbConnectionProperty.METADATA_SCAN_LIMIT.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_LIMIT, getMetadataScanLimit());
+    }
+
+    static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
+                                  final DocumentDbConnectionProperty property,
+                                  final int value) {
+        if (value != Integer.parseInt(property.getDefaultValue())) {
+            appendOption(optionalInfo, property, value);
         }
-        if (getMetadataScanMethod() != DocumentDbMetadataScanMethod.fromString(DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_METHOD, getMetadataScanMethod().getName());
+    }
+
+    static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
+                                  final DocumentDbConnectionProperty property,
+                                  final boolean value) {
+        if (value != Boolean.parseBoolean(property.getDefaultValue())) {
+            appendOption(optionalInfo, property, value);
         }
-        if (getRetryReadsEnabled() != Boolean.parseBoolean(DocumentDbConnectionProperty.RETRY_READS_ENABLED.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.RETRY_READS_ENABLED, getRetryReadsEnabled());
+    }
+
+    static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
+                                  final DocumentDbConnectionProperty property,
+                                  final DocumentDbMetadataScanMethod value) {
+        if (value != DocumentDbMetadataScanMethod.fromString(property.getDefaultValue())) {
+            appendOption(optionalInfo, property, value.getName());
         }
-        if (getReadPreference() != null) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.READ_PREFERENCE, getReadPreference().getName());
+    }
+
+    static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
+                                  final DocumentDbConnectionProperty property,
+                                  final DocumentDbReadPreference value) {
+        if (value != null) {
+            appendOption(optionalInfo, property, value.getName());
         }
-        if (getReplicaSet() != null) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.REPLICA_SET, getReplicaSet());
+    }
+
+    static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
+                                  final DocumentDbConnectionProperty property,
+                                  final DocumentDbAllowDiskUseOption value) {
+        if (value != DocumentDbAllowDiskUseOption.fromString(property.getDefaultValue())) {
+            appendOption(optionalInfo, property, value.getName());
         }
-        if (getTlsEnabled() != Boolean.parseBoolean(DocumentDbConnectionProperty.TLS_ENABLED.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_ENABLED, getTlsEnabled());
-        }
-        if (getTlsAllowInvalidHostnames() != Boolean.parseBoolean(DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES, getTlsAllowInvalidHostnames());
-        }
-        if (getTlsCAFilePath() != null) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.TLS_CA_FILE, getTlsCAFilePath());
-        }
-        if (!DocumentDbConnectionProperty.SCHEMA_NAME.getDefaultValue().equals(getSchemaName())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.SCHEMA_NAME, getSchemaName());
-        }
+    }
+
+    /**
+     * Builds the connection string for SSH properties.
+     *
+     * @return a connection string with SSH properties.
+     */
+    public String buildSshConnectionString() {
+        final String loginInfo = "";
+        final String hostInfo = buildHostInfo(getHostname());
+        final String databaseInfo = "";
+        final StringBuilder optionalInfo = new StringBuilder();
+        buildSshOptionalInfo(optionalInfo);
+        return buildConnectionString(loginInfo, hostInfo, databaseInfo, optionalInfo.toString());
+    }
+
+    private void buildSshOptionalInfo(final StringBuilder optionalInfo) {
         if (getSshUser() != null) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_USER, getSshUser());
         }
@@ -817,36 +919,45 @@ public class DocumentDbConnectionProperties extends Properties {
         if (getSshPrivateKeyFile() != null) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_PRIVATE_KEY_FILE, getSshPrivateKeyFile());
         }
+        if (getSshPrivateKeyPassphrase() != null && !DocumentDbConnectionProperty.SSH_PRIVATE_KEY_PASSPHRASE.getDefaultValue().equals(getSshPrivateKeyPassphrase())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_PRIVATE_KEY_PASSPHRASE, getSshPrivateKeyPassphrase());
+        }
         if (getSshStrictHostKeyChecking() != Boolean.parseBoolean(DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING.getDefaultValue())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_STRICT_HOST_KEY_CHECKING, getSshStrictHostKeyChecking());
         }
         if (getSshKnownHostsFile() != null && !DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE.getDefaultValue().equals(getSshKnownHostsFile())) {
             appendOption(optionalInfo, DocumentDbConnectionProperty.SSH_KNOWN_HOSTS_FILE, getSshKnownHostsFile());
         }
-        if (getDefaultFetchSize() != Integer.parseInt(DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE, getDefaultFetchSize());
-        }
-        if (getRefreshSchema() != Boolean.parseBoolean(DocumentDbConnectionProperty.REFRESH_SCHEMA.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.REFRESH_SCHEMA, getRefreshSchema());
-        }
-        if (getDefaultAuthenticationDatabase() != null && !DocumentDbConnectionProperty.DEFAULT_AUTH_DB.getDefaultValue().equals(getDefaultAuthenticationDatabase())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.DEFAULT_AUTH_DB, getDefaultAuthenticationDatabase());
-        }
-        if (getAllowDiskUseOption() != DocumentDbAllowDiskUseOption.fromString(DocumentDbConnectionProperty.ALLOW_DISK_USE.getDefaultValue())) {
-            appendOption(optionalInfo, DocumentDbConnectionProperty.ALLOW_DISK_USE, getAllowDiskUseOption().getName());
-        }
-        return String.format(connectionStringTemplate,
-                loginInfo,
-                hostInfo,
-                databaseInfo,
-                optionalInfo);
     }
 
-    private void appendOption(final StringBuilder optionInfo,
+    /**
+     * Appends an option and value to the string.
+     *
+     * @param optionInfo the connection string to build.
+     * @param option the option to add.
+     * @param optionValue the option value to set.
+     */
+    public static void appendOption(final StringBuilder optionInfo,
             final DocumentDbConnectionProperty option,
             final Object optionValue) {
         optionInfo.append(optionInfo.length() == 0 ? "?" : "&");
-        optionInfo.append(option.getName()).append("=").append(optionValue);
+        optionInfo.append(option.getName())
+                .append("=")
+                .append(optionValue == null ? "" : encodeValue(optionValue.toString()));
+    }
+
+    /**
+     * Encodes a value into URL encoded value.
+     *
+     * @param value the value to encode.
+     * @return the encoded value.
+     */
+    public static String encodeValue(final String value) {
+        try {
+            return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            return value;
+        }
     }
 
     /**
@@ -854,26 +965,58 @@ public class DocumentDbConnectionProperties extends Properties {
      * @throws SQLException if the required properties are not correctly set.
      */
     public void validateRequiredProperties() throws SQLException {
-        if (isNullOrWhitespace(getUser())
-                || isNullOrWhitespace(getPassword())) {
+        validateRequiredProperties(ValidationType.CLIENT);
+    }
+
+    /**
+     * Validates the existing properties.
+     * @param validationType Which validation type to perform.
+     * @throws SQLException if the required properties are not correctly set.
+     */
+    public void validateRequiredProperties(final ValidationType validationType) throws SQLException {
+        if ((isNullOrWhitespace(getUser())
+                || isNullOrWhitespace(getPassword())) && validationType == ValidationType.CLIENT) {
             throw SqlError.createSQLException(
                     LOGGER,
                     SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_USER_PASSWORD
             );
         }
-        if (isNullOrWhitespace(getDatabase())) {
+        if (isNullOrWhitespace(getDatabase()) && validationType == ValidationType.CLIENT) {
             throw SqlError.createSQLException(
                     LOGGER,
                     SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_DATABASE
             );
         }
-        if (isNullOrWhitespace(getHostname())) {
+        if (isNullOrWhitespace(getHostname())
+                && (validationType == ValidationType.CLIENT || validationType == ValidationType.SSH_TUNNEL)) {
             throw SqlError.createSQLException(
                     LOGGER,
                     SqlState.INVALID_PARAMETER_VALUE,
                     SqlError.MISSING_HOSTNAME
+            );
+        }
+
+        if (isNullOrWhitespace(getSshUser()) && validationType == ValidationType.SSH_TUNNEL) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.INVALID_PARAMETER_VALUE,
+                    SqlError.MISSING_SSH_USER
+            );
+        }
+        if (isNullOrWhitespace(getSshHostname()) && validationType == ValidationType.SSH_TUNNEL) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.INVALID_PARAMETER_VALUE,
+                    SqlError.MISSING_SSH_HOSTNAME
+            );
+        }
+        if (isNullOrWhitespace(getSshPrivateKeyFile()) && validationType == ValidationType.SSH_TUNNEL) {
+            throw SqlError.createSQLException(
+                    LOGGER,
+                    SqlState.INVALID_PARAMETER_VALUE,
+                    SqlError.MISSING_SSH_PRIVATE_KEY_FILE
             );
         }
     }
@@ -890,6 +1033,19 @@ public class DocumentDbConnectionProperties extends Properties {
         return getPropertiesFromConnectionString(new Properties(), documentDbUrl, DOCUMENT_DB_SCHEME);
     }
 
+    /**
+     * Gets the connection properties from the connection string.
+     *
+     * @param documentDbUrl the given properties.
+     * @param validationType Which properties to validate.
+     * @return a {@link DocumentDbConnectionProperties} with the properties set.
+     * @throws SQLException if connection string is invalid.
+     */
+    public static DocumentDbConnectionProperties getPropertiesFromConnectionString(
+            final String documentDbUrl,
+            final ValidationType validationType) throws SQLException {
+        return getPropertiesFromConnectionString(new Properties(), documentDbUrl, DOCUMENT_DB_SCHEME, validationType);
+    }
 
     /**
      * Gets the connection properties from the connection string.
@@ -903,6 +1059,22 @@ public class DocumentDbConnectionProperties extends Properties {
     public static DocumentDbConnectionProperties getPropertiesFromConnectionString(
             final Properties info, final String documentDbUrl, final String connectionStringPrefix)
             throws SQLException {
+        return getPropertiesFromConnectionString(info, documentDbUrl, connectionStringPrefix, ValidationType.CLIENT);
+    }
+
+    /**
+     * Gets the connection properties from the connection string.
+     *
+     * @param info the given properties.
+     * @param documentDbUrl the connection string.
+     * @param connectionStringPrefix the connection string prefix.
+     * @param validationType Which validation to perform.
+     * @return a {@link DocumentDbConnectionProperties} with the properties set.
+     * @throws SQLException if connection string is invalid.
+     */
+    public static DocumentDbConnectionProperties getPropertiesFromConnectionString(
+            final Properties info, final String documentDbUrl, final String connectionStringPrefix,
+            final ValidationType validationType) throws SQLException {
 
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(info);
         final String postSchemeSuffix = documentDbUrl.substring(connectionStringPrefix.length());
@@ -910,11 +1082,11 @@ public class DocumentDbConnectionProperties extends Properties {
             try {
                 final URI uri = new URI(postSchemeSuffix);
 
-                setHostName(properties, uri);
+                setHostName(properties, uri, validationType);
 
-                setUserPassword(properties, uri);
+                setUserPassword(properties, uri, validationType);
 
-                setDatabase(properties, uri);
+                setDatabase(properties, uri, validationType);
 
                 setOptionalProperties(properties, uri);
 
@@ -924,15 +1096,17 @@ public class DocumentDbConnectionProperties extends Properties {
                 throw SqlError.createSQLException(
                         LOGGER,
                         SqlState.CONNECTION_FAILURE,
+                        e,
                         SqlError.INVALID_CONNECTION_PROPERTIES,
-                        documentDbUrl
+                        documentDbUrl + " : '" + e.getMessage() + "'"
                 );
             } catch (UnsupportedEncodingException e) {
                 throw new SQLException(e.getMessage(), e);
             }
         }
 
-        properties.validateRequiredProperties();
+        properties.validateRequiredProperties(validationType);
+
         return properties;
     }
 
@@ -951,11 +1125,13 @@ public class DocumentDbConnectionProperties extends Properties {
         }
     }
 
-    private static void setDatabase(final Properties properties, final URI mongoUri)
-            throws SQLException {
+    private static void setDatabase(
+            final Properties properties,
+            final URI mongoUri,
+            final ValidationType validationType) throws SQLException {
         if (isNullOrWhitespace(mongoUri.getPath())) {
-            if (properties.getProperty(
-                    DocumentDbConnectionProperty.DATABASE.getName(), null) == null) {
+            if (properties.getProperty(DocumentDbConnectionProperty.DATABASE.getName(), null) == null
+                    && validationType == ValidationType.CLIENT) {
                 throw SqlError.createSQLException(
                         LOGGER,
                         SqlState.CONNECTION_FAILURE,
@@ -985,13 +1161,15 @@ public class DocumentDbConnectionProperties extends Properties {
         }
     }
 
-    private static void setUserPassword(final Properties properties, final URI mongoUri)
-            throws UnsupportedEncodingException, SQLException {
+    private static void setUserPassword(
+            final Properties properties,
+            final URI mongoUri,
+            final ValidationType validationType) throws UnsupportedEncodingException, SQLException {
         if (mongoUri.getUserInfo() == null) {
-            if (properties.getProperty(
-                    DocumentDbConnectionProperty.USER.getName(), null) == null
-                    || properties.getProperty(
-                    DocumentDbConnectionProperty.PASSWORD.getName(), null) == null) {
+            if ((properties.getProperty(DocumentDbConnectionProperty.USER.getName(), null) == null
+                    && validationType == ValidationType.CLIENT)
+                    || (properties.getProperty(DocumentDbConnectionProperty.PASSWORD.getName(), null) == null
+                    && validationType == ValidationType.CLIENT)) {
                 throw SqlError.createSQLException(
                         LOGGER,
                         SqlState.CONNECTION_FAILURE,
@@ -1015,11 +1193,14 @@ public class DocumentDbConnectionProperties extends Properties {
         }
     }
 
-    private static void setHostName(final Properties properties, final URI mongoUri) throws SQLException {
+    private static void setHostName(
+            final Properties properties,
+            final URI mongoUri,
+            final ValidationType validationType) throws SQLException {
         String hostName = mongoUri.getHost();
         if (hostName == null) {
-            if (properties.getProperty(
-                    DocumentDbConnectionProperty.HOSTNAME.getName(), null) == null) {
+            if (properties.getProperty(DocumentDbConnectionProperty.HOSTNAME.getName(), null) == null
+                    && (validationType == ValidationType.CLIENT || validationType == ValidationType.SSH_TUNNEL)) {
                 throw SqlError.createSQLException(
                         LOGGER,
                         SqlState.CONNECTION_FAILURE,
@@ -1188,7 +1369,7 @@ public class DocumentDbConnectionProperties extends Properties {
         }
     }
 
-    private @Nullable InputStream getTlsCAFileInputStream() throws FileNotFoundException, SQLException {
+    private @Nullable InputStream getTlsCAFileInputStream() throws IOException, SQLException {
         final InputStream inputStream;
         if (Strings.isNullOrEmpty(getTlsCAFilePath())) {
              inputStream = getClass().getResourceAsStream(ROOT_PEM_RESOURCE_FILE_NAME);
@@ -1213,31 +1394,31 @@ public class DocumentDbConnectionProperties extends Properties {
      * Gets an absolute path from the given file path. It performs the substitution for a leading
      * '~' to be replaced by the user's home directory.
      *
-     * @param filePath the given file path to process.
+     * @param filePathString the given file path to process.
      * @param searchFolders list of folders
      * @return a {@link Path} for the absolution path for the given file path.
      */
-    public static Path getPath(final String filePath, final String... searchFolders) {
-        if (filePath.matches(HOME_PATH_PREFIX_REG_EXPR)) {
-            final String fromHomePath = filePath.replaceFirst("~",
+    public static Path getPath(final String filePathString, final String... searchFolders) {
+        final Path filePath = Paths.get(filePathString);
+        if (filePathString.matches(HOME_PATH_PREFIX_REG_EXPR)) {
+            final String fromHomePath = filePathString.replaceFirst("~",
                     Matcher.quoteReplacement(USER_HOME_PATH_NAME));
             return Paths.get(fromHomePath).toAbsolutePath();
         } else {
-            final Path origFilePath = Paths.get(filePath);
-            if (origFilePath.isAbsolute()) {
-                return origFilePath;
+            if (filePath.isAbsolute()) {
+                return filePath;
             }
             for (String searchFolder : searchFolders) {
                 if (searchFolder == null) {
                     continue;
                 }
-                final Path testPath = Paths.get(searchFolder, filePath);
+                final Path testPath = Paths.get(searchFolder, filePathString);
                 if (testPath.toAbsolutePath().toFile().exists()) {
                     return testPath;
                 }
             }
         }
-        return Paths.get(filePath).toAbsolutePath();
+        return filePath.toAbsolutePath();
     }
 
     /**
@@ -1272,7 +1453,7 @@ public class DocumentDbConnectionProperties extends Properties {
             if (getProperty(key) != null) {
                 property = DocumentDbMetadataScanMethod.fromString(getProperty(key));
             } else if (DocumentDbConnectionProperty.getPropertyFromKey(key) != null) {
-                property =  DocumentDbMetadataScanMethod.fromString(
+                property = DocumentDbMetadataScanMethod.fromString(
                         DocumentDbConnectionProperty.getPropertyFromKey(key).getDefaultValue());
             }
         } catch (IllegalArgumentException e) {

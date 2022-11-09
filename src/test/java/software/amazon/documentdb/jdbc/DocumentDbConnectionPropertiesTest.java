@@ -19,32 +19,25 @@ package software.amazon.documentdb.jdbc;
 import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.ThrowingSupplier;
+import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
-import java.io.File;
-import java.io.IOException;
 import java.lang.reflect.Field;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENTDB_CUSTOM_OPTIONS;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getClassPathLocationName;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getDocumentdbHomePathName;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getSshPrivateKeyFileSearchPaths;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getUserHomePathName;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.ValidationType.SSH_TUNNEL;
 
 public class DocumentDbConnectionPropertiesTest {
 
@@ -112,12 +105,12 @@ public class DocumentDbConnectionPropertiesTest {
                         + "&scanLimit=100"
                         + "&replicaSet=rs0"
                         + "&tlsAllowInvalidHostnames=true"
-                        + "&tlsCAFile=src/main/resources/rds-ca-2019-root.pem"
+                        + "&tlsCAFile=src%2Fmain%2Fresources%2Frds-ca-2019-root.pem"
                         + "&sshUser=SSHUSER"
                         + "&sshHost=SSHHOST"
-                        + "&sshPrivateKeyFile=~/.ssh/test-file-name.pem"
+                        + "&sshPrivateKeyFile=%7E%2F.ssh%2Ftest-file-name.pem"
                         + "&sshStrictHostKeyChecking=false"
-                        + "&sshKnownHostsFile=~/.ssh/unknown_hosts"
+                        + "&sshKnownHostsFile=%7E%2F.ssh%2Funknown_hosts"
                         + "&defaultFetchSize=1000"
                         + "&refreshSchema=true"
                         + "&defaultAuthDb=test"
@@ -372,67 +365,6 @@ public class DocumentDbConnectionPropertiesTest {
                 (ThrowingSupplier<MongoClientSettings>) properties2::buildMongoClientSettings);
     }
 
-    @Test()
-    @DisplayName("Tests the getPath method.")
-    void testGetPath() throws IOException {
-        final String tempFilename1 = UUID.randomUUID().toString();
-
-        // Test that it will return using the "current directory"
-        final Path path1 = getPath(tempFilename1);
-        Assertions.assertEquals(Paths.get(tempFilename1).toAbsolutePath(), path1);
-
-        // Test that it will use the user's home path
-        final Path path2 = getPath("~/" + tempFilename1);
-        Assertions.assertEquals(Paths.get(getUserHomePathName(), tempFilename1), path2);
-
-        // Test that it will use the user's home path
-        Path homeTempFilePath = null;
-        try {
-            homeTempFilePath = Paths.get(getUserHomePathName(), tempFilename1);
-            Assertions.assertTrue(homeTempFilePath.toFile().createNewFile());
-            final Path path3 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
-            Assertions.assertEquals(Paths.get(getUserHomePathName(), tempFilename1), path3);
-        } finally {
-            Assertions.assertTrue(homeTempFilePath != null && homeTempFilePath.toFile().delete());
-        }
-
-        // Test that it will use the .documentdb folder under the user's home path
-        Path documentDbTempFilePath = null;
-        try {
-            documentDbTempFilePath = Paths.get(getDocumentdbHomePathName(), tempFilename1);
-            final File documentDbDirectory = Paths.get(getDocumentdbHomePathName()).toFile();
-            if (!documentDbDirectory.exists()) {
-                Assertions.assertTrue(documentDbDirectory.mkdir());
-            }
-            Assertions.assertTrue(documentDbTempFilePath.toFile().createNewFile());
-            final Path path4 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
-            Assertions.assertEquals(Paths.get(getDocumentdbHomePathName(), tempFilename1), path4);
-        } finally {
-            Assertions.assertTrue(documentDbTempFilePath != null && documentDbTempFilePath.toFile().delete());
-        }
-
-        // Test that it will use the .documentdb folder under the user's home path
-        Path classPathParentTempFilePath = null;
-        try {
-            classPathParentTempFilePath = Paths.get(getClassPathLocationName(), tempFilename1);
-            Assertions.assertTrue(classPathParentTempFilePath.toFile().createNewFile());
-            final Path path5 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
-            Assertions.assertEquals(Paths.get(getClassPathLocationName(), tempFilename1), path5);
-        } finally {
-            Assertions.assertTrue(classPathParentTempFilePath != null && classPathParentTempFilePath.toFile().delete());
-        }
-
-        // Test that will recognize and use an absolute path
-        File tempFile = null;
-        try {
-            tempFile = File.createTempFile("documentdb", ".tmp");
-            final Path path5 = getPath(tempFile.getAbsolutePath());
-            Assertions.assertEquals(Paths.get(tempFile.getAbsolutePath()), path5);
-        } finally {
-            Assertions.assertTrue(tempFile != null && tempFile.delete());
-        }
-    }
-
     /**
      * Tests getting and setting the application name.
      */
@@ -472,5 +404,69 @@ public class DocumentDbConnectionPropertiesTest {
         // Build client settings and ensure authentication database is passed.
         final MongoClientSettings settings = properties.buildMongoClientSettings();
         Assertions.assertEquals("test", settings.getCredential().getSource());
+    }
+
+    @SuppressFBWarnings("HARD_CODE_PASSWORD")
+    @Test
+    @DisplayName("Tests that it can build just the SSH tunnel connection string.")
+    void testBuildSshConnectionProperties() throws SQLException {
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setUser("USER");
+        properties.setPassword("PASSWORD");
+        properties.setDatabase("DATABASE");
+        properties.setApplicationName("APPNAME");
+        properties.setHostname("HOSTNAME");
+        properties.setReplicaSet("rs0");
+        properties.setLoginTimeout("100");
+        properties.setMetadataScanLimit("100");
+        properties.setTlsAllowInvalidHostnames("true");
+        properties.setTlsEnabled("true");
+        properties.setRetryReadsEnabled("true");
+        properties.setTlsCAFilePath("src/main/resources/rds-ca-2019-root.pem");
+        properties.setSshUser("SSHUSER");
+        properties.setSshHostname("SSHHOST");
+        properties.setSshPrivateKeyFile("~/.ssh/test-file-name.pem");
+        properties.setSshPrivateKeyPassphrase("PASSPHRASE");
+        properties.setSshStrictHostKeyChecking("false");
+        properties.setSshKnownHostsFile("~/.ssh/unknown_hosts");
+        properties.setDefaultFetchSize("1000");
+        properties.setRefreshSchema("true");
+        properties.setDefaultAuthenticationDatabase("test");
+        properties.setAllowDiskUseOption("disable");
+
+        Assertions.assertEquals("//HOSTNAME/"
+                        + "?sshUser=SSHUSER"
+                        + "&sshHost=SSHHOST"
+                        + "&sshPrivateKeyFile=%7E%2F.ssh%2Ftest-file-name.pem"
+                        + "&sshPrivateKeyPassphrase=PASSPHRASE"
+                        + "&sshStrictHostKeyChecking=false"
+                        + "&sshKnownHostsFile=%7E%2F.ssh%2Funknown_hosts",
+                properties.buildSshConnectionString());
+
+        final DocumentDbConnectionProperties parsedProperties =
+                DocumentDbConnectionProperties.getPropertiesFromConnectionString(
+                        DOCUMENT_DB_SCHEME + properties.buildSshConnectionString(), SSH_TUNNEL);
+        Assertions.assertEquals(properties.buildSshConnectionString(), parsedProperties.buildSshConnectionString());
+    }
+
+    static @NonNull String buildInternalSshTunnelConnectionString(
+            final @NonNull DocumentDbTestEnvironment environment) throws SQLException {
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionTest
+                .getInternalSSHTunnelProperties(environment);
+        final String loginInfo = DocumentDbConnectionProperties.buildLoginInfo(
+                properties.getUser(), properties.getPassword());
+        final String hostInfo = DocumentDbConnectionProperties.buildHostInfo(properties.getHostname());
+        final String databaseInfo = DocumentDbConnectionProperties.buildDatabaseInfo(properties.getDatabase());
+        final StringBuilder optionalInfo = new StringBuilder();
+        DocumentDbConnectionProperties.buildSanitizedOptionalInfo(optionalInfo, properties);
+        DocumentDbConnectionProperties.maybeAppendOptionalValue(
+                optionalInfo,
+                DocumentDbConnectionProperty.SSH_PRIVATE_KEY_PASSPHRASE,
+                properties.getSshPrivateKeyPassphrase(), null);
+        return DOCUMENT_DB_SCHEME + DocumentDbConnectionProperties.buildConnectionString(
+                loginInfo,
+                hostInfo,
+                databaseInfo,
+                optionalInfo.toString());
     }
 }
