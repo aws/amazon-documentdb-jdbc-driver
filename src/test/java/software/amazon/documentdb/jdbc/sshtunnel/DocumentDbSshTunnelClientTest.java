@@ -63,6 +63,7 @@ class DocumentDbSshTunnelClientTest {
     }
 
     @Test
+    @Tag("remote-integration")
     void testMultipleClientsSameServer() throws Exception {
         final DocumentDbConnectionProperties properties = getConnectionProperties();
         final List<DocumentDbSshTunnelClient> clients = new ArrayList<>();
@@ -87,20 +88,7 @@ class DocumentDbSshTunnelClientTest {
     }
 
     @Test
-    void testInvalidSshHostnameUnreachable() throws Exception {
-        final DocumentDbConnectionProperties properties = getConnectionProperties();
-        properties.setSshHostname("254.254.254.254");
-
-        final Exception e = Assertions.assertThrows(
-                SQLException.class,
-                () -> new DocumentDbSshTunnelClient(properties));
-        Assertions.assertEquals("java.sql.SQLException: Error reported from SSH Tunnel service."
-                        + " (Server exception detected: 'java.sql.SQLException: java.net.SocketException:"
-                        + " Network is unreachable: connect')",
-                e.toString());
-    }
-
-    @Test
+    @Tag("remote-integration")
     void testInvalidSshHostnameConnectionTimeout() throws Exception {
         final DocumentDbConnectionProperties properties = getConnectionProperties();
         properties.setSshHostname("2.2.2.2");
@@ -108,13 +96,12 @@ class DocumentDbSshTunnelClientTest {
         final Exception e = Assertions.assertThrows(
                 SQLException.class,
                 () -> new DocumentDbSshTunnelClient(properties));
-        Assertions.assertEquals("java.sql.SQLException: Error reported from SSH Tunnel service."
-                        + " (Server exception detected: 'java.sql.SQLException: java.net.ConnectException:"
-                        + " Connection timed out: connect')",
-                e.toString());
+        Assertions.assertTrue(
+                e.toString().startsWith("java.sql.SQLException: Error reported from SSH Tunnel service."));
     }
 
     @Test
+    @Tag("remote-integration")
     void testInvalidSshUserAuthFail() throws Exception {
         final DocumentDbConnectionProperties properties = getConnectionProperties();
         properties.setSshUser("unknown");
@@ -150,10 +137,6 @@ class DocumentDbSshTunnelClientTest {
                 () -> new DocumentDbSshTunnelClient(properties));
         Assertions.assertEquals("java.sql.SQLException: 'Known hosts' file 'unknown' not found.",
                 e.toString());
-    }
-
-    @Test
-    void testConnectionsInMultipleProcesses() {
     }
 
     private static DocumentDbConnectionProperties getConnectionProperties() throws SQLException {
