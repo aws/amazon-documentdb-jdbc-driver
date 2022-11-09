@@ -103,7 +103,7 @@ class DocumentDbSshTunnelClientTest {
     @Test
     void testInvalidSshHostnameConnectionTimeout() throws Exception {
         final DocumentDbConnectionProperties properties = getConnectionProperties();
-        properties.setSshHostname("10.1.1.1");
+        properties.setSshHostname("2.2.2.2");
 
         final Exception e = Assertions.assertThrows(
                 SQLException.class,
@@ -123,7 +123,7 @@ class DocumentDbSshTunnelClientTest {
                 SQLException.class,
                 () -> new DocumentDbSshTunnelClient(properties));
         Assertions.assertEquals("java.sql.SQLException: Error reported from SSH Tunnel service."
-                        + " (Server exception detected: 'java.sql.SQLException: Auth fail')",
+                        + " (Server exception detected: 'java.sql.SQLException: Auth fail for methods 'publickey,gssapi-keyex,gssapi-with-mic'')",
                 e.toString());
     }
 

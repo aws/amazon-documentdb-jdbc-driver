@@ -155,6 +155,8 @@ public class DocumentDbConnection extends Connection
         if (sshTunnelClient != null) {
             try {
                 sshTunnelClient.close();
+            } catch (SQLException e) {
+                throw e;
             } catch (Exception e) {
                 throw SqlError.createSQLException(LOGGER, SqlState.CONNECTION_EXCEPTION, e,
                         SqlError.SSH_TUNNEL_ERROR, e.getMessage());

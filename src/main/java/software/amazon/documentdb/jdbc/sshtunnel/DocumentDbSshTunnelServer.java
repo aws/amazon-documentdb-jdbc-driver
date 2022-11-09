@@ -74,7 +74,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
     private static final String BIN_FOLDER_NAME = "bin";
     private static final String JAVA_FOLDER_NAE = "java";
     private static final String SSH_TUNNEL_SERVICE_OPTION_NAME = "--" + DocumentDbMain.SSH_TUNNEL_SERVICE_OPTION_NAME;
-    public static final int SERVICE_WAIT_TIMEOUT_SECONDS = 60;
+    public static final int SERVICE_WAIT_TIMEOUT_SECONDS = 120;
 
     private final AtomicInteger clientCount = new AtomicInteger(0);
 
@@ -374,7 +374,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
                     if (serverLock != null && serverLock.isValid()) {
                         serverLock.close();
                         // Ensure we don't wait forever.
-                        throwIfTimeout(timeoutTime);
+                        throwIfTimeout(timeoutTime, "Timeout waiting for service to acquire server lock.");
                         TimeUnit.MILLISECONDS.sleep(SERVER_WATCHER_POLL_TIME_MS);
                     }
                 } while (serverLock != null);
@@ -392,12 +392,12 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         }
     }
 
-    private static void throwIfTimeout(final Instant timeoutTime) throws SQLException {
+    private static void throwIfTimeout(final Instant timeoutTime, final String message) throws SQLException {
         if (Instant.now().isAfter(timeoutTime)) {
             throw SqlError.createSQLException(LOGGER,
                     SqlState.CONNECTION_EXCEPTION,
                     SqlError.SSH_TUNNEL_ERROR,
-                    "Timeout waiting for service to acquire server lock.");
+                    message);
         }
     }
 
@@ -422,7 +422,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
                 startupLock = startupChannel.tryLock();
                 if (startupLock == null) {
                     // Ensure we don't wait forever.
-                    throwIfTimeout(timeoutTime);
+                    throwIfTimeout(timeoutTime, "Timeout waiting for service to release Startup lock.");
                     TimeUnit.MILLISECONDS.sleep(pollTimeMS);
                 }
             } while (startupLock == null);
