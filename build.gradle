@@ -145,8 +145,12 @@ spotbugsMain {
     // Configure HTML report
     reports {
         xml {
-            enabled = true
+            required.set(true)
             destination = file("$buildDir/reports/spotbugs/main.xml")
+        }
+        html {
+            required.set(true)
+            destination = file("$buildDir/reports/spotbugs/main.html")
         }
     }
 }
@@ -154,15 +158,19 @@ spotbugsTest {
     // Configure HTML report
     reports {
         xml {
-            enabled = true
+            required.set(true)
             destination = file("$buildDir/reports/spotbugs/test.xml")
+        }
+        html {
+            required.set(true)
+            destination = file("$buildDir/reports/spotbugs/test.html")
         }
     }
 }
 
 task checkSpotBugsMainReport {
     doLast {
-        def xmlReport = spotbugsMain.reports.getByName("XML")
+        def xmlReport = spotbugsMain.reports.getByName("xml")
         def slurped = new groovy.xml.XmlSlurper().parse(xmlReport.destination)
         def bugsFound = slurped.BugInstance.size()
         slurped.BugInstance.each {
@@ -179,7 +187,7 @@ task checkSpotBugsMainReport {
 
 task checkSpotBugsTestReport {
     doLast {
-        def xmlReport = spotbugsTest.reports.getByName("XML")
+        def xmlReport = spotbugsTest.reports.getByName("xml")
         def slurped = new XmlSlurper().parse(xmlReport.destination)
         def bugsFound = slurped.BugInstance.size()
         slurped.BugInstance.each {
@@ -331,7 +339,7 @@ dependencies {
     compileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
     compileOnly         group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.1'
     compileOnly         group: 'org.immutables', name: 'value', version: '2.9.2'
-    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.3.4'
+    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.4'
     compileOnly         'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 
