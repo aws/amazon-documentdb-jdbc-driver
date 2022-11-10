@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'com.github.spotbugs' version '5.0.10'
+    id 'com.github.spotbugs' version '5.0.13'
     id 'checkstyle'
     id 'jacoco'
     id 'com.github.hierynomus.license' version '0.16.1'
@@ -315,8 +315,8 @@ repositories {
 
 dependencies {
     implementation group: 'commons-cli', name: 'commons-cli', version: '1.5.0'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.13.4'
-    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.13.4'
+    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-core', version: '2.14.0'
+    implementation group: 'com.fasterxml.jackson.datatype', name: 'jackson-datatype-guava', version: '2.14.0'
     implementation group: 'com.google.guava', name: 'guava', version: '31.1-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '2.0.3'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.10.0'
@@ -341,15 +341,15 @@ dependencies {
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.24'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.9.1'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.9.1'
-    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.8.0'
-    testRuntimeOnly         group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.5.1'
+    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.8.1'
+    testRuntimeOnly         group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.5.2'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-api:5.9.1'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-engine'
     testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.9.1'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.12.0'
 
-    testFixturesCompileOnly group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.4.11'
+    testFixturesCompileOnly group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.5.2'
     testFixturesCompileOnly 'org.junit.jupiter:junit-jupiter-api:5.9.1'
     testFixturesImplementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
     testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.7.2'
