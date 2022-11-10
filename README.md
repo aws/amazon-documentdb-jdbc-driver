@@ -64,3 +64,7 @@ The Amazon DocumentDB JDBC driver has a number of important limitations. See the
 If you're having an issue using the Amazon DocumentDB JDBC driver, consult the 
 [Troubleshooting Guide](src/markdown/support/troubleshooting-guide.md) to see if has a solution for 
 your issue.
+
+## Security Notice
+
+If you discover a potential security issue in this project, please consult our [security guidance page](SECURITY.md).
