@@ -37,6 +37,10 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +56,10 @@ public class DocumentDbConnection extends Connection
 
     private static final Logger LOGGER =
             LoggerFactory.getLogger(DocumentDbConnection.class.getName());
+    private static final Set<String> SECRET_PROPERTIES =
+            Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
+                    DocumentDbConnectionProperty.PASSWORD.getName(),
+                    DocumentDbConnectionProperty.PASSWORD.getName())));
 
     private final DocumentDbConnectionProperties connectionProperties;
     private DocumentDbDatabaseMetaData metadata;
@@ -71,23 +79,30 @@ public class DocumentDbConnection extends Connection
             final StringBuilder sb = new StringBuilder();
             sb.append("Creating connection with following properties:");
             for (String propertyName : connectionProperties.stringPropertyNames()) {
-                if (!DocumentDbConnectionProperty.PASSWORD.getName().equals(propertyName)) {
+                if (!SECRET_PROPERTIES.contains(propertyName)) {
                     sb.append(String.format("%n        Connection property %s=%s",
                             propertyName, connectionProperties.get(propertyName).toString()));
                 }
             }
             LOGGER.debug(sb.toString());
         }
-        maybeCreateSshTunnel(connectionProperties);
+        if (connectionProperties.enableSshTunnel()) {
+            ensureSshTunnel(connectionProperties);
+        } else {
+            LOGGER.debug("Internal SSH tunnel not used.");
+        }
         initializeClients(connectionProperties);
     }
 
-    private void maybeCreateSshTunnel(final DocumentDbConnectionProperties connectionProperties) throws SQLException {
-        if (!connectionProperties.enableSshTunnel()) {
-            LOGGER.info("Internal SSH tunnel not started.");
-            return;
-        }
-
+    /**
+     * Ensures an SSH Tunnel service is started for this set of SSH Tunnel properties, or confirms
+     * an SSH Tunnel is already running. It ensures an SSH Tunnel client session is active and also ensures the
+     * SSH Tunnel's listening port is valid.
+     *
+     * @param connectionProperties the connection properties to use for the SSH Tunnel.
+     * @throws SQLException when unable to ensure an SSH Tunnel is started.
+     */
+    private void ensureSshTunnel(final DocumentDbConnectionProperties connectionProperties) throws SQLException {
         try {
             this.sshTunnelClient = new DocumentDbSshTunnelClient(connectionProperties);
         } catch (SQLException e) {
