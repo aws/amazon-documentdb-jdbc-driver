@@ -32,8 +32,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.UUID;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getDocumentDbSearchPaths;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getSshPrivateKeyFileSearchPaths;
 import static software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelLock.getClassPathLocationName;
 import static software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelLock.getDocumentdbHomePathName;
 import static software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelLock.getUserHomePathName;
@@ -98,7 +98,6 @@ class DocumentDbSshTunnelServiceTest {
         }
     }
 
-
     @Test()
     @DisplayName("Tests the getPath method.")
     @SuppressFBWarnings("PATH_TRAVERSAL_IN")
@@ -118,7 +117,7 @@ class DocumentDbSshTunnelServiceTest {
         try {
             homeTempFilePath = Paths.get(getUserHomePathName(), tempFilename1);
             Assertions.assertTrue(homeTempFilePath.toFile().createNewFile());
-            final Path path3 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            final Path path3 = getPath(tempFilename1, getDocumentDbSearchPaths());
             Assertions.assertEquals(Paths.get(getUserHomePathName(), tempFilename1), path3);
         } finally {
             Assertions.assertTrue(homeTempFilePath != null && homeTempFilePath.toFile().delete());
@@ -133,7 +132,7 @@ class DocumentDbSshTunnelServiceTest {
                 Assertions.assertTrue(documentDbDirectory.mkdir());
             }
             Assertions.assertTrue(documentDbTempFilePath.toFile().createNewFile());
-            final Path path4 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            final Path path4 = getPath(tempFilename1, getDocumentDbSearchPaths());
             Assertions.assertEquals(Paths.get(getDocumentdbHomePathName(), tempFilename1), path4);
         } finally {
             Assertions.assertTrue(documentDbTempFilePath != null && documentDbTempFilePath.toFile().delete());
@@ -144,7 +143,7 @@ class DocumentDbSshTunnelServiceTest {
         try {
             classPathParentTempFilePath = Paths.get(getClassPathLocationName(), tempFilename1);
             Assertions.assertTrue(classPathParentTempFilePath.toFile().createNewFile());
-            final Path path5 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            final Path path5 = getPath(tempFilename1, getDocumentDbSearchPaths());
             Assertions.assertEquals(Paths.get(getClassPathLocationName(), tempFilename1), path5);
         } finally {
             Assertions.assertTrue(classPathParentTempFilePath != null && classPathParentTempFilePath.toFile().delete());

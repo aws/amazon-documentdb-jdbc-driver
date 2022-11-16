@@ -293,7 +293,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
             final DocumentDbConnectionProperties connectionProperties,
             final JSch jSch) throws JSchException {
         final String privateKeyFileName = getPath(connectionProperties.getSshPrivateKeyFile(),
-                DocumentDbConnectionProperties.getSshPrivateKeyFileSearchPaths()).toString();
+                DocumentDbConnectionProperties.getDocumentDbSearchPaths()).toString();
         LOGGER.debug("SSH private key file resolved to '{}'.", privateKeyFileName);
         // If passPhrase protected, will need to provide this, too.
         final String passPhrase = !isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())

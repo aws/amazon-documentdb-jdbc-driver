@@ -26,10 +26,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.ThrowingSupplier;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.security.cert.Certificate;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -404,6 +408,27 @@ public class DocumentDbConnectionPropertiesTest {
         // Build client settings and ensure authentication database is passed.
         final MongoClientSettings settings = properties.buildMongoClientSettings();
         Assertions.assertEquals("test", settings.getCredential().getSource());
+    }
+
+    @Test
+    @DisplayName("Tests the appendEmbeddedAndOptionalCaCertificates method")
+    void testAppendEmbeddedAndOptionalCaCertificates() throws SQLException, IOException {
+        final Properties info = new Properties();
+        final String connectionString = "jdbc:documentdb://username:password@localhost/database";
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
+        final List<Certificate> caCertificates = new ArrayList<>();
+        properties.appendEmbeddedAndOptionalCaCertificates(caCertificates);
+        Assertions.assertEquals(1, caCertificates.size());
+        caCertificates.clear();
+        properties.setTlsCAFilePath("src/main/resources/rds-ca-2019-root.pem");
+        properties.appendEmbeddedAndOptionalCaCertificates(caCertificates);
+        Assertions.assertEquals(2, caCertificates.size());
+        caCertificates.clear();
+        properties.setTlsCAFilePath("invalid-path.pem");
+        Assertions.assertThrows(SQLException.class,
+                () -> properties.appendEmbeddedAndOptionalCaCertificates(caCertificates));
+        Assertions.assertEquals(0, caCertificates.size());
     }
 
     @SuppressFBWarnings("HARD_CODE_PASSWORD")

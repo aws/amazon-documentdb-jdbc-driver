@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
@@ -34,7 +35,6 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 
 import javax.net.ssl.SSLContext;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
@@ -47,8 +47,11 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.cert.Certificate;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -63,17 +66,17 @@ public class DocumentDbConnectionProperties extends Properties {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbConnectionProperties.class.getName());
     private static final Pattern WHITE_SPACE_PATTERN = Pattern.compile("^\\s*$");
     private static final String ROOT_PEM_RESOURCE_FILE_NAME = "/rds-ca-2019-root.pem";
+    public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
+    public static final int FETCH_SIZE_DEFAULT = 2000;
+    public static final String DOCUMENTDB_CUSTOM_OPTIONS = "DOCUMENTDB_CUSTOM_OPTIONS";
+    private static String[] documentDbSearchPaths = null;
     private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
     private static final String PROPERTIES_FILE_PATH = "/documentdb-jdbc.properties";
     static final String DEFAULT_APPLICATION_NAME;
-    private static String[] sshPrivateKeyFileSearchPaths = null;
 
     public static final String USER_HOME_PATH_NAME  = System.getProperty(USER_HOME_PROPERTY);
     public static final String DOCUMENTDB_HOME_PATH_NAME = Paths.get(
             USER_HOME_PATH_NAME, ".documentdb").toString();
-    public static final String HOME_PATH_PREFIX_REG_EXPR = "^~[/\\\\].*$";
-    public static final int FETCH_SIZE_DEFAULT = 2000;
-    public static final String DOCUMENTDB_CUSTOM_OPTIONS = "DOCUMENTDB_CUSTOM_OPTIONS";
     public static final String CONNECTION_STRING_TEMPLATE = "//%s%s/%s%s";
 
     static {
@@ -128,15 +131,15 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @return an array of search paths.
      */
-    public static String[] getSshPrivateKeyFileSearchPaths() {
-        if (sshPrivateKeyFileSearchPaths == null) {
-            sshPrivateKeyFileSearchPaths = new String[]{
+    public static String[] getDocumentDbSearchPaths() {
+        if (documentDbSearchPaths == null) {
+            documentDbSearchPaths = new String[]{
                     USER_HOME_PATH_NAME,
                     DOCUMENTDB_HOME_PATH_NAME,
                     getClassPathLocation(),
             };
         }
-        return sshPrivateKeyFileSearchPaths.clone();
+        return documentDbSearchPaths.clone();
     }
 
     /**
@@ -1319,7 +1322,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return returns {@code true} if the file exists, {@code false}, otherwise.
      */
     public boolean isSshPrivateKeyFileExists() {
-        return Files.exists(getPath(getSshPrivateKeyFile(), getSshPrivateKeyFileSearchPaths()));
+        return Files.exists(getPath(getSshPrivateKeyFile(), getDocumentDbSearchPaths()));
     }
 
     /**
@@ -1359,26 +1362,36 @@ public class DocumentDbConnectionProperties extends Properties {
             return;
         }
 
-        // Handle the tlsCAFile option.
-        try (InputStream inputStream = getTlsCAFileInputStream()) {
-            final SSLContext sslContext = SSLFactory.builder()
-                    .withTrustMaterial(CertificateUtils.loadCertificate(inputStream))
-                    .build()
-                    .getSslContext();
-            builder.context(sslContext);
-        }
+        applyCertificateAuthorities(builder);
     }
 
-    private @Nullable InputStream getTlsCAFileInputStream() throws IOException, SQLException {
-        final InputStream inputStream;
-        if (Strings.isNullOrEmpty(getTlsCAFilePath())) {
-             inputStream = getClass().getResourceAsStream(ROOT_PEM_RESOURCE_FILE_NAME);
-        } else {
+    private void applyCertificateAuthorities(final SslSettings.Builder builder) throws IOException, SQLException {
+        final List<Certificate> caCertificates = new ArrayList<>();
+        // Append embedded CA root certificate(s), and optionally including the tlsCAFile option, if provided.
+        appendEmbeddedAndOptionalCaCertificates(caCertificates);
+        // Add the system and JDK trusted certificates.
+        caCertificates.addAll(CertificateUtils.getSystemTrustedCertificates());
+        caCertificates.addAll(CertificateUtils.getJdkTrustedCertificates());
+        // Create the SSL context and apply to the builder.
+        final SSLContext sslContext = SSLFactory.builder()
+                .withTrustMaterial(caCertificates)
+                .build()
+                .getSslContext();
+        builder.context(sslContext);
+    }
+
+    @VisibleForTesting
+    void appendEmbeddedAndOptionalCaCertificates(final List<Certificate> caCertificates) throws IOException, SQLException {
+        // If provided, add user-specified CA root certificate file.
+        if (!Strings.isNullOrEmpty(getTlsCAFilePath())) {
             final String tlsCAFileName = getTlsCAFilePath();
             final Path tlsCAFileNamePath;
-            tlsCAFileNamePath = getPath(tlsCAFileName);
+            // Allow certificate file to be found under one the trusted DocumentDB folders
+            tlsCAFileNamePath = getPath(tlsCAFileName, getDocumentDbSearchPaths());
             if (tlsCAFileNamePath.toFile().exists()) {
-                inputStream = new FileInputStream(tlsCAFileNamePath.toFile());
+                try (InputStream inputStream = Files.newInputStream(tlsCAFileNamePath)) {
+                    caCertificates.addAll(CertificateUtils.loadCertificate(inputStream));
+                }
             } else {
                 throw SqlError.createSQLException(
                         LOGGER,
@@ -1387,7 +1400,10 @@ public class DocumentDbConnectionProperties extends Properties {
                         tlsCAFileNamePath);
             }
         }
-        return inputStream;
+        // Load embedded CA root certificate.
+        try (InputStream resourceAsStream = getClass().getResourceAsStream(ROOT_PEM_RESOURCE_FILE_NAME)) {
+            caCertificates.addAll(CertificateUtils.loadCertificate(resourceAsStream));
+        }
     }
 
     /**
