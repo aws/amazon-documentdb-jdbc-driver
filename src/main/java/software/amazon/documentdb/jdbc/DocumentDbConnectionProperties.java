@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
@@ -34,8 +35,7 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 
 import javax.net.ssl.SSLContext;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URI;
@@ -45,8 +45,11 @@ import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.cert.Certificate;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -67,7 +70,7 @@ public class DocumentDbConnectionProperties extends Properties {
     public static final int FETCH_SIZE_DEFAULT = 2000;
     public static final String DOCUMENTDB_CUSTOM_OPTIONS = "DOCUMENTDB_CUSTOM_OPTIONS";
     private static String classPathLocationName = null;
-    private static String[] sshPrivateKeyFileSearchPaths = null;
+    private static String[] documentDbSearchPaths = null;
     private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
     private static final String PROPERTIES_FILE_PATH = "/documentdb-jdbc.properties";
     static final String DEFAULT_APPLICATION_NAME;
@@ -106,15 +109,15 @@ public class DocumentDbConnectionProperties extends Properties {
      *
      * @return an array of search paths.
      */
-    static String[] getSshPrivateKeyFileSearchPaths() {
-        if (sshPrivateKeyFileSearchPaths == null) {
-            sshPrivateKeyFileSearchPaths = new String[]{
+    public static String[] getDocumentDbSearchPaths() {
+        if (documentDbSearchPaths == null) {
+            documentDbSearchPaths = new String[]{
                     USER_HOME_PATH_NAME,
                     DOCUMENTDB_HOME_PATH_NAME,
                     getClassPathLocation(),
             };
         }
-        return sshPrivateKeyFileSearchPaths;
+        return documentDbSearchPaths.clone();
     }
 
     /**
@@ -1138,7 +1141,7 @@ public class DocumentDbConnectionProperties extends Properties {
      * @return returns {@code true} if the file exists, {@code false}, otherwise.
      */
     public boolean isSshPrivateKeyFileExists() {
-        return Files.exists(getPath(getSshPrivateKeyFile(), getSshPrivateKeyFileSearchPaths()));
+        return Files.exists(getPath(getSshPrivateKeyFile(), getDocumentDbSearchPaths()));
     }
 
     /**
@@ -1178,26 +1181,49 @@ public class DocumentDbConnectionProperties extends Properties {
             return;
         }
 
-        // Handle the tlsCAFile option.
-        try (InputStream inputStream = getTlsCAFileInputStream()) {
+        applyCertificateAuthorities(builder);
+    }
+
+    private void applyCertificateAuthorities(final SslSettings.Builder builder) throws IOException, SQLException {
+        // Gets the set of CA root certificate streams, optionally including the tlsCAFile option, if provided.
+        final List<InputStream> caFileInputStreams = getTlsCAFileInputStreams();
+        try {
+            final List<Certificate> caCertificates = new ArrayList<>();
+            if (!caFileInputStreams.isEmpty()) {
+                caCertificates.addAll(CertificateUtils.loadCertificate(
+                        caFileInputStreams.toArray(new InputStream[0])));
+            }
+            // Add the system and JDK trusted certificates.
+            caCertificates.addAll(CertificateUtils.getSystemTrustedCertificates());
+            caCertificates.addAll(CertificateUtils.getJdkTrustedCertificates());
+            // Create the SSL context and apply to the builder.
             final SSLContext sslContext = SSLFactory.builder()
-                    .withTrustMaterial(CertificateUtils.loadCertificate(inputStream))
+                    .withTrustMaterial(caCertificates)
                     .build()
                     .getSslContext();
             builder.context(sslContext);
+        } finally {
+            for (InputStream is : caFileInputStreams) {
+                try {
+                    is.close();
+                } catch (IOException e) {
+                    // Ignore errors on close.
+                }
+            }
         }
     }
 
-    private @Nullable InputStream getTlsCAFileInputStream() throws FileNotFoundException, SQLException {
-        final InputStream inputStream;
-        if (Strings.isNullOrEmpty(getTlsCAFilePath())) {
-             inputStream = getClass().getResourceAsStream(ROOT_PEM_RESOURCE_FILE_NAME);
-        } else {
+    @VisibleForTesting
+    @NonNull List<InputStream> getTlsCAFileInputStreams() throws IOException, SQLException {
+        final List<InputStream> inputStreams = new ArrayList<>();
+        // If provided, add user-specified CA root certificate file.
+        if (!Strings.isNullOrEmpty(getTlsCAFilePath())) {
             final String tlsCAFileName = getTlsCAFilePath();
             final Path tlsCAFileNamePath;
-            tlsCAFileNamePath = getPath(tlsCAFileName);
+            // Allow certificate file to be found under one the trusted DocumentDB folders
+            tlsCAFileNamePath = getPath(tlsCAFileName, getDocumentDbSearchPaths());
             if (tlsCAFileNamePath.toFile().exists()) {
-                inputStream = new FileInputStream(tlsCAFileNamePath.toFile());
+                inputStreams.add(Files.newInputStream(tlsCAFileNamePath));
             } else {
                 throw SqlError.createSQLException(
                         LOGGER,
@@ -1206,7 +1232,9 @@ public class DocumentDbConnectionProperties extends Properties {
                         tlsCAFileNamePath);
             }
         }
-        return inputStream;
+        // Load embedded CA root certificate.
+        inputStreams.add(getClass().getResourceAsStream(ROOT_PEM_RESOURCE_FILE_NAME));
+        return inputStreams;
     }
 
     /**
