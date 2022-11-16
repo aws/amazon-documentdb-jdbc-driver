@@ -26,11 +26,12 @@ import org.junit.jupiter.api.function.ThrowingSupplier;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.cert.Certificate;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -477,32 +478,23 @@ public class DocumentDbConnectionPropertiesTest {
     }
 
     @Test
-    @DisplayName("Tests the getTlsCAFileInputStreams method")
-    void testGetTlsCAFileInputStreams() throws SQLException, IOException {
+    @DisplayName("Tests the appendEmbeddedAndOptionalCaCertificates method")
+    void testAppendEmbeddedAndOptionalCaCertificates() throws SQLException, IOException {
         final Properties info = new Properties();
         final String connectionString = "jdbc:documentdb://username:password@localhost/database";
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
-        List<InputStream> inputStreams = properties.getTlsCAFileInputStreams();
-        try {
-            Assertions.assertEquals(1, inputStreams.size());
-        } finally {
-            for (InputStream inputStream : inputStreams) {
-                inputStream.close();
-            }
-            inputStreams.clear();
-        }
+        final List<Certificate> caCertificates = new ArrayList<>();
+        properties.appendEmbeddedAndOptionalCaCertificates(caCertificates);
+        Assertions.assertEquals(1, caCertificates.size());
+        caCertificates.clear();
         properties.setTlsCAFilePath("src/main/resources/rds-ca-2019-root.pem");
-        inputStreams = properties.getTlsCAFileInputStreams();
-        try {
-            Assertions.assertEquals(2, inputStreams.size());
-        } finally {
-            for (InputStream inputStream : inputStreams) {
-                inputStream.close();
-            }
-            inputStreams.clear();
-        }
+        properties.appendEmbeddedAndOptionalCaCertificates(caCertificates);
+        Assertions.assertEquals(2, caCertificates.size());
+        caCertificates.clear();
         properties.setTlsCAFilePath("invalid-path.pem");
-        Assertions.assertThrows(SQLException.class, properties::getTlsCAFileInputStreams);
+        Assertions.assertThrows(SQLException.class,
+                () -> properties.appendEmbeddedAndOptionalCaCertificates(caCertificates));
+        Assertions.assertEquals(0, caCertificates.size());
     }
 }

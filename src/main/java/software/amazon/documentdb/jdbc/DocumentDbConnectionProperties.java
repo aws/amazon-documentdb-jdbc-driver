@@ -1185,37 +1185,22 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     private void applyCertificateAuthorities(final SslSettings.Builder builder) throws IOException, SQLException {
-        // Gets the set of CA root certificate streams, optionally including the tlsCAFile option, if provided.
-        final List<InputStream> caFileInputStreams = getTlsCAFileInputStreams();
-        try {
-            final List<Certificate> caCertificates = new ArrayList<>();
-            if (!caFileInputStreams.isEmpty()) {
-                caCertificates.addAll(CertificateUtils.loadCertificate(
-                        caFileInputStreams.toArray(new InputStream[0])));
-            }
-            // Add the system and JDK trusted certificates.
-            caCertificates.addAll(CertificateUtils.getSystemTrustedCertificates());
-            caCertificates.addAll(CertificateUtils.getJdkTrustedCertificates());
-            // Create the SSL context and apply to the builder.
-            final SSLContext sslContext = SSLFactory.builder()
-                    .withTrustMaterial(caCertificates)
-                    .build()
-                    .getSslContext();
-            builder.context(sslContext);
-        } finally {
-            for (InputStream is : caFileInputStreams) {
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    // Ignore errors on close.
-                }
-            }
-        }
+        final List<Certificate> caCertificates = new ArrayList<>();
+        // Append embedded CA root certificate(s), and optionally including the tlsCAFile option, if provided.
+        appendEmbeddedAndOptionalCaCertificates(caCertificates);
+        // Add the system and JDK trusted certificates.
+        caCertificates.addAll(CertificateUtils.getSystemTrustedCertificates());
+        caCertificates.addAll(CertificateUtils.getJdkTrustedCertificates());
+        // Create the SSL context and apply to the builder.
+        final SSLContext sslContext = SSLFactory.builder()
+                .withTrustMaterial(caCertificates)
+                .build()
+                .getSslContext();
+        builder.context(sslContext);
     }
 
     @VisibleForTesting
-    @NonNull List<InputStream> getTlsCAFileInputStreams() throws IOException, SQLException {
-        final List<InputStream> inputStreams = new ArrayList<>();
+    void appendEmbeddedAndOptionalCaCertificates(final List<Certificate> caCertificates) throws IOException, SQLException {
         // If provided, add user-specified CA root certificate file.
         if (!Strings.isNullOrEmpty(getTlsCAFilePath())) {
             final String tlsCAFileName = getTlsCAFilePath();
@@ -1223,7 +1208,9 @@ public class DocumentDbConnectionProperties extends Properties {
             // Allow certificate file to be found under one the trusted DocumentDB folders
             tlsCAFileNamePath = getPath(tlsCAFileName, getDocumentDbSearchPaths());
             if (tlsCAFileNamePath.toFile().exists()) {
-                inputStreams.add(Files.newInputStream(tlsCAFileNamePath));
+                try (InputStream inputStream = Files.newInputStream(tlsCAFileNamePath)) {
+                    caCertificates.addAll(CertificateUtils.loadCertificate(inputStream));
+                }
             } else {
                 throw SqlError.createSQLException(
                         LOGGER,
@@ -1233,8 +1220,9 @@ public class DocumentDbConnectionProperties extends Properties {
             }
         }
         // Load embedded CA root certificate.
-        inputStreams.add(getClass().getResourceAsStream(ROOT_PEM_RESOURCE_FILE_NAME));
-        return inputStreams;
+        try (InputStream resourceAsStream = getClass().getResourceAsStream(ROOT_PEM_RESOURCE_FILE_NAME)) {
+            caCertificates.addAll(CertificateUtils.loadCertificate(resourceAsStream));
+        }
     }
 
     /**
