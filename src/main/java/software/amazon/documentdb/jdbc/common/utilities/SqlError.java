@@ -16,7 +16,6 @@
 
 package software.amazon.documentdb.jdbc.common.utilities;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 
 import java.sql.ClientInfoStatus;
@@ -169,7 +168,6 @@ public enum SqlError {
      * @param formatArgs Any additional arguments to format the resource string with.
      * @return SQLException with error message.
      */
-    @SuppressFBWarnings("CRLF_INJECTION_LOGS")
     public static SQLException createSQLException(
             final Logger logger,
             final SqlState sqlState,

@@ -17,7 +17,6 @@
 package software.amazon.documentdb.jdbc.sshtunnel;
 
 import com.google.common.hash.Hashing;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 
@@ -94,7 +93,6 @@ public final class DocumentDbSshTunnelLock {
         } // Note: this releases the lock, too.
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     static @NonNull Path getGlobalLockPath(final @NonNull String propertiesHashString) {
         return Paths.get(
                 LOCK_BASE_FOLDER_NAME,
@@ -102,7 +100,6 @@ public final class DocumentDbSshTunnelLock {
                 GLOBAL_LOCK_NAME);
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     static @NonNull Path getServerLockPath(final @NonNull String propertiesHashString) {
         return Paths.get(
                 LOCK_BASE_FOLDER_NAME,
@@ -111,7 +108,6 @@ public final class DocumentDbSshTunnelLock {
         );
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     static @NonNull Path getStartupLockPath(final @NonNull String sshPropertiesHashString) {
         return Paths.get(
                 LOCK_BASE_FOLDER_NAME,
@@ -119,7 +115,6 @@ public final class DocumentDbSshTunnelLock {
                 STARTUP_LOCK_NAME);
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     static @NonNull Path getPortLockPath(final @NonNull String propertiesHashString) {
         return Paths.get(
                 LOCK_BASE_FOLDER_NAME,
@@ -128,7 +123,6 @@ public final class DocumentDbSshTunnelLock {
         );
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     static @NonNull Path getLockDirectoryPath(final @NonNull String propertiesHashString) {
         return Paths.get(
                 LOCK_BASE_FOLDER_NAME,
@@ -160,7 +154,6 @@ public final class DocumentDbSshTunnelLock {
         }
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     static @NonNull Path getClientLockPath(final @NonNull UUID unique, final @NonNull String propertiesHashString) {
         return Paths.get(
                 LOCK_BASE_FOLDER_NAME,
@@ -169,7 +162,6 @@ public final class DocumentDbSshTunnelLock {
                 CLIENT_LOCK_NAME + "-" + unique);
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     static Path getClientsFolderPath(final String sshPropertiesHashString) {
         return Paths.get(
                 LOCK_BASE_FOLDER_NAME,
@@ -177,7 +169,6 @@ public final class DocumentDbSshTunnelLock {
                 CLIENT_LOCK_FOLDER_NAME);
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     private static String getLockBaseFolderName() {
         return Paths.get(
                 getDocumentdbHomePathName(),

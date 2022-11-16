@@ -21,7 +21,6 @@ import com.jcraft.jsch.HostKeyRepository;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -494,7 +493,6 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
          *
          * @param clientCount the number of alive clients with locked files.
          */
-        @SuppressFBWarnings("PATH_TRAVERSAL_IN")
         @SneakyThrows
         private static Exception checkAndHandleClientLocks(
                 final AtomicInteger clientCount, final String sshPropertiesHashString, final FileLock serverLock) {

@@ -16,7 +16,6 @@
 
 package software.amazon.documentdb.jdbc.sshtunnel;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -58,7 +57,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isN
 
 /**
  * Provides a single-instance SSH Tunnel server.
- *
+ * <p>
  * Use the {@link #builder(String, String, String, String)} method to instantiate
  * a new {@link DocumentDbSshTunnelServerBuilder} object. Set the properties as needed,
  * then call the build() method.
@@ -343,7 +342,6 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         }
     }
 
-    @SuppressFBWarnings("PATH_TRAVERSAL_IN")
     private void maybeStartServer() throws Exception {
         final Path serverLockPath = DocumentDbSshTunnelLock.getServerLockPath(propertiesHashString);
         try (DocumentDbMultiThreadFileChannel serverChannel = DocumentDbMultiThreadFileChannel.open(
@@ -458,14 +456,12 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         }
     }
 
-    @SuppressFBWarnings("COMMAND_INJECTION")
     private void startSshTunnelServiceProcess() throws IOException, SQLException {
         final List<String> command = getSshTunnelCommand();
         final ProcessBuilder builder = new ProcessBuilder(command);
         builder.inheritIO().start();
     }
 
-    @SuppressFBWarnings("COMMAND_INJECTION")
     private List<String> getSshTunnelCommand() throws SQLException {
         final List<String> command = new LinkedList<>();
         final String docDbSshTunnelPathString = System.getenv(DOCUMENTDB_SSH_TUNNEL_PATH);

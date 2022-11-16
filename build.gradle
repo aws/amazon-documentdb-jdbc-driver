@@ -336,8 +336,6 @@ dependencies {
     implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
     implementation 'io.github.hakky54:sslcontext-kickstart:7.4.8'
 
-    compileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
-    compileOnly         group: 'com.google.code.findbugs', name: 'jsr305', version: '3.0.1'
     compileOnly         group: 'org.immutables', name: 'value', version: '2.9.2'
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.4'
     compileOnly         'org.projectlombok:lombok:1.18.24'

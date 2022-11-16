@@ -90,7 +90,10 @@
     <Bug pattern="ODR_OPEN_DATABASE_RESOURCE"/>
   </Match>
   <Match>
-    <Source name="Driver.java"/>
+    <Or>
+      <Source name="Driver.java"/>
+      <Source name="DocumentDbSshTunnelServer.java"/>
+    </Or>
     <Bug pattern="COMMAND_INJECTION"/>
   </Match>
   <Match>
@@ -98,6 +101,9 @@
       <Source name="DocumentDbConnectionProperties.java"/>
       <Source name="DocumentDbConnectionPropertiesTest.java"/>
       <Source name="DocumentDbMain.java"/>
+      <Source name="DocumentDbSshTunnelLock.java"/>
+      <Source name="DocumentDbSshTunnelServer.java"/>
+      <Source name="DocumentDbSshTunnelService.java"/>
     </Or>
     <Bug pattern="PATH_TRAVERSAL_IN"/>
   </Match>
@@ -153,5 +159,11 @@
       <Bug pattern="EI_EXPOSE_REP" />
       <Bug pattern="EI_EXPOSE_REP2" />
     </Or>
+  </Match>
+  <Match>
+    <Or>
+      <Source name="SqlError.java"/>
+    </Or>
+    <Bug pattern="CRLF_INJECTION_LOGS"/>
   </Match>
 </FindBugsFilter>
