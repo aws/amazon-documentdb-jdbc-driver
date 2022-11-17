@@ -120,7 +120,10 @@ public enum SqlError {
      * @return resource String, formatted with formatArgs.
      */
     public static String lookup(final SqlError key, final Object... formatArgs) {
-        return String.format(RESOURCE.getString(key.name()), formatArgs);
+        // Remove any new lines.
+        return String
+                .format(RESOURCE.getString(key.name()), formatArgs)
+                .replaceAll("[\r\n]", "");
     }
 
     /**

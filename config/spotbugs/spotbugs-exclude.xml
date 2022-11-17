@@ -160,10 +160,4 @@
       <Bug pattern="EI_EXPOSE_REP2" />
     </Or>
   </Match>
-  <Match>
-    <Or>
-      <Source name="SqlError.java"/>
-    </Or>
-    <Bug pattern="CRLF_INJECTION_LOGS"/>
-  </Match>
 </FindBugsFilter>
