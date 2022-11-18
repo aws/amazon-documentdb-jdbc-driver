@@ -55,8 +55,12 @@ public enum SqlError {
     KNOWN_HOSTS_FILE_NOT_FOUND,
     MISSING_DATABASE,
     MISSING_HOSTNAME,
+    MISSING_JAVA_HOME,
     MISSING_SCHEMA,
     MISSING_PASSWORD,
+    MISSING_SSH_USER,
+    MISSING_SSH_HOSTNAME,
+    MISSING_SSH_PRIVATE_KEY_FILE,
     MISSING_USER_PASSWORD,
     MISSING_LITERAL_VALUE,
     MISMATCH_SCHEMA_NAME,
@@ -73,8 +77,10 @@ public enum SqlError {
     RESULT_SET_CLOSED,
     SECURITY_ERROR,
     SSH_PRIVATE_KEY_FILE_NOT_FOUND,
+    SSH_TUNNEL_PATH_NOT_FOUND,
     SINGLE_EQUIJOIN_ONLY,
     SQL_PARSE_ERROR,
+    SSH_TUNNEL_ERROR,
     STMT_CLOSED,
     TLS_CA_FILE_NOT_FOUND,
     TRANSACTIONS_NOT_SUPPORTED,
@@ -114,7 +120,10 @@ public enum SqlError {
      * @return resource String, formatted with formatArgs.
      */
     public static String lookup(final SqlError key, final Object... formatArgs) {
-        return String.format(RESOURCE.getString(key.name()), formatArgs);
+        // Remove any new lines.
+        return String
+                .format(RESOURCE.getString(key.name()), formatArgs)
+                .replaceAll("[\r\n]", "");
     }
 
     /**

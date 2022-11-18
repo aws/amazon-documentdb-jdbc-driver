@@ -63,7 +63,7 @@ import static software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader.TAB
 class DocumentDbMainTest {
 
     // Ensure custom schema can be sorted after "_default" - so start with a lower-case letter
-    private static final String CUSTOM_SCHEMA_NAME = "a" + UUID.randomUUID().toString();
+    private static final String CUSTOM_SCHEMA_NAME = "a" + UUID.randomUUID();
     public static final String NEW_DEFAULT_SCHEMA_ANY_VERSION_REGEX =
             Pattern.quote("New schema '_default', version '")
                     + "\\d+"
@@ -72,9 +72,24 @@ class DocumentDbMainTest {
             .compile(NEW_DEFAULT_SCHEMA_ANY_VERSION_REGEX);
     private DocumentDbConnectionProperties properties;
     public static final Path USER_HOME_PATH = Paths.get(System.getProperty(USER_HOME_PROPERTY));
+    private static final String DOC_DB_PRIV_KEY_FILE_PROPERTY = "DOC_DB_PRIV_KEY_FILE";
+    private static final String DOC_DB_USER_PROPERTY = "DOC_DB_USER";
+    private static final String DOC_DB_HOST_PROPERTY = "DOC_DB_HOST";
 
     private static Stream<DocumentDbTestEnvironment> getTestEnvironments() {
         return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream();
+    }
+
+    private static Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {
+        if (DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
+                .anyMatch(e -> e ==  DocumentDbTestEnvironmentFactory
+                        .getDocumentDb40SshTunnelEnvironment())) {
+            return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
+                    .filter(e -> e == DocumentDbTestEnvironmentFactory
+                            .getDocumentDb40SshTunnelEnvironment());
+        } else {
+            return Stream.of((DocumentDbTestEnvironment) null);
+        }
     }
 
     @BeforeAll
@@ -86,7 +101,7 @@ class DocumentDbMainTest {
     }
 
     @AfterEach
-    void afterEach() throws Exception {
+    void afterEach() {
         if (properties != null) {
             try (DocumentDbSchemaWriter writer = new DocumentDbSchemaWriter(properties, null)) {
                 writer.remove(DEFAULT_SCHEMA_NAME);
@@ -482,7 +497,7 @@ class DocumentDbMainTest {
             output.setLength(0);
             DocumentDbMain.handleCommandLine(args, output);
             Assertions.assertEquals(
-                    getExpectedExportContent(testEnvironment, collections),
+                    getExpectedExportContent(collections),
                     output.toString().replace("\r\n", "\n"));
         } finally {
             dropCollection(testEnvironment, collectionName2);
@@ -515,7 +530,7 @@ class DocumentDbMainTest {
                         output.toString().replace("\r\n", "\n"));
                 readOutputFileContent(outputFilePath, output);
                 Assertions.assertEquals(
-                        getExpectedExportContent(testEnvironment, collectionName),
+                        getExpectedExportContent(collectionName),
                         output.toString().replace("\r\n", "\n"));
             } finally {
                 Assertions.assertTrue(outputFilePath.toFile().delete());
@@ -549,7 +564,7 @@ class DocumentDbMainTest {
                         output.toString().replace("\r\n", "\n"));
                 readOutputFileContent(outputFilePath, output);
                 Assertions.assertEquals(
-                        getExpectedExportContent(testEnvironment, collectionName),
+                        getExpectedExportContent(collectionName),
                         output.toString().replace("\r\n", "\n"));
 
                 output.setLength(0);
@@ -604,11 +619,11 @@ class DocumentDbMainTest {
                         output.toString().replace("\r\n", "\n"));
                 readOutputFileContent(outputFilePath, output);
                 Assertions.assertEquals(
-                        getExpectedExportContent(testEnvironment, collectionName),
+                        getExpectedExportContent(collectionName),
                         output.toString().replace("\r\n", "\n"));
 
                 final String outputWithDuplicateColumnName = getExpectedExportContent(
-                        testEnvironment, collectionName)
+                        collectionName)
                         .replace("\"sqlName\" : \"fieldDouble\"",
                                 "\"sqlName\" : \"fieldString\"");
                 try (BufferedWriter bufferedWriter = Files
@@ -663,7 +678,7 @@ class DocumentDbMainTest {
                         output.toString().replace("\r\n", "\n"));
                 readOutputFileContent(outputFilePath, output);
                 Assertions.assertEquals(
-                        getExpectedExportContent(testEnvironment, collectionName),
+                        getExpectedExportContent(collectionName),
                         output.toString().replace("\r\n", "\n"));
 
                 output.setLength(0);
@@ -826,6 +841,22 @@ class DocumentDbMainTest {
         }
     }
 
+    @ParameterizedTest(name = "testSshTunnelCommand - [{index}] - {arguments}")
+    @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
+    void testSshTunnelCommand(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        // NOTE: a "null" environment means it isn't configured to run. So bypass.
+        if (testEnvironment == null) {
+            return;
+        }
+        setConnectionProperties(testEnvironment);
+
+        final String connectionString = getSshConnectionString();
+        final StringBuilder output = new StringBuilder();
+        final String[] args = {"--ssh-tunnel", connectionString};
+        DocumentDbMain.handleCommandLine(args, output);
+        Assertions.assertEquals("", output.toString());
+    }
+
     private String createSimpleCollection(final DocumentDbTestEnvironment testEnvironment)
             throws SQLException {
         final String collectionName;
@@ -938,7 +969,6 @@ class DocumentDbMainTest {
     }
 
     private static String getExpectedExportContent(
-            final DocumentDbTestEnvironment testEnvironment,
             final String... collectionNames) {
         if (collectionNames == null || collectionNames.length < 1) {
             return "";
@@ -1012,5 +1042,21 @@ class DocumentDbMainTest {
         }
         builder.append(" ]");
         return builder.toString();
+    }
+
+    static String getSshConnectionString() {
+        final String docDbRemoteHost = System.getenv(DOC_DB_HOST_PROPERTY);
+        final String docDbSshUserAndHost = System.getenv(DOC_DB_USER_PROPERTY);
+        final int userSeparatorIndex = docDbSshUserAndHost.indexOf('@');
+        final String sshUser = docDbSshUserAndHost.substring(0, userSeparatorIndex);
+        final String sshHostname = docDbSshUserAndHost.substring(userSeparatorIndex + 1);
+        final String docDbSshPrivKeyFile = System.getenv(DOC_DB_PRIV_KEY_FILE_PROPERTY);
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setHostname(docDbRemoteHost);
+        properties.setSshUser(sshUser);
+        properties.setSshHostname(sshHostname);
+        properties.setSshPrivateKeyFile(docDbSshPrivKeyFile);
+        properties.setSshStrictHostKeyChecking(String.valueOf(false));
+        return DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME + properties.buildSshConnectionString();
     }
 }

@@ -58,6 +58,7 @@ import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
+import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelService;
 
 import java.io.Console;
 import java.io.File;
@@ -118,6 +119,7 @@ public class DocumentDbMain {
     private static final Options HELP_VERSION_OPTIONS;
     private static final Option HELP_OPTION;
     private static final Option VERSION_OPTION;
+    private static final Options SSH_TUNNEL_SERVICE_OPTIONS;
     private static final OptionGroup COMMAND_OPTIONS;
     private static final List<Option> REQUIRED_OPTIONS;
     private static final List<Option> OPTIONAL_OPTIONS;
@@ -160,6 +162,7 @@ public class DocumentDbMain {
     private static final String USER_OPTION_FLAG = "u";
     private static final String USER_OPTION_NAME = "user";
     private static final String VERSION_OPTION_NAME = "version";
+    public static final String SSH_TUNNEL_SERVICE_OPTION_NAME = "ssh-tunnel-service";
     // Option argument string constants
     private static final String DATABASE_NAME_ARG_NAME = "database-name";
     private static final String FILE_NAME_ARG_NAME = "file-name";
@@ -168,6 +171,7 @@ public class DocumentDbMain {
     private static final String METHOD_ARG_NAME = "method";
     private static final String USER_NAME_ARG_NAME = "user-name";
     private static final String TABLE_NAMES_ARG_NAME = "[table-name[,...]]";
+    private static final String SSH_TUNNEL_SERVICE_ARG_NAME = "ssh-properties";
     // Option description string constants
     private static final String GENERATE_NEW_OPTION_DESCRIPTION =
             "Generates a new schema for the database. "
@@ -227,6 +231,8 @@ public class DocumentDbMain {
     private static final String OUTPUT_OPTION_DESCRIPTION =
             "Write the exported schema to <file-name> in your home directory (instead of stdout)."
                     + " This will overwrite any existing file with the same name";
+    private static final String SSH_TUNNEL_SERVICE_OPTION_DESCRIPTION =
+            "Starts an SSH Tunnel service.";
     // Messages string constants
     public static final String DUPLICATE_COLUMN_KEY_DETECTED_FOR_TABLE_SCHEMA =
             "Duplicate column key '%s' detected for table schema '%s'. Original column '%s'."
@@ -242,6 +248,7 @@ public class DocumentDbMain {
         LIBRARY_NAME = getLibraryName();
         HELP_OPTION = buildHelpOption();
         VERSION_OPTION = buildVersionOption();
+        SSH_TUNNEL_SERVICE_OPTIONS = buildSshTunnelServiceOption();
         COMMAND_OPTIONS = buildCommandOptions();
         REQUIRED_OPTIONS = buildRequiredOptions();
         OPTIONAL_OPTIONS = buildOptionalOptions();
@@ -322,7 +329,9 @@ public class DocumentDbMain {
         try {
             final StringBuilder output = new StringBuilder();
             handleCommandLine(args, output);
-            LOGGER.error("{}", output);
+            if (output.length() > 0) {
+                LOGGER.info("{}", output);
+            }
         } catch (SQLException e) {
             LOGGER.error(e.getMessage(), e);
         } catch (Exception e) {
@@ -340,6 +349,13 @@ public class DocumentDbMain {
         }
         try {
             final CommandLineParser parser = new DefaultParser();
+            // First check for the SSH tunnel service option separately from the other options.
+            final CommandLine commandLineSshTunnelService = parser.parse(SSH_TUNNEL_SERVICE_OPTIONS, args, true);
+            if (commandLineSshTunnelService.hasOption(SSH_TUNNEL_SERVICE_OPTION_NAME)) {
+                performSshTunnelService(commandLineSshTunnelService, output);
+                return;
+            }
+            // Otherwise, consider the "complete" options for metadata options.
             final CommandLine commandLine = parser.parse(COMPLETE_OPTIONS, args);
             final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
             if (!tryGetConnectionProperties(commandLine, properties, output)) {
@@ -402,6 +418,29 @@ public class DocumentDbMain {
         if (client != null) {
             client.close();
             client = null;
+        }
+    }
+
+    private static void performSshTunnelService(
+            final CommandLine commandLine,
+            final StringBuilder output) throws DuplicateKeyException {
+        try (DocumentDbSshTunnelService service = new DocumentDbSshTunnelService(
+                    commandLine.getOptionValue(SSH_TUNNEL_SERVICE_OPTION_NAME))) {
+            final Thread serviceThread = new Thread(service);
+            serviceThread.setDaemon(true);
+            serviceThread.start();
+            do {
+                serviceThread.join(1000);
+            } while (serviceThread.isAlive());
+            service.getExceptions().stream().forEach(
+                    e -> output
+                            .append(e.getMessage())
+                            .append(System.lineSeparator())
+                            .append(Arrays.stream(e.getStackTrace())
+                                    .map(st -> st.toString()).collect(Collectors.joining(System.lineSeparator())))
+                            .append(System.lineSeparator()));
+        } catch (Exception e) {
+            output.append(e.getMessage());
         }
     }
 
@@ -993,6 +1032,16 @@ public class DocumentDbMain {
                 .longOpt(VERSION_OPTION_NAME)
                 .desc(VERSION_OPTION_DESCRIPTION)
                 .build();
+    }
+
+    private static Options buildSshTunnelServiceOption() {
+        return new Options().addOption(
+                Option.builder()
+                        .longOpt(SSH_TUNNEL_SERVICE_OPTION_NAME)
+                        .desc(SSH_TUNNEL_SERVICE_OPTION_DESCRIPTION)
+                        .numberOfArgs(1)
+                        .argName(SSH_TUNNEL_SERVICE_ARG_NAME)
+                        .build());
     }
 
     private static Option buildHelpOption() {

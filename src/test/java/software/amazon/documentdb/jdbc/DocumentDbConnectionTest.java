@@ -16,9 +16,11 @@
 
 package software.amazon.documentdb.jdbc;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -32,13 +34,23 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
+import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelClientRunner;
+import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelServer;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
@@ -463,6 +475,62 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(properties.getRefreshSchema());
     }
 
+    @Disabled("[JDBC: Create automated test to exercise multi-process use of singleton SSH Tunnel]" +
+            "(https://bitquill.atlassian.net/browse/AD-992)")
+    @SuppressFBWarnings("COMMAND_INJECTION")
+    @ParameterizedTest(name = "testMultiProcessConnections - [{index}] - {arguments}")
+    @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
+    void testMultiProcessConnections(final DocumentDbTestEnvironment environment)
+            throws Exception {
+        if (environment == null) {
+            return;
+        }
+        environment.start();
+
+        final String connectionString = DocumentDbConnectionPropertiesTest
+                .buildInternalSshTunnelConnectionString(environment);
+        final List<String> command = new ArrayList<>(DocumentDbSshTunnelServer
+                .getJavaCommand(DocumentDbSshTunnelClientRunner.class.getName(),
+                        connectionString));
+        final int maxWaitTime = 5;
+        command.add("2");
+        command.add(String.valueOf(maxWaitTime));
+        final List<Process> processes = new ArrayList<>();
+        final int maxProcessCount = 2;
+        for (int i = 0; i < maxProcessCount; i++) {
+            processes.add(new ProcessBuilder(command).start());
+        }
+        for (Process process : processes) {
+            synchronized (process) {
+                final Instant timeoutTime = Instant.now().plus(Duration.ofSeconds(maxWaitTime * 2));
+                while (process.isAlive()) {
+                    final Instant now = Instant.now();
+                    if (now.isAfter(timeoutTime)) {
+                        break;
+                    }
+                    process.wait(1000);
+                }
+                if (process.isAlive()) {
+                    System.out.println("Destroying process.");
+                    process.destroy();
+                }
+                if (process.isAlive()) {
+                    System.out.println("Forcibly destroying process.");
+                    process.destroyForcibly();
+                }
+                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                    System.out.println("Process output: '" +
+                            bufferedReader.lines().collect(Collectors.joining(System.lineSeparator())) + "'");
+                }
+                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
+                    System.err.println("Process error: '" +
+                            bufferedReader.lines().collect(Collectors.joining(System.lineSeparator())) + "'");
+                }
+                Assertions.assertEquals(0, process.exitValue());
+            }
+        }
+    }
+
     private Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {
         if (DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
                 .anyMatch(e -> e ==  DocumentDbTestEnvironmentFactory
@@ -475,7 +543,14 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
     }
 
-    private static DocumentDbConnectionProperties getInternalSSHTunnelProperties(
+    /**
+     * Gets the connection properties to test an internal SSH tunnel.
+     *
+     * @param environment the test environment.
+     * @return a {@link DocumentDbConnectionProperties} object.
+     * @throws SQLException if any of the properties cannot be parsed correctly.
+     */
+    public static DocumentDbConnectionProperties getInternalSSHTunnelProperties(
             final DocumentDbTestEnvironment environment)
             throws SQLException {
         final String docDbRemoteHost = System.getenv(DOC_DB_HOST_PROPERTY);
