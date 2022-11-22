@@ -96,7 +96,7 @@ public final class DocumentDbRules {
     static final Map<String, String> ESCAPE_MAP;
 
     static {
-        Map<String, String> escapeMap = new HashMap<>();
+        final Map<String, String> escapeMap = new HashMap<>();
         escapeMap.put("[']", "\\'");
         ESCAPE_MAP = Collections.unmodifiableMap(escapeMap);
     }
@@ -194,6 +194,13 @@ public final class DocumentDbRules {
         return quote(s, '\'', ESCAPE_MAP);
     }
 
+    /**
+     * Quotes a string with the given quote character, handling any escape substitutions provided.
+     * @param s the value to quote.
+     * @param quoteChar the character to quote the value with.
+     * @param escapeMap the map of regular expressions to escaped replacement values.
+     * @return an escaped and quoted value.
+     */
     public static String quote(final String s, final char quoteChar, final Map<String, String> escapeMap) {
         String value = s;
         for (Map.Entry<String, String> entry : escapeMap.entrySet()) {
