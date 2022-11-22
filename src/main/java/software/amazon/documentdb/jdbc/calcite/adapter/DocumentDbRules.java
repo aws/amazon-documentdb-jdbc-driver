@@ -73,6 +73,7 @@ import java.time.format.TextStyle;
 import java.time.temporal.ChronoUnit;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -92,6 +93,13 @@ import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isN
 public final class DocumentDbRules {
     private static final Logger LOGGER = CalciteTrace.getPlannerTracer();
     private static final Pattern OBJECT_ID_PATTERN = Pattern.compile("^[0-9a-zA-Z]{24}$");
+    static final Map<String, String> ESCAPE_MAP;
+
+    static {
+        Map<String, String> escapeMap = new HashMap<>();
+        escapeMap.put("[']", "\\'");
+        ESCAPE_MAP = Collections.unmodifiableMap(escapeMap);
+    }
 
     private DocumentDbRules() { }
 
@@ -176,24 +184,32 @@ public final class DocumentDbRules {
     }
 
     static String maybeQuote(final String s) {
-        if (!needsQuote(s)) {
+        if (!needsQuote(s, '\'')) {
             return s;
         }
-        return quote(s);
+        return quote(s, '\'', ESCAPE_MAP);
     }
 
     static String quote(final String s) {
-        return "'" + s + "'"; // TODO: handle embedded quotes
+        return quote(s, '\'', ESCAPE_MAP);
     }
 
-    private static boolean needsQuote(final String s) {
+    public static String quote(final String s, final char quoteChar, final Map<String, String> escapeMap) {
+        String value = s;
+        for (Map.Entry<String, String> entry : escapeMap.entrySet()) {
+            value = value.replaceAll(entry.getKey(), entry.getValue());
+        }
+        return quoteChar + value + quoteChar;
+    }
+
+    private static boolean needsQuote(final String s, final char quoteChar) {
         for (int i = 0, n = s.length(); i < n; i++) {
             final char c = s.charAt(i);
             // DocumentDB: modified - start
             // Add quotes for embedded documents (contains '.') and
             // for field names with ':'.
             if (!Character.isJavaIdentifierPart(c)
-                    || c == '$' || c == '.' || c == ':') {
+                    || c == quoteChar || c == '$' || c == '.' || c == ':') {
                 return true;
             }
             // DocumentDB: modified - end
@@ -449,6 +465,7 @@ public final class DocumentDbRules {
                             + "\", \"subType\": \"00\"}}";
                     return new Operand(binaryFormat, binaryFormat, true);
                 default:
+                    // Note: If type is [[LONG][N]VAR]CHAR, this call returns a properly escaped double-quoted string.
                     final String simpleLiteral = RexToLixTranslator.translateLiteral(literal, literal.getType(),
                             typeFactory, NullAs.NOT_POSSIBLE).toString();
                     return new Operand("{\"$literal\": " + simpleLiteral + "}", simpleLiteral, true);

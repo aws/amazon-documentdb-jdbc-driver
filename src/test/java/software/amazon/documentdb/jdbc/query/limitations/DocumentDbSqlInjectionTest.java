@@ -31,8 +31,11 @@ import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingServiceTest;
 
 import java.sql.SQLException;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+
+import static software.amazon.documentdb.jdbc.calcite.adapter.DocumentDbRules.quote;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 class DocumentDbSqlInjectionTest extends DocumentDbQueryMappingServiceTest {
@@ -58,6 +61,7 @@ class DocumentDbSqlInjectionTest extends DocumentDbQueryMappingServiceTest {
     @Test
     void testMongoInjections() throws SQLException {
         final String primaryKeyColumnName = COLLECTION_NAME + "__id";
+        final String expectedKey = "$delete";
         final String injection = String.format(
                 "\"}, {$delete: {\"%1$s\", \"1\"}",
                 primaryKeyColumnName);
@@ -73,7 +77,6 @@ class DocumentDbSqlInjectionTest extends DocumentDbQueryMappingServiceTest {
         final DocumentDbMqlQueryContext queryContext = queryMapper.get(query);
         Assertions.assertNotNull(queryContext);
         final List<Bson> aggregateOperations = queryContext.getAggregateOperations();
-        final String expectedKey = "$delete";
         assertKeyNotExists(expectedKey, aggregateOperations);
         assertValueExists(injection, aggregateOperations);
 
@@ -136,10 +139,29 @@ class DocumentDbSqlInjectionTest extends DocumentDbQueryMappingServiceTest {
         final List<Bson> aggregateOperations5 = queryContext5.getAggregateOperations();
         assertKeyNotExists(expectedKey, aggregateOperations5);
         assertValueExists(injection, aggregateOperations5);
+
+        // Single-quotes
+        final String injection6 = String.format(
+                "'}, {$delete: {'%1$s', '1'}",
+                primaryKeyColumnName);
+        final String query6 = String.format(
+                "SELECT \"%1$s\", \"%2$s\", \"%3$s\" FROM \"%4$s\".\"%5$s\"" +
+                        " WHERE \"%1$s\" = %6$s",
+                primaryKeyColumnName,
+                "field",
+                "field1",
+                getDatabaseName(),
+                COLLECTION_NAME + "_array",
+                quote(injection6, '\'', Collections.singletonMap("[']", "''")));
+        final DocumentDbMqlQueryContext queryContext6 = queryMapper.get(query6);
+        Assertions.assertNotNull(queryContext6);
+        final List<Bson> aggregateOperations6 = queryContext6.getAggregateOperations();
+        assertKeyNotExists(expectedKey, aggregateOperations6);
+        assertValueExists(injection6, aggregateOperations6);
     }
 
     @Test
-    void testSqlInjections() {
+    void testSqlInjections() throws SQLException {
         final String primaryKeyColumnName = COLLECTION_NAME + "__id";
         final String injection = String.format(
                 "'; DELETE FROM \"%1$s\" WHERE \"%2$s\" <> '",
@@ -168,6 +190,23 @@ class DocumentDbSqlInjectionTest extends DocumentDbQueryMappingServiceTest {
                 injection);
         final Exception exception2 = Assertions.assertThrows(SQLException.class, () -> queryMapper.get(query2));
         Assertions.assertTrue(exception2.getMessage().contains("Reason: 'parse failed: Encountered \";\" at line 1"));
+
+        // Assume SQL application will correctly escape input strings, as below
+        final String injection3 = "'--";
+        final String query3 = String.format(
+                "SELECT \"%1$s\", \"%2$s\", \"%3$s\" FROM \"%4$s\".\"%5$s\"" +
+                        " WHERE \"%1$s\" > %6$s AND \"%1$s\" < 'detect value'",
+                primaryKeyColumnName,
+                "field",
+                "field1",
+                getDatabaseName(),
+                COLLECTION_NAME + "_array",
+                quote(injection3, '\'', Collections.singletonMap("[']", "''")));
+        final DocumentDbMqlQueryContext queryContext3 = queryMapper.get(query3);
+        Assertions.assertNotNull(queryContext3);
+        final List<Bson> aggregateOperations3 = queryContext3.getAggregateOperations();
+        assertValueExists("detect value", aggregateOperations3);
+        assertValueExists(injection3, aggregateOperations3);
     }
 
     private static void assertKeyNotExists(final @NonNull String expectedKey, final List<Bson> aggregateOperations) {
