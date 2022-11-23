@@ -51,8 +51,9 @@ class DocumentDbSqlInjectionTest extends DocumentDbQueryMappingServiceTest {
                                 + "{ \"field\" : 1, \"field1\": \"value\" }, "
                                 + "{ \"field\" : 2, \"field2\" : \"value\" , \"field3\" : { \"field4\": 3} } ]}");
         final BsonDocument otherDocument =
-                BsonDocument.parse(
-                        "{ \"_id\" : \"key1\", \"otherArray\" : [ { \"field\" : 1, \"field3\": \"value\" }, { \"field\" : 2, \"field3\" : \"value\" } ]}");
+                BsonDocument.parse("{\"_id\": \"key1\", \"otherArray\": [" +
+                        "{\"field\": 1, \"field3\": \"value\"}, " +
+                        "{\"field\": 2, \"field3\": \"value\"}]}");
         insertBsonDocuments(COLLECTION_NAME, new BsonDocument[] {document});
         insertBsonDocuments(OTHER_COLLECTION_NAME, new BsonDocument[] {otherDocument});
         queryMapper = getQueryMappingService();
@@ -77,7 +78,9 @@ class DocumentDbSqlInjectionTest extends DocumentDbQueryMappingServiceTest {
         final DocumentDbMqlQueryContext queryContext = queryMapper.get(query);
         Assertions.assertNotNull(queryContext);
         final List<Bson> aggregateOperations = queryContext.getAggregateOperations();
+        // Assert that the attempted injection did not add a '$delete' operation.
         assertKeyNotExists(expectedKey, aggregateOperations);
+        // Assert that the attempted injection is interpreted as a '$literal' value
         assertValueExists(injection, aggregateOperations);
 
         final String query2 = String.format(
