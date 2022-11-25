@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc.metadata;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.mongodb.MongoCommandException;
 import com.mongodb.client.MongoCollection;
 import org.bson.BsonDocument;
 import org.bson.BsonInt32;
@@ -67,7 +68,15 @@ public class DocumentDbMetadataScanner {
             case RANDOM:
                 final List<BsonDocument> aggregations = new ArrayList<>();
                 aggregations.add(new BsonDocument(RANDOM, new BsonDocument("size", new BsonInt32(scanLimit))));
-                return collection.aggregate(aggregations).cursor();
+                try {
+                    return collection.aggregate(aggregations).cursor();
+                } catch (MongoCommandException e) {
+                    if (e.getErrorCode() == 304 && "Aggregation stage not supported: '$sample'".equals(e.getMessage())) {
+                        // Revert to forward search, if RANDOM not supported.
+                        return collection.find().sort(new BsonDocument(ID, FORWARD)).limit(scanLimit).cursor();
+                    }
+                    throw e;
+                }
         }
         throw SqlError.createSQLException(
                 LOGGER,
