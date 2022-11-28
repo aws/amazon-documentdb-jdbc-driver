@@ -152,20 +152,6 @@ The online security resources may give a pointer how to fix this.
 [Maintaining the Known Hosts File](../setup/maintain_known_hosts.md) to add one 
 or more entries to your known hosts file.
 
-### Unexplained timeout or disconnection from BI tool while using SSH tunnel properties.
-#### What to look for:
-
-- Timeout connecting to the database server.
-- Connection refused on local machine.
-- Disconnection error.
-
-#### What to do:
-
-1. Close all BI tools that might be using the Amazon DocumentDB JDBC Driver.
-2. Delete all the SSH lock file folders found under `~/.documentdb/sshTunnelLocks`.
-3. If you are unable to delete some of these folders due to files being locked, restart 
-your computer to force the files to become unlocked. Then repeat step 2.
-
 ## Schema Issues
 
 ### Schema Out of Date
