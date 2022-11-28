@@ -134,8 +134,8 @@ public abstract class DatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getProcedureTerm() {
-        LOGGER.debug("Procedures are not supported. Returning empty string.");
-        return "";
+        LOGGER.debug("Procedures are not supported. Returning null.");
+        return null;
     }
 
     @Override

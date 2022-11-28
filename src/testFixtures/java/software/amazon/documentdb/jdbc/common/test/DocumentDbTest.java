@@ -18,8 +18,9 @@ package software.amazon.documentdb.jdbc.common.test;
 
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
-
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.encodeValue;
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 public class DocumentDbTest {
     private static int mongoPort = -1;
@@ -84,5 +85,13 @@ public class DocumentDbTest {
                 : "";
         return MongoClients.create(String.format("mongodb://%s%s:%s%s%s",
                 credentials, hostname, port, authDatabase, optionsValue));
+    }
+
+    private static String encodeValue(final String value) {
+        try {
+            return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            return value;
+        }
     }
 }

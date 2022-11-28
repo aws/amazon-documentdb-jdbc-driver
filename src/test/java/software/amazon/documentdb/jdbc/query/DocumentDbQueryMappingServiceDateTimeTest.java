@@ -261,7 +261,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
                                 + " FROM \"%s\".\"%s\"",
                         getDatabaseName(), DATE_COLLECTION_NAME);
         Assertions.assertEquals(String.format("Unable to parse SQL"
-                        + " 'SELECT TIMESTAMPADD(MONTH, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'. --"
+                        + " 'SELECT TIMESTAMPADD(MONTH, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
                         + " Reason: 'Conversion between the source type (INTERVAL_MONTH) and the target type (TIMESTAMP) is not supported.'"),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery8))
                         .getMessage());
@@ -272,7 +272,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
                                 + " FROM \"%s\".\"%s\"",
                         getDatabaseName(), DATE_COLLECTION_NAME);
         Assertions.assertEquals(String.format("Unable to parse SQL"
-                        + " 'SELECT TIMESTAMPADD(YEAR, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'. --"
+                        + " 'SELECT TIMESTAMPADD(YEAR, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
                         + " Reason: 'Conversion between the source type (INTERVAL_YEAR) and the target type (TIMESTAMP) is not supported.'"),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery9))
                         .getMessage());
@@ -283,7 +283,7 @@ public class DocumentDbQueryMappingServiceDateTimeTest extends DocumentDbQueryMa
                                 + " FROM \"%s\".\"%s\"",
                         getDatabaseName(), DATE_COLLECTION_NAME);
         Assertions.assertEquals(String.format("Unable to parse SQL"
-                        + " 'SELECT TIMESTAMPADD(QUARTER, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'. --"
+                        + " 'SELECT TIMESTAMPADD(QUARTER, 10, \"field\") AS \"cts\" FROM \"database\".\"dateTestCollection\"'.%n"
                         + " Reason: 'Conversion between the source type (INTERVAL_MONTH) and the target type (TIMESTAMP) is not supported.'"),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(timestampAddQuery10))
                         .getMessage());
