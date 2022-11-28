@@ -16,7 +16,6 @@
 
 package software.amazon.documentdb.jdbc;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import software.amazon.documentdb.jdbc.common.utilities.ConnectionProperty;
 
 import java.util.Arrays;
@@ -131,9 +130,9 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
      * @param description Description of the property.
      */
     DocumentDbConnectionProperty(
-            final @NonNull String connectionProperty,
-            final @NonNull String defaultValue,
-            final @NonNull String description) {
+            final String connectionProperty,
+            final String defaultValue,
+            final String description) {
         this.connectionProperty = connectionProperty;
         this.defaultValue = defaultValue;
         this.description = description;
@@ -144,7 +143,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
      *
      * @return the connection property.
      */
-    public @NonNull String getName() {
+    public String getName() {
         return connectionProperty;
     }
 
@@ -153,7 +152,7 @@ public enum DocumentDbConnectionProperty implements ConnectionProperty {
      *
      * @return the default value of the connection property.
      */
-    public @NonNull String getDefaultValue() {
+    public String getDefaultValue() {
         return defaultValue;
     }
 
