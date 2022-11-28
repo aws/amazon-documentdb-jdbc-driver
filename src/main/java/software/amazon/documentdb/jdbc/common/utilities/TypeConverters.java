@@ -43,7 +43,10 @@ import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Provides a map of type converters.
@@ -181,7 +184,9 @@ public class TypeConverters {
         @Override
         protected <T> T convertToType(final Class<T> targetType, final Object value) throws Exception {
             if (value instanceof BsonTimestamp) {
-                return super.convertToType(targetType, ((BsonTimestamp) value).getValue());
+                // This returns time in seconds since epoch.
+                final int timeInSecsSinceEpoch = ((BsonTimestamp) value).getTime();
+                return super.convertToType(targetType, TimeUnit.SECONDS.toMillis(timeInSecsSinceEpoch));
             }
             return super.convertToType(targetType, value);
         }

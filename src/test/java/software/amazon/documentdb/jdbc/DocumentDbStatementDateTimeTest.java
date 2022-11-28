@@ -19,6 +19,7 @@ package software.amazon.documentdb.jdbc;
 import org.bson.BsonDateTime;
 import org.bson.BsonDocument;
 import org.bson.BsonNull;
+import org.bson.BsonTimestamp;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -1190,6 +1191,57 @@ public class DocumentDbStatementDateTimeTest extends DocumentDbStatementTest {
             Assertions.assertTrue(resultSet1.next());
             Assertions.assertNull(resultSet1.getObject(1));
             resultSet1.getBoolean(1);
+            Assertions.assertTrue(resultSet1.wasNull());
+            Assertions.assertFalse(resultSet1.next());
+        }
+    }
+
+    /**
+     * Tests select dates with AND condition.
+     *
+     * @throws SQLException occurs if query fails.
+     */
+    @DisplayName("Tests select dates with AND condition.")
+    @ParameterizedTest(name = "testSelectDateWithAnd - [{index}] - {arguments}")
+    @MethodSource({"getTestEnvironments"})
+    void testSelectTimestamp(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
+        setTestEnvironment(testEnvironment);
+        final String tableName = "testSelectTimestamp";
+        final Instant dateTime = Instant.parse("2020-02-03T04:05:06.00Z");
+        final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
+        doc1.append("field", new BsonTimestamp((int) dateTime.getEpochSecond(), 1));
+        final BsonDocument doc2 = BsonDocument.parse("{\"_id\": 102}");
+        doc2.append("field", new BsonNull());
+        insertBsonDocuments(tableName, new BsonDocument[]{doc1, doc2});
+        try (Connection connection = getConnection()) {
+            final Statement statement = getDocumentDbStatement(connection);
+
+            final ResultSet resultSet1 = statement.executeQuery(
+                    String.format(
+                            "SELECT \"field\" FROM \"%s\".\"%s\"",
+                            getDatabaseName(), tableName));
+
+            Assertions.assertNotNull(resultSet1);
+            Assertions.assertTrue(resultSet1.next());
+            // Non-NULL result
+            Assertions.assertEquals(Types.TIMESTAMP, resultSet1.getMetaData().getColumnType(1));
+            final Timestamp aTimestamp = resultSet1.getTimestamp(1);
+            Assertions.assertFalse(resultSet1.wasNull());
+            Assertions.assertNotNull(aTimestamp);
+            Assertions.assertEquals(dateTime.toEpochMilli(), aTimestamp.getTime());
+            final Date aDate = resultSet1.getDate(1);
+            Assertions.assertNotNull(aDate);
+            Assertions.assertEquals(dateTime.toEpochMilli(), aDate.getTime());
+            final Time aTime = resultSet1.getTime(1);
+            Assertions.assertNotNull(aTime);
+            Assertions.assertEquals(dateTime.toEpochMilli(), aTime.getTime());
+            final String aString = resultSet1.getString(1);
+            Assertions.assertNotNull(aString);
+            Assertions.assertEquals(new Timestamp(dateTime.toEpochMilli()).toString(), aString);
+            // NULL result
+            Assertions.assertTrue(resultSet1.next());
+            Assertions.assertNull(resultSet1.getObject(1));
+            resultSet1.getTimestamp(1);
             Assertions.assertTrue(resultSet1.wasNull());
             Assertions.assertFalse(resultSet1.next());
         }

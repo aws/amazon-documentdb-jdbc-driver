@@ -48,29 +48,29 @@ The sampling behavior can be modified using connection string or datasource opti
 The DocumentDB server supports a number of MongoDB data types. Listed below are the supported data
 types, and their associated JDBC data types.
 
-| MongoDB Data Type | Supported in DocumentDB | JDBC Data Type |
-| ----------- | ----------- | ----------- |
-| Binary Data| Yes | VARBINARY |
-| Boolean | Yes | BOOLEAN |
-| Double | Yes | DOUBLE |
-| 32-bit Integer | Yes | INTEGER |
-| 64-bit Integer | Yes | BIGINT |
-| String | Yes | VARCHAR |
-| ObjectId | Yes | VARCHAR |
-| Date | Yes | TIMESTAMP |
-| Null | Yes | VARCHAR |
-| Regular Expression | Yes | VARCHAR |
-| Timestamp | Yes | VARCHAR |
-| MinKey | Yes | VARCHAR |
-| MaxKey | Yes | VARCHAR |
-| Object | Yes | _virtual table_ |
-| Array | Yes | _virtual table_ |
-| Decimal128 | Yes | DECIMAL |
-| JavaScript | No | VARCHAR |
-| JavaScript (with scope) | No | VARCHAR |
-| Undefined | No | VARCHAR |
-| Symbol | No | VARCHAR |
-| DBPointer (4.0+) | No | VARCHAR |
+| MongoDB Data Type       | Supported in DocumentDB | JDBC Data Type  |
+|-------------------------|-------------------------|-----------------|
+| Binary Data             | Yes                     | VARBINARY       |
+| Boolean                 | Yes                     | BOOLEAN         |
+| Double                  | Yes                     | DOUBLE          |
+| 32-bit Integer          | Yes                     | INTEGER         |
+| 64-bit Integer          | Yes                     | BIGINT          |
+| String                  | Yes                     | VARCHAR         |
+| ObjectId                | Yes                     | VARCHAR         |
+| Date                    | Yes                     | TIMESTAMP       |
+| Null                    | Yes                     | VARCHAR         |
+| Regular Expression      | Yes                     | VARCHAR         |
+| Timestamp               | Yes                     | TIMESTAMP       |
+| MinKey                  | Yes                     | VARCHAR         |
+| MaxKey                  | Yes                     | VARCHAR         |
+| Object                  | Yes                     | _virtual table_ |
+| Array                   | Yes                     | _virtual table_ |
+| Decimal128              | Yes                     | DECIMAL         |
+| JavaScript              | No                      | VARCHAR         |
+| JavaScript (with scope) | No                      | VARCHAR         |
+| Undefined               | No                      | VARCHAR         |
+| Symbol                  | No                      | VARCHAR         |
+| DBPointer (4.0+)        | No                      | VARCHAR         |
 
 ### Mapping Scalar Document Fields
 
@@ -79,11 +79,11 @@ schema to represent the samples in the collection. In general, a scalar field in
 maps to a column in the table schema. For example, in a collection named `team`, and a single
 document `{ "_id" : "112233", "name" : "Alastair", "age" : 25 }`, this would map to schema:
 
-| Table Name | Column Name | Data Type | Key |
-| ---| --- | --- | --- |
-| team | _**team__id**_ | VARCHAR | PK |
-| team | name | VARCHAR | |
-| team | age | INTEGER | |
+| Table Name | Column Name    | Data Type | Key |
+|------------|----------------|-----------|-----|
+| team       | _**team__id**_ | VARCHAR   | PK  |
+| team       | name           | VARCHAR   |     |
+| team       | age            | INTEGER   |     |
 
 ### Data Type Conflict Promotion
 
@@ -113,11 +113,11 @@ The `age` field is of type _32-bit integer_ in the first document but _string_ i
 Here the JDBC driver will promote the JDBC data type to VARCHAR to handle either data type when
 encountered.
 
-| Table Name | Column Name | Data Type | Key |
-| ---| --- | --- | --- |
-| team | _**team__id**_ | VARCHAR | PK |
-| team | name | VARCHAR | |
-| team | age | VARCHAR | |
+| Table Name | Column Name    | Data Type | Key |
+|------------|----------------|-----------|-----|
+| team       | _**team__id**_ | VARCHAR   | PK  |
+| team       | name           | VARCHAR   |     |
+| team       | age            | VARCHAR   |     |
 
 ### Scalar-Scalar Conflict Promotion
 
@@ -162,22 +162,22 @@ Collection: `customer`
 
 maps to schema for `customer` table, ...
 
-| Table Name | Column Name | Data Type | Key |
-| --- | --- | --- | --- |
-| customer | _**customer__id**_ | VARCHAR | PK |
-| customer | name | VARCHAR | |
+| Table Name | Column Name        | Data Type | Key |
+|------------|--------------------|-----------|-----|
+| customer   | _**customer__id**_ | VARCHAR   | PK  |
+| customer   | name               | VARCHAR   |     |
 
 ... and the `customer_address` virtual table
 
-| Table Name | Column Name | Data Type | Key |
-| --- | --- | --- | --- |
-| customer_address | _**customer__id**_ | VARCHAR | PK/FK |
-| customer_address | address1 | VARCHAR | |
-| customer_address | address2 | VARCHAR | |
-| customer_address | city | VARCHAR | |
-| customer_address | region | VARCHAR | |
-| customer_address | country | VARCHAR | |
-| customer_address | code | VARCHAR | |
+| Table Name       | Column Name        | Data Type | Key   |
+|------------------|--------------------|-----------|-------|
+| customer_address | _**customer__id**_ | VARCHAR   | PK/FK |
+| customer_address | address1           | VARCHAR   |       |
+| customer_address | address2           | VARCHAR   |       |
+| customer_address | city               | VARCHAR   |       |
+| customer_address | region             | VARCHAR   |       |
+| customer_address | country            | VARCHAR   |       |
+| customer_address | code               | VARCHAR   |       |
 
 So the resulting data in the two tables would look like this...
 
@@ -189,9 +189,9 @@ So the resulting data in the two tables would look like this...
 
 #### Virtual Table: customer_address
 
-| _**customer__id**_ | address1 | address2 | city | region | country | code |
-| --- | --- | --- | --- | --- | --- | --- |
-| "112233" | "123 Avenue Way" | "Apt. 5" | "Hollywood" | "California" | "USA" | "90210" |
+| _**customer__id**_ | address1         | address2 | city        | region       | country | code    |
+|--------------------|------------------|----------|-------------|--------------|---------|---------|
+| "112233"           | "123 Avenue Way" | "Apt. 5" | "Hollywood" | "California" | "USA"   | "90210" |
 
 To query the data and return all columns, use the following query with a
 JOIN statement to get the matching address data.
@@ -223,34 +223,34 @@ Collection: `customer1`
 
 maps to schema for the `customer1` table, ...
 
-| Table Name | Column Name | Data Type | Key |
-| --- | --- | --- | --- |
-| customer1 | _**customer1__id**_ | VARCHAR | PK |
-| customer1 | name | VARCHAR | |
+| Table Name | Column Name         | Data Type | Key |
+|------------|---------------------|-----------|-----|
+| customer1  | _**customer1__id**_ | VARCHAR   | PK  |
+| customer1  | name                | VARCHAR   |     |
 
 ... and the `customer1_subscriptions` virtual table
 
-| Table Name | Column Name | Data Type | Key |
-| --- | --- | --- | --- |
-| customer1_subscriptions | _**customer1__id**_ | VARCHAR | PK/FK |
-| customer1_subscriptions | subscriptions_index_lvl0 | BIGINT | PK |
-| customer1_subscriptions | value | VARCHAR | |
+| Table Name              | Column Name              | Data Type | Key   |
+|-------------------------|--------------------------|-----------|-------|
+| customer1_subscriptions | _**customer1__id**_      | VARCHAR   | PK/FK |
+| customer1_subscriptions | subscriptions_index_lvl0 | BIGINT    | PK    |
+| customer1_subscriptions | value                    | VARCHAR   |       |
 
 So the resulting data in the two tables would look like this...
 
 #### Table: customer1
 
-| _**customer1__id**_ | name |
-| --- | --- |
-| "112233" | "George Jackson" |
+| _**customer1__id**_ | name             |
+|---------------------|------------------|
+| "112233"            | "George Jackson" |
 
 #### Virtual Table: customer1_subscriptions
 
-| _**customer1__id**_ | subscriptions_index_lvl0 | value |
-| --- | --- | --- |
-| "112233" | 0 | "Vogue" |
-| "112233" | 1 | "People" |
-| "112233" | 2 | "USA Today" |
+| _**customer1__id**_ | subscriptions_index_lvl0 | value       |
+|---------------------|--------------------------|-------------|
+| "112233"            | 0                        | "Vogue"     |
+| "112233"            | 1                        | "People"    |
+| "112233"            | 2                        | "USA Today" |
 
 To query the data and return all columns, use the following query with a
 JOIN statement to get the matching _subscriptions_ data.
@@ -294,17 +294,17 @@ Collection: `customer2`
 
 maps to schema for the `customer2` table, ...
 
-| Table Name | Column Name | Data Type | Key |
-| --- | --- | --- | --- |
-| customer2 | _**customer2__id**_ | VARCHAR | PK |
-| customer2 | name | VARCHAR | |
-| customer2 | subscription | VARCHAR | |
+| Table Name | Column Name         | Data Type | Key |
+|------------|---------------------|-----------|-----|
+| customer2  | _**customer2__id**_ | VARCHAR   | PK  |
+| customer2  | name                | VARCHAR   |     |
+| customer2  | subscription        | VARCHAR   |     |
 
 So the resulting data in the table would look like this...
 
 #### Table: customer2
 
-| _**customer2__id**_ | name | subscriptions |
-| --- | --- | --- |
-| "112233" | "George Jackson" | "\[ \\"Vogue\\", \\"People\\",  \\"USA Today\\" \]" |
-| "112244" | "Joan Starr" | "1" |
+| _**customer2__id**_ | name             | subscriptions                                       |
+|---------------------|------------------|-----------------------------------------------------|
+| "112233"            | "George Jackson" | "\[ \\"Vogue\\", \\"People\\",  \\"USA Today\\" \]" |
+| "112244"            | "Joan Starr"     | "1"                                                 |

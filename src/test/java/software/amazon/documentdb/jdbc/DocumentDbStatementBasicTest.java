@@ -42,6 +42,7 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
@@ -644,8 +645,8 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
         setTestEnvironment(testEnvironment);
         final String tableName = "testQueryCastDate";
         final BsonDocument doc1 = BsonDocument.parse("{\"_id\": 101}");
-        doc1.append("date",
-                new BsonTimestamp(new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime()));
+        doc1.append("date", new BsonTimestamp((int) TimeUnit.MILLISECONDS.toSeconds(
+                new SimpleDateFormat("yyyy/MM/dd").parse("2020/03/11").getTime()), 1));
         insertBsonDocuments(tableName, new BsonDocument[]{doc1});
         try (Connection connection = getConnection()) {
             final Statement statement = getDocumentDbStatement(connection);

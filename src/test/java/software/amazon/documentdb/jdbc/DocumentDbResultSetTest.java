@@ -63,9 +63,11 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Calendar;
 import java.util.Properties;
 import java.util.TimeZone;
+import java.util.concurrent.TimeUnit;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
@@ -599,7 +601,8 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
     void testGetTimestamp() throws SQLException {
         final String collection = "resultSetTestTimestamp";
         final Document document = Document.parse("{\"_id\": \"key1\"}");
-        final BsonTimestamp timestamp = new BsonTimestamp(100000);
+        final Instant dateTime = Instant.now();
+        final BsonTimestamp timestamp = new BsonTimestamp((int) dateTime.getEpochSecond(), 1);
         document.append("timestamp", timestamp);
         client.getDatabase(DATABASE_NAME).getCollection(collection).insertOne(document);
         connection = DriverManager.getConnection(getJdbcConnectionString());
@@ -607,10 +610,16 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         resultSetFlapdoodle = statement.executeQuery(
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
-        Assertions.assertEquals(String.valueOf(timestamp.getValue()), resultSetFlapdoodle.getString(2));
-        Assertions.assertEquals(timestamp, resultSetFlapdoodle.getObject(2));
-        Assertions.assertEquals(new Timestamp(timestamp.getValue()), resultSetFlapdoodle.getTimestamp(2));
-        Assertions.assertEquals(new Timestamp(timestamp.getValue()),
+        Assertions.assertEquals(
+                new Timestamp(TimeUnit.SECONDS.toMillis(timestamp.getTime())).toString(),
+                resultSetFlapdoodle.getString(2));
+        Assertions.assertEquals(new Timestamp(TimeUnit.SECONDS.toMillis(timestamp.getTime())),
+                resultSetFlapdoodle.getObject(2));
+        Assertions.assertEquals(
+                new Timestamp(TimeUnit.SECONDS.toMillis(timestamp.getTime())),
+                resultSetFlapdoodle.getTimestamp(2));
+        Assertions.assertEquals(
+                new Timestamp(TimeUnit.SECONDS.toMillis(timestamp.getTime())),
                 resultSetFlapdoodle.getTimestamp(2, Calendar.getInstance(TimeZone.getTimeZone("UTC"))));
     }
 

@@ -18,6 +18,7 @@ package software.amazon.documentdb.jdbc;
 
 import com.google.common.collect.ImmutableList;
 import com.mongodb.client.MongoCursor;
+import org.bson.BsonTimestamp;
 import org.bson.Document;
 import org.bson.types.Binary;
 import org.slf4j.Logger;
@@ -25,11 +26,13 @@ import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
+import software.amazon.documentdb.jdbc.common.utilities.TypeConverters;
 
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -150,6 +153,10 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
                     .collect(Collectors.toList());
             return modifiedList.toString();
         }
+        if (segmentValue instanceof BsonTimestamp) {
+            return TypeConverters.get(BsonTimestamp.class, Timestamp.class).convert(Timestamp.class, segmentValue);
+        }
+
         return segmentValue;
     }
 }
