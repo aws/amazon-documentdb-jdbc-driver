@@ -93,7 +93,7 @@ class DocumentDbMetadataTest {
         Assertions.assertEquals(2, databaseMetadata1.getSchemaVersion());
         final DocumentDbSchemaTable metadataTable = databaseMetadata1.getTableSchemaMap().get(collectionName);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(13, metadataTable.getColumnMap().size());
+        Assertions.assertEquals(14, metadataTable.getColumnMap().size());
 
         // Without a refresh we'll get the same metadata.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
@@ -139,7 +139,7 @@ class DocumentDbMetadataTest {
         Assertions.assertEquals(2, databaseMetadata1.getSchemaVersion());
         final DocumentDbSchemaTable metadataTable = databaseMetadata1.getTableSchemaMap().get(collectionName);
         Assertions.assertNotNull(metadataTable);
-        Assertions.assertEquals(13, metadataTable.getColumnMap().size());
+        Assertions.assertEquals(14, metadataTable.getColumnMap().size());
 
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
                 .get(properties, schemaName, databaseMetadata1.getSchemaVersion(), client);

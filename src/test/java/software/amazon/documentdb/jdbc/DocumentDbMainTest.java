@@ -1006,7 +1006,11 @@ class DocumentDbMainTest {
                     .append("    \"fieldPath\" : \"fieldDecimal128\",\n")
                     .append("    \"sqlName\" : \"fieldDecimal128\",\n")
                     .append("    \"sqlType\" : \"decimal\",\n")
-                    .append("    \"dbType\" : \"decimal128\"\n")
+                    .append("    \"dbType\" : \"decimal128\"\n").append("  }, {\n")
+                    .append("    \"fieldPath\" : \"fieldTimestamp\",\n")
+                    .append("    \"sqlName\" : \"fieldTimestamp\",\n")
+                    .append("    \"sqlType\" : \"timestamp\",\n")
+                    .append("    \"dbType\" : \"timestamp\"\n")
                     .append("  } ]\n")
                     .append("}");
         }
