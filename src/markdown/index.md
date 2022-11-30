@@ -81,3 +81,8 @@ The Amazon DocumentDB JDBC driver has a number of important limitations. See the
 If you're having an issue using the Amazon DocumentDB JDBC driver, consult the
 [Troubleshooting Guide](support/troubleshooting-guide.md) to see if it has a solution for
 your issue.
+
+## Developer's Guide
+
+If you're a developer and want to contribute to this project, ensure to read and follow the
+[Developer's Guide](developer/developer-guide.md)
