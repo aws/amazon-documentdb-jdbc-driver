@@ -287,7 +287,11 @@ public abstract class DocumentDbAbstractResultSet extends
         verifyState(columnIndex);
         final Object o = getValue(columnIndex);
         wasNull = (o == null);
-        return o;
+        if (!wasNull) {
+            // Use default converter for the class. As we don't want the Bson types to leak.
+            return TypeConverters.get(o.getClass(), Object.class).convert(null, o);
+        }
+        return null;
     }
 
     @Override

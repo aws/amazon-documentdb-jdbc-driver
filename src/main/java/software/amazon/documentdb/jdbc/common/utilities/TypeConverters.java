@@ -17,6 +17,9 @@
 package software.amazon.documentdb.jdbc.common.utilities;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.io.BaseEncoding;
+import lombok.SneakyThrows;
+import org.apache.commons.beanutils.Converter;
 import org.apache.commons.beanutils.converters.AbstractConverter;
 import org.apache.commons.beanutils.converters.ArrayConverter;
 import org.apache.commons.beanutils.converters.BigDecimalConverter;
@@ -34,12 +37,14 @@ import org.apache.commons.beanutils.converters.SqlTimestampConverter;
 import org.apache.commons.beanutils.converters.StringConverter;
 import org.bson.BsonRegularExpression;
 import org.bson.BsonTimestamp;
+import org.bson.types.Binary;
 import org.bson.types.Decimal128;
 import org.bson.types.MaxKey;
 import org.bson.types.MinKey;
 import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.math.BigDecimal;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -82,6 +87,7 @@ public class TypeConverters {
                 .put(Timestamp.class, new SqlTimestampConverter())
                 .put(Byte[].class, new ArrayConverter(Byte[].class, new ByteConverter(), -1))
                 .put(byte[].class, new ArrayConverter(byte[].class, new ByteConverter(), -1))
+                .put(Binary.class, new BsonBinaryConverter(byte[].class, new ByteConverter()))
                 .build();
     }
 
@@ -157,7 +163,7 @@ public class TypeConverters {
 
         @Override
         protected Class<?> getDefaultType() {
-            return Decimal128.class;
+            return String.class;
         }
     }
 
@@ -182,9 +188,8 @@ public class TypeConverters {
         @Override
         protected <T> T convertToType(final Class<T> targetType, final Object value) throws Exception {
             if (value instanceof BsonTimestamp) {
-                // This returns time in seconds since epoch.
-                final int timeInSecsSinceEpoch = ((BsonTimestamp) value).getTime();
-                return super.convertToType(targetType, TimeUnit.SECONDS.toMillis(timeInSecsSinceEpoch));
+                final long timeInMillisSinceEpoch = getTimeInMillisSinceEpoch((BsonTimestamp) value);
+                return super.convertToType(targetType, timeInMillisSinceEpoch);
             }
             return super.convertToType(targetType, value);
         }
@@ -192,14 +197,59 @@ public class TypeConverters {
         @Override
         protected String convertToString(final Object value) throws Throwable {
             if (value instanceof BsonTimestamp) {
-                return super.convertToString(((BsonTimestamp) value).getValue());
+                final long timeInMillisSinceEpoch = getTimeInMillisSinceEpoch((BsonTimestamp) value);
+                return super.convertToString(super.convertToType(getDefaultType(), timeInMillisSinceEpoch));
+            }
+            return super.convertToString(value);
+        }
+
+        private static long getTimeInMillisSinceEpoch(final BsonTimestamp value) {
+            // This returns time in seconds since epoch.
+            final int timeInSecsSinceEpoch = value.getTime();
+            return TimeUnit.SECONDS.toMillis(timeInSecsSinceEpoch);
+        }
+
+        @Override
+        protected Class<?> getDefaultType() {
+            return Timestamp.class;
+        }
+    }
+
+    private static class BsonBinaryConverter extends ArrayConverter {
+
+        public BsonBinaryConverter(final Class<?> defaultType, final Converter elementConverter) {
+            super(defaultType, elementConverter);
+        }
+
+        public BsonBinaryConverter(final Class<?> defaultType, final Converter elementConverter, final int defaultSize) {
+            super(defaultType, elementConverter, defaultSize);
+        }
+
+        @SneakyThrows
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> T convertToType(final Class<T> type, final Object value) {
+            final Class<?> targetType = type == null ? getDefaultType() : type;
+            if (value instanceof Binary) {
+                if (targetType.isAssignableFrom(String.class)) {
+                    return (T) convertToString(value);
+                }
+                return (T) super.convertToType(targetType, ((Binary) value).getData());
+            }
+            return (T) super.convertToType(targetType, value);
+        }
+
+        @Override
+        protected String convertToString(final Object value) throws Throwable {
+            if (value instanceof Binary) {
+                return BaseEncoding.base16().encode(((Binary) value).getData());
             }
             return super.convertToString(value);
         }
 
         @Override
         protected Class<?> getDefaultType() {
-            return BsonTimestamp.class;
+            return byte[].class;
         }
     }
 }

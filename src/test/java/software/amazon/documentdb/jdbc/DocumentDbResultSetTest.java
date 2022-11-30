@@ -17,6 +17,7 @@
 package software.amazon.documentdb.jdbc;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteStreams;
 import com.google.common.io.CharStreams;
 import com.mongodb.client.MongoClient;
@@ -519,7 +520,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
         Assertions.assertEquals(id.toString(), resultSetFlapdoodle.getString(1));
-        Assertions.assertEquals(id, resultSetFlapdoodle.getObject(1));
+        Assertions.assertEquals(id.toString(), resultSetFlapdoodle.getObject(1));
     }
 
     @Test
@@ -574,7 +575,7 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
                 String.format("SELECT * FROM \"%s\".\"%s\"", DATABASE_NAME, collection));
         Assertions.assertTrue(resultSetFlapdoodle.next());
         Assertions.assertEquals(regex.toString(), resultSetFlapdoodle.getString(2));
-        Assertions.assertEquals(regex, resultSetFlapdoodle.getObject(2));
+        Assertions.assertEquals(regex.toString(), resultSetFlapdoodle.getObject(2));
     }
 
     @Test
@@ -640,6 +641,9 @@ public class DocumentDbResultSetTest extends DocumentDbFlapDoodleTest {
         Assertions.assertArrayEquals(binary.getData(), resultSetFlapdoodle.getBlob(2).getBytes(1,6));
         Assertions.assertArrayEquals(binary.getData(), (byte[]) resultSetFlapdoodle.getObject(2));
         Assertions.assertArrayEquals(binary.getData(), ByteStreams.toByteArray(resultSetFlapdoodle.getBinaryStream(2)));
+        Assertions.assertEquals(
+                BaseEncoding.base16().encode(binary.getData()),
+                resultSetFlapdoodle.getString(2));
     }
 
     private static String getJdbcConnectionString() {
