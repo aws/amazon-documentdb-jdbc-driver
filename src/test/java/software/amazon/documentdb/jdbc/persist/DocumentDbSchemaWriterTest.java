@@ -30,6 +30,7 @@ import org.bson.BsonMinKey;
 import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
+import org.bson.BsonTimestamp;
 import org.bson.types.Decimal128;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -52,6 +53,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -185,7 +187,7 @@ class DocumentDbSchemaWriterTest {
             final String collectionName) {
         final List<BsonDocument> documentList = new ArrayList<>();
         for (int count = 0; count < 3; count++) {
-            final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
+            final Instant dateTime = Instant.parse("2020-01-01T00:00:00.00Z");
             final BsonDocument document = new BsonDocument()
                     .append("_id", new BsonObjectId())
                     .append("fieldDecimal128", new BsonDecimal128(Decimal128.parse(String.valueOf(Double.MAX_VALUE))))
@@ -193,13 +195,15 @@ class DocumentDbSchemaWriterTest {
                     .append("fieldString", new BsonString("新年快乐"))
                     .append("fieldObjectId", new BsonObjectId())
                     .append("fieldBoolean", new BsonBoolean(true))
-                    .append("fieldDate", new BsonDateTime(dateTime))
+                    .append("fieldDate", new BsonDateTime(dateTime.toEpochMilli()))
                     .append("fieldInt", new BsonInt32(Integer.MAX_VALUE))
                     .append("fieldLong", new BsonInt64(Long.MAX_VALUE))
                     .append("fieldMaxKey", new BsonMaxKey())
                     .append("fieldMinKey", new BsonMinKey())
                     .append("fieldNull", new BsonNull())
-                    .append("fieldBinary", new BsonBinary(new byte[]{0, 1, 2}));
+                    .append("fieldBinary", new BsonBinary(new byte[]{0, 1, 2}))
+                    .append("fieldTimestamp",
+                            new BsonTimestamp((int) TimeUnit.MILLISECONDS.toSeconds(dateTime.toEpochMilli()), 0));
             Assertions.assertTrue(documentList.add(document));
         }
 

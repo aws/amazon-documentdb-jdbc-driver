@@ -225,16 +225,16 @@ When used outside the `SELECT` clause or even in a more complex or nested expres
 
 The following conversions using an explicit `CAST` are supported (denoted by **Y**) or unsupported (denoted by **N**):
 
-|  FROM - TO                      | BOOLEAN | TINYINT, SMALLINT, INT, BIGINT | DECIMAL, FLOAT, REAL, DOUBLE | DATE | TIME | TIMESTAMP | CHAR, VARCHAR | BINARY, VARBINARY
-|:-------------------             |:--------|:------------------------------ |:-----------------------------|:-----|:-----|:----------|:--------------|:------------------
-| BOOLEAN                         | _       | N                              | N                            | N    | N    | N         | Y             | N
-| TINYINT, SMALLINT, INT, BIGINT  | N       | Y                              | Y                            | N    | N    | N         | N             | N
-| DECIMAL, FLOAT, REAL, DOUBLE    | N       | Y                              | Y                            | N    | N    | N         | N             | N
-| DATE                            | N       | N                              | N                            | _    | Y    | Y         | Y             | N
-| TIME                            | N       | N                              | N                            | N    | _    | N         | N             | N
-| TIMESTAMP                       | N       | N                              | N                            | Y    | Y    | _         | Y             | N
-| CHAR, VARCHAR                   | N       | N                              | N                            | N    | N    | N         | _             | N
-| BINARY, VARBINARY               | N       | N                              | N                            | N    | N    | N         | N             | _
+| FROM - TO                      | BOOLEAN | TINYINT, SMALLINT, INT, BIGINT | DECIMAL, FLOAT, REAL, DOUBLE | DATE | TIME | TIMESTAMP | CHAR, VARCHAR | BINARY, VARBINARY |
+|:-------------------------------|:--------|:-------------------------------|:-----------------------------|:-----|:-----|:----------|:--------------|:------------------|
+| BOOLEAN                        | _       | N                              | N                            | N    | N    | N         | Y             | N                 |
+| TINYINT, SMALLINT, INT, BIGINT | N       | Y                              | Y                            | N    | N    | N         | N             | N                 |
+| DECIMAL, FLOAT, REAL, DOUBLE   | N       | Y                              | Y                            | N    | N    | N         | N             | N                 |
+| DATE                           | N       | N                              | N                            | _    | Y    | Y         | Y             | N                 |
+| TIME                           | N       | N                              | N                            | N    | _    | N         | N             | N                 |
+| TIMESTAMP                      | N       | N                              | N                            | Y    | Y    | _         | Y             | N                 |
+| CHAR, VARCHAR                  | N       | N                              | N                            | N    | N    | N         | _             | N                 |
+| BINARY, VARBINARY              | N       | N                              | N                            | N    | N    | N         | N             | _                 |
 
 The driver also allows for implicit conversions when such a conversion makes sense. For example, a `DATE` value passed to 
 a function that takes `TIMESTAMP`, will be automatically cast to `TIMESTAMP`.

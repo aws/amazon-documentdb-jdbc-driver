@@ -220,7 +220,6 @@ public class DocumentDbTableSchemaGeneratorColumnTest extends DocumentDbTableSch
                 BsonType.JAVASCRIPT_WITH_SCOPE,
                 BsonType.REGULAR_EXPRESSION,
                 BsonType.SYMBOL,
-                BsonType.TIMESTAMP,
                 BsonType.UNDEFINED
         };
 

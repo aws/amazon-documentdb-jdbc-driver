@@ -19,7 +19,6 @@ package software.amazon.documentdb.jdbc;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.client.MongoCursor;
 import org.bson.Document;
-import org.bson.types.Binary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
@@ -137,9 +136,6 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
             segmentValue = ((Document) segmentValue).get(segmentedPath[j]);
         }
         // Apache converters cannot handle the following types, must be specifically converted.
-        if (segmentValue instanceof Binary) {
-            return ((Binary) segmentValue).getData();
-        }
         if (segmentValue instanceof Document) {
             return ((Document) segmentValue).toJson();
         }
@@ -150,6 +146,7 @@ public class DocumentDbResultSet extends DocumentDbAbstractResultSet implements 
                     .collect(Collectors.toList());
             return modifiedList.toString();
         }
+
         return segmentValue;
     }
 }
