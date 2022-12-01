@@ -51,6 +51,12 @@ The Amazon DocumentDB JDBC driver can perform automatic schema discovery and gen
 DocumentDB schema mapping. See the [schema discovery documentation](schema/schema-discovery.md)
 for more details of this process.
 
+## Schema Caching
+
+Once schema is discovered, it is cached in the database to improve performance for subsequent access.
+See the [schema caching documentation](schema/schema-caching.md) to learn
+more about schema caching behaviour and access requirements.
+
 ## Schema Management
 
 The SQL to DocumentDB schema mapping can be managed in the following ways:
@@ -81,8 +87,3 @@ The Amazon DocumentDB JDBC driver has a number of important limitations. See the
 If you're having an issue using the Amazon DocumentDB JDBC driver, consult the
 [Troubleshooting Guide](support/troubleshooting-guide.md) to see if it has a solution for
 your issue.
-
-## Developer's Guide
-
-If you're a developer and want to contribute to this project, ensure to read and follow the
-[Developer's Guide](developer/developer-guide.md)
