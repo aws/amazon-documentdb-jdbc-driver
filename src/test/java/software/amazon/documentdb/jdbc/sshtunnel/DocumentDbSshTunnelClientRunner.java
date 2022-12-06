@@ -78,21 +78,21 @@ public class DocumentDbSshTunnelClientRunner {
     }
 
     private static void waitForConnectionRunner(final Map.Entry<ClientConnectionRunner, Thread> entry) throws InterruptedException {
-        LOGGER.info(PROCESS_NAME + ": Stopping entry");
+        LOGGER.debug(PROCESS_NAME + ": Stopping entry");
         entry.getValue().join();
         if (entry.getKey().exception != null) {
             LOGGER.error("Connection failed", entry.getKey().exception);
         }
-        LOGGER.info(PROCESS_NAME + ": Stopped entry");
+        LOGGER.debug(PROCESS_NAME + ": Stopped entry");
     }
 
     private static void startConnectionRunner(
             final List<Map.Entry<ClientConnectionRunner, Thread>> runners,
             final int index) {
-        LOGGER.info(PROCESS_NAME + ": Starting client " + index);
+        LOGGER.debug(PROCESS_NAME + ": Starting client " + index);
         final Thread runnerThread = getRunnerThread(runners);
         runnerThread.start();
-        LOGGER.info(PROCESS_NAME + ": Started client " + index);
+        LOGGER.debug(PROCESS_NAME + ": Started client " + index);
     }
 
     private static Thread getRunnerThread(
@@ -125,7 +125,7 @@ public class DocumentDbSshTunnelClientRunner {
         public void run() {
             try (Connection connection = DriverManager.getConnection(connectionString)) {
                 final boolean connected = connection.isValid(0);
-                LOGGER.info("Connection is valid: " + connected);
+                LOGGER.debug("Connection is valid: " + connected);
                 assert connected;
                 final int randomExtension = RANDOM.nextInt(Math.max(1, (int) (0.25 * waitTimeoutSECS)));
                 TimeUnit.SECONDS.sleep(waitTimeoutSECS + randomExtension);

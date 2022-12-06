@@ -25,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
@@ -59,6 +61,7 @@ import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isN
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbConnectionTest.class);
 
     private static final String HOSTNAME = "localhost";
     private static final String USERNAME = "user";
@@ -521,33 +524,33 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 while (process.isAlive()) {
                     final Instant now = Instant.now();
                     if (now.isAfter(timeoutTime)) {
-                        System.out.println("Timeout reached.");
+                        LOGGER.debug("Timeout reached.");
                         timeoutReached = true;
                         break;
                     }
                     process.waitFor(500, TimeUnit.MILLISECONDS);
                 }
                 if (!timeoutReached) {
-                    System.out.println("Closed before timeout.");
+                    LOGGER.debug("Closed before timeout.");
                 }
                 if (process.isAlive()) {
-                    System.out.println("Destroying process.");
+                    LOGGER.debug("Destroying process.");
                     process.destroy();
                 }
                 if (process.isAlive()) {
-                    System.out.println("Forcibly destroying process.");
+                    LOGGER.debug("Forcibly destroying process.");
                     process.destroyForcibly();
                 }
                 try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
                     final String stdOut = bufferedReader.lines().collect(Collectors.joining(System.lineSeparator()));
                     if (!isNullOrWhitespace(stdOut)) {
-                        System.out.println("Process output: '" + stdOut + "'");
+                        LOGGER.debug("Process output: '" + stdOut + "'");
                     }
                 }
                 try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
                     final String stdErr = bufferedReader.lines().collect(Collectors.joining(System.lineSeparator()));
                     if (!isNullOrWhitespace(stdErr)) {
-                        System.err.println("Process error: '" + stdErr + "'");
+                        LOGGER.debug("Process error: '" + stdErr + "'");
                     }
                 }
             }

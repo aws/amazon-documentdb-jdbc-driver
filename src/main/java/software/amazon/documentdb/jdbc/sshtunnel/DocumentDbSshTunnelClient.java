@@ -172,7 +172,7 @@ public class DocumentDbSshTunnelClient implements AutoCloseable {
             clientChannel = DocumentDbMultiThreadFileChannel.open(
                     clientLockPath, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE);
             clientLock = clientChannel.lock();
-            LOGGER.info("SSH Tunnel server client lock active.");
+            LOGGER.debug("SSH Tunnel server client lock active.");
         } catch (Exception ex) {
             e = ex;
         }
@@ -202,7 +202,7 @@ public class DocumentDbSshTunnelClient implements AutoCloseable {
         try {
             if (clientLock != null && clientLock.isValid()) {
                 clientLock.close();
-                LOGGER.info("SSH Tunnel server client lock inactive.");
+                LOGGER.debug("SSH Tunnel server client lock inactive.");
             }
             if (clientChannel != null && clientChannel.isOpen()) {
                 clientChannel.close();

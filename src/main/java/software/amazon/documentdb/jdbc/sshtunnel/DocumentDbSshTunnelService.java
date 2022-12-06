@@ -116,30 +116,33 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
 
         while (!interrupted && !completed) {
             try {
-                LOGGER.info("SSH Tunnel service starting.");
+                LOGGER.debug("SSH Tunnel service starting.");
                 session = performSshTunnelSessionStartup();
                 final Map.Entry<DocumentDbMultiThreadFileChannel , FileLock> lock = acquireServerLock();
                 serverChannel = lock.getKey();
                 serverLock = lock.getValue();
-                LOGGER.info("SSH Tunnel service started.");
+                LOGGER.debug("SSH Tunnel service started.");
 
                 // launch thread and wait for clients to terminate.
                 waitForClients(serverLock);
             } catch (InterruptedException e) {
+                LOGGER.error(e.getMessage(), e);
                 interrupted = true;
             } catch (Exception e) {
+                LOGGER.error(e.getMessage(), e);
                 exceptions.add(e);
             } finally {
                 try {
-                    LOGGER.info("SSH Tunnel service stopping.");
+                    LOGGER.debug("SSH Tunnel service stopping.");
                     cleanupResourcesInGlobalLock(session, serverChannel, serverLock);
                 } catch (Exception e) {
+                    LOGGER.error(e.getMessage(), e);
                     exceptions.add(e);
                 }
                 completed = true;
             }
         }
-        LOGGER.info("SSH Tunnel service stopped.");
+        LOGGER.debug("SSH Tunnel service stopped.");
     }
 
     private void cleanupResourcesInGlobalLock(
@@ -171,6 +174,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
             Files.deleteIfExists(portLockPath);
             Files.deleteIfExists(startupLockPath);
         } catch (Exception e) {
+            LOGGER.error(e.getMessage(), e);
             exceptions.add(e);
         }
         return exceptions;
@@ -213,6 +217,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
             try {
                 serverLock.close();
             } catch (IOException e) {
+                LOGGER.error(e.getMessage(), e);
                 result = e;
             }
         }
@@ -232,7 +237,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
             final DocumentDbConnectionProperties connectionProperties) throws SQLException {
         DocumentDbSshTunnelServer.validateSshPrivateKeyFile(connectionProperties);
 
-        LOGGER.info("Internal SSH tunnel starting.");
+        LOGGER.debug("Internal SSH tunnel starting.");
         try {
             final JSch jSch = new JSch();
             addIdentity(connectionProperties, jSch);
@@ -240,12 +245,14 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
             connectSession(connectionProperties, jSch, session);
             final SshPortForwardingSession portForwardingSession = getPortForwardingSession(
                     connectionProperties, session);
-            LOGGER.info("Internal SSH tunnel started on local port '{}'.",
+            LOGGER.debug("Internal SSH tunnel started on local port '{}'.",
                     portForwardingSession.getLocalPort());
             return portForwardingSession;
         } catch (SQLException e) {
+            LOGGER.error(e.getMessage(), e);
             throw e;
         } catch (Exception e) {
+            LOGGER.error(e.getMessage(), e);
             throw new SQLException(e.getMessage(), e);
         }
     }
@@ -285,6 +292,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
         try {
             session.connect();
         } catch (JSchException e) {
+            LOGGER.error(e.getMessage(), e);
             throw new SQLException(e.getMessage(), e);
         }
     }
@@ -312,6 +320,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
         try {
             return jSch.getSession(sshUsername, sshHostAndPort.getLeft(), sshHostAndPort.getRight());
         } catch (JSchException e) {
+            LOGGER.error(e.getMessage(), e);
             throw new SQLException(e.getMessage(), e);
         }
     }
@@ -358,6 +367,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
         try {
             jSch.setKnownHosts(knowHostsFilename);
         } catch (JSchException e) {
+            LOGGER.error(e.getMessage(), e);
             throw new SQLException(e.getMessage(), e);
         }
     }
@@ -396,6 +406,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
             try {
                 session = createSshTunnel(connectionProperties);
             } catch (Exception e) {
+                LOGGER.error(e.getMessage(), e);
                 writer.write(e.toString());
                 throw e;
             }
@@ -465,6 +476,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
                     }
                 } while (state == ThreadState.RUNNING);
             } catch (Exception e) {
+                LOGGER.error(e.getMessage(), e);
                 exceptions.add(e);
             } finally {
                 try {
@@ -474,6 +486,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
                         exceptions.add(localException);
                     }
                 } catch (Exception e) {
+                    LOGGER.error(e.getMessage(), e);
                     exceptions.add(e);
                 }
                 state = ThreadState.COMPLETED;
@@ -533,6 +546,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
                     Files.deleteIfExists(filePath);
                 }
             } catch (Exception e) {
+                LOGGER.error(e.getMessage(), e);
                 result = e;
             }
             return result;
