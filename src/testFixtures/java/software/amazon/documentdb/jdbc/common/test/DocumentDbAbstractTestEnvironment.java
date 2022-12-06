@@ -44,9 +44,6 @@ import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
 import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.SQLException;
 import java.time.Instant;
 import java.util.AbstractMap.SimpleEntry;
@@ -55,6 +52,8 @@ import java.util.List;
 import java.util.Map.Entry;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.encodeValue;
 
 /**
  * Provides some base implementation of the {@link DocumentDbTestEnvironment} interface.
@@ -171,9 +170,12 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
 
     @Override
     public boolean start() throws Exception {
-        final boolean started = startEnvironment();
-        isStarted = true;
-        return started;
+        if (!isStarted) {
+            final boolean started = startEnvironment();
+            isStarted = true;
+            return started;
+        }
+        return false;
     }
 
     @Override
@@ -270,14 +272,6 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
     private String getCredentials(final boolean isRestrictedUser) {
         return username != null && password != null
                 ? String.format("%s:%s@", encodeValue(isRestrictedUser ? restrictedUsername : username), encodeValue(password)) : "";
-    }
-
-    private static String encodeValue(final String value) {
-        try {
-            return URLEncoder.encode(value, StandardCharsets.UTF_8.toString());
-        } catch (UnsupportedEncodingException e) {
-            return value;
-        }
     }
 
     @Override
