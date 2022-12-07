@@ -31,8 +31,14 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-class DocumentDbSshTunnelClientRunner {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSshTunnelClientRunner.class);
+/**
+ * This class is used to test the internal SSH tunnel by
+ * creating a number of connections on a number of threads.
+ *
+ * It is for testing purposes only.
+ */
+class DocumentDbSshTunnelTestClientRunner {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSshTunnelTestClientRunner.class);
     private static final String PROCESS_NAME = ManagementFactory.getRuntimeMXBean().getName();
     private static String connectionString;
     private static int clientRunTime;

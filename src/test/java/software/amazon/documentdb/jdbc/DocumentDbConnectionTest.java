@@ -552,7 +552,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
             throws SQLException, URISyntaxException {
         final int numberOfClientsPerProcess = 5;
         return DocumentDbSshTunnelServer.getJavaCommand(
-                DocumentDbSshTunnelClientRunner.class.getName(),
+                DocumentDbSshTunnelTestClientRunner.class.getName(),
                 connectionString,
                 String.valueOf(numberOfClientsPerProcess),
                 String.valueOf(maxWaitTimePerClient));
