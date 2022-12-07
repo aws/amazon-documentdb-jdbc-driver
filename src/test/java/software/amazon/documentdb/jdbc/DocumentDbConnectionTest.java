@@ -35,7 +35,6 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
-import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelClientRunner;
 import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelServer;
 
 import java.io.BufferedReader;
@@ -485,12 +484,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @SuppressFBWarnings("COMMAND_INJECTION")
     @ParameterizedTest(name = "testMultiProcessConnections - [{index}] - {arguments}")
     @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
-    void testMultiProcessConnections(final DocumentDbTestEnvironment environment)
-            throws Exception {
-        if (environment == null) {
-            return;
-        }
-        environment.start();
+    void testMultiProcessConnections(final DocumentDbTestEnvironment environment) throws Exception {
 
         final String connectionString = DocumentDbConnectionPropertiesTest
                 .buildInternalSshTunnelConnectionString(environment);
@@ -503,17 +497,6 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         final Instant timeoutTime = Instant.now().plus(Duration.ofSeconds(maxWaitTimePerClient * 3));
         assertProcessesCompleteNormally(processes, timeoutTime);
-    }
-
-    private static List<String> getCommandLine(final String connectionString, final int maxWaitTimePerClient)
-            throws SQLException, URISyntaxException {
-        final int numberOfClientsPerProcess = 5;
-        final List<String> javaCommandLine = DocumentDbSshTunnelServer.getJavaCommand(
-                DocumentDbSshTunnelClientRunner.class.getName(),
-                connectionString,
-                String.valueOf(numberOfClientsPerProcess),
-                String.valueOf(maxWaitTimePerClient));
-        return javaCommandLine;
     }
 
     private static void assertProcessesCompleteNormally(final List<Process> processes, final Instant timeoutTime)
@@ -559,6 +542,16 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
             Assertions.assertEquals(0, process.exitValue());
         }
         Assertions.assertFalse(timeoutReached);
+    }
+
+    private static List<String> getCommandLine(final String connectionString, final int maxWaitTimePerClient)
+            throws SQLException, URISyntaxException {
+        final int numberOfClientsPerProcess = 5;
+        return DocumentDbSshTunnelServer.getJavaCommand(
+                DocumentDbSshTunnelClientRunner.class.getName(),
+                connectionString,
+                String.valueOf(numberOfClientsPerProcess),
+                String.valueOf(maxWaitTimePerClient));
     }
 
     private Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {

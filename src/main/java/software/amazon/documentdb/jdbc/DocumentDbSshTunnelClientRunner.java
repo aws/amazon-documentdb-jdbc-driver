@@ -14,7 +14,7 @@
  *
  */
 
-package software.amazon.documentdb.jdbc.sshtunnel;
+package software.amazon.documentdb.jdbc;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-public class DocumentDbSshTunnelClientRunner {
+class DocumentDbSshTunnelClientRunner {
     private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbSshTunnelClientRunner.class);
     private static final String PROCESS_NAME = ManagementFactory.getRuntimeMXBean().getName();
     private static String connectionString;
