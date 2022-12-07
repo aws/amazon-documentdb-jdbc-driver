@@ -62,7 +62,6 @@ import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelService;
 
 import java.io.Console;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -70,6 +69,7 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLException;
@@ -432,12 +432,13 @@ public class DocumentDbMain {
             do {
                 serviceThread.join(1000);
             } while (serviceThread.isAlive());
-            service.getExceptions().stream().forEach(
+            service.getExceptions().forEach(
                     e -> output
                             .append(e.getMessage())
                             .append(System.lineSeparator())
                             .append(Arrays.stream(e.getStackTrace())
-                                    .map(st -> st.toString()).collect(Collectors.joining(System.lineSeparator())))
+                                    .map(StackTraceElement::toString)
+                                    .collect(Collectors.joining(System.lineSeparator())))
                             .append(System.lineSeparator()));
         } catch (Exception e) {
             output.append(e.getMessage());
@@ -619,7 +620,7 @@ public class DocumentDbMain {
     private static void writeTableSchemas(
             final List<TableSchema> tables, final File outputFile, final StringBuilder output) throws IOException {
         try (Writer writer = outputFile != null
-                ? new OutputStreamWriter(new FileOutputStream((outputFile)), StandardCharsets.UTF_8)
+                ? new OutputStreamWriter(Files.newOutputStream(outputFile.toPath()), StandardCharsets.UTF_8)
                 : new StringBuilderWriter(output)) {
             JSON_OBJECT_MAPPER.writeValue(writer, tables);
         }

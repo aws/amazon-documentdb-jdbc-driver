@@ -481,7 +481,6 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(properties.getRefreshSchema());
     }
 
-    @SuppressFBWarnings("COMMAND_INJECTION")
     @ParameterizedTest(name = "testMultiProcessConnections - [{index}] - {arguments}")
     @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
     void testMultiProcessConnections(final DocumentDbTestEnvironment environment) throws Exception {
@@ -502,8 +501,10 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     private static List<String> getCommandLine(final String connectionString, final int maxWaitTimePerClient)
             throws SQLException, URISyntaxException {
         final int numberOfClientsPerProcess = 5;
+        // This class name is provided in text because I don't want to mark the class public.
+        // For testing purposes, the class needs to be in the 'main' distribution - not the 'test' distribution.
         final String clientRunnerClassName = DocumentDbSshTunnelServer.class.getPackage().getName()
-                + ".DocumentDbSshTunnelTestClientRunner";
+                + "." + "DocumentDbSshTunnelTestClientRunner";
         return DocumentDbSshTunnelServer.getJavaCommand(
                 clientRunnerClassName,
                 connectionString,
@@ -511,6 +512,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 String.valueOf(maxWaitTimePerClient));
     }
 
+    @SuppressFBWarnings("COMMAND_INJECTION")
     private static List<Process> startClientRunnerProcesses(final List<String> commandLine) throws IOException {
         final List<Process> processes = new ArrayList<>();
         final int processCount = 5;

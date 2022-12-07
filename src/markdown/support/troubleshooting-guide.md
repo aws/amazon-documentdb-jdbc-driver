@@ -152,7 +152,8 @@ The online security resources may give a pointer how to fix this.
 [Maintaining the Known Hosts File](../setup/maintain_known_hosts.md) to add one 
 or more entries to your known hosts file.
 
-### Unexplained timeout or disconnection from BI tool while using SSH tunnel properties.
+### Unexplained timeout or disconnection from BI tool while using SSH tunnel properties
+
 #### What to look for:
 
 - Timeout connecting to the database server.

@@ -822,9 +822,9 @@ public class DocumentDbConnectionProperties extends Properties {
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.APPLICATION_NAME, properties.getApplicationName());
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.LOGIN_TIMEOUT_SEC, properties.getLoginTimeout());
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_LIMIT, properties.getMetadataScanLimit());
-        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_METHOD, properties.getMetadataScanMethod());
+        maybeAppendOptionalValue(optionalInfo, properties.getMetadataScanMethod());
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.RETRY_READS_ENABLED, properties.getRetryReadsEnabled());
-        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.READ_PREFERENCE, properties.getReadPreference());
+        maybeAppendOptionalValue(optionalInfo, properties.getReadPreference());
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.REPLICA_SET, properties.getReplicaSet(), null);
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.TLS_ENABLED, properties.getTlsEnabled());
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.TLS_ALLOW_INVALID_HOSTNAMES, properties.getTlsAllowInvalidHostnames());
@@ -838,7 +838,7 @@ public class DocumentDbConnectionProperties extends Properties {
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.DEFAULT_FETCH_SIZE, properties.getDefaultFetchSize());
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.REFRESH_SCHEMA, properties.getRefreshSchema());
         maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.DEFAULT_AUTH_DB, properties.getDefaultAuthenticationDatabase());
-        maybeAppendOptionalValue(optionalInfo, DocumentDbConnectionProperty.ALLOW_DISK_USE, properties.getAllowDiskUseOption());
+        maybeAppendOptionalValue(optionalInfo, properties.getAllowDiskUseOption());
     }
 
     static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
@@ -875,26 +875,25 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
-                                  final DocumentDbConnectionProperty property,
-                                  final DocumentDbMetadataScanMethod value) {
-        if (value != DocumentDbMetadataScanMethod.fromString(property.getDefaultValue())) {
-            appendOption(optionalInfo, property, value.getName());
+                                         final DocumentDbMetadataScanMethod value) {
+        if (value != DocumentDbMetadataScanMethod.fromString(
+                DocumentDbConnectionProperty.METADATA_SCAN_METHOD.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.METADATA_SCAN_METHOD, value.getName());
         }
     }
 
     static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
-                                  final DocumentDbConnectionProperty property,
-                                  final DocumentDbReadPreference value) {
+                                         final DocumentDbReadPreference value) {
         if (value != null) {
-            appendOption(optionalInfo, property, value.getName());
+            appendOption(optionalInfo, DocumentDbConnectionProperty.READ_PREFERENCE, value.getName());
         }
     }
 
     static void maybeAppendOptionalValue(final StringBuilder optionalInfo,
-                                  final DocumentDbConnectionProperty property,
-                                  final DocumentDbAllowDiskUseOption value) {
-        if (value != DocumentDbAllowDiskUseOption.fromString(property.getDefaultValue())) {
-            appendOption(optionalInfo, property, value.getName());
+                                         final DocumentDbAllowDiskUseOption value) {
+        if (value != DocumentDbAllowDiskUseOption.fromString(
+                DocumentDbConnectionProperty.ALLOW_DISK_USE.getDefaultValue())) {
+            appendOption(optionalInfo, DocumentDbConnectionProperty.ALLOW_DISK_USE, value.getName());
         }
     }
 
