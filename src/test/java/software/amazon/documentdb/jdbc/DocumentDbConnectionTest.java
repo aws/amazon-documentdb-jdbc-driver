@@ -485,6 +485,10 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
     @ParameterizedTest(name = "testMultiProcessConnections - [{index}] - {arguments}")
     @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
     void testMultiProcessConnections(final DocumentDbTestEnvironment environment) throws Exception {
+        if (environment == null) {
+            return;
+        }
+        environment.start();
 
         final String connectionString = DocumentDbConnectionPropertiesTest
                 .buildInternalSshTunnelConnectionString(environment);
