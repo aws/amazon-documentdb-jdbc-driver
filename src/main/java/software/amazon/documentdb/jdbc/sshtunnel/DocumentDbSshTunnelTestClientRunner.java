@@ -14,7 +14,7 @@
  *
  */
 
-package software.amazon.documentdb.jdbc;
+package software.amazon.documentdb.jdbc.sshtunnel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

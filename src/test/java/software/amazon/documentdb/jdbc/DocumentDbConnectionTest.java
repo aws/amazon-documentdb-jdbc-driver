@@ -494,13 +494,30 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 .buildInternalSshTunnelConnectionString(environment);
         final int maxWaitTimePerClient = 5;
         final List<String> commandLine = getCommandLine(connectionString, maxWaitTimePerClient);
+        final List<Process> processes = startClientRunnerProcesses(commandLine);
+        final Instant timeoutTime = Instant.now().plus(Duration.ofSeconds(maxWaitTimePerClient * 3));
+        assertProcessesCompleteNormally(processes, timeoutTime);
+    }
+
+    private static List<String> getCommandLine(final String connectionString, final int maxWaitTimePerClient)
+            throws SQLException, URISyntaxException {
+        final int numberOfClientsPerProcess = 5;
+        final String clientRunnerClassName = DocumentDbSshTunnelServer.class.getPackage().getName()
+                + ".DocumentDbSshTunnelTestClientRunner";
+        return DocumentDbSshTunnelServer.getJavaCommand(
+                clientRunnerClassName,
+                connectionString,
+                String.valueOf(numberOfClientsPerProcess),
+                String.valueOf(maxWaitTimePerClient));
+    }
+
+    private static List<Process> startClientRunnerProcesses(final List<String> commandLine) throws IOException {
         final List<Process> processes = new ArrayList<>();
         final int processCount = 5;
         for (int i = 0; i < processCount; i++) {
             processes.add(new ProcessBuilder(commandLine).start());
         }
-        final Instant timeoutTime = Instant.now().plus(Duration.ofSeconds(maxWaitTimePerClient * 3));
-        assertProcessesCompleteNormally(processes, timeoutTime);
+        return processes;
     }
 
     private static void assertProcessesCompleteNormally(final List<Process> processes, final Instant timeoutTime)
@@ -520,6 +537,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 if (!timeoutReached) {
                     LOGGER.debug("Closed before timeout.");
                 }
+                // Forceful shutdown, if necessary.
                 if (process.isAlive()) {
                     LOGGER.debug("Destroying process.");
                     process.destroy();
@@ -542,20 +560,12 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                 }
             }
         }
+        // If client runner ran successfully, it returns zero (0) exit value.
         for (Process process : processes) {
             Assertions.assertEquals(0, process.exitValue());
         }
+        // Double check we haven't timed-out.
         Assertions.assertFalse(timeoutReached);
-    }
-
-    private static List<String> getCommandLine(final String connectionString, final int maxWaitTimePerClient)
-            throws SQLException, URISyntaxException {
-        final int numberOfClientsPerProcess = 5;
-        return DocumentDbSshTunnelServer.getJavaCommand(
-                DocumentDbSshTunnelTestClientRunner.class.getName(),
-                connectionString,
-                String.valueOf(numberOfClientsPerProcess),
-                String.valueOf(maxWaitTimePerClient));
     }
 
     private Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {
