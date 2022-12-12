@@ -53,6 +53,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataService;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataServiceImpl;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchemaTable;
@@ -241,6 +243,7 @@ public class DocumentDbMain {
     private static final String REMOVED_SCHEMA_MESSAGE = "Removed schema '%s'.";
 
     private static MongoClient client;
+    private static DocumentDbMetadataService metadataService;
 
     static {
         ARCHIVE_VERSION = getArchiveVersion();
@@ -262,6 +265,8 @@ public class DocumentDbMain {
         HELP_VERSION_OPTIONS = new Options()
                 .addOption(HELP_OPTION)
                 .addOption(VERSION_OPTION);
+
+        metadataService = new DocumentDbMetadataServiceImpl();
     }
 
     /**
@@ -476,6 +481,7 @@ public class DocumentDbMain {
                     properties,
                     properties.getSchemaName(),
                     schemaTableList,
+                    metadataService,
                     getMongoClient(properties));
         } catch (SQLException | DocumentDbSchemaSecurityException e) {
             output.append(e.getClass().getSimpleName())
@@ -574,6 +580,7 @@ public class DocumentDbMain {
                 properties,
                 properties.getSchemaName(),
                 VERSION_LATEST_OR_NONE,
+                metadataService,
                 getMongoClient(properties));
         if (schema == null) {
             // No schema to export.
@@ -648,7 +655,7 @@ public class DocumentDbMain {
             final DocumentDbConnectionProperties properties,
             final StringBuilder output) throws SQLException {
         final List<DocumentDbSchema> schemas = DocumentDbDatabaseSchemaMetadata.getSchemaList(
-                properties, getMongoClient(properties));
+                properties, metadataService, getMongoClient(properties));
         for (DocumentDbSchema schema : schemas) {
             output.append(String.format("Name=%s, Version=%d, SQL Name=%s, Modified=%s%n",
                     maybeQuote(schema.getSchemaName()),
@@ -667,6 +674,7 @@ public class DocumentDbMain {
                 properties,
                 properties.getSchemaName(),
                 VERSION_LATEST_OR_NONE,
+                metadataService,
                 getMongoClient(properties));
         if (schema != null) {
             final List<String> sortedTableNames = schema.getTableSchemaMap().keySet().stream()
@@ -689,6 +697,7 @@ public class DocumentDbMain {
         DocumentDbDatabaseSchemaMetadata.remove(
                 properties,
                 properties.getSchemaName(),
+                metadataService,
                 getMongoClient(properties));
         output.append(String.format(REMOVED_SCHEMA_MESSAGE, properties.getSchemaName()));
     }
@@ -700,6 +709,7 @@ public class DocumentDbMain {
                 properties,
                 properties.getSchemaName(),
                 VERSION_NEW,
+                metadataService,
                 getMongoClient(properties));
         if (schema != null) {
             output.append(String.format(NEW_SCHEMA_VERSION_GENERATED_MESSAGE,

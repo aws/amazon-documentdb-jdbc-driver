@@ -35,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.utilities.JdbcColumnMetaData;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataServiceImpl;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 import software.amazon.documentdb.jdbc.query.DocumentDbQueryMappingService;
 
@@ -79,7 +80,9 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         VALID_CONNECTION_PROPERTIES.setAllowDiskUseOption("enable");
 
         prepareSimpleConsistentData(DATABASE_NAME, COLLECTION_NAME, 1, TEST_USER, TEST_PASSWORD);
-        final DocumentDbConnection connection = new DocumentDbConnection(VALID_CONNECTION_PROPERTIES);
+        final DocumentDbConnection connection = new DocumentDbConnection(
+                VALID_CONNECTION_PROPERTIES,
+                new DocumentDbMetadataServiceImpl());
         executor = new MockQueryExecutor(
                 statement,
                 VALID_CONNECTION_PROPERTIES,
@@ -218,7 +221,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
     public void testSetValidDefaultFetchSize() throws SQLException {
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setDefaultFetchSize("123");
-        final DocumentDbConnection connection = new DocumentDbConnection(properties);
+        final DocumentDbConnection connection = new DocumentDbConnection(properties, new DocumentDbMetadataServiceImpl());
         final DocumentDbStatement validFetchSizeStatement = new DocumentDbStatement(connection);
         Assertions.assertEquals(
                 123,
@@ -232,7 +235,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
     public void testSetInvalidDefaultFetchSize() throws SQLException {
         final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties(VALID_CONNECTION_PROPERTIES);
         properties.setDefaultFetchSize("123a");
-        final DocumentDbConnection connection = new DocumentDbConnection(properties);
+        final DocumentDbConnection connection = new DocumentDbConnection(properties, new DocumentDbMetadataServiceImpl());
         final DocumentDbStatement invalidFetchSizeStatement = new DocumentDbStatement(connection);
         Assertions.assertEquals(
                 FETCH_SIZE_DEFAULT,

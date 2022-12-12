@@ -20,11 +20,15 @@ import lombok.SneakyThrows;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataService;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataServiceImpl;
+
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.util.Properties;
+import java.util.function.Supplier;
 
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME;
 
@@ -69,6 +73,23 @@ public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Dri
         new DocumentDbDriver().register();
     }
 
+    private final Supplier<DocumentDbMetadataService> metadataServiceProvider;
+
+    /**
+     * Constructs a new DocumentDbDriver and uses the default metadata service.
+     */
+    public DocumentDbDriver() {
+        metadataServiceProvider = () -> new DocumentDbMetadataServiceImpl();
+    }
+
+    /**
+     * Constructs a new DocumentDbDriver with the provided metadata service.
+     * @param metadataServiceProvider metadata service to use
+     */
+    public DocumentDbDriver(final Supplier<DocumentDbMetadataService> metadataServiceProvider) {
+        this.metadataServiceProvider = metadataServiceProvider;
+    }
+
     @SneakyThrows
     protected void register() {
         DriverManager.registerDriver(this);
@@ -91,7 +112,7 @@ public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Dri
             throw new SQLException(exception.getMessage(), exception);
         }
 
-        return new DocumentDbConnection(properties);
+        return new DocumentDbConnection(properties, metadataServiceProvider.get());
     }
 
     /**

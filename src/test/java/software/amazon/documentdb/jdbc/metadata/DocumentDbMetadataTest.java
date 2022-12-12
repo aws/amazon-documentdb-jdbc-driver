@@ -60,12 +60,13 @@ class DocumentDbMetadataTest {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
                 .getMongoDb40Environment();
         final MongoClient client = testEnvironment.createMongoClient();
+        final DocumentDbMetadataService metadataService = new DocumentDbMetadataServiceImpl();
 
         final String schemaName = UUID.randomUUID().toString();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, client);
+                .get(properties, schemaName, metadataService, client);
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
         Assertions.assertEquals(0, databaseMetadata0.getTableSchemaMap().size());
 
@@ -79,14 +80,14 @@ class DocumentDbMetadataTest {
 
         // Even though we've added data, we're not refreshing, so expecting 0.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata00 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, VERSION_LATEST_OR_NEW, client);
+                .get(properties, schemaName, VERSION_LATEST_OR_NEW, metadataService, client);
         Assertions.assertEquals(0, databaseMetadata00.getTableSchemaMap().size());
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
         Assertions.assertEquals(0, databaseMetadata0.getTableSchemaMap().size());
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, VERSION_NEW, client);
+                .get(properties, schemaName, VERSION_NEW, metadataService, client);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
@@ -97,7 +98,7 @@ class DocumentDbMetadataTest {
 
         // Without a refresh we'll get the same metadata.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, client);
+                .get(properties, schemaName, metadataService, client);
         // This is exactly the same as it is cached.
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
         Assertions.assertEquals(2, databaseMetadata2.getSchemaVersion());
@@ -112,12 +113,13 @@ class DocumentDbMetadataTest {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
                 .getMongoDb40Environment();
         final MongoClient client = testEnvironment.createMongoClient();
+        final DocumentDbMetadataService metadataService = new DocumentDbMetadataServiceImpl();
 
         final String schemaName = UUID.randomUUID().toString();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, client);
+                .get(properties, schemaName, metadataService, client);
         Assertions.assertEquals(0,
                 databaseMetadata0.getTableSchemaMap().size());
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
@@ -132,7 +134,7 @@ class DocumentDbMetadataTest {
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, VERSION_NEW, client);
+                .get(properties, schemaName, VERSION_NEW, metadataService, client);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
@@ -142,12 +144,12 @@ class DocumentDbMetadataTest {
         Assertions.assertEquals(14, metadataTable.getColumnMap().size());
 
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, databaseMetadata1.getSchemaVersion(), client);
+                .get(properties, schemaName, databaseMetadata1.getSchemaVersion(), metadataService, client);
         Assertions.assertEquals(databaseMetadata1, databaseMetadata2);
 
         // Check that specifying an unknown version results in no associated metadata.
         final DocumentDbDatabaseSchemaMetadata databaseMetadata3 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, databaseMetadata1.getSchemaVersion() + 1, client);
+                .get(properties, schemaName, databaseMetadata1.getSchemaVersion() + 1, metadataService, client);
         Assertions.assertNull(databaseMetadata3);
         try (DocumentDbSchemaWriter schemaWriter = new DocumentDbSchemaWriter(properties, client)) {
             schemaWriter.remove(schemaName);
@@ -160,12 +162,13 @@ class DocumentDbMetadataTest {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
                 .getMongoDb40Environment();
         final MongoClient client = testEnvironment.createMongoClient();
+        final DocumentDbMetadataService metadataService = new DocumentDbMetadataServiceImpl();
 
         final String schemaName = UUID.randomUUID().toString();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, client);
+                .get(properties, schemaName, metadataService, client);
         Assertions.assertEquals(0,
                 databaseMetadata0.getTableSchemaMap().size());
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
@@ -180,18 +183,18 @@ class DocumentDbMetadataTest {
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, VERSION_NEW, client);
+                .get(properties, schemaName, VERSION_NEW, metadataService, client);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
         Assertions.assertEquals(2, databaseMetadata1.getSchemaVersion());
 
-        DocumentDbDatabaseSchemaMetadata.remove(properties, schemaName, client);
+        DocumentDbDatabaseSchemaMetadata.remove(properties, schemaName, metadataService, client);
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, 2, client);
+                .get(properties, schemaName, 2, metadataService, client);
         Assertions.assertNull(databaseMetadata2);
         final DocumentDbDatabaseSchemaMetadata databaseMetadata3 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, 1, client);
+                .get(properties, schemaName, 1, metadataService, client);
         Assertions.assertNull(databaseMetadata3);
     }
 
@@ -201,12 +204,13 @@ class DocumentDbMetadataTest {
         final DocumentDbTestEnvironment testEnvironment = DocumentDbTestEnvironmentFactory
                 .getMongoDb40Environment();
         final MongoClient client = testEnvironment.createMongoClient();
+        final DocumentDbMetadataService metadataService = new DocumentDbMetadataServiceImpl();
 
         final String schemaName = UUID.randomUUID().toString();
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(testEnvironment.getJdbcConnectionString());
         final DocumentDbDatabaseSchemaMetadata databaseMetadata0 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, client);
+                .get(properties, schemaName, metadataService, client);
         Assertions.assertEquals(0,
                 databaseMetadata0.getTableSchemaMap().size());
         Assertions.assertEquals(1, databaseMetadata0.getSchemaVersion());
@@ -220,15 +224,15 @@ class DocumentDbMetadataTest {
 
         // Now use the "refreshAll=true" flag to re-read the collection(s).
         final DocumentDbDatabaseSchemaMetadata databaseMetadata1 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, VERSION_NEW, client);
+                .get(properties, schemaName, VERSION_NEW, metadataService, client);
 
         Assertions.assertEquals(1,
                 databaseMetadata1.getTableSchemaMap().size());
         Assertions.assertEquals(2, databaseMetadata1.getSchemaVersion());
 
-        DocumentDbDatabaseSchemaMetadata.remove(properties, schemaName, 2, client);
+        DocumentDbDatabaseSchemaMetadata.remove(properties, schemaName, 2, metadataService, client);
         final DocumentDbDatabaseSchemaMetadata databaseMetadata2 = DocumentDbDatabaseSchemaMetadata
-                .get(properties, schemaName, 2, client);
+                .get(properties, schemaName, 2, metadataService, client);
         Assertions.assertNull(databaseMetadata2);
     }
 
