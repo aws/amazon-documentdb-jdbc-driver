@@ -68,3 +68,8 @@ your issue.
 ## Security Notice
 
 If you discover a potential security issue in this project, please consult our [security guidance page](SECURITY.md).
+
+## Contributor's Getting Started Guide
+
+If you're a developer and want to contribute to this project, ensure to read and follow the
+[Getting Started as a Developer](GETTING_STARTED.md) guide.
