@@ -24,6 +24,7 @@ import org.junit.jupiter.api.BeforeAll;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataServiceImpl;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
 
 import java.sql.SQLException;
@@ -64,7 +65,12 @@ public class DocumentDbQueryMappingServiceTest extends DocumentDbFlapDoodleTest 
 
     protected DocumentDbQueryMappingService getQueryMappingService() throws SQLException {
         final DocumentDbDatabaseSchemaMetadata databaseMetadata =
-                DocumentDbDatabaseSchemaMetadata.get(connectionProperties, "id", VERSION_NEW, client);
+                DocumentDbDatabaseSchemaMetadata.get(
+                        connectionProperties,
+                        "id",
+                        VERSION_NEW,
+                        new DocumentDbMetadataServiceImpl(),
+                        client);
         return new DocumentDbQueryMappingService(connectionProperties, databaseMetadata);
     }
 

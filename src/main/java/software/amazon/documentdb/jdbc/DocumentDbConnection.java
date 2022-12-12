@@ -28,6 +28,7 @@ import software.amazon.documentdb.jdbc.common.Connection;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataService;
 import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelClient;
 
 import java.sql.DatabaseMetaData;
@@ -65,14 +66,18 @@ public class DocumentDbConnection extends Connection
     private MongoClient mongoClient = null;
     private MongoDatabase mongoDatabase = null;
     private DocumentDbSshTunnelClient sshTunnelClient;
+    private DocumentDbMetadataService metadataService;
 
     /**
      * DocumentDbConnection constructor, initializes super class.
      */
-    DocumentDbConnection(final DocumentDbConnectionProperties connectionProperties)
+    DocumentDbConnection(
+            final DocumentDbConnectionProperties connectionProperties,
+            final DocumentDbMetadataService metadataService)
             throws SQLException {
         super(connectionProperties);
         this.connectionProperties = connectionProperties;
+        this.metadataService = metadataService;
         if (LOGGER.isDebugEnabled()) {
             final StringBuilder sb = new StringBuilder();
             sb.append("Creating connection with following properties:");
@@ -212,6 +217,7 @@ public class DocumentDbConnection extends Connection
                 connectionProperties,
                 connectionProperties.getSchemaName(),
                 version,
+                metadataService,
                 getMongoClient());
         metadata = new DocumentDbDatabaseMetaData(this, databaseMetadata, connectionProperties);
     }
