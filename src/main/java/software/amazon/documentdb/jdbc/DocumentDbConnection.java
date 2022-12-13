@@ -114,7 +114,7 @@ public class DocumentDbConnection extends Connection
     public static MongoDriverInformation getMongoDriverInformation(final DocumentDbConnectionProperties documentDbConnectionProperties) {
         final MongoDriverInformation mongoDriverInformation = MongoDriverInformation.builder()
                 .driverName(documentDbConnectionProperties.getApplicationName())
-                .driverVersion(documentDbConnectionProperties.getApplicationName())
+                .driverVersion(DocumentDbDriver.DRIVER_VERSION)
                 .build();
         return mongoDriverInformation;
     }

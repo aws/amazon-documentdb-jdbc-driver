@@ -71,20 +71,10 @@ public class DocumentDbConnectionProperties extends Properties {
     public static final String DOCUMENTDB_CUSTOM_OPTIONS = "DOCUMENTDB_CUSTOM_OPTIONS";
     private static String classPathLocationName = null;
     private static String[] documentDbSearchPaths = null;
-    private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
-    private static final String PROPERTIES_FILE_PATH = "/documentdb-jdbc.properties";
     static final String DEFAULT_APPLICATION_NAME;
 
     static {
-        String defaultAppName = "";
-        try (InputStream is = DocumentDbConnectionProperties.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
-            final Properties p = new Properties();
-            p.load(is);
-            defaultAppName = p.getProperty(DEFAULT_APPLICATION_NAME_KEY);
-        } catch (Exception e) {
-            LOGGER.error("Error loading default application name: " + e.getMessage());
-        }
-        DEFAULT_APPLICATION_NAME = defaultAppName;
+        DEFAULT_APPLICATION_NAME = DocumentDbDriver.DEFAULT_APPLICATION_NAME;
     }
 
     /**
@@ -258,7 +248,7 @@ public class DocumentDbConnectionProperties extends Properties {
     public String getApplicationName() {
         return getProperty(
                 DocumentDbConnectionProperty.APPLICATION_NAME.getName(),
-                DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue() );
+                DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue());
     }
 
     /**
