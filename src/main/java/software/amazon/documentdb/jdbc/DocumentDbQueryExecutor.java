@@ -22,7 +22,6 @@ import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoException;
 import com.mongodb.client.AggregateIterable;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -221,7 +220,6 @@ public class DocumentDbQueryExecutor {
     }
 
     private void performCancel() throws SQLException {
-        final MongoClientSettings settings = connectionProperties.buildMongoClientSettings();
         try (MongoClient client = connectionProperties.createMongoClient()) {
             final MongoDatabase database = client.getDatabase("admin");
 

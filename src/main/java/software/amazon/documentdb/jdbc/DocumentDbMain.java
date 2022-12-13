@@ -36,7 +36,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import com.mongodb.DuplicateKeyException;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import lombok.Getter;
 import lombok.NonNull;
 import org.apache.commons.cli.CommandLine;
