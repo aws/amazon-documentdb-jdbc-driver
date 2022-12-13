@@ -51,8 +51,8 @@ import java.sql.SQLFeatureNotSupportedException;
 import java.util.Arrays;
 import java.util.concurrent.Executor;
 
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getDocumentDbSearchPaths;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getSshPrivateKeyFileSearchPaths;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperty.REFRESH_SCHEMA;
 import static software.amazon.documentdb.jdbc.metadata.DocumentDbDatabaseSchemaMetadata.VERSION_LATEST_OR_NEW;
@@ -405,7 +405,7 @@ public class DocumentDbConnection extends Connection
             final DocumentDbConnectionProperties connectionProperties,
             final JSch jSch) throws JSchException {
         final String privateKeyFileName = getPath(connectionProperties.getSshPrivateKeyFile(),
-                getSshPrivateKeyFileSearchPaths()).toString();
+                getDocumentDbSearchPaths()).toString();
         LOGGER.debug("SSH private key file resolved to '{}'.", privateKeyFileName);
         // If passPhrase protected, will need to provide this, too.
         final String passPhrase = !isNullOrWhitespace(connectionProperties.getSshPrivateKeyPassphrase())

@@ -156,8 +156,45 @@ rather than the cluster endpoint since we have set up the SSH tunnel.
    ~~~
    mongo --host 127.0.0.1:27017 --username <master-username> --password <master-password>
    ~~~
+
+## Database User Account Definitions
+
+The integration tests assume the following two user accounts are created
+in the target database server.
+
+### Administrative User
+
+User: `documentdb`
+
+#### Definition:
+
+```json
+{
+  "user" : "documentdb",
+  "roles" : [ {
+    "db" : "admin",
+    "role" : "root"
+  } ]
+}
+```
+
+### Restricted Access User
+
+User: `docDbRestricted`
+
+#### Definition
+
+```json
+{
+  "user" : "docDbRestricted",
+  "roles" : [ {
+    "db" : "admin",
+    "role" : "readAnyDatabase"
+  } ]
+}
+```
    
-##### Connect with TLS
+## Connect with TLS
 When connecting to a TLS-enabled cluster you can follow the same steps to set up an SSH tunnel but will need to also 
 download the Amazon DocumentDB Certificate Authority (CA) file before trying to connect.
 1. Download the CA file.
@@ -178,8 +215,8 @@ access the cluster from localhost, the server certificate does not match the hos
    mongo --host 127.0.0.1:27017 --username <master-username> --password <master-password> --tls --tlsCAFile rds-combined-ca-bundle.pem --tlsAllowInvalidHostnames 
    ~~~
    
-##### Connect Programmatically 
-###### Without TLS
+### Connect Programmatically 
+#### Without TLS
 Connecting without TLS is very straightforward. We essentially follow the same steps as when connecting using the 
 `mongo` shell. 
 1. Setup the SSH tunnel. See step 3 in section [Setting Up Environment Variables](#setting-up-environment-variables) for 
@@ -201,7 +238,7 @@ Make sure to set the hostname, username, password and target database. The targe
    }
    ~~~
    
-###### With TLS
+#### With TLS
 Connecting with TLS programmatically is slightly different from how we did it with the `mongo` shell.
 1. Create a test or simple main to run.  
 2. Use either the Driver Manager, Data Source class or Connection class to establish a connection to `localhost:27017`. 
@@ -224,36 +261,57 @@ class:
    }
    ~~~
 
-#### Setting Up Environment Variables
-1. Create and set the Environment Variables:
+## Integration Testing
 
-   ~~~
-   DOC_DB_USER_NAME=<secret-username>
-   DOC_DB_PASSWORD=<secret-password>
-   DOC_DB_LOCAL_PORT=27019
-   DOC_DB_USER=<ec2-username>@<public-IPv4-DNS-name>
-   DOC_DB_HOST=<cluster-endpoint>
-   DOC_DB_PRIV_KEY_FILE=~/.ssh/<key-pair-name>.pem
-   ~~~
+By default, integration testing is disabled for local development. To enable
+integration testing, follow the directions below.
 
-2. Ensure the private key file <key pair name>.pem is in the location set by the environment variable 
+### Setting Up Environment Variables
+
+To enable integration testing the following environment variables allow
+you to customize the credentials and DocumentDB cluster settings.
+
+1. Create and set the following environment variables:
+
+| Variable               | Description                                                                                                              | Example                                                                     |
+|------------------------|--------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| `DOC_DB_USER_NAME`     | This is the DocumentDB user.                                                                                             | `documentdb`                                                                |
+| `DOC_DB_PASSWORD`      | This is the DocumentDB password.                                                                                         | `aSecret`                                                                   |
+| `DOC_DB_LOCAL_PORT`    | This is the port number used locally via an SSH Tunnel. It is recommend to use a different value than the default 27017. | `27019`                                                                     |
+| `DOC_DB_USER`          | This is the user and host of SSH Tunnel EC2 instance.                                                                    | `ec2-user@254.254.254.254`                                                  |
+| `DOC_DB_HOST`          | This is the host of the DocumentDB cluster server.                                                                       | `docdb-jdbc-literal-test.cluster-abcdefghijk.us-east-2.docdb.amazonaws.com` |
+| `DOC_DB_PRIV_KEY_FILE` | This is the path to the SSH Tunnel private key-pair file.                                                                | `~/.ssh/ec2-literal.pem`                                                    |
+
+### SSH Tunnel
+
+1. Ensure the private key file <key pair name>.pem is in the location set by the environment variable 
 `DOC_DB_PRIV_KEY_FILE`.
-3. Start an SSH port-forwarding tunnel:
+2. Assuming you have the environment variables setup above, starting an SSH tunnel from the command line should look like this:
 
+   ~~~shell
+   ssh [-f] -N -i $DOC_DB_PRIV_KEY_FILE -L $DOC_DB_LOCAL_PORT:$DOC_DB_HOST:27017 $DOC_DB_USER
    ~~~
-   ssh [-f] -N -i ~/.ssh/<key-pair-name>.pem -L $DOC_DB_LOCAL_PORT:$DOC_DB_HOST:27017 $DOC_DB_USER
-   ~~~
-   
+ 
    - The `-L` flag defines the port forwarded to the remote host and remote port. Adding the `-N` flag means do not 
    execute a remote command, you will not get a shell in this case. The `-f` switch instructs SSH to run in the 
    background.
    
-#### Bypass Testing DocumentDB
+### Enable Integration Testing of Amazon DocumentDB
+
+To enable integration testing in the IDE, update the grade property, as intructed below.
+
 1. Modify the */gradle.properties* file in the source code and uncomment the following line: 
-`runRemoteIntegrationTests=false`
+`runRemoteIntegrationTests=true`
+
+### Project Secrets
+
+For the purposes of automated integration testing in **GitHub**, this project maintains the value for the environment variables above
+as project secrets. See the workflow file [gradle.yml](https://github.com/aws/amazon-documentdb-jdbc-driver/blob/1edd9e21fdcccfe62d366580702f2904136298e5/.github/workflows/gradle.yml)
 
 ## Troubleshooting
+
 ### Issues with JDK
+
 1. Confirm project SDK is Java Version 1.8 via the IntelliJ top menu toolbar under 
 *File → Project Structure → Platform Settings -> SDK* and reload the JDK home path by browsing to the path and click 
 *apply* and *ok*. Restart IntelliJ IDEA.
@@ -277,5 +335,3 @@ class:
 below. Go to EC2 Dashboard → **Network & Security** Group in the left menu → **Security** Group.
 
    ![Security Policy for EC2 Instance](src/markdown/images/getting-started/security-policy-ec2-instance.png)
-   
-   

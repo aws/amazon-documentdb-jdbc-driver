@@ -29,9 +29,12 @@ import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.cert.Certificate;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
@@ -41,9 +44,9 @@ import java.util.regex.Matcher;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENTDB_CUSTOM_OPTIONS;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getClassPathLocationName;
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getDocumentDbSearchPaths;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getDocumentdbHomePathName;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getPath;
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getSshPrivateKeyFileSearchPaths;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.getUserHomePathName;
 
 public class DocumentDbConnectionPropertiesTest {
@@ -390,7 +393,7 @@ public class DocumentDbConnectionPropertiesTest {
         try {
             homeTempFilePath = Paths.get(getUserHomePathName(), tempFilename1);
             Assertions.assertTrue(homeTempFilePath.toFile().createNewFile());
-            final Path path3 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            final Path path3 = getPath(tempFilename1, getDocumentDbSearchPaths());
             Assertions.assertEquals(Paths.get(getUserHomePathName(), tempFilename1), path3);
         } finally {
             Assertions.assertTrue(homeTempFilePath != null && homeTempFilePath.toFile().delete());
@@ -405,7 +408,7 @@ public class DocumentDbConnectionPropertiesTest {
                 Assertions.assertTrue(documentDbDirectory.mkdir());
             }
             Assertions.assertTrue(documentDbTempFilePath.toFile().createNewFile());
-            final Path path4 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            final Path path4 = getPath(tempFilename1, getDocumentDbSearchPaths());
             Assertions.assertEquals(Paths.get(getDocumentdbHomePathName(), tempFilename1), path4);
         } finally {
             Assertions.assertTrue(documentDbTempFilePath != null && documentDbTempFilePath.toFile().delete());
@@ -416,7 +419,7 @@ public class DocumentDbConnectionPropertiesTest {
         try {
             classPathParentTempFilePath = Paths.get(getClassPathLocationName(), tempFilename1);
             Assertions.assertTrue(classPathParentTempFilePath.toFile().createNewFile());
-            final Path path5 = getPath(tempFilename1, getSshPrivateKeyFileSearchPaths());
+            final Path path5 = getPath(tempFilename1, getDocumentDbSearchPaths());
             Assertions.assertEquals(Paths.get(getClassPathLocationName(), tempFilename1), path5);
         } finally {
             Assertions.assertTrue(classPathParentTempFilePath != null && classPathParentTempFilePath.toFile().delete());
@@ -472,5 +475,26 @@ public class DocumentDbConnectionPropertiesTest {
         // Build client settings and ensure authentication database is passed.
         final MongoClientSettings settings = properties.buildMongoClientSettings();
         Assertions.assertEquals("test", settings.getCredential().getSource());
+    }
+
+    @Test
+    @DisplayName("Tests the appendEmbeddedAndOptionalCaCertificates method")
+    void testAppendEmbeddedAndOptionalCaCertificates() throws SQLException, IOException {
+        final Properties info = new Properties();
+        final String connectionString = "jdbc:documentdb://username:password@localhost/database";
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
+        final List<Certificate> caCertificates = new ArrayList<>();
+        properties.appendEmbeddedAndOptionalCaCertificates(caCertificates);
+        Assertions.assertEquals(1, caCertificates.size());
+        caCertificates.clear();
+        properties.setTlsCAFilePath("src/main/resources/rds-ca-2019-root.pem");
+        properties.appendEmbeddedAndOptionalCaCertificates(caCertificates);
+        Assertions.assertEquals(2, caCertificates.size());
+        caCertificates.clear();
+        properties.setTlsCAFilePath("invalid-path.pem");
+        Assertions.assertThrows(SQLException.class,
+                () -> properties.appendEmbeddedAndOptionalCaCertificates(caCertificates));
+        Assertions.assertEquals(0, caCertificates.size());
     }
 }

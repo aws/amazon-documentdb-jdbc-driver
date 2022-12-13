@@ -35,6 +35,7 @@ import org.bson.BsonMinKey;
 import org.bson.BsonNull;
 import org.bson.BsonObjectId;
 import org.bson.BsonString;
+import org.bson.BsonTimestamp;
 import org.bson.BsonType;
 import org.bson.types.Decimal128;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -54,6 +55,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Provides some base implementation of the {@link DocumentDbTestEnvironment} interface.
@@ -228,21 +230,23 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
             //BsonJavaScript
             //BsonJavaScriptWithScope
             //BsonDecimal128
-            final long dateTime = Instant.parse("2020-01-01T00:00:00.00Z").toEpochMilli();
+            final Instant dateTime = Instant.parse("2020-01-01T00:00:00.00Z");
             final BsonDocument document = new BsonDocument()
                     .append("_id", new BsonObjectId())
                     .append("fieldDouble", new BsonDouble(Double.MAX_VALUE))
                     .append("fieldString", new BsonString("新年快乐"))
                     .append("fieldObjectId", new BsonObjectId())
                     .append("fieldBoolean", new BsonBoolean(true))
-                    .append("fieldDate", new BsonDateTime(dateTime))
+                    .append("fieldDate", new BsonDateTime(dateTime.toEpochMilli()))
                     .append("fieldInt", new BsonInt32(Integer.MAX_VALUE))
                     .append("fieldLong", new BsonInt64(Long.MAX_VALUE))
                     .append("fieldMaxKey", new BsonMaxKey())
                     .append("fieldMinKey", new BsonMinKey())
                     .append("fieldNull", new BsonNull())
                     .append("fieldBinary", new BsonBinary(new byte[]{0, 1, 2}))
-                    .append("fieldDecimal128", new BsonDecimal128(Decimal128.parse(String.valueOf(Double.MAX_VALUE))));
+                    .append("fieldDecimal128", new BsonDecimal128(Decimal128.parse(String.valueOf(Double.MAX_VALUE))))
+                    .append("fieldTimestamp",
+                            new BsonTimestamp((int) TimeUnit.MILLISECONDS.toSeconds(dateTime.toEpochMilli()), 1));
 
             final InsertOneResult result = collection.insertOne(document);
             Assertions.assertEquals(count + 1, collection.countDocuments());
