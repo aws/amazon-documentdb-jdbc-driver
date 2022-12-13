@@ -23,7 +23,6 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
-import com.mongodb.MongoDriverInformation;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
@@ -103,20 +102,6 @@ public class DocumentDbConnection extends Connection
         }
         this.session = createSshTunnel(connectionProperties);
         initializeClients(connectionProperties);
-    }
-
-    /**
-     * Return MongoDriverInformation object. It will initialize the Objectc with driver name
-     * and driver version.
-     * @param documentDbConnectionProperties DocumentDB connection properties
-     * @return MongoDriverInformation
-     */
-    public static MongoDriverInformation getMongoDriverInformation(final DocumentDbConnectionProperties documentDbConnectionProperties) {
-        final MongoDriverInformation mongoDriverInformation = MongoDriverInformation.builder()
-                .driverName(documentDbConnectionProperties.getApplicationName())
-                .driverVersion(DocumentDbDriver.DRIVER_VERSION)
-                .build();
-        return mongoDriverInformation;
     }
 
     /**
@@ -317,10 +302,7 @@ public class DocumentDbConnection extends Connection
     private void initializeClients(final DocumentDbConnectionProperties connectionProperties)
             throws SQLException {
         // Create the mongo client.
-        final MongoClientSettings settings = connectionProperties
-                .buildMongoClientSettings(getSshLocalPort());
-        mongoClient = MongoClients.create(settings,
-                DocumentDbConnection.getMongoDriverInformation(connectionProperties));
+        mongoClient = connectionProperties.createMongoClient(getSshLocalPort());
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
     }

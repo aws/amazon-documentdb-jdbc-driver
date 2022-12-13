@@ -322,8 +322,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
         @Override
         protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
             final MongoClientSettings settings = VALID_CONNECTION_PROPERTIES.buildMongoClientSettings();
-            try (MongoClient client = MongoClients.create(settings,
-                    DocumentDbConnection.getMongoDriverInformation(VALID_CONNECTION_PROPERTIES))) {
+            try (MongoClient client = VALID_CONNECTION_PROPERTIES.createMongoClient()) {
                 final MongoDatabase database =
                         client.getDatabase(VALID_CONNECTION_PROPERTIES.getDatabase());
                 final MongoCollection<Document> collection = database.getCollection(

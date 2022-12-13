@@ -28,7 +28,6 @@ import org.bson.BsonDocument;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.documentdb.jdbc.DocumentDbConnection;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaSecurityException;
@@ -388,10 +387,9 @@ public class DocumentDbMetadataService {
             final Map<String, DocumentDbSchemaTable> tableMap,
             final MongoClient client) throws SQLException {
 
-        final MongoClientSettings settings = properties.buildMongoClientSettings();
         final MongoClient mongoClient = client != null
                 ? client
-                : MongoClients.create(settings, DocumentDbConnection.getMongoDriverInformation(properties));
+                : properties.createMongoClient();
         try {
             final MongoDatabase database = mongoClient.getDatabase(databaseName);
             for (String collectionName : getFilteredCollectionNames(database)) {

@@ -393,8 +393,7 @@ public class DocumentDbMain {
 
     private static MongoClient getMongoClient(final DocumentDbConnectionProperties properties) {
         if (client == null) {
-            client = MongoClients.create(properties.buildMongoClientSettings(),
-                    DocumentDbConnection.getMongoDriverInformation(properties));
+            client = properties.createMongoClient();
         }
         return client;
     }

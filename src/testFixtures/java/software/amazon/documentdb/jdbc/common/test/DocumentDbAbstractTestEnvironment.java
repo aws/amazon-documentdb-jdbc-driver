@@ -40,7 +40,6 @@ import org.bson.BsonType;
 import org.bson.types.Decimal128;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.junit.jupiter.api.Assertions;
-import software.amazon.documentdb.jdbc.DocumentDbConnection;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperty;
 import software.amazon.documentdb.jdbc.DocumentDbMetadataScanMethod;
@@ -217,8 +216,7 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
     public MongoClient createMongoClient() throws SQLException {
         final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
                 .getPropertiesFromConnectionString(getJdbcConnectionString());
-        return MongoClients.create(properties
-                .buildMongoClientSettings(), DocumentDbConnection.getMongoDriverInformation(properties));
+        return properties.createMongoClient();
     }
 
     @Override

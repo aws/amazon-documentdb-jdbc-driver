@@ -222,8 +222,7 @@ public class DocumentDbQueryExecutor {
 
     private void performCancel() throws SQLException {
         final MongoClientSettings settings = connectionProperties.buildMongoClientSettings();
-        try (MongoClient client = MongoClients.create(settings,
-                DocumentDbConnection.getMongoDriverInformation(connectionProperties))) {
+        try (MongoClient client = connectionProperties.createMongoClient()) {
             final MongoDatabase database = client.getDatabase("admin");
 
             // Find the opId to kill using the queryId.

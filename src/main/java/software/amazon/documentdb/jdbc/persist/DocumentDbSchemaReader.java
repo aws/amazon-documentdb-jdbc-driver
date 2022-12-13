@@ -27,7 +27,6 @@ import org.bson.codecs.pojo.PojoCodecProvider;
 import org.bson.conversions.Bson;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.documentdb.jdbc.DocumentDbConnection;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataColumn;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
@@ -88,8 +87,7 @@ public class DocumentDbSchemaReader implements AutoCloseable {
         this.properties = properties;
         this.client = client != null
                 ? client
-                : MongoClients.create(properties.buildMongoClientSettings(),
-                DocumentDbConnection.getMongoDriverInformation(properties));
+                : properties.createMongoClient();
         this.closeClient = client == null;
     }
 

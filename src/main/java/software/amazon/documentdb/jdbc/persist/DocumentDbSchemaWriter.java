@@ -34,7 +34,6 @@ import org.bson.conversions.Bson;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.documentdb.jdbc.DocumentDbConnection;
 import software.amazon.documentdb.jdbc.DocumentDbConnectionProperties;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.common.utilities.SqlState;
@@ -88,8 +87,7 @@ public class DocumentDbSchemaWriter implements AutoCloseable {
         this.properties = properties;
         this.client = client != null
                 ? client
-                : MongoClients.create(properties.buildMongoClientSettings(),
-                DocumentDbConnection.getMongoDriverInformation(properties));
+                : properties.createMongoClient();
         this.closeClient = client == null;
     }
 

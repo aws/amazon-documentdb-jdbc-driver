@@ -20,8 +20,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
+import com.mongodb.MongoDriverInformation;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.event.ServerMonitorListener;
 import lombok.SneakyThrows;
@@ -166,6 +169,20 @@ public class DocumentDbConnectionProperties extends Properties {
             }
         }
         return classPathLocation;
+    }
+
+    /**
+     * Return MongoDriverInformation object. It will initialize the Object with application name
+     * and driver version.
+     *
+     * @return MongoDriverInformation
+     */
+    private MongoDriverInformation getMongoDriverInformation() {
+        final MongoDriverInformation mongoDriverInformation = MongoDriverInformation.builder()
+                .driverName(getApplicationName())
+                .driverVersion(DocumentDbDriver.DRIVER_VERSION)
+                .build();
+        return mongoDriverInformation;
     }
 
     /**
@@ -668,6 +685,29 @@ public class DocumentDbConnectionProperties extends Properties {
      */
     public DocumentDbAllowDiskUseOption getAllowDiskUseOption() {
         return getPropertyAsAllowDiskUseOption(DocumentDbConnectionProperty.ALLOW_DISK_USE.getName());
+    }
+
+    /**
+     * Creates a {@link MongoClient} instance from the connection properties.
+     *
+     * @return a new instance of a {@link MongoClient}.
+     */
+    public MongoClient createMongoClient() {
+        return MongoClients.create(
+                buildMongoClientSettings(),
+                getMongoDriverInformation());
+    }
+
+    /**
+     * Creates a {@link MongoClient} instance from the connection properties using
+     * the SSH tunnel port on the local host.
+     *
+     * @return a new instance of a {@link MongoClient}.
+     */
+    public MongoClient createMongoClient(final int sshLocalPort) {
+        return MongoClients.create(
+                buildMongoClientSettings(sshLocalPort),
+                getMongoDriverInformation());
     }
 
     /**
