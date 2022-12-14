@@ -18,10 +18,8 @@ package software.amazon.documentdb.jdbc;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.client.FindIterable;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoCursor;
 import com.mongodb.client.MongoDatabase;
@@ -321,8 +319,7 @@ public class DocumentDbQueryExecutorTest extends DocumentDbFlapDoodleTest {
 
         @Override
         protected java.sql.ResultSet runQuery(final String sql) throws SQLException {
-            final MongoClientSettings settings = VALID_CONNECTION_PROPERTIES.buildMongoClientSettings();
-            try (MongoClient client = MongoClients.create(settings)) {
+            try (MongoClient client = VALID_CONNECTION_PROPERTIES.createMongoClient()) {
                 final MongoDatabase database =
                         client.getDatabase(VALID_CONNECTION_PROPERTIES.getDatabase());
                 final MongoCollection<Document> collection = database.getCollection(

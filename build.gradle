@@ -278,14 +278,7 @@ task writeProperties(type: WriteProperties) {
     property("driver.major.version", MAJOR_VERSION)
     property("driver.minor.version", MINOR_VERSION)
     property("driver.full.version", project.version)
-}
-
-/**
- * Write default application name to properties file under common.
- */
-task writeCommonProperties(type: WriteProperties) {
-    outputFile("$projectDir/common/src/main/resources/common.properties")
-    property("default.application.name", "${APPLICATION_NAME} v${project.version}")
+    property("default.application.name", APPLICATION_NAME)
 }
 
 import io.franzbecker.gradle.lombok.task.DelombokTask
@@ -305,7 +298,6 @@ javadoc {
 
 processResources {
     from(writeProperties)
-    from(writeCommonProperties)
     duplicatesStrategy(DuplicatesStrategy.INCLUDE)
 }
 

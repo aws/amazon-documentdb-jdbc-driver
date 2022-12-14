@@ -27,5 +27,5 @@ build/
 /src/main/resources/LICENSE
 /src/main/resources/NOTICE
 # Generated
-/common/src/main/resources/common.properties
+/src/main/resources/project.properties
 

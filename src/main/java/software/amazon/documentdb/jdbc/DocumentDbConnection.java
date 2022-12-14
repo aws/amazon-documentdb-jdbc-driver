@@ -21,11 +21,9 @@ import com.jcraft.jsch.HostKeyRepository;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
-import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -302,9 +300,7 @@ public class DocumentDbConnection extends Connection
     private void initializeClients(final DocumentDbConnectionProperties connectionProperties)
             throws SQLException {
         // Create the mongo client.
-        final MongoClientSettings settings = connectionProperties
-                .buildMongoClientSettings(getSshLocalPort());
-        mongoClient = MongoClients.create(settings);
+        mongoClient = connectionProperties.createMongoClient(getSshLocalPort());
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
     }
