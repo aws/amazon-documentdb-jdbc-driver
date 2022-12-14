@@ -40,6 +40,7 @@ import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelServer;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
@@ -553,7 +554,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                     if (!isNullOrWhitespace(stdOut)) {
                         LOGGER.debug("Process output: '" + stdOut + "'");
                     }
-                } catch (IOException e) {
+                } catch (IOException | UncheckedIOException e) {
                     // Ignore exceptions - might already be closed.
                 }
                 try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
@@ -561,7 +562,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
                     if (!isNullOrWhitespace(stdErr)) {
                         LOGGER.debug("Process error: '" + stdErr + "'");
                     }
-                } catch (IOException e) {
+                } catch (IOException | UncheckedIOException e) {
                     // Ignore exceptions - might already be closed.
                 }
             }
