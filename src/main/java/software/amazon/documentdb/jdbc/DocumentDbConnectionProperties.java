@@ -20,8 +20,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCredential;
+import com.mongodb.MongoDriverInformation;
 import com.mongodb.ReadPreference;
 import com.mongodb.ServerAddress;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
 import com.mongodb.connection.SslSettings;
 import com.mongodb.event.ServerMonitorListener;
 import lombok.SneakyThrows;
@@ -71,20 +74,10 @@ public class DocumentDbConnectionProperties extends Properties {
     public static final String DOCUMENTDB_CUSTOM_OPTIONS = "DOCUMENTDB_CUSTOM_OPTIONS";
     private static String classPathLocationName = null;
     private static String[] documentDbSearchPaths = null;
-    private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
-    private static final String PROPERTIES_FILE_PATH = "/documentdb-jdbc.properties";
     static final String DEFAULT_APPLICATION_NAME;
 
     static {
-        String defaultAppName = "";
-        try (InputStream is = DocumentDbConnectionProperties.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
-            final Properties p = new Properties();
-            p.load(is);
-            defaultAppName = p.getProperty(DEFAULT_APPLICATION_NAME_KEY);
-        } catch (Exception e) {
-            LOGGER.error("Error loading default application name: " + e.getMessage());
-        }
-        DEFAULT_APPLICATION_NAME = defaultAppName;
+        DEFAULT_APPLICATION_NAME = DocumentDbDriver.DEFAULT_APPLICATION_NAME;
     }
 
     /**
@@ -179,6 +172,20 @@ public class DocumentDbConnectionProperties extends Properties {
     }
 
     /**
+     * Return MongoDriverInformation object. It will initialize the Object with application name
+     * and driver version.
+     *
+     * @return MongoDriverInformation
+     */
+    private MongoDriverInformation getMongoDriverInformation() {
+        final MongoDriverInformation mongoDriverInformation = MongoDriverInformation.builder()
+                .driverName(getApplicationName())
+                .driverVersion(DocumentDbDriver.DRIVER_VERSION)
+                .build();
+        return mongoDriverInformation;
+    }
+
+    /**
      * Gets the hostname.
      *
      * @return The hostname to connect to.
@@ -258,7 +265,7 @@ public class DocumentDbConnectionProperties extends Properties {
     public String getApplicationName() {
         return getProperty(
                 DocumentDbConnectionProperty.APPLICATION_NAME.getName(),
-                DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue() );
+                DocumentDbConnectionProperty.APPLICATION_NAME.getDefaultValue());
     }
 
     /**
@@ -678,6 +685,29 @@ public class DocumentDbConnectionProperties extends Properties {
      */
     public DocumentDbAllowDiskUseOption getAllowDiskUseOption() {
         return getPropertyAsAllowDiskUseOption(DocumentDbConnectionProperty.ALLOW_DISK_USE.getName());
+    }
+
+    /**
+     * Creates a {@link MongoClient} instance from the connection properties.
+     *
+     * @return a new instance of a {@link MongoClient}.
+     */
+    public MongoClient createMongoClient() {
+        return MongoClients.create(
+                buildMongoClientSettings(),
+                getMongoDriverInformation());
+    }
+
+    /**
+     * Creates a {@link MongoClient} instance from the connection properties using
+     * the SSH tunnel port on the local host.
+     *
+     * @return a new instance of a {@link MongoClient}.
+     */
+    public MongoClient createMongoClient(final int sshLocalPort) {
+        return MongoClients.create(
+                buildMongoClientSettings(sshLocalPort),
+                getMongoDriverInformation());
     }
 
     /**

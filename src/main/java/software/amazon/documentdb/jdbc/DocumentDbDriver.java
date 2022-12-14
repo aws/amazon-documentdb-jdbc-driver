@@ -37,10 +37,12 @@ public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Dri
     private static final String DRIVER_MAJOR_VERSION_KEY = "driver.major.version";
     private static final String DRIVER_MINOR_VERSION_KEY = "driver.minor.version";
     private static final String DRIVER_FULL_VERSION_KEY = "driver.full.version";
+    private static final String DEFAULT_APPLICATION_NAME_KEY = "default.application.name";
     private static final String PROPERTIES_FILE_PATH = "/project.properties";
     static final int DRIVER_MAJOR_VERSION;
     static final int DRIVER_MINOR_VERSION;
     static final String DRIVER_VERSION;
+    static final String DEFAULT_APPLICATION_NAME;
 
     // Registers the JDBC driver.
     static {
@@ -48,18 +50,21 @@ public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Dri
         int majorVersion = 0;
         int minorVersion = 0;
         String fullVersion = "";
+        String defaultApplicationName = "";
         try (InputStream is = DocumentDbDatabaseMetaData.class.getResourceAsStream(PROPERTIES_FILE_PATH)) {
             final Properties p = new Properties();
             p.load(is);
             majorVersion = Integer.parseInt(p.getProperty(DRIVER_MAJOR_VERSION_KEY));
             minorVersion = Integer.parseInt(p.getProperty(DRIVER_MINOR_VERSION_KEY));
             fullVersion = p.getProperty(DRIVER_FULL_VERSION_KEY);
+            defaultApplicationName = p.getProperty(DEFAULT_APPLICATION_NAME_KEY);
         } catch (Exception e) {
             LOGGER.error("Error loading driver version: " + e.getMessage());
         }
         DRIVER_MAJOR_VERSION = majorVersion;
         DRIVER_MINOR_VERSION = minorVersion;
         DRIVER_VERSION = fullVersion;
+        DEFAULT_APPLICATION_NAME = defaultApplicationName;
 
         new DocumentDbDriver().register();
     }

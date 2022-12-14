@@ -18,7 +18,6 @@ package software.amazon.documentdb.jdbc.persist;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import lombok.NonNull;
@@ -87,7 +86,7 @@ public class DocumentDbSchemaReader implements AutoCloseable {
         this.properties = properties;
         this.client = client != null
                 ? client
-                : MongoClients.create(properties.buildMongoClientSettings());
+                : properties.createMongoClient();
         this.closeClient = client == null;
     }
 

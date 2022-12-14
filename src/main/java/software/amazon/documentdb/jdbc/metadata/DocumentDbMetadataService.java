@@ -16,9 +16,7 @@
 
 package software.amazon.documentdb.jdbc.metadata;
 
-import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.model.EstimatedDocumentCountOptions;
@@ -387,10 +385,9 @@ public class DocumentDbMetadataService {
             final Map<String, DocumentDbSchemaTable> tableMap,
             final MongoClient client) throws SQLException {
 
-        final MongoClientSettings settings = properties.buildMongoClientSettings();
         final MongoClient mongoClient = client != null
                 ? client
-                : MongoClients.create(settings);
+                : properties.createMongoClient();
         try {
             final MongoDatabase database = mongoClient.getDatabase(databaseName);
             for (String collectionName : getFilteredCollectionNames(database)) {
