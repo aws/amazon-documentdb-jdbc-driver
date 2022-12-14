@@ -46,12 +46,13 @@ class DocumentDbSshTunnelClientTest {
             TimeUnit.SECONDS.sleep(1);
             Assertions.assertTrue(client.isServerAlive());
         } finally {
-            Assertions.assertNotNull(client);
-            client.close();
-            // This is the only client, so server will shut down.
-            TimeUnit.SECONDS.sleep(1);
-            Assertions.assertNotNull(server);
-            Assertions.assertFalse(client.isServerAlive());
+            if (client != null) {
+                client.close();
+                // This is the only client, so server will shut down.
+                TimeUnit.SECONDS.sleep(1);
+                Assertions.assertNotNull(server);
+                Assertions.assertFalse(client.isServerAlive());
+            }
         }
     }
 
