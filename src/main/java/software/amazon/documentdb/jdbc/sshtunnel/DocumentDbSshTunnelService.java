@@ -534,7 +534,7 @@ public class DocumentDbSshTunnelService implements AutoCloseable, Runnable {
         }
     }
 
-    private static <T extends Exception> SQLException logException(T e) {
+    private static <T extends Exception> SQLException logException(final T e) {
         LOGGER.error(e.getMessage(), e);
         if (e instanceof SQLException) {
             return (SQLException) e;
