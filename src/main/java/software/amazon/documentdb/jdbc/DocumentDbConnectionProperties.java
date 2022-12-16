@@ -1197,7 +1197,7 @@ public class DocumentDbConnectionProperties extends Properties {
 
     private static void setHostName(
             final Properties properties,
-            final URI mongoUri,
+            final URI uri,
             final ValidationType validationType) throws SQLException {
         String hostName = mongoUri.getHost();
         if (hostName == null) {
