@@ -329,7 +329,7 @@ public class DocumentDbMain {
             final StringBuilder output = new StringBuilder();
             handleCommandLine(args, output);
             if (output.length() > 0) {
-                LOGGER.info("{}", output);
+                LOGGER.error("{}", output);
             }
         } catch (SQLException e) {
             LOGGER.error(e.getMessage(), e);
