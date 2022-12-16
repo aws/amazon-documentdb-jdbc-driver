@@ -41,9 +41,7 @@ import java.nio.file.StandardOpenOption;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Queue;
@@ -105,7 +103,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         this.sshKnownHostsFile = builder.sshKnownHostsFile;
         this.propertiesHashString = DocumentDbSshTunnelLock.getHashString(
                 sshUser, sshHostname, sshPrivateKeyFile, remoteHostname);
-        LOGGER.info("sshUser='{}' sshHostname='{}' sshPrivateKeyFile='{}' remoteHostname'{}"
+        LOGGER.debug("sshUser='{}' sshHostname='{}' sshPrivateKeyFile='{}' remoteHostname'{}"
                 + " sshPrivateKeyPassphrase='{}' sshStrictHostKeyChecking='{}' sshKnownHostsFile='{}'",
                 this.sshUser,
                 this.sshHostname,
@@ -139,15 +137,14 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
      * Adds a client to the reference count for this server. If this is the first client, the server
      * ensures that an SSH Tunnel service is started.
      *
-     * @return The current client reference count after adding the new client.
      * @throws Exception When an error occurs trying to start the SSH Tunnel service.
      */
-    public int addClient() throws Exception {
+    public void addClient() throws Exception {
         synchronized (MUTEX) {
             if (clientCount.get() == 0) {
                 ensureStarted();
             }
-            return clientCount.incrementAndGet();
+            clientCount.incrementAndGet();
         }
     }
 
@@ -155,16 +152,13 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
      * Removes a client from the reference count for this server. If the reference count reaches zero, then
      * the serve attempt to stop the SSH Tunnel service.
      *
-     * @return The current client count after removing the client from the reference count.
      * @throws Exception When an error occur attempting shutdown of the service process.
      */
-    public int removeClient() throws Exception {
+    public void removeClient() throws Exception {
         synchronized (MUTEX) {
-            final int currentCount = clientCount.decrementAndGet();
-            if (clientCount.get() == 0) {
+            if (clientCount.decrementAndGet() == 0) {
                 close();
             }
-            return currentCount;
         }
     }
 
@@ -175,6 +169,12 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
             do {
                 serverWatcherThread.join(SERVER_WATCHER_POLL_TIME_MS * 2);
             } while (serverWatcherThread.isAlive());
+            final Queue<Exception> exceptions = serverWatcher.getExceptions();
+            if (!exceptions.isEmpty()) {
+                for (Exception e : exceptions) {
+                    LOGGER.error(e.getMessage(), e);
+                }
+            }
             LOGGER.info("Stopped server watcher thread.");
         } else {
             LOGGER.info("Server watcher thread already stopped.");
@@ -474,13 +474,13 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
     }
 
     private Process startSshTunnelServiceProcess()
-            throws IOException, SQLException, InterruptedException, URISyntaxException {
+            throws IOException, SQLException, URISyntaxException {
         final List<String> command = getSshTunnelCommand();
         final ProcessBuilder builder = new ProcessBuilder(command);
         return builder.inheritIO().start();
     }
 
-    private List<String> getSshTunnelCommand() throws SQLException, IOException, InterruptedException, URISyntaxException {
+    private List<String> getSshTunnelCommand() throws SQLException, URISyntaxException {
         final List<String> command = new LinkedList<>();
         final String docDbSshTunnelPathString = System.getenv(DOCUMENTDB_SSH_TUNNEL_PATH);
         if (docDbSshTunnelPathString != null) {
@@ -580,6 +580,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         return DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME + connectionProperties.buildSshConnectionString();
     }
 
+    @NonNull
     private DocumentDbConnectionProperties getConnectionProperties() {
         final DocumentDbConnectionProperties connectionProperties = new DocumentDbConnectionProperties();
         connectionProperties.setHostname(remoteHostname);
@@ -682,12 +683,13 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
             this.serverAlive = serverAlive;
         }
 
-        public ServerWatcherState getState() {
-            return state;
-        }
-
-        public List<Exception> getExceptions() {
-            return Collections.unmodifiableList(new ArrayList<>(exceptions));
+        /**
+         * Gets the queue of exceptions.
+         *
+         * @return a queue of exceptions.
+         */
+        public Queue<Exception> getExceptions() {
+            return exceptions;
         }
 
         @Override
