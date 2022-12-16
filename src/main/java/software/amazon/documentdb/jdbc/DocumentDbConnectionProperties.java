@@ -1229,7 +1229,7 @@ public class DocumentDbConnectionProperties extends Properties {
             final Properties properties,
             final URI uri,
             final ValidationType validationType) throws SQLException {
-        String hostName = mongoUri.getHost();
+        String hostName = uri.getHost();
         if (hostName == null) {
             if (properties.getProperty(DocumentDbConnectionProperty.HOSTNAME.getName(), null) == null
                     && (validationType == ValidationType.CLIENT || validationType == ValidationType.SSH_TUNNEL)) {
@@ -1241,8 +1241,8 @@ public class DocumentDbConnectionProperties extends Properties {
             return;
         }
 
-        if (mongoUri.getPort() > 0) {
-            hostName += ":" + mongoUri.getPort();
+        if (uri.getPort() > 0) {
+            hostName += ":" + uri.getPort();
         }
         addPropertyIfNotSet(properties, DocumentDbConnectionProperty.HOSTNAME.getName(),
                 hostName);
