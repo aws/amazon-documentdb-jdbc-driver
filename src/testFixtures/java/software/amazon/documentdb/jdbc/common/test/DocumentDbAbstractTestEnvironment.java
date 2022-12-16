@@ -18,7 +18,6 @@ package software.amazon.documentdb.jdbc.common.test;
 
 import com.mongodb.MongoException;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
 import com.mongodb.client.result.InsertOneResult;
@@ -216,9 +215,9 @@ public abstract class DocumentDbAbstractTestEnvironment implements DocumentDbTes
 
     @Override
     public MongoClient createMongoClient() throws SQLException {
-        return MongoClients.create(DocumentDbConnectionProperties
-                .getPropertiesFromConnectionString(getJdbcConnectionString())
-                .buildMongoClientSettings());
+        final DocumentDbConnectionProperties properties = DocumentDbConnectionProperties
+                .getPropertiesFromConnectionString(getJdbcConnectionString());
+        return properties.createMongoClient();
     }
 
     @Override

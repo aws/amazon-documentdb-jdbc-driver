@@ -16,11 +16,9 @@
 
 package software.amazon.documentdb.jdbc;
 
-import com.mongodb.MongoClientSettings;
 import com.mongodb.MongoCommandException;
 import com.mongodb.MongoSecurityException;
 import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoDatabase;
 import lombok.SneakyThrows;
 import org.bson.Document;
@@ -281,9 +279,7 @@ public class DocumentDbConnection extends Connection
     private void initializeClients(final DocumentDbConnectionProperties connectionProperties)
             throws SQLException {
         // Create the mongo client.
-        final MongoClientSettings settings = connectionProperties
-                .buildMongoClientSettings(getSshLocalPort());
-        mongoClient = MongoClients.create(settings);
+        mongoClient = connectionProperties.createMongoClient(getSshLocalPort());
         mongoDatabase = mongoClient.getDatabase(connectionProperties.getDatabase());
         pingDatabase();
     }
