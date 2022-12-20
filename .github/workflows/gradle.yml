@@ -147,7 +147,7 @@ jobs:
         generate-branches-badge: true
     - name: Commit Coverage Badge
       uses: stefanzweifel/git-auto-commit-action@v4
-      if: ! ${{ github.event.inputs.mavenFilesPreparation }}
+      if: ${{ ! github.event.inputs.mavenFilesPreparation }}
       with:
         commit_options: '--allow-empty --no-verify'
         commit_message: Commit Code Coverage Badge
