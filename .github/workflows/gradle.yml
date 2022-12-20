@@ -127,9 +127,8 @@ jobs:
       if: always()
       with:
         name: raw-test-results
-        path: |
-          build/test-results/**/*.xml
-          build/reports/tests/test/
+        path: build/reports/tests/test/
+        if-no-files-found: ignore
     - name: Publish Summary Test Results
       uses: EnricoMi/publish-unit-test-result-action@v1.9
       if: always()
