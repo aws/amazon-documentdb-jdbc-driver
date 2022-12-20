@@ -16,6 +16,7 @@
 
 package software.amazon.documentdb.jdbc;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
@@ -32,17 +35,33 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
+import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelServer;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.UncheckedIOException;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
 
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
+    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbConnectionTest.class);
 
     private static final String HOSTNAME = "localhost";
     private static final String USERNAME = "user";
@@ -463,6 +482,99 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         Assertions.assertFalse(properties.getRefreshSchema());
     }
 
+    @ParameterizedTest(name = "testMultiProcessConnections - [{index}] - {arguments}")
+    @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
+    void testMultiProcessConnections(final DocumentDbTestEnvironment environment) throws Exception {
+        if (environment == null) {
+            return;
+        }
+        environment.start();
+
+        final String connectionString = DocumentDbConnectionPropertiesTest
+                .buildInternalSshTunnelConnectionString(environment);
+        final int maxWaitTimePerClient = 5;
+        final List<String> commandLine = getCommandLine(connectionString, maxWaitTimePerClient);
+        final List<Process> processes = startClientRunnerProcesses(commandLine);
+        final Instant timeoutTime = Instant.now().plus(Duration.ofSeconds(maxWaitTimePerClient * 3));
+        assertProcessesCompleteNormally(processes, timeoutTime);
+    }
+
+    private static List<String> getCommandLine(final String connectionString, final int maxWaitTimePerClient)
+            throws SQLException, URISyntaxException {
+        final int numberOfClientsPerProcess = 5;
+        // This class name is provided in text because I don't want to mark the class public.
+        // For testing purposes, the class needs to be in the 'main' distribution - not the 'test' distribution.
+        final String clientRunnerClassName = DocumentDbSshTunnelServer.class.getPackage().getName()
+                + "." + "DocumentDbSshTunnelTestClientRunner";
+        return DocumentDbSshTunnelServer.getJavaCommand(
+                clientRunnerClassName,
+                connectionString,
+                String.valueOf(numberOfClientsPerProcess),
+                String.valueOf(maxWaitTimePerClient));
+    }
+
+    @SuppressFBWarnings("COMMAND_INJECTION")
+    private static List<Process> startClientRunnerProcesses(final List<String> commandLine) throws IOException {
+        final List<Process> processes = new ArrayList<>();
+        final int processCount = 5;
+        for (int i = 0; i < processCount; i++) {
+            processes.add(new ProcessBuilder(commandLine).start());
+        }
+        return processes;
+    }
+
+    private static void assertProcessesCompleteNormally(final List<Process> processes, final Instant timeoutTime)
+            throws InterruptedException, IOException {
+        boolean timeoutReached = false;
+        for (Process process : processes) {
+            synchronized (process) {
+                while (process.isAlive()) {
+                    final Instant now = Instant.now();
+                    if (now.isAfter(timeoutTime)) {
+                        LOGGER.debug("Timeout reached.");
+                        timeoutReached = true;
+                        break;
+                    }
+                    process.waitFor(500, TimeUnit.MILLISECONDS);
+                }
+                if (!timeoutReached) {
+                    LOGGER.debug("Closed before timeout.");
+                }
+                // Forceful shutdown, if necessary.
+                if (process.isAlive()) {
+                    LOGGER.debug("Destroying process.");
+                    process.destroy();
+                }
+                if (process.isAlive()) {
+                    LOGGER.debug("Forcibly destroying process.");
+                    process.destroyForcibly();
+                }
+                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
+                    final String stdOut = bufferedReader.lines().collect(Collectors.joining(System.lineSeparator()));
+                    if (!isNullOrWhitespace(stdOut)) {
+                        LOGGER.debug("Process output: '" + stdOut + "'");
+                    }
+                } catch (IOException | UncheckedIOException e) {
+                    // Ignore exceptions - might already be closed.
+                }
+                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
+                    final String stdErr = bufferedReader.lines().collect(Collectors.joining(System.lineSeparator()));
+                    if (!isNullOrWhitespace(stdErr)) {
+                        LOGGER.debug("Process error: '" + stdErr + "'");
+                    }
+                } catch (IOException | UncheckedIOException e) {
+                    // Ignore exceptions - might already be closed.
+                }
+            }
+        }
+        // If client runner ran successfully, it returns zero (0) exit value.
+        for (Process process : processes) {
+            Assertions.assertEquals(0, process.exitValue());
+        }
+        // Double check we haven't timed-out.
+        Assertions.assertFalse(timeoutReached);
+    }
+
     private Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {
         if (DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
                 .anyMatch(e -> e ==  DocumentDbTestEnvironmentFactory
@@ -475,7 +587,14 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
     }
 
-    private static DocumentDbConnectionProperties getInternalSSHTunnelProperties(
+    /**
+     * Gets the connection properties to test an internal SSH tunnel.
+     *
+     * @param environment the test environment.
+     * @return a {@link DocumentDbConnectionProperties} object.
+     * @throws SQLException if any of the properties cannot be parsed correctly.
+     */
+    public static DocumentDbConnectionProperties getInternalSSHTunnelProperties(
             final DocumentDbTestEnvironment environment)
             throws SQLException {
         final String docDbRemoteHost = System.getenv(DOC_DB_HOST_PROPERTY);

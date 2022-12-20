@@ -1100,7 +1100,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
                 String.format("SELECT * FROM \"%s\".\"%s\" UNION SELECT * FROM \"%s\".\"%s\"",
                         getDatabaseName(), COLLECTION_NAME, getDatabaseName(), COLLECTION_NAME + "_array");
         Assertions.assertEquals(String.format("Unable to parse SQL"
-                        + " 'SELECT * FROM \"database\".\"testCollection\" UNION SELECT * FROM \"database\".\"testCollection_array\"'.%n"
+                        + " 'SELECT * FROM \"database\".\"testCollection\" UNION SELECT * FROM \"database\".\"testCollection_array\"'. --"
                         + " Reason: 'At line 1, column 56: Column count mismatch in UNION'"),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(query))
                         .getMessage());
@@ -1611,7 +1611,7 @@ public class DocumentDbQueryMappingServiceBasicTest extends DocumentDbQueryMappi
         final String incorrectCasing =
                 String.format("SELECT * FROM %s.%s", getDatabaseName(), COLLECTION_NAME.toUpperCase());
         Assertions.assertEquals(String.format(
-                "Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'.%n"
+                "Unable to parse SQL 'SELECT * FROM database.TESTCOLLECTION'. --"
                         + " Reason: 'From line 1, column 15 to line 1, column 37:"
                         + " Object 'TESTCOLLECTION' not found within 'database'; did you mean 'testCollection'?'"),
                 Assertions.assertThrows(SQLException.class, () -> queryMapper.get(incorrectCasing))
