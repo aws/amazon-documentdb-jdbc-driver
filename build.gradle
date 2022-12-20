@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'com.github.spotbugs' version '5.0.10'
+    id 'com.github.spotbugs' version '5.0.13'
     id 'checkstyle'
     id 'jacoco'
     id 'com.github.hierynomus.license' version '0.16.1'
@@ -92,7 +92,7 @@ shadowJar {
     minimize {
         exclude(dependency('org.apache.calcite::'))
         exclude(dependency('org.slf4j.*::'))
-        exclude(dependency('com.jcraft::'))
+        exclude(dependency('com.github.mwiede::'))
     }
 }
 
@@ -145,24 +145,32 @@ spotbugsMain {
     // Configure HTML report
     reports {
         xml {
-            enabled = true
+            required.set(true)
             destination = file("$buildDir/reports/spotbugs/main.xml")
         }
+        html {
+            required.set(true)
+            destination = file("$buildDir/reports/spotbugs/main.html")
         }
+    }
 }
 spotbugsTest {
     // Configure HTML report
     reports {
         xml {
-            enabled = true
+            required.set(true)
             destination = file("$buildDir/reports/spotbugs/test.xml")
         }
+        html {
+            required.set(true)
+            destination = file("$buildDir/reports/spotbugs/test.html")
         }
+    }
 }
 
 task checkSpotBugsMainReport {
     doLast {
-        def xmlReport = spotbugsMain.reports.getByName("XML")
+        def xmlReport = spotbugsMain.reports.getByName("xml")
         def slurped = new groovy.xml.XmlSlurper().parse(xmlReport.destination)
         def bugsFound = slurped.BugInstance.size()
         slurped.BugInstance.each {
@@ -179,7 +187,7 @@ task checkSpotBugsMainReport {
 
 task checkSpotBugsTestReport {
     doLast {
-        def xmlReport = spotbugsTest.reports.getByName("XML")
+        def xmlReport = spotbugsTest.reports.getByName("xml")
         def slurped = new XmlSlurper().parse(xmlReport.destination)
         def bugsFound = slurped.BugInstance.size()
         slurped.BugInstance.each {
@@ -312,13 +320,14 @@ dependencies {
     implementation group: 'com.google.guava', name: 'guava', version: '31.1-jre'
     implementation group: 'org.slf4j', name: 'slf4j-log4j12', version: '2.0.5'
     implementation group: 'org.apache.commons', name: 'commons-text', version: '1.10.0'
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.19.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.19.0'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.7.2'
-    implementation group: 'com.jcraft', name: 'jsch', version: '0.1.55'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.8.1'
+    implementation group: 'com.github.mwiede', name: 'jsch', version: '0.2.4'
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.32.0'
     implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
-    implementation 'io.github.hakky54:sslcontext-kickstart:7.4.7'
+    implementation 'io.github.hakky54:sslcontext-kickstart:7.4.8'
 
     compileOnly         group: 'org.immutables', name: 'value', version: '2.9.2'
     compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.5.0'
@@ -331,7 +340,7 @@ dependencies {
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.24'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.9.1'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: '5.9.1'
-    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.8.0'
+    testImplementation      group: 'org.mockito', name: 'mockito-core', version: '4.9.0'
     testRuntimeOnly         group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.5.3'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-api:5.9.1'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-engine'
@@ -342,7 +351,7 @@ dependencies {
     testFixturesCompileOnly group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.5.3'
     testFixturesCompileOnly 'org.junit.jupiter:junit-jupiter-api:5.9.1'
     testFixturesImplementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-    testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.7.2'
+    testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.8.1'
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.2'
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.2'
 }
