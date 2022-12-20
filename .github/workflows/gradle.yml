@@ -122,6 +122,14 @@ jobs:
       with:
         name: output
         path: output
+    - name: Upload Raw Test Results
+      uses: actions/upload-artifact@v1
+      if: always()
+      with:
+        name: raw-test-results
+        path: |
+          build/test-results/**/*.xml
+          build/reports/tests/test/
     - name: Publish Summary Test Results
       uses: EnricoMi/publish-unit-test-result-action@v1.9
       if: always()
