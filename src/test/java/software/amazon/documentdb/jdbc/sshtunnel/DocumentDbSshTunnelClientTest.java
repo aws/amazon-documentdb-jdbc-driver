@@ -110,7 +110,8 @@ class DocumentDbSshTunnelClientTest {
         final Exception e = Assertions.assertThrows(
                 SQLException.class,
                 () -> new DocumentDbSshTunnelClient(properties));
-        Assertions.assertEquals("java.sql.SQLException: java.net.ConnectException: Connection timed out: connect", e.toString());
+        Assertions.assertTrue(e.toString().startsWith(
+                "java.sql.SQLException: java.net.ConnectException: Connection timed out"));
     }
 
     @Test
