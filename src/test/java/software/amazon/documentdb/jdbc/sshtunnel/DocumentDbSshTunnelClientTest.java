@@ -61,6 +61,7 @@ class DocumentDbSshTunnelClientTest {
     }
 
     @Test
+    @Tag("remote-integration")
     void testInvalidConnectionProperties() throws Exception {
         final DocumentDbConnectionProperties properties = getConnectionProperties();
         properties.setSshUser("");
@@ -128,6 +129,7 @@ class DocumentDbSshTunnelClientTest {
     }
 
     @Test
+    @Tag("remote-integration")
     void testInvalidSshPrivateKeyFileNotFound() throws Exception {
         final DocumentDbConnectionProperties properties = getConnectionProperties();
         properties.setSshPrivateKeyFile("unknown");
@@ -140,6 +142,7 @@ class DocumentDbSshTunnelClientTest {
     }
 
     @Test
+    @Tag("remote-integration")
     void testInvalidSshKnownHostsFileNotFound() throws Exception {
         final DocumentDbConnectionProperties properties = getConnectionProperties();
         properties.setSshStrictHostKeyChecking("true");
