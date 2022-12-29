@@ -309,7 +309,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         // Needs to be synchronized in a single process
         synchronized (mutex) {
             if (scheduledFuture != null) {
-                LOGGER.debug("Close task is being cancelled.");
+                LOGGER.debug("Close timer is being cancelled.");
                 while (!scheduledFuture.isDone()) {
                     scheduledFuture.cancel(false);
                     TimeUnit.MILLISECONDS.sleep(10);
