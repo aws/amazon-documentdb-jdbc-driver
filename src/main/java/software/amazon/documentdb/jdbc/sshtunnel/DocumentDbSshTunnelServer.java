@@ -309,12 +309,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         // Needs to be synchronized in a single process
         synchronized (mutex) {
             if (scheduledFuture != null) {
-                LOGGER.debug("Close timer is being cancelled.");
-                while (!scheduledFuture.isDone()) {
-                    scheduledFuture.cancel(false);
-                    TimeUnit.MILLISECONDS.sleep(10);
-                }
-                scheduledFuture = null;
+                cancelScheduledFutureClose();
             }
             clientCount.incrementAndGet();
             if (session != null && session.getLocalPort() != 0) {
@@ -329,45 +324,57 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
      * Removes a client from the reference count for this server. If the reference count reaches zero, then
      * the serve attempt to stop the SSH Tunnel service.
      *
-     * @throws Exception When an error occur attempting shutdown of the service process.
+     * @throws SQLException When an error occur attempting shutdown of the service process.
      */
-    public void removeClient() throws Exception {
+    public void removeClient() throws SQLException {
         synchronized (mutex) {
-            if (clientCount.get() <= 0) {
+            if (clientCount.get() <= 0 || clientCount.decrementAndGet() > 0) {
                 return;
             }
-            final long currClientCount = clientCount.decrementAndGet();
-            if (currClientCount != 0) {
-                return;
-            }
-            if (scheduledFuture != null) {
-                LOGGER.debug("Close timer is being canceled.");
-                while (!scheduledFuture.isDone()) {
-                    scheduledFuture.cancel(false);
-                    TimeUnit.MILLISECONDS.sleep(10);
-                }
-                scheduledFuture = null;
-            }
+            closeSession();
+        }
+    }
 
-            // Delay the close, if indicated.
-            final long delayMS = getCloseDelayMS();
-            if (delayMS <= 0) {
-                close();
-            } else {
-                LOGGER.debug("Close timer is being scheduled.");
-                final TimerTask closeTimerTask = new TimerTask() {
-                    @Override
-                    public void run() {
-                        try {
-                            close();
-                        } catch (Exception e) {
-                            // Ignore exception on close.
-                            LOGGER.warn(e.getMessage(), e);
-                        }
-                    }
-                };
-                scheduledFuture = scheduler.schedule(closeTimerTask, delayMS, TimeUnit.MILLISECONDS);
+    private void closeSession() throws SQLException {
+        if (scheduledFuture != null) {
+            cancelScheduledFutureClose();
+        }
+        // Delay the close, if indicated.
+        final long delayMS = getCloseDelayMS();
+        if (delayMS <= 0) {
+            close();
+        } else {
+            LOGGER.debug("Close timer is being scheduled.");
+            scheduledFuture = scheduler.schedule(getCloseTimerTask(), delayMS, TimeUnit.MILLISECONDS);
+        }
+    }
+
+    private TimerTask getCloseTimerTask() {
+        return new TimerTask() {
+            @Override
+            public void run() {
+                try {
+                    close();
+                } catch (Exception e) {
+                    // Ignore exception on close.
+                    LOGGER.warn(e.getMessage(), e);
+                }
             }
+        };
+    }
+
+    private void cancelScheduledFutureClose() throws SQLException {
+        synchronized (mutex) {
+            LOGGER.debug("Close timer is being cancelled.");
+            while (!scheduledFuture.isDone()) {
+                scheduledFuture.cancel(false);
+                try {
+                    TimeUnit.MILLISECONDS.sleep(10);
+                } catch (InterruptedException e) {
+                    throw new SQLException(e.getMessage(), e);
+                }
+            }
+            scheduledFuture = null;
         }
     }
 

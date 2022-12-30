@@ -90,10 +90,10 @@ public class DocumentDbSshTunnelClient implements AutoCloseable {
      * Closes the client object by unlocking and deleting the client lock file. If this is the last client
      * for the server, the SSH Tunnel server will be shutdown.
      *
-     * @throws Exception When an error occurs unlocking the client lock file or shutting down the server.
+     * @throws SQLException When an error occurs closing the session.
      */
     @Override
-    public void close() throws Exception {
+    public void close() throws SQLException {
         synchronized (lock) {
             if (closed.get()) {
                 return;
