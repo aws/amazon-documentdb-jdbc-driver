@@ -39,7 +39,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.SQLException;
 import java.util.Arrays;
-import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
@@ -308,9 +307,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
     public void addClient() throws SQLException, InterruptedException {
         // Needs to be synchronized in a single process
         synchronized (mutex) {
-            if (scheduledFuture != null) {
-                cancelScheduledFutureClose();
-            }
+            cancelScheduledFutureClose();
             clientCount.incrementAndGet();
             if (session != null && session.getLocalPort() != 0) {
                 return;
@@ -328,6 +325,7 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
      */
     public void removeClient() throws SQLException {
         synchronized (mutex) {
+            // Takes advantage of OR to only decrement if greater than zero.
             if (clientCount.get() <= 0 || clientCount.decrementAndGet() > 0) {
                 return;
             }
@@ -335,10 +333,14 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         }
     }
 
+    /**
+     * Closes the SSH tunnel session. If a close delay is given, delay the
+     * close until that time has passed.
+     *
+     * @throws SQLException In the case the task is interrupted.
+     */
     private void closeSession() throws SQLException {
-        if (scheduledFuture != null) {
-            cancelScheduledFutureClose();
-        }
+        cancelScheduledFutureClose();
         // Delay the close, if indicated.
         final long delayMS = getCloseDelayMS();
         if (delayMS <= 0) {
@@ -349,41 +351,53 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         }
     }
 
-    private TimerTask getCloseTimerTask() {
-        return new TimerTask() {
-            @Override
-            public void run() {
-                try {
-                    close();
-                } catch (Exception e) {
-                    // Ignore exception on close.
-                    LOGGER.warn(e.getMessage(), e);
-                }
+    /**
+     * Gets the {@link Runnable} task to close the SSH tunnel session.
+     *
+     * @return the task to close the SSH tunnel session.
+     */
+    private Runnable getCloseTimerTask() {
+        return () -> {
+            try {
+                close();
+            } catch (Exception e) {
+                // Ignore exception on close.
+                LOGGER.warn(e.getMessage(), e);
             }
         };
     }
 
+    /**
+     * Cancels the scheduled future to close the SSH tunnel session in the case a new client gets added before
+     * the close occurs.
+     *
+     * @throws SQLException If interrupted during sleep.
+     */
     private void cancelScheduledFutureClose() throws SQLException {
         synchronized (mutex) {
-            LOGGER.debug("Close timer is being cancelled.");
-            while (!scheduledFuture.isDone()) {
-                scheduledFuture.cancel(false);
-                try {
-                    TimeUnit.MILLISECONDS.sleep(10);
-                } catch (InterruptedException e) {
-                    throw new SQLException(e.getMessage(), e);
+            if (scheduledFuture != null) {
+                LOGGER.debug("Close timer is being cancelled.");
+                while (!scheduledFuture.isDone()) {
+                    scheduledFuture.cancel(false);
+                    try {
+                        TimeUnit.MILLISECONDS.sleep(10);
+                    } catch (InterruptedException e) {
+                        throw new SQLException(e.getMessage(), e);
+                    }
                 }
             }
             scheduledFuture = null;
         }
     }
 
+    @VisibleForTesting
     long getCloseDelayMS() {
         return closeDelayMS;
     }
 
+    @VisibleForTesting
     void setCloseDelayMS(final long closeDelayMS) {
-        this.closeDelayMS = closeDelayMS >= 0 ? closeDelayMS : 0;
+        this.closeDelayMS = closeDelayMS > 0 ? closeDelayMS : 0;
     }
 
     /**

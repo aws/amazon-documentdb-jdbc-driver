@@ -479,7 +479,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         environment.start();
 
-        final int numberOfConnections = 20;
+        final int numberOfConnections = 100;
         final List<Runner> runners = new ArrayList<>();
         final List<Thread> threads = new ArrayList<>();
         final DocumentDbConnectionProperties internalSSHTunnelProperties = getInternalSSHTunnelProperties(environment);
