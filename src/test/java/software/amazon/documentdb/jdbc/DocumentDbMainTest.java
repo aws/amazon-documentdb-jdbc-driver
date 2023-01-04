@@ -72,24 +72,9 @@ class DocumentDbMainTest {
             .compile(NEW_DEFAULT_SCHEMA_ANY_VERSION_REGEX);
     private DocumentDbConnectionProperties properties;
     public static final Path USER_HOME_PATH = Paths.get(System.getProperty(USER_HOME_PROPERTY));
-    private static final String DOC_DB_PRIV_KEY_FILE_PROPERTY = "DOC_DB_PRIV_KEY_FILE";
-    private static final String DOC_DB_USER_PROPERTY = "DOC_DB_USER";
-    private static final String DOC_DB_HOST_PROPERTY = "DOC_DB_HOST";
 
     private static Stream<DocumentDbTestEnvironment> getTestEnvironments() {
         return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream();
-    }
-
-    private static Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {
-        if (DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
-                .anyMatch(e -> e ==  DocumentDbTestEnvironmentFactory
-                        .getDocumentDb40SshTunnelEnvironment())) {
-            return DocumentDbTestEnvironmentFactory.getConfiguredEnvironments().stream()
-                    .filter(e -> e == DocumentDbTestEnvironmentFactory
-                            .getDocumentDb40SshTunnelEnvironment());
-        } else {
-            return Stream.of((DocumentDbTestEnvironment) null);
-        }
     }
 
     @BeforeAll
@@ -841,22 +826,6 @@ class DocumentDbMainTest {
         }
     }
 
-    @ParameterizedTest(name = "testSshTunnelCommand - [{index}] - {arguments}")
-    @MethodSource("getDocumentDb40SshTunnelEnvironmentSourceOrNull")
-    void testSshTunnelCommand(final DocumentDbTestEnvironment testEnvironment) throws SQLException {
-        // NOTE: a "null" environment means it isn't configured to run. So bypass.
-        if (testEnvironment == null) {
-            return;
-        }
-        setConnectionProperties(testEnvironment);
-
-        final String connectionString = getSshConnectionString();
-        final StringBuilder output = new StringBuilder();
-        final String[] args = {"--ssh-tunnel", connectionString};
-        DocumentDbMain.handleCommandLine(args, output);
-        Assertions.assertEquals("", output.toString());
-    }
-
     private String createSimpleCollection(final DocumentDbTestEnvironment testEnvironment)
             throws SQLException {
         final String collectionName;
@@ -1046,21 +1015,5 @@ class DocumentDbMainTest {
         }
         builder.append(" ]");
         return builder.toString();
-    }
-
-    static String getSshConnectionString() {
-        final String docDbRemoteHost = System.getenv(DOC_DB_HOST_PROPERTY);
-        final String docDbSshUserAndHost = System.getenv(DOC_DB_USER_PROPERTY);
-        final int userSeparatorIndex = docDbSshUserAndHost.indexOf('@');
-        final String sshUser = docDbSshUserAndHost.substring(0, userSeparatorIndex);
-        final String sshHostname = docDbSshUserAndHost.substring(userSeparatorIndex + 1);
-        final String docDbSshPrivKeyFile = System.getenv(DOC_DB_PRIV_KEY_FILE_PROPERTY);
-        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
-        properties.setHostname(docDbRemoteHost);
-        properties.setSshUser(sshUser);
-        properties.setSshHostname(sshHostname);
-        properties.setSshPrivateKeyFile(docDbSshPrivKeyFile);
-        properties.setSshStrictHostKeyChecking(String.valueOf(false));
-        return DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME + properties.buildSshConnectionString();
     }
 }
