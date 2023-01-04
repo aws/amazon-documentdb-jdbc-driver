@@ -302,9 +302,8 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
      * ensures that an SSH Tunnel service is started.
      *
      * @throws SQLException When an error occurs trying to start the SSH Tunnel service.
-     * @throws InterruptedException When a scheduled task is interrupted.
      */
-    public void addClient() throws SQLException, InterruptedException {
+    public void addClient() throws SQLException {
         // Needs to be synchronized in a single process
         synchronized (mutex) {
             cancelScheduledFutureClose();

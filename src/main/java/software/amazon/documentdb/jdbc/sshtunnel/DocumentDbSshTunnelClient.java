@@ -41,7 +41,7 @@ public class DocumentDbSshTunnelClient implements AutoCloseable {
      * @throws SQLException When an error occurs attempting to ensure an SSH Tunnel instance is running.
      */
     public DocumentDbSshTunnelClient(final @NonNull DocumentDbConnectionProperties properties)
-            throws SQLException, InterruptedException {
+            throws SQLException {
         validateSshTunnelProperties(properties);
         sshTunnelServer = DocumentDbSshTunnelServer.builder(
                         properties.getSshUser(),
