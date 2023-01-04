@@ -297,7 +297,7 @@ public class DocumentDbMetadataServiceImpl implements DocumentDbMetadataService 
      *
      * @return a map of the collection metadata.
      */
-    private DocumentDbSchema getCollectionMetadataDirect(
+    protected DocumentDbSchema getCollectionMetadataDirect(
             final String schemaName,
             final int schemaVersion,
             final String databaseName,
@@ -335,7 +335,7 @@ public class DocumentDbMetadataServiceImpl implements DocumentDbMetadataService 
         }
     }
 
-    private List<String> getFilteredCollectionNames(final MongoDatabase database) {
+    protected List<String> getFilteredCollectionNames(final MongoDatabase database) {
         final Iterable<String> collectionNames = database.listCollectionNames();
         return StreamSupport
                 .stream(collectionNames.spliterator(), false)
