@@ -259,10 +259,10 @@ public final class DocumentDbSshTunnelServer implements AutoCloseable {
         if (!connectionProperties.getSshStrictHostKeyChecking()) {
             return;
         }
-        final String knowHostsFilename;
-        knowHostsFilename = getSshKnownHostsFilename(connectionProperties);
+        final String knownHostsFilename;
+        knownHostsFilename = getSshKnownHostsFilename(connectionProperties);
         try {
-            jSch.setKnownHosts(knowHostsFilename);
+            jSch.setKnownHosts(knownHostsFilename);
         } catch (JSchException e) {
             throw logException(e);
         }
