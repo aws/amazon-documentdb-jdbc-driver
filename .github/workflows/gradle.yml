@@ -151,8 +151,9 @@ jobs:
         commit_options: '--allow-empty --no-verify'
         commit_message: Commit Code Coverage Badge
         file_pattern: '*.svg'
-        skip_fetch: true
-        skip_dirty_check: true
+        skip_fetch: false
+        skip_checkout: false
+        skip_dirty_check: false
     - name: Upload JaCoCo coverage report
       uses: actions/upload-artifact@v2
       with:
