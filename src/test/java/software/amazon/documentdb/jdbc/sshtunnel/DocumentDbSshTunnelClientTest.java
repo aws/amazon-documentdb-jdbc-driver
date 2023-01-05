@@ -29,6 +29,9 @@ import java.util.concurrent.TimeUnit;
 import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.ValidationType.SSH_TUNNEL;
 
 class DocumentDbSshTunnelClientTest {
+    private static final String DOC_DB_PRIV_KEY_FILE_PROPERTY = "DOC_DB_PRIV_KEY_FILE";
+    private static final String DOC_DB_USER_PROPERTY = "DOC_DB_USER";
+    private static final String DOC_DB_HOST_PROPERTY = "DOC_DB_HOST";
 
     @Test
     @Tag("remote-integration")
@@ -40,6 +43,7 @@ class DocumentDbSshTunnelClientTest {
         try {
             client = new DocumentDbSshTunnelClient(properties);
             server = client.getSshTunnelServer();
+            server.setCloseDelayMS(1000);
             Assertions.assertTrue(client.getServiceListeningPort() > 0);
             TimeUnit.SECONDS.sleep(1);
             Assertions.assertTrue(client.isServerAlive());
@@ -49,7 +53,7 @@ class DocumentDbSshTunnelClientTest {
             if (client != null) {
                 client.close();
                 // This is the only client, so server will shut down.
-                TimeUnit.SECONDS.sleep(1);
+                TimeUnit.MILLISECONDS.sleep(server.getCloseDelayMS() + 500);
                 Assertions.assertNotNull(server);
                 Assertions.assertFalse(client.isServerAlive());
             }
@@ -83,8 +87,17 @@ class DocumentDbSshTunnelClientTest {
                 clients.add(client);
             }
         } finally {
+            int clientCount = clients.size();
+            final DocumentDbSshTunnelServer server = clients.get(0).getSshTunnelServer();
+            server.setCloseDelayMS(0);
             for (DocumentDbSshTunnelClient client : clients) {
                 client.close();
+                clientCount--;
+                if (clientCount > 0) {
+                    Assertions.assertTrue(client.getSshTunnelServer().isAlive());
+                } else {
+                    Assertions.assertFalse(client.getSshTunnelServer().isAlive());
+                }
             }
         }
     }
@@ -98,8 +111,8 @@ class DocumentDbSshTunnelClientTest {
         final Exception e = Assertions.assertThrows(
                 SQLException.class,
                 () -> new DocumentDbSshTunnelClient(properties));
-        Assertions.assertTrue(
-                e.toString().startsWith("java.sql.SQLException: Error reported from SSH Tunnel service."));
+        Assertions.assertTrue(e.toString().startsWith(
+                "java.sql.SQLException: java.net.ConnectException: Connection timed out"));
     }
 
     @Test
@@ -111,8 +124,7 @@ class DocumentDbSshTunnelClientTest {
         final Exception e = Assertions.assertThrows(
                 SQLException.class,
                 () -> new DocumentDbSshTunnelClient(properties));
-        Assertions.assertEquals("java.sql.SQLException: Error reported from SSH Tunnel service."
-                        + " (Server exception detected: 'java.sql.SQLException: Auth fail for methods 'publickey,gssapi-keyex,gssapi-with-mic'')",
+        Assertions.assertEquals("java.sql.SQLException: Auth fail for methods 'publickey,gssapi-keyex,gssapi-with-mic'",
                 e.toString());
     }
 
@@ -144,7 +156,23 @@ class DocumentDbSshTunnelClientTest {
     }
 
     private static DocumentDbConnectionProperties getConnectionProperties() throws SQLException {
-        final String connectionString = DocumentDbSshTunnelServiceTest.getConnectionString();
+        final String connectionString = getConnectionString();
         return DocumentDbConnectionProperties.getPropertiesFromConnectionString(connectionString, SSH_TUNNEL);
+    }
+
+    static String getConnectionString() {
+        final String docDbRemoteHost = System.getenv(DOC_DB_HOST_PROPERTY);
+        final String docDbSshUserAndHost = System.getenv(DOC_DB_USER_PROPERTY);
+        final int userSeparatorIndex = docDbSshUserAndHost.indexOf('@');
+        final String sshUser = docDbSshUserAndHost.substring(0, userSeparatorIndex);
+        final String sshHostname = docDbSshUserAndHost.substring(userSeparatorIndex + 1);
+        final String docDbSshPrivKeyFile = System.getenv(DOC_DB_PRIV_KEY_FILE_PROPERTY);
+        final DocumentDbConnectionProperties properties = new DocumentDbConnectionProperties();
+        properties.setHostname(docDbRemoteHost);
+        properties.setSshUser(sshUser);
+        properties.setSshHostname(sshHostname);
+        properties.setSshPrivateKeyFile(docDbSshPrivKeyFile);
+        properties.setSshStrictHostKeyChecking(String.valueOf(false));
+        return DocumentDbConnectionProperties.DOCUMENT_DB_SCHEME + properties.buildSshConnectionString();
     }
 }

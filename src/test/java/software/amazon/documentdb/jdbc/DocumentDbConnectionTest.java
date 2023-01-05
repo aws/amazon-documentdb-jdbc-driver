@@ -16,7 +16,6 @@
 
 package software.amazon.documentdb.jdbc;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -25,8 +24,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleExtension;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
@@ -35,34 +32,26 @@ import software.amazon.documentdb.jdbc.common.utilities.SqlError;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
-import software.amazon.documentdb.jdbc.sshtunnel.DocumentDbSshTunnelServer;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.UncheckedIOException;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-import java.time.Duration;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static software.amazon.documentdb.jdbc.DocumentDbConnectionProperties.isNullOrWhitespace;
-
 @ExtendWith(DocumentDbFlapDoodleExtension.class)
 public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DocumentDbConnectionTest.class);
-
     private static final String HOSTNAME = "localhost";
     private static final String USERNAME = "user";
     private static final String PASSWORD = "password";
@@ -490,89 +479,37 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         }
         environment.start();
 
-        final String connectionString = DocumentDbConnectionPropertiesTest
-                .buildInternalSshTunnelConnectionString(environment);
-        final int maxWaitTimePerClient = 5;
-        final List<String> commandLine = getCommandLine(connectionString, maxWaitTimePerClient);
-        final List<Process> processes = startClientRunnerProcesses(commandLine);
-        final Instant timeoutTime = Instant.now().plus(Duration.ofSeconds(maxWaitTimePerClient * 3));
-        assertProcessesCompleteNormally(processes, timeoutTime);
-    }
-
-    private static List<String> getCommandLine(final String connectionString, final int maxWaitTimePerClient)
-            throws SQLException, URISyntaxException {
-        final int numberOfClientsPerProcess = 5;
-        // This class name is provided in text because I don't want to mark the class public.
-        // For testing purposes, the class needs to be in the 'main' distribution - not the 'test' distribution.
-        final String clientRunnerClassName = DocumentDbSshTunnelServer.class.getPackage().getName()
-                + "." + "DocumentDbSshTunnelTestClientRunner";
-        return DocumentDbSshTunnelServer.getJavaCommand(
-                clientRunnerClassName,
-                connectionString,
-                String.valueOf(numberOfClientsPerProcess),
-                String.valueOf(maxWaitTimePerClient));
-    }
-
-    @SuppressFBWarnings("COMMAND_INJECTION")
-    private static List<Process> startClientRunnerProcesses(final List<String> commandLine) throws IOException {
-        final List<Process> processes = new ArrayList<>();
-        final int processCount = 5;
-        for (int i = 0; i < processCount; i++) {
-            processes.add(new ProcessBuilder(commandLine).start());
+        final int numberOfConnections = 100;
+        final List<Runner> runners = new ArrayList<>();
+        final List<Thread> threads = new ArrayList<>();
+        final DocumentDbConnectionProperties internalSSHTunnelProperties = getInternalSSHTunnelProperties(environment);
+        for (int i = 0; i < numberOfConnections; i++) {
+            final Runner runner = new Runner(internalSSHTunnelProperties);
+            final Thread thread = new Thread(runner);
+            runners.add(runner);
+            threads.add(thread);
         }
-        return processes;
-    }
-
-    private static void assertProcessesCompleteNormally(final List<Process> processes, final Instant timeoutTime)
-            throws InterruptedException, IOException {
-        boolean timeoutReached = false;
-        for (Process process : processes) {
-            synchronized (process) {
-                while (process.isAlive()) {
-                    final Instant now = Instant.now();
-                    if (now.isAfter(timeoutTime)) {
-                        LOGGER.debug("Timeout reached.");
-                        timeoutReached = true;
-                        break;
-                    }
-                    process.waitFor(500, TimeUnit.MILLISECONDS);
-                }
-                if (!timeoutReached) {
-                    LOGGER.debug("Closed before timeout.");
-                }
-                // Forceful shutdown, if necessary.
-                if (process.isAlive()) {
-                    LOGGER.debug("Destroying process.");
-                    process.destroy();
-                }
-                if (process.isAlive()) {
-                    LOGGER.debug("Forcibly destroying process.");
-                    process.destroyForcibly();
-                }
-                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-                    final String stdOut = bufferedReader.lines().collect(Collectors.joining(System.lineSeparator()));
-                    if (!isNullOrWhitespace(stdOut)) {
-                        LOGGER.debug("Process output: '" + stdOut + "'");
-                    }
-                } catch (IOException | UncheckedIOException e) {
-                    // Ignore exceptions - might already be closed.
-                }
-                try (BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(process.getErrorStream(), StandardCharsets.UTF_8))) {
-                    final String stdErr = bufferedReader.lines().collect(Collectors.joining(System.lineSeparator()));
-                    if (!isNullOrWhitespace(stdErr)) {
-                        LOGGER.debug("Process error: '" + stdErr + "'");
-                    }
-                } catch (IOException | UncheckedIOException e) {
-                    // Ignore exceptions - might already be closed.
+        for (final Thread thread : threads) {
+            thread.start();
+        }
+        while (threads.size() > 0) {
+            TimeUnit.MILLISECONDS.sleep(100);
+            for (int i = threads.size() - 1; i >= 0; i--) {
+                final Thread thread = threads.get(i);
+                if (!thread.isAlive()) {
+                    thread.join();
+                    threads.remove(i);
                 }
             }
         }
-        // If client runner ran successfully, it returns zero (0) exit value.
-        for (Process process : processes) {
-            Assertions.assertEquals(0, process.exitValue());
+        for (final Runner runner : runners) {
+            final Queue<Exception> exceptions = runner.exceptions;
+            Assertions.assertEquals(0, exceptions.size(),
+                    () -> exceptions.stream()
+                            .map(e -> e.getMessage())
+                            .collect(Collectors.joining("; ")));
+
         }
-        // Double check we haven't timed-out.
-        Assertions.assertFalse(timeoutReached);
     }
 
     private Stream<DocumentDbTestEnvironment> getDocumentDb40SshTunnelEnvironmentSourceOrNull() {
@@ -611,5 +548,44 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
         properties.setSshPrivateKeyFile(docDbPrivKeyFile);
         properties.setSshStrictHostKeyChecking("false");
         return properties;
+    }
+
+    private static class Runner implements Runnable {
+        private static final SecureRandom RANDOM = new SecureRandom();
+        private final DocumentDbConnectionProperties properties;
+        private final Queue<Exception> exceptions = new ConcurrentLinkedQueue<>();
+
+        Runner(final DocumentDbConnectionProperties properties) {
+            this.properties = properties;
+        }
+
+        @Override
+        public void run() {
+            final int timeToWaitSECS = RANDOM.nextInt(5) + 1;
+            final Instant timeoutTime = Instant.now().plus(timeToWaitSECS, ChronoUnit.SECONDS);
+            DocumentDbConnection connection = null;
+            try {
+                connection = new DocumentDbConnection(properties);
+                while (timeoutTime.isAfter(Instant.now())) {
+                    connection.isValid(1);
+                    TimeUnit.MILLISECONDS.sleep(100);
+                }
+            } catch (Exception e) {
+                exceptions.add(e);
+            } finally {
+                if (connection != null) {
+                    try {
+                        connection.close();
+                        Assertions.assertFalse(connection.isValid(1));
+                    } catch (Exception e) {
+                        exceptions.add(e);
+                    }
+                }
+            }
+        }
+
+        Queue<Exception> getExceptions() {
+            return exceptions;
+        }
     }
 }
