@@ -53,10 +53,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
-        ref: ${{ github.event.pull_request.head.ref }}
-        fetch-depth: 0
+        ref: ''
     - name: Set up JDK 1.8
       uses: actions/setup-java@v1
       with:
@@ -152,8 +151,9 @@ jobs:
         commit_options: '--allow-empty --no-verify'
         commit_message: Commit Code Coverage Badge
         file_pattern: '*.svg'
-        skip_fetch: true
-        skip_dirty_check: true
+        skip_fetch: false
+        skip_checkout: false
+        skip_dirty_check: false
     - name: Upload JaCoCo coverage report
       uses: actions/upload-artifact@v2
       with:
