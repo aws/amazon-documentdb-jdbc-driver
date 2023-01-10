@@ -1431,10 +1431,10 @@ public class DocumentDbConnectionProperties extends Properties {
             }
         }
         // Load embedded CA root certificates.
-        try (InputStream Pem2019ResourceAsStream = getClass().getResourceAsStream(ROOT_2019_PEM_RESOURCE_FILE_NAME);
-             InputStream Pem2021ResourceAsStream = getClass().getResourceAsStream(ROOT_2021_PEM_RESOURCE_FILE_NAME)) {
-            caCertificates.addAll(CertificateUtils.loadCertificate(Pem2019ResourceAsStream));
-            caCertificates.addAll(CertificateUtils.loadCertificate(Pem2021ResourceAsStream));
+        try (InputStream pem2019ResourceAsStream = getClass().getResourceAsStream(ROOT_2019_PEM_RESOURCE_FILE_NAME);
+             InputStream pem2021ResourceAsStream = getClass().getResourceAsStream(ROOT_2021_PEM_RESOURCE_FILE_NAME)) {
+            caCertificates.addAll(CertificateUtils.loadCertificate(pem2019ResourceAsStream));
+            caCertificates.addAll(CertificateUtils.loadCertificate(pem2021ResourceAsStream));
         }
     }
 
