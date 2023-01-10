@@ -419,11 +419,11 @@ public class DocumentDbConnectionPropertiesTest {
                 .getPropertiesFromConnectionString(info, connectionString, DOCUMENT_DB_SCHEME);
         final List<Certificate> caCertificates = new ArrayList<>();
         properties.appendEmbeddedAndOptionalCaCertificates(caCertificates);
-        Assertions.assertEquals(1, caCertificates.size());
+        Assertions.assertEquals(2, caCertificates.size());
         caCertificates.clear();
         properties.setTlsCAFilePath("src/main/resources/rds-ca-2019-root.pem");
         properties.appendEmbeddedAndOptionalCaCertificates(caCertificates);
-        Assertions.assertEquals(2, caCertificates.size());
+        Assertions.assertEquals(3, caCertificates.size());
         caCertificates.clear();
         properties.setTlsCAFilePath("invalid-path.pem");
         Assertions.assertThrows(SQLException.class,
