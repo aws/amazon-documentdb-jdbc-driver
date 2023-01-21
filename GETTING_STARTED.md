@@ -335,3 +335,46 @@ as project secrets. See the workflow file [gradle.yml](https://github.com/aws/am
 below. Go to EC2 Dashboard → **Network & Security** Group in the left menu → **Security** Group.
 
    ![Security Policy for EC2 Instance](src/markdown/images/getting-started/security-policy-ec2-instance.png)
+
+## Release Procedure
+
+1. Create a task and PR to update the version.
+   1. Optional: Update dependencies to latest. The version is updated in file `gradle.properties`.
+   2. Smoke test to ensure the version is updated.
+         1. Generated file includes new version
+         2. Using a BI tool like DbVisualizer, connect and check the driver version matches.
+   3. Ensure the PR is merged.
+2. Run a manual GitHub workflow action for `Amazon DocumentDB JDBC Driver`.
+   1. Run workflow →
+      1. **Use workflow from**, Branch: `develop`
+      2. **Test without DocumentDB?** → `1`
+      3. **Prepare files to publish in maven repo?** → `1`
+   2. Following the link for the workflow,
+      1. Download the `output` artifact.
+3. Create a new release
+   1. On GitHub releases page for the project, click the **Draft a new release** button.
+   2. Version number is `v<M.m.p>` (e.g., `v1.4.3`)
+   3. The Release title should be `Amazon DocumentDB JDBC Driver v<M.m.p>` (e.g. `Amazon DocumentDB JDBC Driver v1.4.3`)
+   4. For the **Previous tag**, choose the tag for the previous version from the drop-down list.
+   5. Click the **Generate release notes** button.
+   6. Add artifacts
+      1. `documentdb-jdbc-<version>-all.jar` - This can be obtained from the output artifact using the manual workflow action above found inside subfolder jarfile.
+      2. `documentdbjdbc-<version>.taco`
+         1. **Note**: _Currently (2022-12-20), we are not signing the generated TACO file. So it is a copy of the previous version with the file name changed to the current version._
+   7. Enable the **Set as the latest release** option.
+   8. Click the **Publish release** button.
+4. Upload artifacts bundle to Maven
+   1. Go to site: [Nexus Repository Manager](https://aws.oss.sonatype.org/#welcome)
+   2. Log in use credentials
+      1. account: `aws-docdb-jdbc`
+      2. password: `<secret>`
+   3. Click **Staging Upload**
+   4. Set **Upload Mode** to `Artifact Bundle`
+   5. Click the **Select Bundle to Upload**
+   6. Select from the `output.zip` artifact downloaded from the manual workflow action, above from the path: `ouput/maven/bundle.jar`
+   7. Click the **Upload Bundle**. Wait for upload to complete.
+   8. Click the **Staging Repositories** link.
+      1. Wait for the bundle to have A**ctivity** of **Last operation completed successfully**
+      2. Check the **Content**.
+      3. Ensure the bundle is selected. Then click the **Release** button.
+ 
