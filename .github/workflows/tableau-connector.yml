@@ -36,6 +36,18 @@ jobs:
           PATCH_VERSION=$(grep "PATCH_VERSION" ${file} | cut -d'=' -f2)
           mv  tableau-connector/target/documentdbjdbc.taco tableau-connector/target/documentdbjdbc-${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}.taco
 
+      - name: "Configure AWS credentials"
+        if: ${{env.SIGNING_ENABLED == 'true'}}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          role-skip-session-tagging: true
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-external-id: ${{ secrets.AWS_ROLE_EXTERNAL_ID }}
+          role-duration-seconds: 3600
+
       - name: Sign Executables
         id: sign-executables-32
         shell: bash
@@ -101,4 +113,4 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: documentdbjdbc.taco
-          path: tableau-connector/target/documentdbjdbc*.taco
+          path: tableau-connector/target/*.taco
