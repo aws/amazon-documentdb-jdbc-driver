@@ -11,9 +11,9 @@ on:
         type: boolean
         required: false
         default: false
-  env:
-    #SIGNING_ENABLED: ${{ github.event.inputs.sign }}
-    SIGNING_ENABLED: true
+env:
+  #SIGNING_ENABLED: ${{ github.event.inputs.sign }}
+  SIGNING_ENABLED: true
 
 jobs:
   build-taco:
@@ -99,4 +99,4 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: documentdbjdbc.taco
-          path: tableau-connector/target/documentdbjdbc.taco
+          path: tableau-connector/target/documentdbjdbc*.taco
