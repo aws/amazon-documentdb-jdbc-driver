@@ -34,9 +34,9 @@ jobs:
           MAJOR_VERSION=$(grep "MAJOR_VERSION" ${file} | cut -d'=' -f2)
           MINOR_VERSION=$(grep "MINOR_VERSION" ${file} | cut -d'=' -f2)
           PATCH_VERSION=$(grep "PATCH_VERSION" ${file} | cut -d'=' -f2)
-          echo "MAJOR_VERSION=MAJOR_VERSION" >> $GITHUB_OUTPUT
-          echo "MINOR_VERSION=MINOR_VERSION" >> $GITHUB_OUTPUT
-          echo "PATCH_VERSION=PATCH_VERSION" >> $GITHUB_OUTPUT
+          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_OUTPUT
+          echo "MINOR_VERSION=$MINOR_VERSION" >> $GITHUB_OUTPUT
+          echo "PATCH_VERSION=$PATCH_VERSION" >> $GITHUB_OUTPUT
           mv  tableau-connector/target/documentdbjdbc.taco tableau-connector/target/documentdbjdbc-${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}.taco
 
       - name: "Configure AWS credentials"
