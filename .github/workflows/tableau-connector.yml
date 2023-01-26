@@ -97,7 +97,7 @@ jobs:
           
             # Poll signed S3 bucket to see if the signed artifact is there
             echo "Poll signed S3 bucket to see if the signed artifact is there"
-            aws s3api wait object-exists --bucket ${{ secrets.AWS_SIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }}-${job_id}
+            aws s3api wait object-exists --bucket ${{ secrets.AWS_SIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }}-${job_id}.taco
           
             # Get signed EXE from S3
             echo "Get signed EXE from S3"
@@ -113,4 +113,4 @@ jobs:
         uses: actions/upload-artifact@v1
         with:
           name: documentdbjdbc.taco
-          path: tableau-connector/target/*.taco
+          path: ./tableau-connector/target/*.taco
