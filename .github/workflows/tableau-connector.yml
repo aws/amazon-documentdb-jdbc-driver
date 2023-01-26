@@ -67,8 +67,8 @@ jobs:
             MINOR_VERSION=$(grep "MINOR_VERSION" ${file} | cut -d'=' -f2)
             PATCH_VERSION=$(grep "PATCH_VERSION" ${file} | cut -d'=' -f2)
           
-            # Upload unsigned .exe to S3 Bucket
-            echo "Obtaining version id and uploading unsigned .exe to S3 Bucket"
+            # Upload unsigned .taco to S3 Bucket
+            echo "Obtaining version id and uploading unsigned .taco to S3 Bucket"
             version_id=$( aws s3api put-object --bucket ${{ secrets.AWS_UNSIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }} --body ./tableau-connector/target/documentdbjdbc-${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}.taco  --acl bucket-owner-full-control | jq '.VersionId' )
             job_id=""
             # Attempt to get Job ID from bucket tagging, will retry up to 3 times before exiting with a failure code.
@@ -100,7 +100,7 @@ jobs:
             aws s3api wait object-exists --bucket ${{ secrets.AWS_SIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }}-${job_id}.taco
           
             # Get signed EXE from S3
-            echo "Get signed EXE from S3"
+            echo "Get signed .taco from S3"
             aws s3api get-object --bucket ${{ secrets.AWS_SIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }}-${job_id} ./tableau-connector/target/documentdbjdbc-${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}-signed.taco
             echo "Signing completed"
             ls -l tableau-connector/target
