@@ -34,10 +34,8 @@ jobs:
           MAJOR_VERSION=$(grep "MAJOR_VERSION" ${file} | cut -d'=' -f2)
           MINOR_VERSION=$(grep "MINOR_VERSION" ${file} | cut -d'=' -f2)
           PATCH_VERSION=$(grep "PATCH_VERSION" ${file} | cut -d'=' -f2)
-          echo "MAJOR_VERSION=$MAJOR_VERSION" >> $GITHUB_OUTPUT
-          echo "MINOR_VERSION=$MINOR_VERSION" >> $GITHUB_OUTPUT
-          echo "PATCH_VERSION=$PATCH_VERSION" >> $GITHUB_OUTPUT
-          mv  tableau-connector/target/documentdbjdbc.taco tableau-connector/target/documentdbjdbc-${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}.taco
+          echo "version=$MAJOR_VERSION.$MINOR_VERSION.$PATCH_VERSION" >> $GITHUB_ENV
+          mv  tableau-connector/target/documentdbjdbc.taco tableau-connector/target/documentdbjdbc-${{env.version}}.taco
 
       - name: "Configure AWS credentials"
         if: ${{env.SIGNING_ENABLED == 'true'}}
@@ -68,7 +66,7 @@ jobs:
           
             # Upload unsigned .taco to S3 Bucket
             echo "Obtaining version id and uploading unsigned .taco to S3 Bucket"
-            version_id=$( aws s3api put-object --bucket ${{ secrets.AWS_UNSIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }} --body ./tableau-connector/target/documentdbjdbc-${{ steps.vars.outputs.MAJOR_VERSION }}.${{ steps.vars.outputs.MINOR_VERSION }}.${{ steps.vars.outputs.PATCH_VERSION }}.taco  --acl bucket-owner-full-control | jq '.VersionId' )
+            version_id=$( aws s3api put-object --bucket ${{ secrets.AWS_UNSIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }} --body ./tableau-connector/target/documentdbjdbc-${{env.version}}.taco  --acl bucket-owner-full-control | jq '.VersionId' )
             job_id=""
             # Attempt to get Job ID from bucket tagging, will retry up to 3 times before exiting with a failure code.
             # Will sleep for 5 seconds between retries.
@@ -100,7 +98,7 @@ jobs:
           
             # Get signed taco from S3
             echo "Get signed .taco from S3"
-            aws s3api get-object --bucket ${{ secrets.AWS_SIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }}-${job_id} ./tableau-connector/target/documentdbjdbc-${MAJOR_VERSION}.${MINOR_VERSION}.${PATCH_VERSION}-signed.taco
+            aws s3api get-object --bucket ${{ secrets.AWS_SIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }}-${job_id} ./tableau-connector/target/documentdbjdbc-${{env.version}}-signed.taco
             echo "Signing completed"
             ls -l tableau-connector/target
           else
@@ -111,5 +109,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: documentdbjdbc-${{ steps.vars.outputs.MAJOR_VERSION }}.${{ steps.vars.outputs.MINOR_VERSION }}.${{ steps.vars.outputs.PATCH_VERSION }}
+          name: documentdbjdbc-${{env.version}}
           path: ./tableau-connector/target/
