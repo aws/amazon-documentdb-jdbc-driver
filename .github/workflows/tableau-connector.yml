@@ -12,7 +12,8 @@ on:
         required: false
         default: false
   env:
-    SIGNING_ENABLED: ${{ github.event.inputs.sign }}
+    #SIGNING_ENABLED: ${{ github.event.inputs.sign }}
+    SIGNING_ENABLED: true
 
 jobs:
   build-taco:
