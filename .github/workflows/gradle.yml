@@ -271,5 +271,5 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v3
         with:
-          name: documentdbjdbc-${{env.version}}
+          name: documentdbjdbc-${{env.version}}-taco
           path: ./tableau-connector/target/
