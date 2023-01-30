@@ -133,7 +133,9 @@ public class DocumentDbSchema {
             @NonNull final Function<String, DocumentDbSchemaTable> getTableFunction,
             @NonNull final Function<Set<String>, Map<String, DocumentDbSchemaTable>> getRemainingTablesFunction)
             throws IllegalStateException {
-        if (this.tables != null || this.tableReferences == null) {
+        if (this.tables != null) {
+            return;
+        } else if (this.tableReferences == null) {
             throw new IllegalStateException(
                     SqlError.lookup(SqlError.INVALID_STATE_SET_TABLE_FUNCTION));
         }
