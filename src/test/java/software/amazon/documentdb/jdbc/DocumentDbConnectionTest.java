@@ -29,6 +29,7 @@ import software.amazon.documentdb.jdbc.common.test.DocumentDbFlapDoodleTest;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironment;
 import software.amazon.documentdb.jdbc.common.test.DocumentDbTestEnvironmentFactory;
 import software.amazon.documentdb.jdbc.common.utilities.SqlError;
+import software.amazon.documentdb.jdbc.metadata.DocumentDbMetadataServiceImpl;
 import software.amazon.documentdb.jdbc.metadata.DocumentDbSchema;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaReader;
 import software.amazon.documentdb.jdbc.persist.DocumentDbSchemaWriter;
@@ -565,7 +566,7 @@ public class DocumentDbConnectionTest extends DocumentDbFlapDoodleTest {
             final Instant timeoutTime = Instant.now().plus(timeToWaitSECS, ChronoUnit.SECONDS);
             DocumentDbConnection connection = null;
             try {
-                connection = new DocumentDbConnection(properties);
+                connection = new DocumentDbConnection(properties, new DocumentDbMetadataServiceImpl());
                 while (timeoutTime.isAfter(Instant.now())) {
                     connection.isValid(1);
                     TimeUnit.MILLISECONDS.sleep(100);
