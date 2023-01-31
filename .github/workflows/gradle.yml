@@ -177,8 +177,7 @@ jobs:
 
   build-taco:
     env:
-      #SIGNING_ENABLED: ${{ github.event.inputs.signTacoFile }}
-      SIGNING_ENABLED: true
+      SIGNING_ENABLED: ${{ github.event.inputs.signTacoFile }}
     name: Assemble Tableau Connector
     runs-on: ubuntu-latest
     steps:
@@ -268,8 +267,8 @@ jobs:
               sleep 5s
             done     
 
-            # Dowloading signed taco from S3
-            echo "Dowloading signed .taco from S3"
+            # Downloading signed taco from S3
+            echo "Downloading signed .taco from S3"
             aws s3api get-object --bucket ${{ secrets.AWS_SIGNED_BUCKET }} --key ${{ secrets.AWS_KEY }}-${job_id}.taco ./tableau-connector/target/documentdbjdbc-${{env.version}}-signed.taco
             echo "Signing completed"
             ls -l tableau-connector/target
