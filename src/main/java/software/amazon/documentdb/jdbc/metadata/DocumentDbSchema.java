@@ -133,6 +133,7 @@ public class DocumentDbSchema {
             @NonNull final Function<String, DocumentDbSchemaTable> getTableFunction,
             @NonNull final Function<Set<String>, Map<String, DocumentDbSchemaTable>> getRemainingTablesFunction)
             throws IllegalStateException {
+        // If the tables map is already populated, no need to set the getTables function
         if (this.tables != null) {
             return;
         } else if (this.tableReferences == null) {
