@@ -271,6 +271,8 @@ integration testing, follow the directions below.
 To enable integration testing the following environment variables allow
 you to customize the credentials and DocumentDB cluster settings.
 
+For MacOS, you may need to make changes to ~/.zshrc, source the file, and restart the IDE for changes to be picked up.
+
 1. Create and set the following environment variables:
 
 | Variable               | Description                                                                                                              | Example                                                                     |
@@ -279,7 +281,7 @@ you to customize the credentials and DocumentDB cluster settings.
 | `DOC_DB_PASSWORD`      | This is the DocumentDB password.                                                                                         | `aSecret`                                                                   |
 | `DOC_DB_LOCAL_PORT`    | This is the port number used locally via an SSH Tunnel. It is recommend to use a different value than the default 27017. | `27019`                                                                     |
 | `DOC_DB_USER`          | This is the user and host of SSH Tunnel EC2 instance.                                                                    | `ec2-user@254.254.254.254`                                                  |
-| `DOC_DB_HOST`          | This is the host of the DocumentDB cluster server.                                                                       | `docdb-jdbc-literal-test.cluster-abcdefghijk.us-east-2.docdb.amazonaws.com` |
+| `DOC_DB_HOST`          | This is the host of the DocumentDB cluster server, including the port, separated by a colon (i.e., \<cluster endpoint>:\<port>).                                                                      | `docdb-jdbc-literal-test.cluster-abcdefghijk.us-east-2.docdb.amazonaws.com:27017` |
 | `DOC_DB_PRIV_KEY_FILE` | This is the path to the SSH Tunnel private key-pair file.                                                                | `~/.ssh/ec2-literal.pem`                                                    |
 
 ### SSH Tunnel
