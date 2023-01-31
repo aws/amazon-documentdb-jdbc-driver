@@ -66,7 +66,7 @@ public class DocumentDbConnection extends Connection
     private MongoClient mongoClient = null;
     private MongoDatabase mongoDatabase = null;
     private DocumentDbSshTunnelClient sshTunnelClient;
-    private DocumentDbMetadataService metadataService;
+    private final DocumentDbMetadataService metadataService;
 
     /**
      * DocumentDbConnection constructor, initializes super class.

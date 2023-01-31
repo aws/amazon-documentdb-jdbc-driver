@@ -112,7 +112,11 @@ public class DocumentDbDriver extends software.amazon.documentdb.jdbc.common.Dri
             throw new SQLException(exception.getMessage(), exception);
         }
 
-        return new DocumentDbConnection(properties, metadataServiceProvider.get());
+        final DocumentDbMetadataService metadataService = metadataServiceProvider.get();
+        if (metadataService == null) {
+            throw new SQLException("Unable to retrieve the DocumentDbMetadataService");
+        }
+        return new DocumentDbConnection(properties, metadataService);
     }
 
     /**
