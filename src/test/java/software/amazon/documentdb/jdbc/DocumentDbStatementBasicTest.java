@@ -899,7 +899,6 @@ public class DocumentDbStatementBasicTest extends DocumentDbStatementTest {
      * Test that queries selecting a boolean expression with NOT from nulls.
      * @throws SQLException occurs if query fails.
      */
-    @Disabled("AD-315: Boolean expressions do not treat boolean operators with nulls correctly.")
     @DisplayName("Test that queries selecting a boolean expression with NOT from nulls are correct.")
     @ParameterizedTest(name = "testQueryWithAndOrNotNulls - [{index}] - {arguments}")
     @MethodSource({"getTestEnvironments"})

@@ -152,7 +152,7 @@ public class DocumentDbQueryMappingService {
                         .build();
             }
         } catch (Exception e) {
-            // TODO: AD-273 Fix this error handling.
+            // TODO: [Fix this error handling](https://github.com/aws/amazon-documentdb-jdbc-driver/issues/499).
             throw SqlError.createSQLException(
                     LOGGER, SqlState.INVALID_QUERY_EXPRESSION, e, SqlError.SQL_PARSE_ERROR, sql,
                     getExceptionMessages(e));
