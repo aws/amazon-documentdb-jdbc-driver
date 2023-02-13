@@ -323,7 +323,7 @@ dependencies {
     implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.12.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.19.0'
     implementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.19.0'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.8.1'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.9.0'
     implementation group: 'com.github.mwiede', name: 'jsch', version: '0.2.6'
     implementation group: 'org.apache.calcite', name: 'calcite-core', version: '1.32.0'
     implementation group: 'commons-beanutils', name: 'commons-beanutils', version: '1.9.4'
@@ -351,7 +351,7 @@ dependencies {
     testFixturesCompileOnly group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.5.3'
     testFixturesCompileOnly 'org.junit.jupiter:junit-jupiter-api:5.9.1'
     testFixturesImplementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-    testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.8.1'
+    testFixturesImplementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.9.0'
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-api', version: '2.17.2'
     testFixturesImplementation group: 'org.apache.logging.log4j', name: 'log4j-core', version: '2.17.2'
 }
