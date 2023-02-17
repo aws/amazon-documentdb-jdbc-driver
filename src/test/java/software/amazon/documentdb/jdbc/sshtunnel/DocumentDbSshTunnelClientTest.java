@@ -112,7 +112,8 @@ class DocumentDbSshTunnelClientTest {
                 SQLException.class,
                 () -> new DocumentDbSshTunnelClient(properties));
         Assertions.assertTrue(e.toString().startsWith(
-                "java.sql.SQLException: java.net.ConnectException: Connection timed out"));
+                "java.sql.SQLException: java.net.ConnectException: Connection timed out") ||
+                e.toString().startsWith("java.sql.SQLException: java.net.ConnectException: Operation timed out"));
     }
 
     @Test
@@ -124,8 +125,15 @@ class DocumentDbSshTunnelClientTest {
         final Exception e = Assertions.assertThrows(
                 SQLException.class,
                 () -> new DocumentDbSshTunnelClient(properties));
-        Assertions.assertEquals("java.sql.SQLException: Auth fail for methods 'publickey,gssapi-keyex,gssapi-with-mic'",
-                e.toString());
+
+        final String os = System.getProperty("os.name");
+        if (os.toLowerCase().startsWith("mac")) {
+            Assertions.assertEquals("java.sql.SQLException: Auth fail for methods 'publickey'",
+                    e.toString());
+        } else {
+            Assertions.assertEquals("java.sql.SQLException: Auth fail for methods 'publickey,gssapi-keyex,gssapi-with-mic'",
+                    e.toString());
+        }
     }
 
     @Test
