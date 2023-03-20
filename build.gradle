@@ -330,7 +330,7 @@ dependencies {
     implementation 'io.github.hakky54:sslcontext-kickstart:7.4.9'
 
     compileOnly         group: 'org.immutables', name: 'value', version: '2.9.3'
-    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.6.0'
+    compileOnly         group: 'com.puppycrawl.tools', name: 'checkstyle', version: '10.9.2'
     compileOnly         'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 
