@@ -334,8 +334,8 @@ dependencies {
     compileOnly         'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 
-    testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
-    testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1'
+    testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1u2'
+    testCompileOnly         group: 'com.google.code.findbugs', name: 'annotations', version: '3.0.1u2'
     testCompileOnly         group: 'org.projectlombok', name: 'lombok', version: '1.18.24'
     testAnnotationProcessor group: 'org.projectlombok', name: 'lombok', version: '1.18.24'
     testImplementation      group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: '5.9.1'
