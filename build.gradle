@@ -344,7 +344,7 @@ dependencies {
     testRuntimeOnly         group: 'de.flapdoodle.embed', name: 'de.flapdoodle.embed.mongo', version: '3.5.3'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-api:5.9.1'
     testRuntimeOnly         'org.junit.jupiter:junit-jupiter-engine'
-    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.9.1'
+    testRuntimeOnly         group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: '5.10.0'
 
     spotbugsPlugins 'com.h3xstream.findsecbugs:findsecbugs-plugin:1.12.0'
 
